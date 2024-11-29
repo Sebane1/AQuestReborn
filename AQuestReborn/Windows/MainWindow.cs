@@ -33,26 +33,13 @@ public class MainWindow : Window, IDisposable
 
     public override void Draw()
     {
-        ImGui.Text($"The random config bool is {Plugin.Configuration.SomePropertyToBeSavedAndWithADefault}");
-
-        if (ImGui.Button("Show Settings"))
+        if(ImGui.Button("Quest Creator"))
         {
-            Plugin.ToggleConfigUI();
+            Plugin.EditorWindow.IsOpen = true;
         }
-
-        ImGui.Spacing();
-
-        ImGui.Text("Have a goat:");
-        var goatImage = Plugin.TextureProvider.GetFromFile(GoatImagePath).GetWrapOrDefault();
-        if (goatImage != null)
+        if (ImGui.Button("Load Quest"))
         {
-            ImGuiHelpers.ScaledIndent(55f);
-            ImGui.Image(goatImage.ImGuiHandle, new Vector2(goatImage.Width, goatImage.Height));
-            ImGuiHelpers.ScaledIndent(-55f);
-        }
-        else
-        {
-            ImGui.Text("Image not found.");
+
         }
     }
 }

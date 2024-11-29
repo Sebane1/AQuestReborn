@@ -29,6 +29,9 @@ public sealed class Plugin : IDalamudPlugin
 
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
+    public EditorWindow EditorWindow { get; init; }
+    public DialogueWindow DialogueWindow { get; init; }
+    public IClientState ClientState { get => _clientState; set => _clientState = value; }
 
     public Plugin(IClientState clientState, IFramework framework)
     {
@@ -39,9 +42,13 @@ public sealed class Plugin : IDalamudPlugin
 
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this, goatImagePath);
+        EditorWindow = new EditorWindow(this, goatImagePath);
+        DialogueWindow = new DialogueWindow(this, goatImagePath);
 
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
+        WindowSystem.AddWindow(EditorWindow);
+        WindowSystem.AddWindow(DialogueWindow);
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
