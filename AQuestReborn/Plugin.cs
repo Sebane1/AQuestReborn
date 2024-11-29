@@ -5,6 +5,10 @@ using System.IO;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using SamplePlugin.Windows;
+using RoleplayingQuestCore;
+using System;
+using System.Collections.Generic;
+using Dalamud.Game.ClientState.Objects.Types;
 
 namespace SamplePlugin;
 
@@ -19,10 +23,14 @@ public sealed class Plugin : IDalamudPlugin
     public Configuration Configuration { get; init; }
 
     public readonly WindowSystem WindowSystem = new("A Quest Reborn");
+    private IClientState _clientState;
+    private IFramework _framework;
+    private RoleplayingQuestManager _roleplayingQuestManager;
+
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
 
-    public Plugin()
+    public Plugin(IClientState clientState, IFramework framework)
     {
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
@@ -48,6 +56,22 @@ public sealed class Plugin : IDalamudPlugin
 
         // Adds another button that is doing the same but for the main ui of the plugin
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
+        _clientState = clientState;
+        _framework = framework;
+        _framework.Update += _framework_Update;
+        _roleplayingQuestManager = new RoleplayingQuestManager();
+        _roleplayingQuestManager.OnQuestTextTriggered += _roleplayingQuestManager_OnQuestTextTriggered;
+        _roleplayingQuestManager.LoadMainQuestGameObject(new QuestGameObject(_clientState));
+    }
+
+    private void _roleplayingQuestManager_OnQuestTextTriggered(object? sender, QuestDisplayObject e)
+    {
+
+    }
+
+    private void _framework_Update(IFramework framework)
+    {
+        //throw new System.NotImplementedException();
     }
 
     public void Dispose()
