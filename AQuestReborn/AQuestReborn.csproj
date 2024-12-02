@@ -18,6 +18,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="ControllerWrapper" Version="1.0.3" />
+    <PackageReference Include="DualSenseAPI" Version="1.0.2" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\RoleplayingQuestCore\RoleplayingQuestCore.csproj" />
   </ItemGroup>
 </Project>
