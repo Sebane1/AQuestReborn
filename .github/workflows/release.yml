@@ -53,7 +53,7 @@ jobs:
         uses: ncipollo/release-action@v1.12.0
         with:
           name: AQuestReborn ${{ github.ref_name }}
-          artifacts: "./AQuestReborn/bin/x64/Release/*.zip"
+          artifacts: "./AQuestReborn/bin/x64/Release/AQuestReborn.zip"
           tag: ${{ github.ref_name }}
           body: "A build of the A Quest Reborn plugin. Do not install this manually. Install via the dalamud repo link!"
           omitBodyDuringUpdate: true
