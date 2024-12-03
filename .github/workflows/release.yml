@@ -45,7 +45,7 @@ jobs:
       - name: Packing Release
         run: |
           pushd AQuestReborn/bin/x64/Release/
-          7z a .../AQuestReborn.zip *
+          7z a ./AQuestReborn/bin/x64/Release/AQuestReborn.zip *
           popd
         shell: bash
 
