@@ -1,3 +1,9 @@
 [submodule "RoleplayingQuestCore"]
 	path = RoleplayingQuestCore
 	url = https://github.com/Sebane1/RoleplayingQuestCore.git
+[submodule "AQuestReborn/AnamCore"]
+	path = AQuestReborn/AnamCore
+	url = https://github.com/Sebane1/AnamCore.git
+[submodule "RoleplayingVoiceCore"]
+	path = RoleplayingVoiceCore
+	url = https://github.com/Sebane1/RoleplayingVoiceCore.git
