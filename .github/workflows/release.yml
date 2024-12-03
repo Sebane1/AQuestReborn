@@ -59,7 +59,7 @@ jobs:
           omitBodyDuringUpdate: true
           allowUpdates: true
           replacesArtifacts: true
-          token: ${{ secrets.SECRETSRELEASE }}
+          token: ${{ secrets.RELEASE }}
 
       - name: Write out repo.json
         run: |
