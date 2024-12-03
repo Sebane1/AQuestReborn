@@ -7,3 +7,6 @@
 [submodule "RoleplayingVoiceCore"]
 	path = RoleplayingVoiceCore
 	url = https://github.com/Sebane1/RoleplayingVoiceCore.git
+[submodule "AQuestReborn/EmoteReading"]
+	path = AQuestReborn/EmoteReading
+	url = https://github.com/Sebane1/EmoteReading.git
