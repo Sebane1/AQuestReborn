@@ -1,0 +1,25 @@
+[
+  {
+    "Author": "Sebastina",
+    "Name": "A Quest Reborn",
+    "Description": "Player synced custom voices, Twitch playback integration, and more!",
+    "Tags": [
+      "Custom Quest",
+      "Questing"
+    ],
+    "InternalName": "AQuestReborn",
+    "AssemblyVersion": "0.0.0.1",
+    "TestingAssemblyVersion": "0.0.0.1",
+    "RepoUrl": "https://github.com/Sebane1/AQuestReborn",
+    "ApplicableVersion": "any",
+    "DalamudApiLevel": 11,
+    "IsHide": "False",
+    "IsTestingExclusive": "False",
+    "DownloadCount": 0,
+    "LastUpdate": 0,
+    "DownloadLinkInstall": "https://github.com/Sebane1/AQuestReborn/releases/download/0.0.0.1/RoleplayingVoiceDalamud.zip",
+    "DownloadLinkTesting": "https://github.com/Sebane1/AQuestReborn/releases/download/0.0.0.1/RoleplayingVoiceDalamud.zip",
+    "DownloadLinkUpdate": "https://github.com/Sebane1/AQuestReborn/releases/download/0.0.0.1/RoleplayingVoiceDalamud.zip",
+    "IconUrl": ""
+  }
+]

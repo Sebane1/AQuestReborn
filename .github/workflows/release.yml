@@ -37,14 +37,14 @@ jobs:
       - name: Write version into manifest
         run: |
           $ver = '${{ github.ref }}' -replace 'refs/tags/',''
-          $path = './AQuestReborn/bin/Release/net8.0-windows/AQuestReborn.json'
+          $path = './AQuestReborn/bin/x64/Release/AQuestReborn.json'
           $content = get-content -path $path
           $content = $content -replace '0.0.0.0',$ver
           set-content -Path $path -Value $content
 
       - name: Packing Release
         run: |
-          pushd AQuestReborn/bin/Release/net8.0-windows
+          pushd AQuestReborn/bin/x64/Release/
           7z a ../AQuestReborn.zip *
           popd
         shell: bash
@@ -53,7 +53,7 @@ jobs:
         uses: ncipollo/release-action@v1.12.0
         with:
           name: AQuestReborn ${{ github.ref_name }}
-          artifacts: "./AQuestReborn/bin/Release/*.zip"
+          artifacts: "./AQuestReborn/bin/x64/Release/*.zip"
           tag: ${{ github.ref_name }}
           body: "A build of the A Quest Reborn plugin. Do not install this manually. Install via the dalamud repo link!"
           omitBodyDuringUpdate: true
