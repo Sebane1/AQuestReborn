@@ -10,3 +10,6 @@
 [submodule "AQuestReborn/EmoteReading"]
 	path = AQuestReborn/EmoteReading
 	url = https://github.com/Sebane1/EmoteReading.git
+[submodule "MediaGameObjects"]
+	path = MediaGameObjects
+	url = https://github.com/Sebane1/MediaGameObjects.git

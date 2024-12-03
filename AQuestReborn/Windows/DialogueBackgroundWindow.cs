@@ -12,6 +12,7 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using ImGuiNET;
+using RoleplayingMediaCore;
 using RoleplayingQuestCore;
 using static FFXIVClientStructs.FFXIV.Component.GUI.AtkComponentButton.Delegates;
 
@@ -34,9 +35,12 @@ public class DialogueBackgroundWindow : Window, IDisposable
     byte[] _currentBackground;
     private bool _alreadyLoadingFrame;
 
+    MediaManager _mediaManager;
+
     private ITextureProvider _textureProvider;
     private IDalamudTextureWrap _frameToLoad;
     private byte[] _lastLoadedFrame;
+    private bool taskAlreadyRunning;
 
     public event EventHandler ButtonClicked;
 
@@ -68,6 +72,12 @@ public class DialogueBackgroundWindow : Window, IDisposable
     {
         Size = new Vector2(ImGui.GetMainViewport().Size.X, ImGui.GetMainViewport().Size.Y);
         Position = new Vector2(0, 0);
+        ImageFileDisplay();
+        VideoFilePlayback();
+    }
+
+    private void ImageFileDisplay()
+    {
         if (!_alreadyLoadingFrame)
         {
             Task.Run(async () =>
@@ -98,6 +108,46 @@ public class DialogueBackgroundWindow : Window, IDisposable
             IsOpen = false;
         }
     }
+
+    private void VideoFilePlayback()
+    {
+        if (_mediaManager != null && _mediaManager.LastFrame != null && _mediaManager.LastFrame.Length > 0)
+        {
+            try
+            {
+                if (!taskAlreadyRunning)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        taskAlreadyRunning = true;
+                        ReadOnlyMemory<byte> bytes = new byte[0];
+                        lock (_mediaManager.LastFrame)
+                        {
+                            bytes = _mediaManager.LastFrame;
+                        }
+
+                        if (bytes.Length > 0)
+                        {
+                            if (_lastLoadedFrame != _mediaManager.LastFrame)
+                            {
+                                _frameToLoad = await _textureProvider.CreateFromImageAsync(bytes);
+                                _lastLoadedFrame = _mediaManager.LastFrame;
+                            }
+                        }
+                        taskAlreadyRunning = false;
+                    });
+                }
+                if (_frameToLoad != null)
+                {
+                    ImGui.Image(_frameToLoad.ImGuiHandle, new Vector2(Size.Value.X, Size.Value.X * 0.5625f));
+                }
+            }
+            catch (Exception e)
+            {
+            }
+        }
+    }
+
     public void SetBackground(string path)
     {
         MemoryStream background = new MemoryStream();

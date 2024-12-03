@@ -25,5 +25,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RoleplayingQuestCore\RoleplayingQuestCore.csproj" />
+    <ProjectReference Include="..\RoleplayingVoiceCore\RoleplayingVoiceCore.csproj" />
   </ItemGroup>
 </Project>
