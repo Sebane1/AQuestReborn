@@ -39,8 +39,8 @@ public class DialogueWindow : Window, IDisposable
     }
     public override void OnClose()
     {
-        base.OnClose();
         Plugin.DialogueBackgroundWindow.IsOpen = false;
+        base.OnClose();
     }
     private void ChoiceWindow_OnChoiceMade(object? sender, int e)
     {
@@ -69,7 +69,7 @@ public class DialogueWindow : Window, IDisposable
     {
         var values = ImGui.GetWindowViewport().WorkSize;
         Position = new Vector2((values.X / 2) - (Size.Value.X / 2), values.Y - Size.Value.Y);
-        if (textTimer.ElapsedMilliseconds > 50)
+        if (textTimer.ElapsedMilliseconds > 10)
         {
             if (_currentCharacter < _targetText.Length)
             {
@@ -91,10 +91,6 @@ public class DialogueWindow : Window, IDisposable
         _currentCharacter = 0;
         questDisplayObject = newQuestText;
         SetText(0);
-        if (!_choicesAreNext)
-        {
-            _index++;
-        }
         textTimer.Restart();
         Plugin.Configuration.Save();
         _settingNewText = false;
@@ -113,7 +109,6 @@ public class DialogueWindow : Window, IDisposable
                     _choicesAreNext = false;
                     IsOpen = false;
                     Plugin.DialogueBackgroundWindow.IsOpen = false;
-                    //_index++;
                 }
                 else
                 {
@@ -139,27 +134,31 @@ public class DialogueWindow : Window, IDisposable
             {
                 _choicesAreNext = true;
             }
-            else if (item.DialogueEndsEarlyWhenHit)
-            {
-                _index = questDisplayObject.QuestObjective.QuestText.Count;
-            }
-            else if (item.DialogueSkipsToDialogueNumber)
-            {
-                _index = item.DialogueNumberToSkipTo;
-            }
             else
             {
-                _index++;
+                switch (item.DialogueEndBehaviour)
+                {
+                    case QuestText.DialogueEndBehaviourType.DialogueSkipsToDialogueNumber:
+                        _index = item.DialogueNumberToSkipTo;
+                        break;
+                    case QuestText.DialogueEndBehaviourType.DialogueEndsEarlyWhenHit:
+                        _index = questDisplayObject.QuestObjective.QuestText.Count;
+                        break;
+                    case QuestText.DialogueEndBehaviourType.None:
+                        _index++;
+                        break;
+                }
             }
             textTimer.Restart();
         }
         else
         {
+
+            Plugin.DialogueBackgroundWindow.IsOpen = false;
             IsOpen = false;
             _currentCharacter = 0;
             textTimer.Reset();
-            Plugin.ToastGui.ShowQuest(questDisplayObject.QuestObjective.Objective,
-             new Dalamud.Game.Gui.Toast.QuestToastOptions() { DisplayCheckmark = questDisplayObject.QuestObjective.ObjectiveStatus == QuestObjective.ObjectiveStatusType.Complete });
+            questDisplayObject.QuestEvents?.Invoke(this, EventArgs.Empty);
         }
     }
 }

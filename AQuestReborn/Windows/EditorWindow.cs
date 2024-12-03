@@ -16,6 +16,7 @@ using static FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup;
 using static RoleplayingQuestCore.QuestObjective;
 using static RoleplayingQuestCore.RoleplayingQuest;
 using static RoleplayingQuestCore.BranchingChoice;
+using static RoleplayingQuestCore.QuestText;
 
 namespace SamplePlugin.Windows;
 
@@ -110,7 +111,10 @@ public class EditorWindow : Window, IDisposable
                 var questName = _roleplayingQuestCreator.CurrentQuest.QuestName;
                 var questDescription = _roleplayingQuestCreator.CurrentQuest.QuestDescription;
                 var contentRating = (int)_roleplayingQuestCreator.CurrentQuest.ContentRating;
+                var questReward = _roleplayingQuestCreator.CurrentQuest.QuestReward;
+                var questRewardType = (int)_roleplayingQuestCreator.CurrentQuest.TypeOfReward;
                 var contentRatingTypes = Enum.GetNames(typeof(QuestContentRating));
+                var questRewardTypes = Enum.GetNames(typeof(QuestRewardType));
 
                 if (ImGui.InputText("Author##", ref questAuthor, 255))
                 {
@@ -127,6 +131,31 @@ public class EditorWindow : Window, IDisposable
                 if (ImGui.Combo("Content Rating##", ref contentRating, contentRatingTypes, contentRatingTypes.Length))
                 {
                     _roleplayingQuestCreator.CurrentQuest.ContentRating = (QuestContentRating)contentRating;
+                }
+                if (ImGui.Combo("Quest Reward Type##", ref questRewardType, questRewardTypes, questRewardTypes.Length))
+                {
+                    _roleplayingQuestCreator.CurrentQuest.TypeOfReward = (QuestRewardType)questRewardType;
+                }
+                switch (_roleplayingQuestCreator.CurrentQuest.TypeOfReward)
+                {
+                    case QuestRewardType.SecretMessage:
+                        if (ImGui.InputText("Quest Reward (Secret Message)", ref questReward, 255))
+                        {
+                            _roleplayingQuestCreator.CurrentQuest.QuestReward = questReward;
+                        }
+                        break;
+                    case QuestRewardType.DownloadLink:
+                        if (ImGui.InputText("Quest Reward (Download Link)", ref questReward, 255))
+                        {
+                            _roleplayingQuestCreator.CurrentQuest.QuestReward = questReward;
+                        }
+                        break;
+                    case QuestRewardType.MediaFile:
+                        if (ImGui.InputText("Quest Reward (Media File Path)", ref questReward, 255))
+                        {
+                            _roleplayingQuestCreator.CurrentQuest.QuestReward = questReward;
+                        }
+                        break;
                 }
             }
         }
@@ -225,9 +254,10 @@ public class EditorWindow : Window, IDisposable
             var npcName = item.NpcName;
             var dialogue = item.Dialogue;
             var dialogueAudio = item.DialogueAudio;
-            var dialogueEndsEarlyWhenHit = item.DialogueEndsEarlyWhenHit;
-            var dialogueSkipsToDialogueNumber = item.DialogueSkipsToDialogueNumber;
+            var dialogueEndBehaviour = (int)item.DialogueEndBehaviour;
             var dialogueNumberToSkipTo = item.DialogueNumberToSkipTo;
+
+            var dialogueEndTypes = Enum.GetNames(typeof(QuestText.DialogueEndBehaviourType));
 
             if (ImGui.InputInt("Face Expression Id##", ref faceExpression))
             {
@@ -249,33 +279,19 @@ public class EditorWindow : Window, IDisposable
             {
                 item.DialogueAudio = dialogueAudio;
             }
-            if (!dialogueEndsEarlyWhenHit)
+            if (ImGui.Combo("Dialogue End Behaviour##", ref dialogueEndBehaviour, dialogueEndTypes, dialogueEndTypes.Length))
             {
-                if (ImGui.Checkbox("Dialogue Skips To Dialogue Number##", ref dialogueSkipsToDialogueNumber))
-                {
-                    item.DialogueSkipsToDialogueNumber = dialogueSkipsToDialogueNumber;
-                }
-                if (dialogueSkipsToDialogueNumber)
-                {
+                item.DialogueEndBehaviour = (DialogueEndBehaviourType)dialogueEndBehaviour;
+            }
+
+            switch (item.DialogueEndBehaviour)
+            {
+                case DialogueEndBehaviourType.DialogueSkipsToDialogueNumber:
                     if (ImGui.InputInt("Dialogue Number To Skip To##", ref dialogueNumberToSkipTo))
                     {
                         item.DialogueNumberToSkipTo = dialogueNumberToSkipTo;
                     }
-                }
-                else
-                {
-                    if (ImGui.Checkbox("Dialogue Ends Early When Hit##", ref dialogueEndsEarlyWhenHit))
-                    {
-                        item.DialogueEndsEarlyWhenHit = dialogueEndsEarlyWhenHit;
-                    }
-                }
-            }
-            else
-            {
-                if (ImGui.Checkbox("Dialogue Ends Early When Hit##", ref dialogueEndsEarlyWhenHit))
-                {
-                    item.DialogueEndsEarlyWhenHit = dialogueEndsEarlyWhenHit;
-                }
+                    break;
             }
             DrawBranchingChoicesMenu();
         }

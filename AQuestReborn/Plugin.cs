@@ -13,6 +13,7 @@ using DualSenseAPI;
 using System.Linq;
 using Controller_Wrapper;
 using System.Diagnostics;
+using Dalamud.Game.Gui.Toast;
 
 namespace SamplePlugin;
 
@@ -34,6 +35,7 @@ public sealed class Plugin : IDalamudPlugin
     private DualSense _dualSense;
     private Controller xboxController;
     private Stopwatch _pollingTimer;
+    private Stopwatch _controllerCheckTimer;
     private IToastGui _toastGui;
     private IGameGui _gameGui;
     private ITextureProvider _textureProvider;
@@ -43,6 +45,7 @@ public sealed class Plugin : IDalamudPlugin
     private MainWindow MainWindow { get; init; }
     public DialogueBackgroundWindow DialogueBackgroundWindow { get; private set; }
     public ObjectiveWindow ObjectiveWindow { get; private set; }
+    public QuestAcceptanceWindow QuestAcceptanceWindow { get; private set; }
     public EditorWindow EditorWindow { get; init; }
     public ChoiceWindow ChoiceWindow { get; private set; }
     public DialogueWindow DialogueWindow { get; init; }
@@ -66,6 +69,8 @@ public sealed class Plugin : IDalamudPlugin
         MainWindow = new MainWindow(this);
         DialogueBackgroundWindow = new DialogueBackgroundWindow(this, textureProvider);
         ObjectiveWindow = new ObjectiveWindow(this);
+        QuestAcceptanceWindow = new QuestAcceptanceWindow(this);
+
         DialogueBackgroundWindow.ButtonClicked += DialogueBackgroundWindow_buttonClicked;
         ObjectiveWindow.OnSelectionAttempt += DialogueBackgroundWindow_buttonClicked;
         WindowSystem.AddWindow(ConfigWindow);
@@ -74,6 +79,7 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.AddWindow(DialogueWindow);
         WindowSystem.AddWindow(ChoiceWindow);
         WindowSystem.AddWindow(ObjectiveWindow);
+        WindowSystem.AddWindow(QuestAcceptanceWindow);
         WindowSystem.AddWindow(MainWindow);
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
@@ -93,13 +99,50 @@ public sealed class Plugin : IDalamudPlugin
         _framework = framework;
         _pollingTimer = new Stopwatch();
         _pollingTimer.Start();
+        _controllerCheckTimer = new Stopwatch();
+        _controllerCheckTimer.Start();
         _toastGui = toastGui;
         _gameGui = gameGui;
         _textureProvider = textureProvider;
         _roleplayingQuestManager = new RoleplayingQuestManager(Configuration.QuestChains, Configuration.QuestProgression);
         _roleplayingQuestManager.OnQuestTextTriggered += _roleplayingQuestManager_OnQuestTextTriggered;
+        _roleplayingQuestManager.OnQuestStarted += _roleplayingQuestManager_OnQuestStarted;
+        _roleplayingQuestManager.OnQuestCompleted += _roleplayingQuestManager_OnQuestCompleted;
+        _roleplayingQuestManager.OnObjectiveCompleted += _roleplayingQuestManager_OnObjectiveCompleted;
+        _roleplayingQuestManager.OnQuestAcceptancePopup += _roleplayingQuestManager_OnQuestAcceptancePopup;
         _roleplayingQuestManager.LoadMainQuestGameObject(new QuestGameObject(_clientState));
+        QuestAcceptanceWindow.OnQuestAccepted += QuestAcceptanceWindow_OnQuestAccepted;
         _framework.Update += _framework_Update;
+    }
+
+    private void _roleplayingQuestManager_OnQuestAcceptancePopup(object? sender, RoleplayingQuest e)
+    {
+        QuestAcceptanceWindow.PromptQuest(e);
+    }
+
+    private void QuestAcceptanceWindow_OnQuestAccepted(object? sender, EventArgs e)
+    {
+        _roleplayingQuestManager.ProgressTriggerQuestObjective();
+    }
+
+    private void _roleplayingQuestManager_OnObjectiveCompleted(object? sender, QuestObjective e)
+    {
+        ToastGui.ShowQuest(e.Objective,
+        new Dalamud.Game.Gui.Toast.QuestToastOptions()
+        {
+            DisplayCheckmark = e.ObjectiveStatus == QuestObjective.ObjectiveStatusType.Complete
+        });
+    }
+
+    private void _roleplayingQuestManager_OnQuestCompleted(object? sender, EventArgs e)
+    {
+        QuestToastOptions questToastOptions = new QuestToastOptions();
+        ToastGui.ShowQuest("Quest Completed");
+    }
+
+    private void _roleplayingQuestManager_OnQuestStarted(object? sender, EventArgs e)
+    {
+        ToastGui.ShowQuest("Quest Started");
     }
 
     private void DialogueBackgroundWindow_buttonClicked(object? sender, EventArgs e)
@@ -109,23 +152,23 @@ public sealed class Plugin : IDalamudPlugin
 
     private void _roleplayingQuestManager_OnQuestTextTriggered(object? sender, QuestDisplayObject e)
     {
-        DialogueWindow.IsOpen = true;
         if (e.QuestObjective.QuestText.Count > 0)
         {
+            DialogueWindow.IsOpen = true;
             DialogueWindow.NewText(e);
         }
         else
         {
-            _toastGui.ShowQuest(e.QuestObjective.Objective,
-            new Dalamud.Game.Gui.Toast.QuestToastOptions()
-            {
-                DisplayCheckmark = e.QuestObjective.ObjectiveStatus == QuestObjective.ObjectiveStatusType.Complete
-            });
+            e.QuestEvents.Invoke(this, EventArgs.Empty);
         }
     }
 
     private void _framework_Update(IFramework framework)
     {
+        if (_pollingTimer.ElapsedMilliseconds > 5000)
+        {
+            ControllerConnectionCheck();
+        }
         if (_pollingTimer.ElapsedMilliseconds > 100)
         {
             ObjectiveWindow.IsOpen = true;
@@ -134,9 +177,9 @@ public sealed class Plugin : IDalamudPlugin
                 _screenButtonClicked = false;
                 if (!_waitingForSelectionRelease)
                 {
-                    if (!DialogueWindow.IsOpen)
+                    if (!DialogueWindow.IsOpen && !ChoiceWindow.IsOpen)
                     {
-                        _roleplayingQuestManager.ProgressNearestQuest();
+                        _roleplayingQuestManager.ProgressTriggerQuestObjective();
                     }
                     else
                     {
@@ -155,6 +198,15 @@ public sealed class Plugin : IDalamudPlugin
 
     private bool CheckXboxInput()
     {
+        if (xboxController != null)
+        {
+            return xboxController.A;
+        }
+        return false;
+    }
+
+    private void ControllerConnectionCheck()
+    {
         if (xboxController == null)
         {
             var controllers = Controller_Wrapper.Controller.GetConnectedControllers();
@@ -163,14 +215,6 @@ public sealed class Plugin : IDalamudPlugin
                 xboxController = controllers[0];
             }
         }
-        if (xboxController != null)
-        {
-            return xboxController.A;
-        }
-        return false;
-    }
-    private bool CheckDualsenseInput()
-    {
         if (_dualSense == null)
         {
             var controllers = DualSense.EnumerateControllers();
@@ -181,6 +225,9 @@ public sealed class Plugin : IDalamudPlugin
                 _dualSense.BeginPolling(20);
             }
         }
+    }
+    private bool CheckDualsenseInput()
+    {
         if (_dualSense != null)
         {
             return _dualSense.InputState.CrossButton;

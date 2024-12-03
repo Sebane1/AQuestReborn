@@ -93,6 +93,10 @@ public class DialogueBackgroundWindow : Window, IDisposable
         {
             ImGui.Image(_frameToLoad.ImGuiHandle, new Vector2(Size.Value.X, Size.Value.Y));/*))*/
         }
+        if (!Plugin.DialogueWindow.IsOpen)
+        {
+            IsOpen = false;
+        }
     }
     public void SetBackground(string path)
     {

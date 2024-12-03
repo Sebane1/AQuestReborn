@@ -25,6 +25,11 @@ public class ObjectiveWindow : Window, IDisposable
     private bool _alreadyLoadingFrame;
     private IDalamudTextureWrap _frameToLoad;
     private byte[] _lastLoadedFrame;
+    private ImGuiWindowFlags _hoverFlags;
+    private ImGuiWindowFlags _defaultFlags;
+    private RangeAccessor<bool> mouseDownValues;
+    private bool _mouseDistanceIsCloseToObjective;
+
     public event EventHandler OnSelectionAttempt;
 
     // We give this window a hidden ID using ##
@@ -41,7 +46,6 @@ public class ObjectiveWindow : Window, IDisposable
         };
 
         Plugin = plugin;
-        _fileDialogManager = new FileDialogManager();
         MemoryStream blank = new MemoryStream();
         Bitmap none = new Bitmap(1, 1);
         Graphics graphics = Graphics.FromImage(none);
@@ -51,13 +55,38 @@ public class ObjectiveWindow : Window, IDisposable
         emptyBackground = blank.ToArray();
         _currentBackground = emptyBackground;
         AllowClickthrough = true;
+        _defaultFlags = ImGuiWindowFlags.NoInputs | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar
+            | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground;
+        _hoverFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse
+            | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground;
     }
 
     public void Dispose() { }
 
+    public void OnOpen()
+    {
+
+    }
+
+    public void OnClose()
+    {
+        IsOpen = true;
+    }
+    public override void PreDraw()
+    {
+        base.PreDraw();
+        if (_mouseDistanceIsCloseToObjective)
+        {
+            Flags = _hoverFlags;
+        }
+        else
+        {
+            Flags = _defaultFlags;
+        }
+    }
     public override void Draw()
     {
-        var mouseDownValues = ImGui.GetIO().MouseDown;
+        mouseDownValues = ImGui.GetIO().MouseDown;
         Size = new Vector2(ImGui.GetMainViewport().Size.X, ImGui.GetMainViewport().Size.Y);
         Position = new Vector2(0, 0);
         if (!_alreadyLoadingFrame)
@@ -73,9 +102,11 @@ public class ObjectiveWindow : Window, IDisposable
                 _alreadyLoadingFrame = false;
             });
         }
-        if (!Plugin.DialogueBackgroundWindow.IsOpen)
+        if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
         {
-            foreach (var item in Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectives())
+            var questChains = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectives(Plugin.ClientState.TerritoryType);
+            _mouseDistanceIsCloseToObjective = false;
+            foreach (var item in questChains)
             {
                 Vector2 screenPosition = new Vector2();
                 bool inView = false;
@@ -84,16 +115,19 @@ public class ObjectiveWindow : Window, IDisposable
                 {
                     if (_frameToLoad != null)
                     {
-                        for (int i = 0; i < mouseDownValues.Count; i++)
+                        var value = ImGui.GetIO().MousePos;
+                        var distance = Vector2.Distance(new Vector2(screenPosition.X / Size.Value.X, 0),
+                            new Vector2(value.X / Size.Value.X, 0));
+                        var playerDistance = Vector3.Distance(Plugin.ClientState.LocalPlayer.Position, item.Coordinates);
+                        if (distance < 0.1f && playerDistance < Plugin.RoleplayingQuestManager.MinimumDistance)
                         {
-                            if (mouseDownValues[i])
+                            _mouseDistanceIsCloseToObjective = true;
+                            for (int i = 0; i < mouseDownValues.Count; i++)
                             {
-                                var value = ImGui.GetIO().MousePos;
-                                var distance = Vector2.Distance(new Vector2(screenPosition.X / Size.Value.X, screenPosition.Y / Size.Value.X),
-                                    new Vector2(value.X / Size.Value.X, value.Y / Size.Value.Y));
-                                if (distance < 0.1f)
+                                if (mouseDownValues[i])
                                 {
                                     OnSelectionAttempt?.Invoke(this, EventArgs.Empty);
+                                    _mouseDistanceIsCloseToObjective = false;
                                     break;
                                 }
                             }
