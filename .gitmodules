@@ -13,3 +13,6 @@
 [submodule "AQuestReborn/MediaGameObjects"]
 	path = AQuestReborn/MediaGameObjects
 	url = https://github.com/Sebane1/MediaGameObjects.git
+[submodule "Brio"]
+	path = Brio
+	url = https://github.com/Sebane1/Brio.git
