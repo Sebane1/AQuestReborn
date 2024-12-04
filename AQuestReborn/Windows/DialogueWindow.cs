@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Numerics;
 using Dalamud.Interface.Internal;
 using Dalamud.Interface.Utility;
@@ -8,6 +9,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using ImGuiNET;
 using RoleplayingQuestCore;
+using RoleplayingVoiceDalamudWrapper;
 using static FFXIVClientStructs.FFXIV.Component.GUI.AtkComponentButton.Delegates;
 
 namespace SamplePlugin.Windows;
@@ -25,6 +27,7 @@ public class DialogueWindow : Window, IDisposable
     string _currentName = "";
     Stopwatch textTimer = new Stopwatch();
     private bool _choicesAreNext;
+    private DummyObject _dummyObject;
 
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
@@ -36,6 +39,7 @@ public class DialogueWindow : Window, IDisposable
         Size = new Vector2(600, 200);
         Plugin = plugin;
         plugin.ChoiceWindow.OnChoiceMade += ChoiceWindow_OnChoiceMade;
+        _dummyObject = new DummyObject();
     }
     public override void OnClose()
     {
@@ -62,6 +66,7 @@ public class DialogueWindow : Window, IDisposable
     }
 
     public QuestDisplayObject QuestTexts { get => questDisplayObject; set => questDisplayObject = value; }
+    internal DummyObject DummyObject { get => _dummyObject; set => _dummyObject = value; }
 
     public void Dispose() { }
 
@@ -120,6 +125,8 @@ public class DialogueWindow : Window, IDisposable
     public void SetText(int index)
     {
         _index = index;
+        Plugin.MediaManager.StopAudio(_dummyObject);
+        Plugin.DialogueBackgroundWindow.ClearBackground();
         if (_index < questDisplayObject.QuestObjective.QuestText.Count)
         {
             var item = questDisplayObject.QuestObjective.QuestText[_index];
@@ -129,6 +136,23 @@ public class DialogueWindow : Window, IDisposable
             _currentText = "";
             _targetText = item.Dialogue;
             _currentName = item.NpcName;
+            string customAudioPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueAudio);
+            string customBackgroundPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueBackground);
+            if (Plugin.MediaManager != null)
+            {
+                if (File.Exists(customAudioPath))
+                {
+                    Plugin.MediaManager.PlayMedia(_dummyObject, customAudioPath, RoleplayingMediaCore.SoundType.NPC, true);
+                }
+                if (File.Exists(customBackgroundPath))
+                {
+                    Plugin.DialogueBackgroundWindow.SetBackground(customBackgroundPath, item.TypeOfDialogueBackground);
+                }
+                else
+                {
+                    Plugin.DialogueBackgroundWindow.ClearBackground();
+                }
+            }
             if (_index < questDisplayObject.QuestObjective.QuestText.Count &&
             questDisplayObject.QuestObjective.QuestText[_index].BranchingChoices.Count > 0)
             {

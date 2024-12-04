@@ -254,10 +254,13 @@ public class EditorWindow : Window, IDisposable
             var npcName = item.NpcName;
             var dialogue = item.Dialogue;
             var dialogueAudio = item.DialogueAudio;
+            var dialogueBackgroundType = (int)item.TypeOfDialogueBackground;
+            var dialogueBackground = item.DialogueBackground;
             var dialogueEndBehaviour = (int)item.DialogueEndBehaviour;
             var dialogueNumberToSkipTo = item.DialogueNumberToSkipTo;
 
             var dialogueEndTypes = Enum.GetNames(typeof(QuestText.DialogueEndBehaviourType));
+            var dialogueBackgroundTypes = Enum.GetNames(typeof(QuestText.DialogueBackgroundType));
 
             if (ImGui.InputInt("Face Expression Id##", ref faceExpression))
             {
@@ -278,6 +281,25 @@ public class EditorWindow : Window, IDisposable
             if (ImGui.InputText("Dialogue Audio Path##", ref dialogueAudio, 255))
             {
                 item.DialogueAudio = dialogueAudio;
+            }
+            if (ImGui.Combo("Dialogue Background Type##", ref dialogueBackgroundType, dialogueBackgroundTypes, dialogueBackgroundTypes.Length))
+            {
+                item.TypeOfDialogueBackground = (DialogueBackgroundType)dialogueBackgroundType;
+            }
+            switch (item.TypeOfDialogueBackground)
+            {
+                case DialogueBackgroundType.Image:
+                    if (ImGui.InputText("Dialogue Background Image Path##", ref dialogueBackground, 255))
+                    {
+                        item.DialogueBackground = dialogueBackground;
+                    }
+                    break;
+                case DialogueBackgroundType.Video:
+                    if (ImGui.InputText("Dialogue Background Video Path##", ref dialogueBackground, 255))
+                    {
+                        item.DialogueBackground = dialogueBackground;
+                    }
+                    break;
             }
             if (ImGui.Combo("Dialogue End Behaviour##", ref dialogueEndBehaviour, dialogueEndTypes, dialogueEndTypes.Length))
             {

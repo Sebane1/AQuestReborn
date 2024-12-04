@@ -14,6 +14,7 @@ using Dalamud.Plugin.Services;
 using ImGuiNET;
 using RoleplayingMediaCore;
 using RoleplayingQuestCore;
+using RoleplayingVoiceDalamudWrapper;
 using static FFXIVClientStructs.FFXIV.Component.GUI.AtkComponentButton.Delegates;
 
 namespace SamplePlugin.Windows;
@@ -38,9 +39,12 @@ public class DialogueBackgroundWindow : Window, IDisposable
     MediaManager _mediaManager;
 
     private ITextureProvider _textureProvider;
+    private DummyObject _dummyObject;
     private IDalamudTextureWrap _frameToLoad;
     private byte[] _lastLoadedFrame;
     private bool taskAlreadyRunning;
+    private QuestText.DialogueBackgroundType _currentBackgroundType;
+    private bool _videoWasPlaying;
 
     public event EventHandler ButtonClicked;
 
@@ -51,7 +55,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
         : base("Dialogue Background Window##dialoguewindow", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar |
             ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground)
     {
-        Size = new Vector2(600, 200);
+        //Size = new Vector2(600, 200);
         Plugin = plugin;
         MemoryStream blank = new MemoryStream();
         Bitmap none = new Bitmap(1, 1);
@@ -62,22 +66,49 @@ public class DialogueBackgroundWindow : Window, IDisposable
         emptyBackground = blank.ToArray();
         _currentBackground = emptyBackground;
         _textureProvider = textureProvider;
+        _dummyObject = new DummyObject();
     }
 
     public QuestDisplayObject QuestTexts { get => questDisplayObject; set => questDisplayObject = value; }
+    public MediaManager MediaManager { get => _mediaManager; set => _mediaManager = value; }
 
     public void Dispose() { }
-
+    public override void OnClose()
+    {
+        ClearBackground();
+        base.OnClose();
+    }
     public override void Draw()
     {
         Size = new Vector2(ImGui.GetMainViewport().Size.X, ImGui.GetMainViewport().Size.Y);
         Position = new Vector2(0, 0);
-        ImageFileDisplay();
-        VideoFilePlayback();
+        switch (_currentBackgroundType)
+        {
+            case QuestText.DialogueBackgroundType.Image:
+                ImageFileDisplay();
+                break;
+            case QuestText.DialogueBackgroundType.Video:
+                VideoFilePlayback();
+                break;
+        }
+    }
+
+    public void CheckMouseDown(bool doClick = false)
+    {
+        var values = ImGui.GetIO().MouseDown;
+        for (int i = 0; i < values.Count; i++)
+        {
+            if (values[i] || doClick)
+            {
+                ButtonClicked?.Invoke(this, EventArgs.Empty);
+                break;
+            }
+        }
     }
 
     private void ImageFileDisplay()
     {
+        CheckMouseDown();
         if (!_alreadyLoadingFrame)
         {
             Task.Run(async () =>
@@ -90,14 +121,6 @@ public class DialogueBackgroundWindow : Window, IDisposable
                 }
                 _alreadyLoadingFrame = false;
             });
-        }
-        var values = ImGui.GetIO().MouseDown;
-        for (int i = 0; i < values.Count; i++)
-        {
-            if (values[i])
-            {
-                ButtonClicked?.Invoke(this, EventArgs.Empty);
-            }
         }
         if (_frameToLoad != null)
         {
@@ -115,48 +138,72 @@ public class DialogueBackgroundWindow : Window, IDisposable
         {
             try
             {
-                if (!taskAlreadyRunning)
+                lock (_mediaManager.LastFrame)
                 {
-                    _ = Task.Run(async () =>
+                    _videoWasPlaying = true;
+                    if (!taskAlreadyRunning)
                     {
-                        taskAlreadyRunning = true;
-                        ReadOnlyMemory<byte> bytes = new byte[0];
-                        lock (_mediaManager.LastFrame)
+                        _ = Task.Run(async () =>
                         {
-                            bytes = _mediaManager.LastFrame;
-                        }
-
-                        if (bytes.Length > 0)
-                        {
-                            if (_lastLoadedFrame != _mediaManager.LastFrame)
+                            taskAlreadyRunning = true;
+                            ReadOnlyMemory<byte> bytes = new byte[0];
+                            lock (_mediaManager.LastFrame)
                             {
-                                _frameToLoad = await _textureProvider.CreateFromImageAsync(bytes);
-                                _lastLoadedFrame = _mediaManager.LastFrame;
+                                bytes = _mediaManager.LastFrame;
                             }
-                        }
-                        taskAlreadyRunning = false;
-                    });
-                }
-                if (_frameToLoad != null)
-                {
-                    ImGui.Image(_frameToLoad.ImGuiHandle, new Vector2(Size.Value.X, Size.Value.X * 0.5625f));
+
+                            if (bytes.Length > 0)
+                            {
+                                if (_lastLoadedFrame != _mediaManager.LastFrame)
+                                {
+                                    _frameToLoad = await _textureProvider.CreateFromImageAsync(bytes);
+                                    _lastLoadedFrame = _mediaManager.LastFrame;
+                                }
+                            }
+                            taskAlreadyRunning = false;
+                        });
+                    }
+                    if (_frameToLoad != null)
+                    {
+                        ImGui.Image(_frameToLoad.ImGuiHandle, new Vector2(Size.Value.X, Size.Value.X * 0.5625f));
+                    }
                 }
             }
             catch (Exception e)
             {
             }
         }
+        else
+        {
+            CheckMouseDown(_videoWasPlaying);
+            _videoWasPlaying = false;
+        }
     }
 
-    public void SetBackground(string path)
+    public void SetBackground(string path, QuestText.DialogueBackgroundType dialogueBackgroundType)
     {
-        MemoryStream background = new MemoryStream();
-        Bitmap none = new Bitmap(path);
-        background.Position = 0;
-        _currentBackground = background.ToArray();
+        _currentBackgroundType = dialogueBackgroundType;
+        switch (dialogueBackgroundType)
+        {
+            case QuestText.DialogueBackgroundType.Image:
+                MemoryStream background = new MemoryStream();
+                Bitmap none = new Bitmap(path);
+                none.Save(background, ImageFormat.Png);
+                background.Position = 0;
+                _currentBackground = background.ToArray();
+                break;
+            case QuestText.DialogueBackgroundType.Video:
+                Plugin.MediaManager?.PlayMedia(_dummyObject, path, SoundType.NPC, true);
+                _videoWasPlaying = false;
+                break;
+            case QuestText.DialogueBackgroundType.None:
+                ClearBackground();
+                break;
+        }
     }
     public void ClearBackground()
     {
         _currentBackground = emptyBackground;
+        Plugin.MediaManager?.StopAudio(_dummyObject);
     }
 }

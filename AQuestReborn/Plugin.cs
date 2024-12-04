@@ -14,6 +14,11 @@ using System.Linq;
 using Controller_Wrapper;
 using System.Diagnostics;
 using Dalamud.Game.Gui.Toast;
+using RoleplayingMediaCore;
+using RoleplayingVoiceDalamudWrapper;
+using FFXIVClientStructs.FFXIV.Client.Game.Control;
+using FFXIVClientStructs.FFXIV.Client.Game;
+using System.Threading.Tasks;
 
 namespace SamplePlugin;
 
@@ -40,6 +45,11 @@ public sealed class Plugin : IDalamudPlugin
     private IGameGui _gameGui;
     private ITextureProvider _textureProvider;
     private bool _screenButtonClicked;
+    private MediaManager _mediaManager;
+    private MediaGameObject _playerObject;
+    private unsafe Camera* _camera;
+    private MediaCameraObject _playerCamera;
+    private IDalamudPluginInterface _dalamudPluginInterface;
 
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
@@ -54,8 +64,10 @@ public sealed class Plugin : IDalamudPlugin
     public IToastGui ToastGui { get => _toastGui; set => _toastGui = value; }
     public IGameGui GameGui { get => _gameGui; set => _gameGui = value; }
     public ITextureProvider TextureProvider1 { get => _textureProvider; set => _textureProvider = value; }
+    public MediaManager MediaManager { get => _mediaManager; set => _mediaManager = value; }
 
-    public Plugin(IClientState clientState, IFramework framework, IToastGui toastGui, ITextureProvider textureProvider, IGameGui gameGui)
+    public Plugin(IClientState clientState, IFramework framework, IToastGui toastGui,
+        ITextureProvider textureProvider, IGameGui gameGui, IDalamudPluginInterface dalamudPluginInterface)
     {
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
@@ -112,9 +124,39 @@ public sealed class Plugin : IDalamudPlugin
         _roleplayingQuestManager.OnQuestAcceptancePopup += _roleplayingQuestManager_OnQuestAcceptancePopup;
         _roleplayingQuestManager.LoadMainQuestGameObject(new QuestGameObject(_clientState));
         QuestAcceptanceWindow.OnQuestAccepted += QuestAcceptanceWindow_OnQuestAccepted;
+        _dalamudPluginInterface = dalamudPluginInterface;
         _framework.Update += _framework_Update;
+        _clientState.Login += _clientState_Login;
+        if (_clientState.IsLoggedIn)
+        {
+            InitializeMediaManager();
+        }
     }
 
+    private void _clientState_Login()
+    {
+        if (_clientState.IsLoggedIn)
+        {
+            InitializeMediaManager();
+        }
+    }
+
+    public unsafe void InitializeMediaManager()
+    {
+        if (_playerObject == null)
+        {
+            _playerObject = new MediaGameObject(_clientState.LocalPlayer);
+        }
+
+        if (_playerCamera != null)
+        {
+            _playerCamera = new MediaCameraObject(_camera);
+        }
+        _camera = CameraManager.Instance()->GetActiveCamera();
+        _mediaManager = new MediaManager(_playerObject, _playerCamera,
+        Path.GetDirectoryName(_dalamudPluginInterface.AssemblyLocation.FullName));
+        DialogueBackgroundWindow.MediaManager = _mediaManager;
+    }
     private void _roleplayingQuestManager_OnQuestAcceptancePopup(object? sender, RoleplayingQuest e)
     {
         QuestAcceptanceWindow.PromptQuest(e);
@@ -138,6 +180,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         QuestToastOptions questToastOptions = new QuestToastOptions();
         ToastGui.ShowQuest("Quest Completed");
+        Configuration.Save();
     }
 
     private void _roleplayingQuestManager_OnQuestStarted(object? sender, EventArgs e)
@@ -165,9 +208,10 @@ public sealed class Plugin : IDalamudPlugin
 
     private void _framework_Update(IFramework framework)
     {
-        if (_pollingTimer.ElapsedMilliseconds > 5000)
+        if (_controllerCheckTimer.ElapsedMilliseconds > 5000)
         {
             ControllerConnectionCheck();
+            _controllerCheckTimer.Restart();
         }
         if (_pollingTimer.ElapsedMilliseconds > 100)
         {
@@ -209,21 +253,27 @@ public sealed class Plugin : IDalamudPlugin
     {
         if (xboxController == null)
         {
-            var controllers = Controller_Wrapper.Controller.GetConnectedControllers();
-            if (controllers.Length > 0)
+            Task.Run(() =>
             {
-                xboxController = controllers[0];
-            }
+                var controllers = Controller_Wrapper.Controller.GetConnectedControllers();
+                if (controllers.Length > 0)
+                {
+                    xboxController = controllers[0];
+                }
+            });
         }
         if (_dualSense == null)
         {
-            var controllers = DualSense.EnumerateControllers();
-            if (controllers.Count() > 0)
+            Task.Run(() =>
             {
-                _dualSense = controllers.First();
-                _dualSense.Acquire();
-                _dualSense.BeginPolling(20);
-            }
+                var controllers = DualSense.EnumerateControllers();
+                if (controllers.Count() > 0)
+                {
+                    _dualSense = controllers.First();
+                    _dualSense.Acquire();
+                    _dualSense.BeginPolling(20);
+                }
+            });
         }
     }
     private bool CheckDualsenseInput()
@@ -248,6 +298,7 @@ public sealed class Plugin : IDalamudPlugin
             _dualSense.EndPolling();
             _dualSense.Release();
         }
+        _mediaManager.Dispose();
     }
 
     private void OnCommand(string command, string args)
