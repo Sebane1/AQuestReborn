@@ -96,7 +96,10 @@ public class ObjectiveWindow : Window, IDisposable
                 _alreadyLoadingFrame = true;
                 if (_lastLoadedFrame != _currentBackground)
                 {
-                    _frameToLoad = await Plugin.TextureProvider.CreateFromImageAsync(_currentBackground);
+                    if (_currentBackground != null)
+                    {
+                        _frameToLoad = await Plugin.TextureProvider.CreateFromImageAsync(_currentBackground);
+                    }
                     _lastLoadedFrame = _currentBackground;
                 }
                 _alreadyLoadingFrame = false;

@@ -204,38 +204,41 @@ public sealed class Plugin : IDalamudPlugin
     public void RefreshNPCs(ushort territoryId)
     {
         DestroyAllNpcs();
-        _actorSpawnService.DestroyAllCreated();
-        Task.Run(() =>
+        if (_actorSpawnService != null)
         {
-            ICharacter firstSpawn = null;
-            _actorSpawnService.CreateCharacter(out firstSpawn, SpawnFlags.DefinePosition, true, new System.Numerics.Vector3(float.MaxValue / 2, float.MaxValue / 2, float.MaxValue / 2), 0);
-            _spawnedNPCs["First Spawn"] = firstSpawn;
-
-            var questChains = RoleplayingQuestManager.GetActiveQuestChainObjectives(territoryId);
-            foreach (var item in questChains)
+            _actorSpawnService.DestroyAllCreated();
+            Task.Run(() =>
             {
-                string foundPath = item.Key.FoundPath;
-                foreach (var npcAppearance in item.Key.NpcCustomizations)
+                ICharacter firstSpawn = null;
+                _actorSpawnService.CreateCharacter(out firstSpawn, SpawnFlags.DefinePosition, true, new System.Numerics.Vector3(float.MaxValue / 2, float.MaxValue / 2, float.MaxValue / 2), 0);
+                _spawnedNPCs["First Spawn"] = firstSpawn;
+
+                var questChains = RoleplayingQuestManager.GetActiveQuestChainObjectives(territoryId);
+                foreach (var item in questChains)
                 {
-                    if (item.Value.NpcStartingPositions.ContainsKey(npcAppearance.Value.NpcName))
+                    string foundPath = item.Key.FoundPath;
+                    foreach (var npcAppearance in item.Key.NpcCustomizations)
                     {
-                        if (_spawnedNPCs.ContainsKey(npcAppearance.Value.NpcName))
+                        if (item.Value.NpcStartingPositions.ContainsKey(npcAppearance.Value.NpcName))
                         {
-                            _actorSpawnService.DestroyObject(_spawnedNPCs[npcAppearance.Value.NpcName]);
-                        }
-                        ICharacter character = null;
-                        var startingInfo = item.Value.NpcStartingPositions[npcAppearance.Value.NpcName];
-                        _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true, startingInfo.Position, Utility.ConvertDegreesToRadians(startingInfo.EulerRotation.Y));
-                        if (character != null)
-                        {
-                            _spawnedNPCs[npcAppearance.Value.NpcName] = character;
-                            _mcdfQueue.Enqueue(new KeyValuePair<string, ICharacter>(Path.Combine(foundPath, npcAppearance.Value.AppearanceData), character));
-                            Thread.Sleep(200);
+                            if (_spawnedNPCs.ContainsKey(npcAppearance.Value.NpcName))
+                            {
+                                _actorSpawnService.DestroyObject(_spawnedNPCs[npcAppearance.Value.NpcName]);
+                            }
+                            ICharacter character = null;
+                            var startingInfo = item.Value.NpcStartingPositions[npcAppearance.Value.NpcName];
+                            _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true, startingInfo.Position, Utility.ConvertDegreesToRadians(startingInfo.EulerRotation.Y));
+                            if (character != null)
+                            {
+                                _spawnedNPCs[npcAppearance.Value.NpcName] = character;
+                                _mcdfQueue.Enqueue(new KeyValuePair<string, ICharacter>(Path.Combine(foundPath, npcAppearance.Value.AppearanceData), character));
+                                Thread.Sleep(200);
+                            }
                         }
                     }
                 }
-            }
-        });
+            });
+        }
     }
     public void DestroyAllNpcs()
     {
