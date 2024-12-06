@@ -56,6 +56,7 @@ public sealed class Plugin : IDalamudPlugin
     private IToastGui _toastGui;
     private IGameGui _gameGui;
     private ITextureProvider _textureProvider;
+    private IDataManager _dataManager;
     private bool _screenButtonClicked;
     private MediaManager _mediaManager;
     private MediaGameObject _playerObject;
@@ -84,12 +85,15 @@ public sealed class Plugin : IDalamudPlugin
     public MediaManager MediaManager { get => _mediaManager; set => _mediaManager = value; }
     public ActorSpawnService ActorSpawnService { get => _actorSpawnService; set => _actorSpawnService = value; }
     public Dictionary<string, ICharacter> SpawnedNPCs { get => _spawnedNPCs; set => _spawnedNPCs = value; }
+    public IDataManager DataManager { get => _dataManager; set => _dataManager = value; }
+
     Queue<KeyValuePair<string, ICharacter>> _mcdfQueue = new Queue<KeyValuePair<string, ICharacter>>();
     private EmoteReaderHooks _emoteReaderHook;
+    private IPluginLog _pluginLog;
 
     public Plugin(IClientState clientState, IFramework framework, IToastGui toastGui,
         ITextureProvider textureProvider, IGameGui gameGui, IDalamudPluginInterface dalamudPluginInterface,
-        IGameInteropProvider gameInteropProvider, IObjectTable objectTable)
+        IGameInteropProvider gameInteropProvider, IObjectTable objectTable, IDataManager dataManager, IPluginLog pluginLog)
     {
         _brio = new Brio.Brio(dalamudPluginInterface);
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
@@ -143,6 +147,7 @@ public sealed class Plugin : IDalamudPlugin
         _toastGui = toastGui;
         _gameGui = gameGui;
         _textureProvider = textureProvider;
+        _dataManager = dataManager;
         _roleplayingQuestManager = new RoleplayingQuestManager(Configuration.QuestChains, Configuration.QuestProgression);
         _roleplayingQuestManager.OnQuestTextTriggered += _roleplayingQuestManager_OnQuestTextTriggered;
         _roleplayingQuestManager.OnQuestStarted += _roleplayingQuestManager_OnQuestStarted;
@@ -172,6 +177,7 @@ public sealed class Plugin : IDalamudPlugin
         _mcdfRefreshTimer.Start();
         _emoteReaderHook = new EmoteReaderHooks(gameInteropProvider, _clientState, objectTable);
         _emoteReaderHook.OnEmote += (instigator, emoteId) => OnEmote(instigator as ICharacter, emoteId);
+        _pluginLog = pluginLog;
     }
 
     private void OnCommandChat(string command, string arguments)
@@ -201,17 +207,24 @@ public sealed class Plugin : IDalamudPlugin
             _triggerRefresh = true;
         });
     }
-    public void RefreshNPCs(ushort territoryId)
+    public void RefreshNPCs(ushort territoryId, bool softRefresh = false)
     {
-        DestroyAllNpcs();
+        if (!softRefresh)
+        {
+            DestroyAllNpcs();
+        }
         if (_actorSpawnService != null)
         {
-            _actorSpawnService.DestroyAllCreated();
-            Task.Run(() =>
+            if (!softRefresh)
             {
-                ICharacter firstSpawn = null;
-                _actorSpawnService.CreateCharacter(out firstSpawn, SpawnFlags.DefinePosition, true, new System.Numerics.Vector3(float.MaxValue / 2, float.MaxValue / 2, float.MaxValue / 2), 0);
-                _spawnedNPCs["First Spawn"] = firstSpawn;
+                _actorSpawnService.DestroyAllCreated();
+            }
+                if (!_spawnedNPCs.ContainsKey("First Spawn") || _spawnedNPCs.Count == 0)
+                {
+                    ICharacter firstSpawn = null;
+                    _actorSpawnService.CreateCharacter(out firstSpawn, SpawnFlags.DefinePosition, true, new System.Numerics.Vector3(float.MaxValue / 2, float.MaxValue / 2, float.MaxValue / 2), 0);
+                    _spawnedNPCs["First Spawn"] = firstSpawn;
+                }
 
                 var questChains = RoleplayingQuestManager.GetActiveQuestChainObjectives(territoryId);
                 foreach (var item in questChains)
@@ -223,7 +236,17 @@ public sealed class Plugin : IDalamudPlugin
                         {
                             if (_spawnedNPCs.ContainsKey(npcAppearance.Value.NpcName))
                             {
-                                _actorSpawnService.DestroyObject(_spawnedNPCs[npcAppearance.Value.NpcName]);
+                                var npc = _spawnedNPCs[npcAppearance.Value.NpcName];
+                                if (npc != null)
+                                {
+                                    try
+                                    {
+                                        _actorSpawnService.DestroyObject(npc);
+                                    }
+                                    catch (Exception e) {
+                                        _pluginLog.Warning(e, e.Message);
+                                    }
+                                }
                             }
                             ICharacter character = null;
                             var startingInfo = item.Value.NpcStartingPositions[npcAppearance.Value.NpcName];
@@ -232,12 +255,10 @@ public sealed class Plugin : IDalamudPlugin
                             {
                                 _spawnedNPCs[npcAppearance.Value.NpcName] = character;
                                 _mcdfQueue.Enqueue(new KeyValuePair<string, ICharacter>(Path.Combine(foundPath, npcAppearance.Value.AppearanceData), character));
-                                Thread.Sleep(200);
                             }
                         }
                     }
                 }
-            });
         }
     }
     public void DestroyAllNpcs()

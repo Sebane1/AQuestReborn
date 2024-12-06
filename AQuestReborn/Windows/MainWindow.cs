@@ -6,6 +6,7 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using ImGuiNET;
+using Lumina.Excel.Sheets;
 
 namespace SamplePlugin.Windows;
 
@@ -34,11 +35,12 @@ public class MainWindow : Window, IDisposable
 
     public override void Draw()
     {
+        _fileDialogManager.Draw();
         if (ImGui.Button("Quest Creator"))
         {
             Plugin.EditorWindow.IsOpen = true;
         }
-        _fileDialogManager.Draw();
+        ImGui.SameLine();
         if (ImGui.Button("Load Quest"))
         {
             _fileDialogManager.Reset();
@@ -51,11 +53,19 @@ public class MainWindow : Window, IDisposable
                 if (isOk)
                 {
                     Plugin.RoleplayingQuestManager.AddQuest(folder[0]);
-                    Plugin.RefreshNPCs(Plugin.ClientState.TerritoryType);
+                    Plugin.RefreshNPCs(Plugin.ClientState.TerritoryType, true);
                     Plugin.Configuration.Save();
                 }
             }, 0, null, true);
             ImGui.EndPopup();
+        }
+        int index = 0;
+        var territorySheets = Plugin.DataManager.GameData.GetExcelSheet<TerritoryType>();
+        foreach (var item in Plugin.RoleplayingQuestManager.GetCurrentObjectives())
+        {
+            ImGui.LabelText("##" + index, item.Objective);
+            ImGui.LabelText("##" + index, territorySheets.GetRow((uint)item.TerritoryId).PlaceName.Value.Name.ToString());
+            index++;
         }
     }
 }
