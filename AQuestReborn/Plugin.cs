@@ -19,6 +19,16 @@ using RoleplayingVoiceDalamudWrapper;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using System.Threading.Tasks;
+using Brio.Game.Actor;
+using Brio.IPC;
+using Lumina.Excel.Sheets;
+using System.Threading;
+using Anamnesis.GameData;
+using EmbedIO.Authentication;
+using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using SharpDX;
+using AQuestReborn;
+using ArtemisRoleplayingKit;
 
 namespace SamplePlugin;
 
@@ -29,6 +39,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
 
     private const string CommandName = "/questreborn";
+    private const string CommandName2 = "/questchat";
 
     public Configuration Configuration { get; init; }
 
@@ -41,6 +52,7 @@ public sealed class Plugin : IDalamudPlugin
     private Controller xboxController;
     private Stopwatch _pollingTimer;
     private Stopwatch _controllerCheckTimer;
+    private Stopwatch _mcdfRefreshTimer = new Stopwatch();
     private IToastGui _toastGui;
     private IGameGui _gameGui;
     private ITextureProvider _textureProvider;
@@ -50,6 +62,11 @@ public sealed class Plugin : IDalamudPlugin
     private unsafe Camera* _camera;
     private MediaCameraObject _playerCamera;
     private IDalamudPluginInterface _dalamudPluginInterface;
+    private Brio.Brio _brio;
+    private ActorSpawnService _actorSpawnService;
+    private MareService _mcdfService;
+    private Dictionary<string, ICharacter> _spawnedNPCs = new Dictionary<string, ICharacter>();
+    private bool _triggerRefresh;
 
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
@@ -65,10 +82,16 @@ public sealed class Plugin : IDalamudPlugin
     public IGameGui GameGui { get => _gameGui; set => _gameGui = value; }
     public ITextureProvider TextureProvider1 { get => _textureProvider; set => _textureProvider = value; }
     public MediaManager MediaManager { get => _mediaManager; set => _mediaManager = value; }
+    public ActorSpawnService ActorSpawnService { get => _actorSpawnService; set => _actorSpawnService = value; }
+    public Dictionary<string, ICharacter> SpawnedNPCs { get => _spawnedNPCs; set => _spawnedNPCs = value; }
+    Queue<KeyValuePair<string, ICharacter>> _mcdfQueue = new Queue<KeyValuePair<string, ICharacter>>();
+    private EmoteReaderHooks _emoteReaderHook;
 
     public Plugin(IClientState clientState, IFramework framework, IToastGui toastGui,
-        ITextureProvider textureProvider, IGameGui gameGui, IDalamudPluginInterface dalamudPluginInterface)
+        ITextureProvider textureProvider, IGameGui gameGui, IDalamudPluginInterface dalamudPluginInterface,
+        IGameInteropProvider gameInteropProvider, IObjectTable objectTable)
     {
+        _brio = new Brio.Brio(dalamudPluginInterface);
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
         // you might normally want to embed resources and load them from the manifest stream
@@ -97,6 +120,10 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
             HelpMessage = "Opens settings."
+        });
+        CommandManager.AddHandler(CommandName2, new CommandInfo(OnCommandChat)
+        {
+            HelpMessage = "For chat objectives"
         });
 
         PluginInterface.UiBuilder.Draw += DrawUI;
@@ -127,17 +154,106 @@ public sealed class Plugin : IDalamudPlugin
         _dalamudPluginInterface = dalamudPluginInterface;
         _framework.Update += _framework_Update;
         _clientState.Login += _clientState_Login;
+        _clientState.TerritoryChanged += _clientState_TerritoryChanged;
         if (_clientState.IsLoggedIn)
         {
             InitializeMediaManager();
+            RefreshNPCs(_clientState.TerritoryType);
+        }
+        Task.Run(() =>
+        {
+            while (Brio.Brio._services == null)
+            {
+                Thread.Sleep(100);
+            }
+            Brio.Brio.TryGetService<ActorSpawnService>(out _actorSpawnService);
+            Brio.Brio.TryGetService<MareService>(out _mcdfService);
+        });
+        _mcdfRefreshTimer.Start();
+        _emoteReaderHook = new EmoteReaderHooks(gameInteropProvider, _clientState, objectTable);
+        _emoteReaderHook.OnEmote += (instigator, emoteId) => OnEmote(instigator as ICharacter, emoteId);
+    }
+
+    private void OnCommandChat(string command, string arguments)
+    {
+        if (!DialogueWindow.IsOpen && !ChoiceWindow.IsOpen)
+        {
+            _roleplayingQuestManager.ProgressTriggerQuestObjective(QuestObjective.ObjectiveTriggerType.SayPhrase, arguments);
         }
     }
 
+    private void OnEmote(ICharacter character, ushort emoteId)
+    {
+        if (!DialogueWindow.IsOpen && !ChoiceWindow.IsOpen)
+        {
+            _roleplayingQuestManager.ProgressTriggerQuestObjective(QuestObjective.ObjectiveTriggerType.DoEmote, emoteId.ToString());
+        }
+    }
+
+    private void _clientState_TerritoryChanged(ushort territory)
+    {
+        Task.Run(() =>
+        {
+            while (_clientState.LocalPlayer == null)
+            {
+                Thread.Sleep(1000);
+            }
+            _triggerRefresh = true;
+        });
+    }
+    public void RefreshNPCs(ushort territoryId)
+    {
+        DestroyAllNpcs();
+        _actorSpawnService.DestroyAllCreated();
+        Task.Run(() =>
+        {
+            ICharacter firstSpawn = null;
+            _actorSpawnService.CreateCharacter(out firstSpawn, SpawnFlags.DefinePosition, true, new System.Numerics.Vector3(float.MaxValue / 2, float.MaxValue / 2, float.MaxValue / 2), 0);
+            _spawnedNPCs["First Spawn"] = firstSpawn;
+
+            var questChains = RoleplayingQuestManager.GetActiveQuestChainObjectives(territoryId);
+            foreach (var item in questChains)
+            {
+                string foundPath = item.Key.FoundPath;
+                foreach (var npcAppearance in item.Key.NpcCustomizations)
+                {
+                    if (item.Value.NpcStartingPositions.ContainsKey(npcAppearance.Value.NpcName))
+                    {
+                        if (_spawnedNPCs.ContainsKey(npcAppearance.Value.NpcName))
+                        {
+                            _actorSpawnService.DestroyObject(_spawnedNPCs[npcAppearance.Value.NpcName]);
+                        }
+                        ICharacter character = null;
+                        var startingInfo = item.Value.NpcStartingPositions[npcAppearance.Value.NpcName];
+                        _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true, startingInfo.Position, Utility.ConvertDegreesToRadians(startingInfo.EulerRotation.Y));
+                        if (character != null)
+                        {
+                            _spawnedNPCs[npcAppearance.Value.NpcName] = character;
+                            _mcdfQueue.Enqueue(new KeyValuePair<string, ICharacter>(Path.Combine(foundPath, npcAppearance.Value.AppearanceData), character));
+                            Thread.Sleep(200);
+                        }
+                    }
+                }
+            }
+        });
+    }
+    public void DestroyAllNpcs()
+    {
+        foreach (var item in _spawnedNPCs)
+        {
+            if (item.Value != null)
+            {
+                _actorSpawnService.DestroyObject(item.Value);
+            }
+        }
+        _spawnedNPCs.Clear();
+    }
     private void _clientState_Login()
     {
         if (_clientState.IsLoggedIn)
         {
             InitializeMediaManager();
+            RefreshNPCs(_clientState.TerritoryType);
         }
     }
 
@@ -148,11 +264,11 @@ public sealed class Plugin : IDalamudPlugin
             _playerObject = new MediaGameObject(_clientState.LocalPlayer);
         }
 
-        if (_playerCamera != null)
+        if (_playerCamera == null)
         {
+            _camera = CameraManager.Instance()->GetActiveCamera();
             _playerCamera = new MediaCameraObject(_camera);
         }
-        _camera = CameraManager.Instance()->GetActiveCamera();
         _mediaManager = new MediaManager(_playerObject, _playerCamera,
         Path.GetDirectoryName(_dalamudPluginInterface.AssemblyLocation.FullName));
         DialogueBackgroundWindow.MediaManager = _mediaManager;
@@ -208,6 +324,17 @@ public sealed class Plugin : IDalamudPlugin
 
     private void _framework_Update(IFramework framework)
     {
+        if (_mcdfQueue.Count > 0 && _mcdfRefreshTimer.ElapsedMilliseconds > 500)
+        {
+            var item = _mcdfQueue.Dequeue();
+            _mcdfService.LoadMcdfAsync(item.Key, item.Value);
+            _mcdfRefreshTimer.Restart();
+        }
+        if (_triggerRefresh)
+        {
+            RefreshNPCs(_clientState.TerritoryType);
+            _triggerRefresh = false;
+        }
         if (_controllerCheckTimer.ElapsedMilliseconds > 5000)
         {
             ControllerConnectionCheck();
@@ -299,6 +426,7 @@ public sealed class Plugin : IDalamudPlugin
             _dualSense.Release();
         }
         _mediaManager.Dispose();
+        _brio.Dispose();
     }
 
     private void OnCommand(string command, string args)

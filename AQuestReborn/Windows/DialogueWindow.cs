@@ -183,6 +183,7 @@ public class DialogueWindow : Window, IDisposable
             _currentCharacter = 0;
             textTimer.Reset();
             questDisplayObject.QuestEvents?.Invoke(this, EventArgs.Empty);
+            Plugin.RefreshNPCs(Plugin.ClientState.TerritoryType);
         }
     }
 }

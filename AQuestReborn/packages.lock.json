@@ -50,6 +50,19 @@
         "resolved": "1.3.6",
         "contentHash": "mJrchhjNnB1NUvDEyWqMZmC1j9uciX9Tk6HJbcpCXsmDXS9LwUGVHadWImeuKNSiChqb2lNsRXhNttnD1A3C3w=="
       },
+      "EmbedIO": {
+        "type": "Transitive",
+        "resolved": "3.5.2",
+        "contentHash": "YU4j+3XvuO8/VPkNf7KWOF1TpMhnyVhXnPsG1mvnDhTJ9D5BZOFXVDvCpE/SkQ1AJ0Aa+dXOVSW3ntgmLL7aJg==",
+        "dependencies": {
+          "Unosquare.Swan.Lite": "3.1.0"
+        }
+      },
+      "Glamourer.Api": {
+        "type": "Transitive",
+        "resolved": "2.2.0",
+        "contentHash": "kPAHhj5kt2WdlLUBShWv2lg352odhV1D9fG/TWNO7HQSbABo5o30nujshX1PLdyVjfCYpW8k+Tfz/2Az8MyF1w=="
+      },
       "Hid.Net": {
         "type": "Transitive",
         "resolved": "4.2.1",
@@ -62,6 +75,19 @@
         "type": "Transitive",
         "resolved": "3.9.0",
         "contentHash": "wydvN5kotK5y/ZRC04/F6YUqesJCzdixaItRkR8L0/nOLSs2/BJ7rKRbU7BxkxpKIBqlN8EpuXxH/fQEZEHtuw=="
+      },
+      "Microsoft.Extensions.DependencyInjection": {
+        "type": "Transitive",
+        "resolved": "9.0.0",
+        "contentHash": "MCPrg7v3QgNMr0vX4vzRXvkNGgLg8vKWX0nKCWUxu2uPyMsaRgiRc1tHBnbTcfJMhMKj2slE/j2M9oGkd25DNw==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.0"
+        }
+      },
+      "Microsoft.Extensions.DependencyInjection.Abstractions": {
+        "type": "Transitive",
+        "resolved": "9.0.0",
+        "contentHash": "+6f2qv2a3dLwd5w6JanPIPs47CxRbnk+ZocMJUhv9NxP88VlOcJYZs9jY+MYSjxvady08bUZn6qgiNh7DadGgg=="
       },
       "Microsoft.Extensions.Logging.Abstractions": {
         "type": "Transitive",
@@ -243,6 +269,21 @@
           "System.Memory": "4.5.3",
           "System.ValueTuple": "4.5.0"
         }
+      },
+      "OneOf": {
+        "type": "Transitive",
+        "resolved": "3.0.271",
+        "contentHash": "pqpqeK8xQGggExhr4tesVgJkjdn+9HQAO0QgrYV2hFjE3y90okzk1kQMntMiUOGfV7FrCUfKPaVvPBD4IANqKg=="
+      },
+      "OneOf.SourceGenerator": {
+        "type": "Transitive",
+        "resolved": "3.0.271",
+        "contentHash": "I7e5kx5prSV99g+rM/xO5KMhwBQL/b+NlUY76RhbutXJ0tgiuMoqgOFnlTHOxCLrlKmwaMzp3VI8oz05PSlcIA=="
+      },
+      "Penumbra.Api": {
+        "type": "Transitive",
+        "resolved": "5.3.0",
+        "contentHash": "WThL0e5UnkIESgsvihzss91h6Ny/UUq3ghSR0/npC7rBgqnWjml7/KWcUkDMWTpw6NLUp8DAivJwOtcZR95wLA=="
       },
       "runtime.debian.8-x64.runtime.native.System.Security.Cryptography.OpenSsl": {
         "type": "Transitive",
@@ -1127,6 +1168,14 @@
           "System.Xml.ReaderWriter": "4.3.0"
         }
       },
+      "Unosquare.Swan.Lite": {
+        "type": "Transitive",
+        "resolved": "3.1.0",
+        "contentHash": "X3s5QE/KMj3WAPFqFve7St+Ds10BB50u8kW8PmKIn7FVkn7yEXe9Yxr2htt1WV85DRqfFR0MN/BUNHkGHtL4OQ==",
+        "dependencies": {
+          "System.ValueTuple": "4.5.0"
+        }
+      },
       "VideoLAN.LibVLC.Windows": {
         "type": "Transitive",
         "resolved": "3.0.18",
@@ -1148,6 +1197,18 @@
         "contentHash": "AFT06eHAZ4OV3s6H2dZWeRQ6kkdWkY1dGq76iFprlOG6quB7V7Nm8wWhEF63As1txsh/8kwAbybtffrgqfQ0dg==",
         "dependencies": {
           "Newtonsoft.Json": "9.0.1"
+        }
+      },
+      "brio": {
+        "type": "Project",
+        "dependencies": {
+          "DalamudPackager": "[11.0.0, )",
+          "EmbedIO": "[3.5.2, )",
+          "Glamourer.Api": "[2.2.0, )",
+          "Microsoft.Extensions.DependencyInjection": "[9.0.0, )",
+          "OneOf": "[3.0.271, )",
+          "OneOf.SourceGenerator": "[3.0.271, )",
+          "Penumbra.Api": "[5.3.0, )"
         }
       },
       "roleplayingquestcore": {

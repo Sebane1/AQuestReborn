@@ -84,6 +84,10 @@ public class DialogueBackgroundWindow : Window, IDisposable
         Position = new Vector2(0, 0);
         switch (_currentBackgroundType)
         {
+            case QuestText.DialogueBackgroundType.None:
+                _currentBackground = emptyBackground;
+                ImageFileDisplay();
+                break;
             case QuestText.DialogueBackgroundType.Image:
                 ImageFileDisplay();
                 break;

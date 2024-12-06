@@ -17,6 +17,7 @@ using static RoleplayingQuestCore.QuestObjective;
 using static RoleplayingQuestCore.RoleplayingQuest;
 using static RoleplayingQuestCore.BranchingChoice;
 using static RoleplayingQuestCore.QuestText;
+using AQuestReborn;
 
 namespace SamplePlugin.Windows;
 
@@ -25,7 +26,9 @@ public class EditorWindow : Window, IDisposable
     private Plugin Plugin;
     private RoleplayingQuestCreator _roleplayingQuestCreator = new RoleplayingQuestCreator();
     private FileDialogManager _fileDialogManager;
-    private EditorWindow subEditorWindow;
+    private EditorWindow _subEditorWindow;
+    private NPCEditorWindow _npcEditorWindow;
+    private NPCTransformEditorWindow _npcTransformEditorWindow;
     private string[] _nodeNames = new string[] { };
     private int _selectedObjectiveNode = 0;
     private string[] _dialogues = new string[] { };
@@ -43,7 +46,7 @@ public class EditorWindow : Window, IDisposable
     {
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(375, 330),
+            MinimumSize = new Vector2(600, 500),
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
         };
 
@@ -59,9 +62,17 @@ public class EditorWindow : Window, IDisposable
     }
     public void Dispose()
     {
-        if (subEditorWindow != null)
+        if (_subEditorWindow != null)
         {
-            subEditorWindow.Dispose();
+            _subEditorWindow.Dispose();
+        }
+        if (_npcEditorWindow != null)
+        {
+            _npcEditorWindow.Dispose();
+        }
+        if (_npcTransformEditorWindow != null)
+        {
+            _npcTransformEditorWindow.Dispose();
         }
     }
 
@@ -157,6 +168,19 @@ public class EditorWindow : Window, IDisposable
                         }
                         break;
                 }
+                if (ImGui.Button("Edit NPC Appearance Data##"))
+                {
+                    if (_npcEditorWindow == null)
+                    {
+                        _npcEditorWindow = new NPCEditorWindow(Plugin);
+                        Plugin.WindowSystem.AddWindow(_npcEditorWindow);
+                    }
+                    if (_npcEditorWindow != null)
+                    {
+                        _npcEditorWindow.SetEditingQuest(_roleplayingQuestCreator.CurrentQuest);
+                        _npcEditorWindow.IsOpen = true;
+                    }
+                }
             }
         }
         ImGui.BeginTable("##Editor Table", 2);
@@ -165,7 +189,7 @@ public class EditorWindow : Window, IDisposable
         ImGui.TableHeadersRow();
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
-        DrawQuestNodes();
+        DrawQuestObjectives();
         ImGui.TableSetColumnIndex(1);
         DrawQuestNodeEditor();
         ImGui.EndTable();
@@ -192,8 +216,14 @@ public class EditorWindow : Window, IDisposable
             var objectiveTriggerTypes = Enum.GetNames(typeof(ObjectiveTriggerType));
             var triggerText = questObjective.TriggerText;
 
-            ImGui.LabelText("##coordinatesLabel", $"Coordinates: X:{questObjective.Coordinates.X},Y:{questObjective.Coordinates.Y},Z:{questObjective.Coordinates.Z}");
+            ImGui.SetNextItemWidth(200);
+            ImGui.LabelText("##coordinatesLabel", $"Coordinates: X:{Math.Round(questObjective.Coordinates.X)}," +
+                $"Y:{Math.Round(questObjective.Coordinates.Y)}," +
+                $"Z:{Math.Round(questObjective.Coordinates.Z)}");
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(125);
             ImGui.LabelText("##territoryLabel", $"Territory Id: {questObjective.TerritoryId}");
+            ImGui.SameLine();
             if (ImGui.Button("Set Quest Objective Coordinates"))
             {
                 questObjective.Coordinates = Plugin.ClientState.LocalPlayer.Position;
@@ -203,10 +233,13 @@ public class EditorWindow : Window, IDisposable
             {
                 questObjective.Objective = objective;
             }
+            ImGui.SetNextItemWidth(110);
             if (ImGui.Combo("Quest Point Type##", ref questPointType, questPointTypes, questPointTypes.Length))
             {
                 questObjective.TypeOfQuestPoint = (QuestPointType)questPointType;
             }
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(110);
             if (ImGui.Combo("Objective Quest Status Type##", ref objectiveStatusType, objectiveStatusTypes, objectiveStatusTypes.Length))
             {
                 questObjective.ObjectiveStatus = (ObjectiveStatusType)objectiveStatusType;
@@ -229,6 +262,19 @@ public class EditorWindow : Window, IDisposable
                         questObjective.TriggerText = triggerText;
                     }
                     break;
+            }
+            if (ImGui.Button("Edit NPC Transform Data##"))
+            {
+                if (_npcTransformEditorWindow == null)
+                {
+                    _npcTransformEditorWindow = new NPCTransformEditorWindow(Plugin);
+                    Plugin.WindowSystem.AddWindow(_npcTransformEditorWindow);
+                }
+                if (_npcTransformEditorWindow != null)
+                {
+                    _npcTransformEditorWindow.SetEditingQuest(questObjective);
+                    _npcTransformEditorWindow.IsOpen = true;
+                }
             }
             ImGui.BeginTable("##Dialogue Table", 2);
             ImGui.TableSetupColumn("Dialogue List", ImGuiTableColumnFlags.WidthFixed, 100);
@@ -261,15 +307,6 @@ public class EditorWindow : Window, IDisposable
 
             var dialogueEndTypes = Enum.GetNames(typeof(QuestText.DialogueEndBehaviourType));
             var dialogueBackgroundTypes = Enum.GetNames(typeof(QuestText.DialogueBackgroundType));
-
-            if (ImGui.InputInt("Face Expression Id##", ref faceExpression))
-            {
-                item.FaceExpression = faceExpression;
-            }
-            if (ImGui.InputInt("Body Expression Id##", ref bodyExpression))
-            {
-                item.BodyExpression = bodyExpression;
-            }
             if (ImGui.InputText("Npc Name##", ref npcName, 20))
             {
                 item.NpcName = npcName;
@@ -277,6 +314,17 @@ public class EditorWindow : Window, IDisposable
             if (ImGui.InputText("Dialogue##", ref dialogue, 500))
             {
                 item.Dialogue = dialogue;
+            }
+            ImGui.SetNextItemWidth(100);
+            if (ImGui.InputInt("Face Expression Id##", ref faceExpression))
+            {
+                item.FaceExpression = faceExpression;
+            }
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(100);
+            if (ImGui.InputInt("Body Expression Id##", ref bodyExpression))
+            {
+                item.BodyExpression = bodyExpression;
             }
             if (ImGui.InputText("Dialogue Audio Path##", ref dialogueAudio, 255))
             {
@@ -374,14 +422,14 @@ public class EditorWindow : Window, IDisposable
                     case BranchingChoiceType.BranchingQuestline:
                         if (ImGui.Button("Configure Branching Questline"))
                         {
-                            if (subEditorWindow == null)
+                            if (_subEditorWindow == null)
                             {
-                                subEditorWindow = new EditorWindow(Plugin);
-                                Plugin.WindowSystem.AddWindow(subEditorWindow);
+                                _subEditorWindow = new EditorWindow(Plugin);
+                                Plugin.WindowSystem.AddWindow(_subEditorWindow);
                             }
-                            subEditorWindow.IsOpen = true;
-                            subEditorWindow.RoleplayingQuestCreator.EditQuest(roleplayingQuest);
-                            subEditorWindow.RefreshMenus();
+                            _subEditorWindow.IsOpen = true;
+                            _subEditorWindow.RoleplayingQuestCreator.EditQuest(roleplayingQuest);
+                            _subEditorWindow.RefreshMenus();
                         }
                         break;
                 }
@@ -396,7 +444,7 @@ public class EditorWindow : Window, IDisposable
         {
             var branchingChoices = _roleplayingQuestCreator.CurrentQuest.QuestObjectives[_selectedObjectiveNode].QuestText[_selectedDialogue].BranchingChoices;
             ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-            if (ImGui.ListBox("##branchingChoice", ref _selectedBranchingChoice, _branchingChoices, _branchingChoices.Length, 13))
+            if (ImGui.ListBox("##branchingChoice", ref _selectedBranchingChoice, _branchingChoices, _branchingChoices.Length, 5))
             {
                 RefreshMenus();
             }
@@ -406,7 +454,7 @@ public class EditorWindow : Window, IDisposable
                 branchingChoices.Add(branchingChoice);
                 branchingChoice.RoleplayingQuest.CopyAuthorData(_roleplayingQuestCreator.CurrentQuest);
                 branchingChoice.RoleplayingQuest.IsSubQuest = true;
-                _branchingChoices = FillNewList(branchingChoices.Count, "Choice");
+                _branchingChoices = Utility.FillNewList(branchingChoices.Count, "Choice");
                 _selectedBranchingChoice = branchingChoices.Count - 1;
                 RefreshMenus();
             }
@@ -414,7 +462,7 @@ public class EditorWindow : Window, IDisposable
             if (ImGui.Button("Remove"))
             {
                 branchingChoices.RemoveAt(_selectedBranchingChoice);
-                _branchingChoices = FillNewList(branchingChoices.Count, "Choice");
+                _branchingChoices = Utility.FillNewList(branchingChoices.Count, "Choice");
                 _selectedBranchingChoice = branchingChoices.Count - 1;
                 RefreshMenus();
             }
@@ -425,7 +473,7 @@ public class EditorWindow : Window, IDisposable
     {
         var questText = _roleplayingQuestCreator.CurrentQuest.QuestObjectives[_selectedObjectiveNode].QuestText;
         ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-        if (ImGui.ListBox("##questDialogue", ref _selectedDialogue, _dialogues, _dialogues.Length, 21))
+        if (ImGui.ListBox("##questDialogue", ref _selectedDialogue, _dialogues, _dialogues.Length, 15))
         {
             _selectedBranchingChoice = 0;
             RefreshMenus();
@@ -433,7 +481,7 @@ public class EditorWindow : Window, IDisposable
         if (ImGui.Button("Add"))
         {
             questText.Add(new QuestText());
-            _dialogues = FillNewList(questText.Count, "Dialogue");
+            _dialogues = Utility.FillNewList(questText.Count, "Dialogue");
             _selectedDialogue = questText.Count - 1;
             RefreshMenus();
         }
@@ -441,16 +489,17 @@ public class EditorWindow : Window, IDisposable
         if (ImGui.Button("Remove"))
         {
             questText.RemoveAt(_selectedDialogue);
-            _dialogues = FillNewList(questText.Count, "Dialogue");
+            _dialogues = Utility.FillNewList(questText.Count, "Dialogue");
             _selectedDialogue = questText.Count - 1;
             RefreshMenus();
         }
     }
+
     private void RefreshMenus()
     {
         var questText = _roleplayingQuestCreator.CurrentQuest.QuestObjectives[_selectedObjectiveNode].QuestText;
-        _dialogues = FillNewList(questText.Count, "Dialogue");
-        _nodeNames = FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
+        _dialogues = Utility.FillNewList(questText.Count, "Dialogue");
+        _nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
         if (questText.Count > 0)
         {
             var choices = questText[_selectedDialogue].BranchingChoices;
@@ -458,22 +507,23 @@ public class EditorWindow : Window, IDisposable
             {
                 _selectedBranchingChoice = choices.Count - 1;
             }
-            _branchingChoices = FillNewList(choices.Count, "Choice");
+            _branchingChoices = Utility.FillNewList(choices.Count, "Choice");
         }
         else
         {
             _branchingChoices = new string[] { };
         }
-        if (subEditorWindow != null)
+        if (_subEditorWindow != null)
         {
-            subEditorWindow.RefreshMenus();
-            subEditorWindow.IsOpen = false;
+            _subEditorWindow.RefreshMenus();
+            _subEditorWindow.IsOpen = false;
         }
     }
-    private void DrawQuestNodes()
+
+    private void DrawQuestObjectives()
     {
         ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-        if (ImGui.ListBox("##questNodes", ref _selectedObjectiveNode, _nodeNames, _nodeNames.Length, 30))
+        if (ImGui.ListBox("##questNodes", ref _selectedObjectiveNode, _nodeNames, _nodeNames.Length, 25))
         {
             _selectedDialogue = 0;
             RefreshMenus();
@@ -485,7 +535,7 @@ public class EditorWindow : Window, IDisposable
                 Coordinates = Plugin.ClientState.LocalPlayer.Position,
                 TerritoryId = Plugin.ClientState.TerritoryType
             });
-            _nodeNames = FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
+            _nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
             _selectedObjectiveNode = _roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count - 1;
             RefreshMenus();
         }
@@ -493,23 +543,15 @@ public class EditorWindow : Window, IDisposable
         if (ImGui.Button("Remove## Objective"))
         {
             _roleplayingQuestCreator.CurrentQuest.QuestObjectives.RemoveAt(_selectedObjectiveNode);
-            _nodeNames = FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
+            _nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
             _selectedObjectiveNode = _roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count - 1;
             RefreshMenus();
         }
     }
+
     private void OpenBranchingQuest(RoleplayingQuest roleplayingQuest)
     {
-        subEditorWindow.RoleplayingQuestCreator.EditQuest(roleplayingQuest);
-        subEditorWindow.RefreshMenus();
-    }
-    private string[] FillNewList(int count, string phrase)
-    {
-        List<string> values = new List<string>();
-        for (int i = 0; i < count; i++)
-        {
-            values.Add(phrase + " " + i);
-        }
-        return values.ToArray();
+        _subEditorWindow.RoleplayingQuestCreator.EditQuest(roleplayingQuest);
+        _subEditorWindow.RefreshMenus();
     }
 }

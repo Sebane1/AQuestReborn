@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RoleplayingQuestCore", "Rol
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RoleplayingVoiceCore", "RoleplayingVoiceCore\RoleplayingVoiceCore.csproj", "{1A32802D-BE72-49C1-8F5E-6E5AC05A1C3A}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Brio", "Brio\Brio\Brio.csproj", "{EBDF82F6-45D1-4A07-A07E-F79242A7CA3B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,14 @@ Global
 		{1A32802D-BE72-49C1-8F5E-6E5AC05A1C3A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{1A32802D-BE72-49C1-8F5E-6E5AC05A1C3A}.Release|x64.ActiveCfg = Release|x64
 		{1A32802D-BE72-49C1-8F5E-6E5AC05A1C3A}.Release|x64.Build.0 = Release|x64
+		{EBDF82F6-45D1-4A07-A07E-F79242A7CA3B}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{EBDF82F6-45D1-4A07-A07E-F79242A7CA3B}.Debug|Any CPU.Build.0 = Debug|x64
+		{EBDF82F6-45D1-4A07-A07E-F79242A7CA3B}.Debug|x64.ActiveCfg = Debug|x64
+		{EBDF82F6-45D1-4A07-A07E-F79242A7CA3B}.Debug|x64.Build.0 = Debug|x64
+		{EBDF82F6-45D1-4A07-A07E-F79242A7CA3B}.Release|Any CPU.ActiveCfg = Release|x64
+		{EBDF82F6-45D1-4A07-A07E-F79242A7CA3B}.Release|Any CPU.Build.0 = Release|x64
+		{EBDF82F6-45D1-4A07-A07E-F79242A7CA3B}.Release|x64.ActiveCfg = Release|x64
+		{EBDF82F6-45D1-4A07-A07E-F79242A7CA3B}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
