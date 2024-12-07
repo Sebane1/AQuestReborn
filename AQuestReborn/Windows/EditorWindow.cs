@@ -507,6 +507,7 @@ public class EditorWindow : Window, IDisposable
         }
         if (ImGui.Button("Add## Objective"))
         {
+            _npcTransformEditorWindow.RefreshMenus();
             _roleplayingQuestCreator.AddQuestObjective(new QuestObjective()
             {
                 Coordinates = Plugin.ClientState.LocalPlayer.Position,

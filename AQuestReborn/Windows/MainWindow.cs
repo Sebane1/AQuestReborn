@@ -13,6 +13,8 @@ using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using RoleplayingQuestCore;
+using SixLabors.ImageSharp.Drawing;
+using Path = System.IO.Path;
 
 namespace SamplePlugin.Windows;
 
@@ -148,6 +150,22 @@ public class MainWindow : Window, IDisposable
             {
                 Plugin.EditorWindow.RoleplayingQuestCreator.EditQuest(Path.Combine(Plugin.Configuration.QuestInstallFolder, roleplayingQuest.QuestName + @"\main.quest"));
                 Plugin.EditorWindow.IsOpen = true;
+            }
+            if (ImGui.Button("Open Directory"))
+            {
+                string path = Path.Combine(Plugin.Configuration.QuestInstallFolder, roleplayingQuest.QuestName);
+                ProcessStartInfo ProcessInfo;
+                Process Process; ;
+                try
+                {
+                    Directory.CreateDirectory(path);
+                }
+                catch
+                {
+                }
+                ProcessInfo = new ProcessStartInfo("explorer.exe", @"""" + path + @"""");
+                ProcessInfo.UseShellExecute = true;
+                Process = Process.Start(ProcessInfo);
             }
             ImGui.SameLine();
             if (ImGui.Button("Export Quest"))

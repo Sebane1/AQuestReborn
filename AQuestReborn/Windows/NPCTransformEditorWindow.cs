@@ -125,26 +125,29 @@ public class NPCTransformEditorWindow : Window, IDisposable
         }
     }
 
-    private void RefreshMenus()
+    public void RefreshMenus()
     {
-        _npcTransformsSelection = Utility.FillNewList(_questObjective.NpcStartingPositions.Count, "NPC Transform");
-        _selectedNpcTransform = _npcTransformsSelection.Length - 1;
-        var npcsInDialogue = _questObjective.EnumerateCharactersAtObjective();
-        foreach (var npc in npcsInDialogue)
+        if (_questObjective != null)
         {
-            if (!_questObjective.NpcStartingPositions.ContainsKey(npc))
+            _npcTransformsSelection = Utility.FillNewList(_questObjective.NpcStartingPositions.Count, "NPC Transform");
+            _selectedNpcTransform = _npcTransformsSelection.Length - 1;
+            var npcsInDialogue = _questObjective.EnumerateCharactersAtObjective();
+            foreach (var npc in npcsInDialogue)
             {
-                var newTransform = new Transform() { Name = npc };
-                SetStartingTransformData(newTransform);
-                _questObjective.NpcStartingPositions[npc] = newTransform;
+                if (!_questObjective.NpcStartingPositions.ContainsKey(npc))
+                {
+                    var newTransform = new Transform() { Name = npc };
+                    SetStartingTransformData(newTransform);
+                    _questObjective.NpcStartingPositions[npc] = newTransform;
+                }
             }
-        }
-        for (int i = 0; i > 0; i--)
-        {
-            var transform = _questObjective.NpcStartingPositions.ElementAt(i);
-            if (!npcsInDialogue.Contains(transform.Key))
+            for (int i = 0; i > 0; i--)
             {
-                _questObjective.NpcStartingPositions.Remove(transform.Key);
+                var transform = _questObjective.NpcStartingPositions.ElementAt(i);
+                if (!npcsInDialogue.Contains(transform.Key))
+                {
+                    _questObjective.NpcStartingPositions.Remove(transform.Key);
+                }
             }
         }
     }
