@@ -18,6 +18,7 @@ using static RoleplayingQuestCore.RoleplayingQuest;
 using static RoleplayingQuestCore.BranchingChoice;
 using static RoleplayingQuestCore.QuestText;
 using AQuestReborn;
+using System.IO;
 
 namespace SamplePlugin.Windows;
 
@@ -59,6 +60,7 @@ public class EditorWindow : Window, IDisposable
         {
             WindowName = (!_roleplayingQuestCreator.CurrentQuest.IsSubQuest ? "Quest Creator##" : "Branching Quest Creator##") + Guid.NewGuid().ToString();
         }
+        RefreshMenus();
     }
     public void Dispose()
     {
@@ -75,46 +77,21 @@ public class EditorWindow : Window, IDisposable
             _npcTransformEditorWindow.Dispose();
         }
     }
-
     public override void Draw()
     {
         if (!_roleplayingQuestCreator.CurrentQuest.IsSubQuest)
         {
             _fileDialogManager.Draw();
-            if (ImGui.Button("Load Quest"))
-            {
-                _fileDialogManager.Reset();
-                ImGui.OpenPopup("OpenPathDialog##editorwindow");
-            }
-            if (ImGui.BeginPopup("OpenPathDialog##editorwindow"))
-            {
-                _fileDialogManager.OpenFileDialog("Select quest file", ".quest", (isOk, folder) =>
-                {
-                    if (isOk)
-                    {
-                        _roleplayingQuestCreator.EditQuest(folder[0]);
-                        RefreshMenus();
-                    }
-                }, 0, null, true);
-                ImGui.EndPopup();
-            }
-            ImGui.SameLine();
             if (ImGui.Button("Save Quest"))
             {
-                _fileDialogManager.Reset();
-                ImGui.OpenPopup("SavePathDialog##editorwindow");
+                _roleplayingQuestCreator.SaveQuest(Path.Combine(Plugin.Configuration.QuestInstallFolder, _roleplayingQuestCreator.CurrentQuest.QuestName));
+                Plugin.RoleplayingQuestManager.ScanDirectory();
+                Plugin.AQuestReborn.RefreshNPCs(Plugin.ClientState.TerritoryType, true);
             }
-            if (ImGui.BeginPopup("SavePathDialog##editorwindow"))
+            ImGui.SameLine();
+            if (ImGui.Button("New Quest"))
             {
-                _fileDialogManager.SaveFolderDialog("Select save location", _roleplayingQuestCreator.CurrentQuest.QuestName, (isOk, folder) =>
-                {
-                    if (isOk)
-                    {
-                        _roleplayingQuestCreator.SaveQuest(folder);
-                        RefreshMenus();
-                    }
-                }, null, true);
-                ImGui.EndPopup();
+                _roleplayingQuestCreator.EditQuest(new RoleplayingQuest());
             }
             if (_roleplayingQuestCreator != null && _roleplayingQuestCreator.CurrentQuest != null)
             {

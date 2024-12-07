@@ -1,4 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Numerics;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Internal;
@@ -6,7 +10,9 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using ImGuiNET;
+using Lumina.Excel;
 using Lumina.Excel.Sheets;
+using RoleplayingQuestCore;
 
 namespace SamplePlugin.Windows;
 
@@ -15,57 +21,200 @@ public class MainWindow : Window, IDisposable
     private string GoatImagePath;
     private Plugin Plugin;
     private FileDialogManager _fileDialogManager;
+    private ExcelSheet<TerritoryType>? _territorySheets;
+    private string[] _installedQuestList;
+    private int _currentSelectedInstalledQuest;
+    List<RoleplayingQuest> _roleplayingQuests = new List<RoleplayingQuest>();
+
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
     // but for ImGui the ID is "My Amazing Window##With a hidden ID"
     public MainWindow(Plugin plugin)
         : base("A Quest Reborn##mainwindow", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {
-        SizeConstraints = new WindowSizeConstraints
-        {
-            MinimumSize = new Vector2(375, 330),
-            MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
-        };
-
         Plugin = plugin;
         _fileDialogManager = new FileDialogManager();
+        _territorySheets = Plugin.DataManager.GameData.GetExcelSheet<TerritoryType>();
     }
 
     public void Dispose() { }
 
+    public override void OnOpen()
+    {
+        Plugin.RoleplayingQuestManager.ScanDirectory();
+        base.OnOpen();
+    }
     public override void Draw()
     {
-        _fileDialogManager.Draw();
-        if (ImGui.Button("Quest Creator"))
+        if (string.IsNullOrEmpty(Plugin.Configuration.QuestInstallFolder))
         {
-            Plugin.EditorWindow.IsOpen = true;
+            DrawInitialSetup();
         }
-        ImGui.SameLine();
-        if (ImGui.Button("Load Quest"))
+        else if (ImGui.BeginTabBar("ConfigTabs"))
+        {
+            if (ImGui.BeginTabItem("Installed Quests"))
+            {
+                DrawInstalledQuests();
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("Quest Objectives"))
+            {
+                DrawQuestObjectives();
+                ImGui.EndTabItem();
+            }
+            ImGui.EndTabBar();
+        }
+    }
+
+    private void DrawInitialSetup()
+    {
+        _fileDialogManager.Draw();
+        if (ImGui.Button("Pick Empty Folder For Custom Quest Installs"))
         {
             _fileDialogManager.Reset();
             ImGui.OpenPopup("OpenPathDialog##editorwindow");
         }
         if (ImGui.BeginPopup("OpenPathDialog##editorwindow"))
         {
-            _fileDialogManager.OpenFileDialog("Select quest file", ".quest", (isOk, folder) =>
+            _fileDialogManager.SaveFolderDialog("Pick location", "QuestReborn", (isOk, folder) =>
             {
                 if (isOk)
                 {
-                    Plugin.RoleplayingQuestManager.AddQuest(folder[0]);
-                    Plugin.RefreshNPCs(Plugin.ClientState.TerritoryType, true);
-                    Plugin.SaveProgress();
+                    Directory.CreateDirectory(folder);
+                    if (Directory.GetFiles(folder).Length == 0)
+                    {
+                        Plugin.Configuration.QuestInstallFolder = folder;
+                        Plugin.Configuration.Save();
+                    }
+                }
+            }, null, true);
+            ImGui.EndPopup();
+        }
+    }
+
+    private void DrawQuestObjectives()
+    {
+        int index = 0;
+        foreach (var item in Plugin.RoleplayingQuestManager.GetCurrentObjectives())
+        {
+            ImGui.TextWrapped(item.Objective + $" ({_territorySheets.GetRow((uint)item.TerritoryId).PlaceName.Value.Name.ToString()})");
+            index++;
+        }
+    }
+
+    private void DrawInstalledQuests()
+    {
+        InstalledQuestsTab();
+    }
+    private void InstalledQuestsTab()
+    {
+        ImGui.BeginTable("##Installed Quests", 2);
+        ImGui.TableSetupColumn("Installed Quest Selector", ImGuiTableColumnFlags.WidthFixed, 150);
+        ImGui.TableSetupColumn("Installed Quest Information", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableHeadersRow();
+        ImGui.TableNextRow();
+        ImGui.TableSetColumnIndex(0);
+        DrawInstalledQuestSelector();
+        ImGui.TableSetColumnIndex(1);
+        DrawInstalledQuestInformation();
+        ImGui.EndTable();
+    }
+
+    private void DrawInstalledQuestInformation()
+    {
+        if (_currentSelectedInstalledQuest < Plugin.RoleplayingQuestManager.QuestChains.Count)
+        {
+            var roleplayingQuest = Plugin.RoleplayingQuestManager.QuestChains.ElementAt(_currentSelectedInstalledQuest).Value;
+            string startingLocation = "";
+            if (roleplayingQuest.QuestObjectives.Count > 0)
+            {
+                startingLocation = _territorySheets.GetRow((uint)roleplayingQuest.QuestObjectives[0].TerritoryId).PlaceName.Value.Name.ToString();
+            }
+            ImGui.Text($"Author: {roleplayingQuest.QuestAuthor}");
+            ImGui.Text($"Quest Name: {roleplayingQuest.QuestName}");
+            ImGui.Text($"Description: {roleplayingQuest.QuestDescription}");
+            if (!string.IsNullOrEmpty(startingLocation))
+            {
+                ImGui.Text($"Starting Location: {startingLocation}");
+            }
+            if (ImGui.Button("Reset Quest Progress"))
+            {
+                Plugin.RoleplayingQuestManager.AddQuest(Path.Combine(Plugin.Configuration.QuestInstallFolder, roleplayingQuest.QuestName + @"\main.quest"));
+                Plugin.AQuestReborn.RefreshNPCs(Plugin.ClientState.TerritoryType);
+                Plugin.SaveProgress();
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Edit Quest"))
+            {
+                Plugin.EditorWindow.RoleplayingQuestCreator.EditQuest(Path.Combine(Plugin.Configuration.QuestInstallFolder, roleplayingQuest.QuestName + @"\main.quest"));
+                Plugin.EditorWindow.IsOpen = true;
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Export Quest"))
+            {
+                string foundPath = roleplayingQuest.FoundPath;
+                string zipPath = "";
+                if (string.IsNullOrEmpty(foundPath))
+                {
+                    zipPath = Path.GetDirectoryName(foundPath);
+                }
+                else
+                {
+                    zipPath = Path.Combine(Plugin.Configuration.QuestInstallFolder, roleplayingQuest.QuestName);
+                }
+                Plugin.RoleplayingQuestManager.ExportQuestPack(zipPath);
+                string path = Path.GetDirectoryName(zipPath + "qmp");
+                ProcessStartInfo ProcessInfo;
+                Process Process; ;
+                try
+                {
+                    Directory.CreateDirectory(path);
+                }
+                catch
+                {
+                }
+                ProcessInfo = new ProcessStartInfo("explorer.exe", @"""" + path + @"""");
+                ProcessInfo.UseShellExecute = true;
+                Process = Process.Start(ProcessInfo);
+            }
+        }
+    }
+
+    private void DrawInstalledQuestSelector()
+    {
+        var installedQuests = Plugin.RoleplayingQuestManager.QuestChains;
+        var questItems = new List<string>();
+        foreach (var item in installedQuests)
+        {
+            questItems.Add(item.Value.QuestName);
+        }
+        if (_currentSelectedInstalledQuest > questItems.Count)
+        {
+            _currentSelectedInstalledQuest = 0;
+        }
+        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+        ImGui.ListBox("##installedQuestInformation", ref _currentSelectedInstalledQuest, questItems.ToArray(), questItems.Count, 10);
+        if (ImGui.Button("Quest Creator"))
+        {
+            Plugin.EditorWindow.IsOpen = true;
+        }
+        _fileDialogManager.Draw();
+        if (ImGui.Button("Install Quest"))
+        {
+            _fileDialogManager.Reset();
+            ImGui.OpenPopup("OpenPathDialog##editorwindow");
+        }
+        if (ImGui.BeginPopup("OpenPathDialog##editorwindow"))
+        {
+            _fileDialogManager.OpenFileDialog("Select quest file", ".qmp", (isOk, file) =>
+            {
+                if (isOk)
+                {
+                    Plugin.RoleplayingQuestManager.OpenQuestPack(file[0]);
+                    Plugin.RoleplayingQuestManager.ScanDirectory();
                 }
             }, 0, null, true);
             ImGui.EndPopup();
-        }
-        int index = 0;
-        var territorySheets = Plugin.DataManager.GameData.GetExcelSheet<TerritoryType>();
-        foreach (var item in Plugin.RoleplayingQuestManager.GetCurrentObjectives())
-        {
-            ImGui.LabelText("##" + index, item.Objective);
-            ImGui.LabelText("##" + index, territorySheets.GetRow((uint)item.TerritoryId).PlaceName.Value.Name.ToString());
-            index++;
         }
     }
 }
