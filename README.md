@@ -8,3 +8,7 @@ Dalamud compatible repo link.
 ```
 https://raw.githubusercontent.com/Sebane1/AQuestReborn/master/repo.json
 ```
+
+Instructions:
+- Pick a default install location for custom quests.
+- Create a custom quest, or install a custom quest to play.
