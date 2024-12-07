@@ -19,6 +19,7 @@ using static RoleplayingQuestCore.BranchingChoice;
 using static RoleplayingQuestCore.QuestText;
 using AQuestReborn;
 using System.IO;
+using System.Speech.Recognition;
 
 namespace SamplePlugin.Windows;
 
@@ -53,6 +54,11 @@ public class EditorWindow : Window, IDisposable
 
         Plugin = plugin;
         _fileDialogManager = new FileDialogManager();
+        if (_npcTransformEditorWindow == null)
+        {
+            _npcTransformEditorWindow = new NPCTransformEditorWindow(Plugin);
+            Plugin.WindowSystem.AddWindow(_npcTransformEditorWindow);
+        }
     }
     public override void OnOpen()
     {
@@ -92,6 +98,7 @@ public class EditorWindow : Window, IDisposable
             if (ImGui.Button("New Quest"))
             {
                 _roleplayingQuestCreator.EditQuest(new RoleplayingQuest());
+                RefreshMenus();
             }
             if (_roleplayingQuestCreator != null && _roleplayingQuestCreator.CurrentQuest != null)
             {
@@ -242,11 +249,6 @@ public class EditorWindow : Window, IDisposable
             }
             if (ImGui.Button("Edit NPC Transform Data##"))
             {
-                if (_npcTransformEditorWindow == null)
-                {
-                    _npcTransformEditorWindow = new NPCTransformEditorWindow(Plugin);
-                    Plugin.WindowSystem.AddWindow(_npcTransformEditorWindow);
-                }
                 if (_npcTransformEditorWindow != null)
                 {
                     _npcTransformEditorWindow.SetEditingQuest(questObjective);
@@ -474,26 +476,38 @@ public class EditorWindow : Window, IDisposable
 
     private void RefreshMenus()
     {
-        var questText = _roleplayingQuestCreator.CurrentQuest.QuestObjectives[_selectedObjectiveNode].QuestText;
-        _dialogues = Utility.FillNewList(questText.Count, "Dialogue");
-        _nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
-        if (questText.Count > 0)
+        if (_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count > 0)
         {
-            var choices = questText[_selectedDialogue].BranchingChoices;
-            if (_selectedBranchingChoice > choices.Count)
+            var questText = _roleplayingQuestCreator.CurrentQuest.QuestObjectives[_selectedObjectiveNode].QuestText;
+            _dialogues = Utility.FillNewList(questText.Count, "Dialogue");
+            _nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
+            if (questText.Count > 0)
             {
-                _selectedBranchingChoice = choices.Count - 1;
+                var choices = questText[_selectedDialogue].BranchingChoices;
+                if (_selectedBranchingChoice > choices.Count)
+                {
+                    _selectedBranchingChoice = choices.Count - 1;
+                }
+                _branchingChoices = Utility.FillNewList(choices.Count, "Choice");
             }
-            _branchingChoices = Utility.FillNewList(choices.Count, "Choice");
+            else
+            {
+                _branchingChoices = new string[] { };
+            }
+            if (_subEditorWindow != null)
+            {
+                _subEditorWindow.RefreshMenus();
+                _subEditorWindow.IsOpen = false;
+            }
         }
         else
         {
-            _branchingChoices = new string[] { };
-        }
-        if (_subEditorWindow != null)
-        {
-            _subEditorWindow.RefreshMenus();
-            _subEditorWindow.IsOpen = false;
+            _dialogues = Utility.FillNewList(0, "Dialogue");
+            _nodeNames = Utility.FillNewList(0, "Objective");
+            _branchingChoices = Utility.FillNewList(0, "Choice");
+            _selectedBranchingChoice = 0;
+            _selectedDialogue = 0;
+            _selectedObjectiveNode = 0;
         }
     }
 
