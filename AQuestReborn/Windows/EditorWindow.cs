@@ -106,7 +106,7 @@ public class EditorWindow : Window, IDisposable
             }
             if (ImGui.BeginPopup("SavePathDialog##editorwindow"))
             {
-                _fileDialogManager.SaveFolderDialog("Select save location", "RPVoiceCache", (isOk, folder) =>
+                _fileDialogManager.SaveFolderDialog("Select save location", _roleplayingQuestCreator.CurrentQuest.QuestName, (isOk, folder) =>
                 {
                     if (isOk)
                     {

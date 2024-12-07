@@ -12,6 +12,7 @@ using ImGuiNET;
 using System.Threading.Tasks;
 using Dalamud.Interface.Textures.TextureWraps;
 using FFXIVClientStructs.FFXIV.Client.System.Input;
+using FFXIVLooseTextureCompiler.ImageProcessing;
 
 namespace SamplePlugin.Windows;
 
@@ -22,13 +23,18 @@ public class ObjectiveWindow : Window, IDisposable
     private FileDialogManager _fileDialogManager;
     private byte[] emptyBackground;
     private byte[] _currentBackground;
-    private bool _alreadyLoadingFrame;
-    private IDalamudTextureWrap _frameToLoad;
-    private byte[] _lastLoadedFrame;
+    private bool _alreadyLoadingQuestStartIcon;
+    private IDalamudTextureWrap _questStartIconTextureWrap;
+    private byte[] _lastQuestStartIconData;
     private ImGuiWindowFlags _hoverFlags;
     private ImGuiWindowFlags _defaultFlags;
     private RangeAccessor<bool> mouseDownValues;
     private bool _mouseDistanceIsCloseToObjective;
+    private byte[] _questStartIconData;
+    private byte[] _questObjectiveIconData;
+    private bool _alreadyLoadingQuestObjectiveIcon;
+    private byte[] _lastQuestStartObjectiveData;
+    private IDalamudTextureWrap _questObjectiveIconTextureWrap;
 
     public event EventHandler OnSelectionAttempt;
 
@@ -39,12 +45,6 @@ public class ObjectiveWindow : Window, IDisposable
         : base("Objective Display##mainwindow", ImGuiWindowFlags.NoInputs | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar |
             ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground)
     {
-        SizeConstraints = new WindowSizeConstraints
-        {
-            MinimumSize = new Vector2(375, 330),
-            MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
-        };
-
         Plugin = plugin;
         MemoryStream blank = new MemoryStream();
         Bitmap none = new Bitmap(1, 1);
@@ -59,8 +59,30 @@ public class ObjectiveWindow : Window, IDisposable
             | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground;
         _hoverFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse
             | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground;
+        LoadQuestIcons();
     }
+    private void LoadQuestIcons()
+    {
+        // Quest start icon
+        var data1 = Plugin.DataManager.GetFile("ui/icon/061000/061411_hr1.tex");
+        // Quest complete icon
+        var data2 = Plugin.DataManager.GetFile("ui/icon/061000/061421_hr1.tex");
 
+        MemoryStream questStartIcon = new MemoryStream();
+        Grayscale.MakeGrayscale(TexIO.TexToBitmap(new MemoryStream(data1.Data))).Save(questStartIcon, ImageFormat.Png);
+
+        MemoryStream questObjectiveIcon = new MemoryStream();
+        Grayscale.MakeGrayscale(TexIO.TexToBitmap(new MemoryStream(data2.Data))).Save(questObjectiveIcon, ImageFormat.Png);
+
+        questStartIcon.Position = 0;
+        questObjectiveIcon.Position = 0;
+        _questStartIconData = questStartIcon.ToArray();
+        _questObjectiveIconData = questObjectiveIcon.ToArray();
+    }
+    private void LoadQuestObjectiveIcon()
+    {
+
+    }
     public void Dispose() { }
 
     public void OnOpen()
@@ -89,20 +111,36 @@ public class ObjectiveWindow : Window, IDisposable
         mouseDownValues = ImGui.GetIO().MouseDown;
         Size = new Vector2(ImGui.GetMainViewport().Size.X, ImGui.GetMainViewport().Size.Y);
         Position = new Vector2(0, 0);
-        if (!_alreadyLoadingFrame)
+        if (!_alreadyLoadingQuestStartIcon)
         {
             Task.Run(async () =>
             {
-                _alreadyLoadingFrame = true;
-                if (_lastLoadedFrame != _currentBackground)
+                _alreadyLoadingQuestStartIcon = true;
+                if (_lastQuestStartIconData != _questStartIconData)
                 {
-                    if (_currentBackground != null)
+                    if (_questStartIconData != null)
                     {
-                        _frameToLoad = await Plugin.TextureProvider.CreateFromImageAsync(_currentBackground);
+                        _questStartIconTextureWrap = await Plugin.TextureProvider.CreateFromImageAsync(_questStartIconData);
                     }
-                    _lastLoadedFrame = _currentBackground;
+                    _lastQuestStartIconData = _currentBackground;
                 }
-                _alreadyLoadingFrame = false;
+                _alreadyLoadingQuestStartIcon = false;
+            });
+        }
+        if (!_alreadyLoadingQuestObjectiveIcon)
+        {
+            Task.Run(async () =>
+            {
+                _alreadyLoadingQuestObjectiveIcon = true;
+                if (_lastQuestStartObjectiveData != _questObjectiveIconData)
+                {
+                    if (_questObjectiveIconData != null)
+                    {
+                        _questObjectiveIconTextureWrap = await Plugin.TextureProvider.CreateFromImageAsync(_questObjectiveIconData);
+                    }
+                    _lastQuestStartObjectiveData = _questObjectiveIconData;
+                }
+                _alreadyLoadingQuestObjectiveIcon = false;
             });
         }
         if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
@@ -113,15 +151,28 @@ public class ObjectiveWindow : Window, IDisposable
             {
                 Vector2 screenPosition = new Vector2();
                 bool inView = false;
-                Plugin.GameGui.WorldToScreen(item.Value.Coordinates + new Vector3(0, 2.5f, 0), out screenPosition, out inView);
+                Vector3 offset = new Vector3();
+                switch (item.Value.Item2.TypeOfQuestPoint)
+                {
+                    case RoleplayingQuestCore.QuestObjective.QuestPointType.NPC:
+                        offset = new Vector3(0, 2.5f, 0);
+                        break;
+                    case RoleplayingQuestCore.QuestObjective.QuestPointType.GroundItem:
+                        // To do: Display something unique?
+                        break;
+                    case RoleplayingQuestCore.QuestObjective.QuestPointType.StandAndWait:
+                        // To do: Display something unique?
+                        break;
+                }
+                Plugin.GameGui.WorldToScreen(item.Value.Item2.Coordinates + offset, out screenPosition, out inView);
                 if (inView)
                 {
-                    if (_frameToLoad != null)
+                    if (_questStartIconTextureWrap != null)
                     {
                         var value = ImGui.GetIO().MousePos;
                         var distance = Vector2.Distance(new Vector2(screenPosition.X / Size.Value.X, 0),
                             new Vector2(value.X / Size.Value.X, 0));
-                        var playerDistance = Vector3.Distance(Plugin.ClientState.LocalPlayer.Position, item.Value.Coordinates);
+                        var playerDistance = Vector3.Distance(Plugin.ClientState.LocalPlayer.Position, item.Value.Item2.Coordinates);
                         if (distance < 0.1f && playerDistance < Plugin.RoleplayingQuestManager.MinimumDistance)
                         {
                             _mouseDistanceIsCloseToObjective = true;
@@ -135,8 +186,9 @@ public class ObjectiveWindow : Window, IDisposable
                                 }
                             }
                         }
-                        ImGui.SetCursorPos(screenPosition);
-                        ImGui.Image(_frameToLoad.ImGuiHandle, new Vector2(50, 50));
+                        var iconDimensions = new Vector2(100, 100);
+                        ImGui.SetCursorPos(new Vector2(screenPosition.X - (iconDimensions.X / 2), screenPosition.Y - (iconDimensions.Y / 2)));
+                        ImGui.Image(item.Value.Item1 == 0 ? _questStartIconTextureWrap.ImGuiHandle : _questObjectiveIconTextureWrap.ImGuiHandle, iconDimensions);
                     }
                 }
             }

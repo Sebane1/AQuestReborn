@@ -54,7 +54,7 @@ public class MainWindow : Window, IDisposable
                 {
                     Plugin.RoleplayingQuestManager.AddQuest(folder[0]);
                     Plugin.RefreshNPCs(Plugin.ClientState.TerritoryType, true);
-                    Plugin.Configuration.Save();
+                    Plugin.SaveProgress();
                 }
             }, 0, null, true);
             ImGui.EndPopup();

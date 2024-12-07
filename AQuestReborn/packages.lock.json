@@ -76,6 +76,14 @@
         "resolved": "3.9.0",
         "contentHash": "wydvN5kotK5y/ZRC04/F6YUqesJCzdixaItRkR8L0/nOLSs2/BJ7rKRbU7BxkxpKIBqlN8EpuXxH/fQEZEHtuw=="
       },
+      "Lumina": {
+        "type": "Transitive",
+        "resolved": "5.3.0",
+        "contentHash": "W9d48gPLYZFWY0EDp1n4n9rfnmLBfnb7q3yFEKy2hqPXnz8zR074TyhLFyGdlJUYbtfLWCPwyWjT0Gq1To0ptw==",
+        "dependencies": {
+          "Microsoft.Extensions.ObjectPool": "8.0.7"
+        }
+      },
       "Microsoft.Extensions.DependencyInjection": {
         "type": "Transitive",
         "resolved": "9.0.0",
@@ -93,6 +101,11 @@
         "type": "Transitive",
         "resolved": "3.1.7",
         "contentHash": "oD7LQbMuaqq/yAz8PKX0hl4+H/vDFTQHo8rxbKB36P1/bG8FG7JUVKBoHkSt1MaJUtgyiHrH1AlAhaucKUKyEg=="
+      },
+      "Microsoft.Extensions.ObjectPool": {
+        "type": "Transitive",
+        "resolved": "8.0.7",
+        "contentHash": "2yLweyqmpuuFSRo+I3sLHMxmnAgNcI537kBJiyv49U2ZEqo00jZcG8lrnD8uCiOJp9IklYyTZULtbsXoFVzsjQ=="
       },
       "Microsoft.NETCore.Platforms": {
         "type": "Transitive",
@@ -409,10 +422,24 @@
           "SharpDX": "4.2.0"
         }
       },
+      "SixLabors.Fonts": {
+        "type": "Transitive",
+        "resolved": "2.0.4",
+        "contentHash": "4+NKz8W36injp98lmmM07ncp08HAK8c6FZz8vLoKxRPfJeEVWpBHlLYEbQa5rcqKKYqxUv/RVCrb8XcPhfMKUQ=="
+      },
       "SixLabors.ImageSharp": {
         "type": "Transitive",
         "resolved": "3.1.5",
         "contentHash": "lNtlq7dSI/QEbYey+A0xn48z5w4XHSffF8222cC4F4YwTXfEImuiBavQcWjr49LThT/pRmtWJRcqA/PlL+eJ6g=="
+      },
+      "SixLabors.ImageSharp.Drawing": {
+        "type": "Transitive",
+        "resolved": "2.1.4",
+        "contentHash": "p4VwtAABggDUhUS5zXldCZHVGfjJl76+SrBHY4biNQ8+890igFK6RL87qIv9GqvEjMcYOar1sPkf2iMQ6uq9/g==",
+        "dependencies": {
+          "SixLabors.Fonts": "2.0.4",
+          "SixLabors.ImageSharp": "3.1.5"
+        }
       },
       "System.AppContext": {
         "type": "Transitive",
@@ -1209,6 +1236,16 @@
           "OneOf": "[3.0.271, )",
           "OneOf.SourceGenerator": "[3.0.271, )",
           "Penumbra.Api": "[5.3.0, )"
+        }
+      },
+      "loosetexturecompilercore": {
+        "type": "Project",
+        "dependencies": {
+          "Lumina": "[5.3.0, )",
+          "Newtonsoft.Json": "[13.0.3, )",
+          "SixLabors.ImageSharp": "[3.1.5, )",
+          "SixLabors.ImageSharp.Drawing": "[2.1.4, )",
+          "System.Drawing.Common": "[8.0.3, )"
         }
       },
       "roleplayingquestcore": {

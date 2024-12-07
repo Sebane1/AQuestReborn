@@ -11,6 +11,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RoleplayingVoiceCore", "Rol
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Brio", "Brio\Brio\Brio.csproj", "{EBDF82F6-45D1-4A07-A07E-F79242A7CA3B}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LooseTextureCompilerCore", "LooseTextureCompilerCore\LooseTextureCompilerCore.csproj", "{AB36F520-A0D6-4E2A-B562-746C20457800}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -51,6 +53,14 @@ Global
 		{EBDF82F6-45D1-4A07-A07E-F79242A7CA3B}.Release|Any CPU.Build.0 = Release|x64
 		{EBDF82F6-45D1-4A07-A07E-F79242A7CA3B}.Release|x64.ActiveCfg = Release|x64
 		{EBDF82F6-45D1-4A07-A07E-F79242A7CA3B}.Release|x64.Build.0 = Release|x64
+		{AB36F520-A0D6-4E2A-B562-746C20457800}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB36F520-A0D6-4E2A-B562-746C20457800}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB36F520-A0D6-4E2A-B562-746C20457800}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{AB36F520-A0D6-4E2A-B562-746C20457800}.Debug|x64.Build.0 = Debug|Any CPU
+		{AB36F520-A0D6-4E2A-B562-746C20457800}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB36F520-A0D6-4E2A-B562-746C20457800}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB36F520-A0D6-4E2A-B562-746C20457800}.Release|x64.ActiveCfg = Release|Any CPU
+		{AB36F520-A0D6-4E2A-B562-746C20457800}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

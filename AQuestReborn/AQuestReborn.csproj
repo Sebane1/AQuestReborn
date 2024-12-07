@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Brio\Brio\Brio.csproj" />
+    <ProjectReference Include="..\LooseTextureCompilerCore\LooseTextureCompilerCore.csproj" />
     <ProjectReference Include="..\RoleplayingQuestCore\RoleplayingQuestCore.csproj" />
     <ProjectReference Include="..\RoleplayingVoiceCore\RoleplayingVoiceCore.csproj" />
   </ItemGroup>

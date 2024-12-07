@@ -97,7 +97,7 @@ public class DialogueWindow : Window, IDisposable
         questDisplayObject = newQuestText;
         SetText(0);
         textTimer.Restart();
-        Plugin.Configuration.Save();
+        Plugin.SaveProgress();
         _settingNewText = false;
     }
 
@@ -184,6 +184,7 @@ public class DialogueWindow : Window, IDisposable
             textTimer.Reset();
             questDisplayObject.QuestEvents?.Invoke(this, EventArgs.Empty);
             Plugin.RefreshNPCs(Plugin.ClientState.TerritoryType, true);
+            Plugin.SaveProgress();
         }
     }
 }

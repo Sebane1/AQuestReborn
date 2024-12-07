@@ -96,6 +96,12 @@ public sealed class Plugin : IDalamudPlugin
         IGameInteropProvider gameInteropProvider, IObjectTable objectTable, IDataManager dataManager, IPluginLog pluginLog)
     {
         _brio = new Brio.Brio(dalamudPluginInterface);
+        _clientState = clientState;
+        _framework = framework;
+        _toastGui = toastGui;
+        _gameGui = gameGui;
+        _textureProvider = textureProvider;
+        _dataManager = dataManager;
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
         // you might normally want to embed resources and load them from the manifest stream
@@ -138,16 +144,10 @@ public sealed class Plugin : IDalamudPlugin
 
         // Adds another button that is doing the same but for the main ui of the plugin
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
-        _clientState = clientState;
-        _framework = framework;
         _pollingTimer = new Stopwatch();
         _pollingTimer.Start();
         _controllerCheckTimer = new Stopwatch();
         _controllerCheckTimer.Start();
-        _toastGui = toastGui;
-        _gameGui = gameGui;
-        _textureProvider = textureProvider;
-        _dataManager = dataManager;
         _roleplayingQuestManager = new RoleplayingQuestManager(Configuration.QuestChains, Configuration.QuestProgression);
         _roleplayingQuestManager.OnQuestTextTriggered += _roleplayingQuestManager_OnQuestTextTriggered;
         _roleplayingQuestManager.OnQuestStarted += _roleplayingQuestManager_OnQuestStarted;
@@ -160,11 +160,6 @@ public sealed class Plugin : IDalamudPlugin
         _framework.Update += _framework_Update;
         _clientState.Login += _clientState_Login;
         _clientState.TerritoryChanged += _clientState_TerritoryChanged;
-        if (_clientState.IsLoggedIn)
-        {
-            InitializeMediaManager();
-            RefreshNPCs(_clientState.TerritoryType);
-        }
         Task.Run(() =>
         {
             while (Brio.Brio._services == null)
@@ -178,6 +173,11 @@ public sealed class Plugin : IDalamudPlugin
         _emoteReaderHook = new EmoteReaderHooks(gameInteropProvider, _clientState, objectTable);
         _emoteReaderHook.OnEmote += (instigator, emoteId) => OnEmote(instigator as ICharacter, emoteId);
         _pluginLog = pluginLog;
+        if (_clientState.IsLoggedIn)
+        {
+            InitializeMediaManager();
+            _triggerRefresh = true;
+        }
     }
 
     private void OnCommandChat(string command, string arguments)
@@ -206,60 +206,6 @@ public sealed class Plugin : IDalamudPlugin
             }
             _triggerRefresh = true;
         });
-    }
-    public void RefreshNPCs(ushort territoryId, bool softRefresh = false)
-    {
-        if (!softRefresh)
-        {
-            DestroyAllNpcs();
-        }
-        if (_actorSpawnService != null)
-        {
-            if (!softRefresh)
-            {
-                _actorSpawnService.DestroyAllCreated();
-            }
-                if (!_spawnedNPCs.ContainsKey("First Spawn") || _spawnedNPCs.Count == 0)
-                {
-                    ICharacter firstSpawn = null;
-                    _actorSpawnService.CreateCharacter(out firstSpawn, SpawnFlags.DefinePosition, true, new System.Numerics.Vector3(float.MaxValue / 2, float.MaxValue / 2, float.MaxValue / 2), 0);
-                    _spawnedNPCs["First Spawn"] = firstSpawn;
-                }
-
-                var questChains = RoleplayingQuestManager.GetActiveQuestChainObjectives(territoryId);
-                foreach (var item in questChains)
-                {
-                    string foundPath = item.Key.FoundPath;
-                    foreach (var npcAppearance in item.Key.NpcCustomizations)
-                    {
-                        if (item.Value.NpcStartingPositions.ContainsKey(npcAppearance.Value.NpcName))
-                        {
-                            if (_spawnedNPCs.ContainsKey(npcAppearance.Value.NpcName))
-                            {
-                                var npc = _spawnedNPCs[npcAppearance.Value.NpcName];
-                                if (npc != null)
-                                {
-                                    try
-                                    {
-                                        _actorSpawnService.DestroyObject(npc);
-                                    }
-                                    catch (Exception e) {
-                                        _pluginLog.Warning(e, e.Message);
-                                    }
-                                }
-                            }
-                            ICharacter character = null;
-                            var startingInfo = item.Value.NpcStartingPositions[npcAppearance.Value.NpcName];
-                            _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true, startingInfo.Position, Utility.ConvertDegreesToRadians(startingInfo.EulerRotation.Y));
-                            if (character != null)
-                            {
-                                _spawnedNPCs[npcAppearance.Value.NpcName] = character;
-                                _mcdfQueue.Enqueue(new KeyValuePair<string, ICharacter>(Path.Combine(foundPath, npcAppearance.Value.AppearanceData), character));
-                            }
-                        }
-                    }
-                }
-        }
     }
     public void DestroyAllNpcs()
     {
@@ -297,56 +243,16 @@ public sealed class Plugin : IDalamudPlugin
         Path.GetDirectoryName(_dalamudPluginInterface.AssemblyLocation.FullName));
         DialogueBackgroundWindow.MediaManager = _mediaManager;
     }
-    private void _roleplayingQuestManager_OnQuestAcceptancePopup(object? sender, RoleplayingQuest e)
-    {
-        QuestAcceptanceWindow.PromptQuest(e);
-    }
-
-    private void QuestAcceptanceWindow_OnQuestAccepted(object? sender, EventArgs e)
-    {
-        _roleplayingQuestManager.ProgressTriggerQuestObjective();
-    }
-
-    private void _roleplayingQuestManager_OnObjectiveCompleted(object? sender, QuestObjective e)
-    {
-        ToastGui.ShowQuest(e.Objective,
-        new Dalamud.Game.Gui.Toast.QuestToastOptions()
-        {
-            DisplayCheckmark = e.ObjectiveStatus == QuestObjective.ObjectiveStatusType.Complete
-        });
-    }
-
-    private void _roleplayingQuestManager_OnQuestCompleted(object? sender, EventArgs e)
-    {
-        QuestToastOptions questToastOptions = new QuestToastOptions();
-        ToastGui.ShowQuest("Quest Completed");
-        Configuration.Save();
-    }
-
-    private void _roleplayingQuestManager_OnQuestStarted(object? sender, EventArgs e)
-    {
-        ToastGui.ShowQuest("Quest Started");
-    }
-
-    private void DialogueBackgroundWindow_buttonClicked(object? sender, EventArgs e)
-    {
-        _screenButtonClicked = true;
-    }
-
-    private void _roleplayingQuestManager_OnQuestTextTriggered(object? sender, QuestDisplayObject e)
-    {
-        if (e.QuestObjective.QuestText.Count > 0)
-        {
-            DialogueWindow.IsOpen = true;
-            DialogueWindow.NewText(e);
-        }
-        else
-        {
-            e.QuestEvents.Invoke(this, EventArgs.Empty);
-        }
-    }
 
     private void _framework_Update(IFramework framework)
+    {
+        CheckForNewMCDFLoad();
+        CheckForNPCRefresh();
+        ControllerLogic();
+        QuestInputCheck();
+    }
+
+    private void CheckForNewMCDFLoad()
     {
         if (_mcdfQueue.Count > 0 && _mcdfRefreshTimer.ElapsedMilliseconds > 500)
         {
@@ -354,16 +260,28 @@ public sealed class Plugin : IDalamudPlugin
             _mcdfService.LoadMcdfAsync(item.Key, item.Value);
             _mcdfRefreshTimer.Restart();
         }
+    }
+
+    private void CheckForNPCRefresh()
+    {
         if (_triggerRefresh)
         {
             RefreshNPCs(_clientState.TerritoryType);
             _triggerRefresh = false;
         }
+    }
+
+    private void ControllerLogic()
+    {
         if (_controllerCheckTimer.ElapsedMilliseconds > 5000)
         {
             ControllerConnectionCheck();
             _controllerCheckTimer.Restart();
         }
+    }
+
+    private void QuestInputCheck()
+    {
         if (_pollingTimer.ElapsedMilliseconds > 100)
         {
             ObjectiveWindow.IsOpen = true;
@@ -458,9 +376,118 @@ public sealed class Plugin : IDalamudPlugin
         // in response to the slash command, just toggle the display status of our main ui
         ToggleMainUI();
     }
+    private void _roleplayingQuestManager_OnQuestAcceptancePopup(object? sender, RoleplayingQuest e)
+    {
+        QuestAcceptanceWindow.PromptQuest(e);
+    }
 
+    private void QuestAcceptanceWindow_OnQuestAccepted(object? sender, EventArgs e)
+    {
+        _roleplayingQuestManager.ProgressTriggerQuestObjective();
+    }
+
+    private void _roleplayingQuestManager_OnObjectiveCompleted(object? sender, QuestObjective e)
+    {
+        ToastGui.ShowQuest(e.Objective,
+        new Dalamud.Game.Gui.Toast.QuestToastOptions()
+        {
+            DisplayCheckmark = e.ObjectiveStatus == QuestObjective.ObjectiveStatusType.Complete,
+            PlaySound = e.ObjectiveStatus == QuestObjective.ObjectiveStatusType.Complete
+        });
+    }
+
+    private void _roleplayingQuestManager_OnQuestCompleted(object? sender, EventArgs e)
+    {
+        QuestToastOptions questToastOptions = new QuestToastOptions();
+        ToastGui.ShowQuest("Quest Completed");
+        Configuration.Save();
+    }
+
+    private void _roleplayingQuestManager_OnQuestStarted(object? sender, EventArgs e)
+    {
+        ToastGui.ShowQuest("Quest Started");
+    }
+
+    private void DialogueBackgroundWindow_buttonClicked(object? sender, EventArgs e)
+    {
+        _screenButtonClicked = true;
+    }
+
+    private void _roleplayingQuestManager_OnQuestTextTriggered(object? sender, QuestDisplayObject e)
+    {
+        if (e.QuestObjective.QuestText.Count > 0)
+        {
+            DialogueWindow.IsOpen = true;
+            DialogueWindow.NewText(e);
+        }
+        else
+        {
+            e.QuestEvents.Invoke(this, EventArgs.Empty);
+        }
+    }
+    public void RefreshNPCs(ushort territoryId, bool softRefresh = false)
+    {
+        if (!softRefresh)
+        {
+            DestroyAllNpcs();
+        }
+        if (_actorSpawnService != null)
+        {
+            if (!softRefresh)
+            {
+                _actorSpawnService.DestroyAllCreated();
+            }
+            if (!_spawnedNPCs.ContainsKey("First Spawn") || _spawnedNPCs.Count == 0)
+            {
+                ICharacter firstSpawn = null;
+                _actorSpawnService.CreateCharacter(out firstSpawn, SpawnFlags.DefinePosition, true,
+                new System.Numerics.Vector3(float.MaxValue / 2, float.MaxValue / 2, float.MaxValue / 2), 0);
+                _spawnedNPCs["First Spawn"] = firstSpawn;
+            }
+
+            var questChains = RoleplayingQuestManager.GetActiveQuestChainObjectives(territoryId);
+            foreach (var item in questChains)
+            {
+                string foundPath = item.Key.FoundPath;
+                foreach (var npcAppearance in item.Key.NpcCustomizations)
+                {
+                    if (item.Value.Item2.NpcStartingPositions.ContainsKey(npcAppearance.Value.NpcName))
+                    {
+                        if (_spawnedNPCs.ContainsKey(npcAppearance.Value.NpcName))
+                        {
+                            var npc = _spawnedNPCs[npcAppearance.Value.NpcName];
+                            if (npc != null)
+                            {
+                                try
+                                {
+                                    _actorSpawnService.DestroyObject(npc);
+                                }
+                                catch (Exception e)
+                                {
+                                    _pluginLog.Warning(e, e.Message);
+                                }
+                            }
+                        }
+                        ICharacter character = null;
+                        var startingInfo = item.Value.Item2.NpcStartingPositions[npcAppearance.Value.NpcName];
+                        _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true, startingInfo.Position, Utility.ConvertDegreesToRadians(startingInfo.EulerRotation.Y));
+                        if (character != null)
+                        {
+                            _spawnedNPCs[npcAppearance.Value.NpcName] = character;
+                            _mcdfQueue.Enqueue(new KeyValuePair<string, ICharacter>(Path.Combine(foundPath, npcAppearance.Value.AppearanceData), character));
+                        }
+                    }
+                }
+            }
+        }
+    }
     private void DrawUI() => WindowSystem.Draw();
-
+    public void SaveProgress()
+    {
+        Configuration.QuestProgression = _roleplayingQuestManager.QuestProgression;
+        Configuration.QuestChains = _roleplayingQuestManager.QuestChains;
+        Configuration.Save();
+    }
     public void ToggleConfigUI() => ConfigWindow.Toggle();
     public void ToggleMainUI() => MainWindow.Toggle();
 }

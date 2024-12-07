@@ -22,21 +22,26 @@ public class Configuration : IPluginConfiguration
     // the below exist just to make saving less cumbersome
     public void Save()
     {
-        try
+        bool persistenceSucceeded = false;
+        while (!persistenceSucceeded)
         {
-            lock (QuestChains)
+            try
             {
+                lock (QuestChains)
                 {
-                    lock (QuestProgression)
                     {
-                        Plugin.PluginInterface.SavePluginConfig(this);
+                        lock (QuestProgression)
+                        {
+                            Plugin.PluginInterface.SavePluginConfig(this);
+                            persistenceSucceeded = true;
+                        }
                     }
                 }
             }
-        }
-        catch
-        {
+            catch
+            {
 
+            }
         }
     }
 }

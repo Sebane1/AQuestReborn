@@ -16,3 +16,6 @@
 [submodule "Brio"]
 	path = Brio
 	url = https://github.com/Sebane1/Brio.git
+[submodule "LooseTextureCompilerCore"]
+	path = LooseTextureCompilerCore
+	url = https://github.com/Sebane1/LooseTextureCompilerCore.git
