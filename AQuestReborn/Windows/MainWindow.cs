@@ -234,5 +234,9 @@ public class MainWindow : Window, IDisposable
             }, 0, null, true);
             ImGui.EndPopup();
         }
+        if (ImGui.Button("Re-scan Quests"))
+        {
+            Plugin.RoleplayingQuestManager.ScanDirectory();
+        }
     }
 }
