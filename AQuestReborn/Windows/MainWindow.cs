@@ -141,7 +141,14 @@ public class MainWindow : Window, IDisposable
             }
             if (ImGui.Button("Reset Quest Progress"))
             {
-                Plugin.RoleplayingQuestManager.AddQuest(Path.Combine(Plugin.Configuration.QuestInstallFolder, roleplayingQuest.QuestName + @"\main.quest"));
+                try
+                {
+                    Plugin.RoleplayingQuestManager.AddQuest(Path.Combine(Plugin.Configuration.QuestInstallFolder, roleplayingQuest.QuestName + @"\main.quest"));
+                }
+                catch
+                {
+                    Plugin.RoleplayingQuestManager.QuestChains.Remove(roleplayingQuest.QuestId);
+                }
                 Plugin.AQuestReborn.RefreshNPCs(Plugin.ClientState.TerritoryType);
                 Plugin.SaveProgress();
             }
