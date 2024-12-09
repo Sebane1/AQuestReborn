@@ -170,8 +170,8 @@ public class DialogueWindow : Window, IDisposable
         ImGui.SetCursorPos(new Vector2(0, 0));
         ImGui.BeginTable("##Dialogue Table", 3);
         ImGui.TableSetupColumn("Padding 1", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Center", ImGuiTableColumnFlags.WidthStretch, 888);
-        ImGui.TableSetupColumn("Padding 2", ImGuiTableColumnFlags.WidthStretch, 100);
+        ImGui.TableSetupColumn("Center", ImGuiTableColumnFlags.WidthFixed, 888);
+        ImGui.TableSetupColumn("Padding 2", ImGuiTableColumnFlags.WidthFixed, 100);
         //ImGui.TableHeadersRow();
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
