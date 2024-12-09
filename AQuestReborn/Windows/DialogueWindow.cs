@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing.Imaging;
+using System.Drawing;
 using System.IO;
 using System.Numerics;
 using Dalamud.Interface.Internal;
@@ -11,6 +13,9 @@ using ImGuiNET;
 using RoleplayingQuestCore;
 using RoleplayingVoiceDalamudWrapper;
 using static FFXIVClientStructs.FFXIV.Component.GUI.AtkComponentButton.Delegates;
+using FFXIVLooseTextureCompiler.ImageProcessing;
+using System.Threading.Tasks;
+using Dalamud.Interface.Textures.TextureWraps;
 
 namespace SamplePlugin.Windows;
 
@@ -28,23 +33,60 @@ public class DialogueWindow : Window, IDisposable
     Stopwatch textTimer = new Stopwatch();
     private bool _choicesAreNext;
     private DummyObject _dummyObject;
+    List<byte[]> _dialogueBoxStyles = new List<byte[]>();
+    int _currentDialogueBoxIndex = 0;
+    private bool _alreadyLoadingFrame;
+    private IDalamudTextureWrap _dialogueStyleToLoad;
+    private IDalamudTextureWrap _dialogueTitleStyleToLoad;
+    private byte[] _lastLoadedTitleFrame;
+    private byte[] _lastLoadedFrame;
+    private byte[] _nameTitleStyle;
+    private bool _alreadyLoadingTitleFrame;
+    private Bitmap data1;
 
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
     // but for ImGui the ID is "My Amazing Window##With a hidden ID"
     public DialogueWindow(Plugin plugin)
         : base("Dialogue Window##dialoguewindow", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar |
-            ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize)
+            ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBackground)
     {
-        Size = new Vector2(600, 200);
+        Size = new Vector2(1088, 288);
         Plugin = plugin;
         plugin.ChoiceWindow.OnChoiceMade += ChoiceWindow_OnChoiceMade;
         _dummyObject = new DummyObject();
+        LoadBubbleBackgrounds();
     }
     public override void OnClose()
     {
         Plugin.DialogueBackgroundWindow.IsOpen = false;
         base.OnClose();
+    }
+
+    public byte[] ImageToBytes(Bitmap image)
+    {
+        MemoryStream memoryStream = new MemoryStream();
+        image.Save(memoryStream, ImageFormat.Png);
+        memoryStream.Position = 0;
+        return memoryStream.ToArray();
+    }
+    public void LoadBubbleBackgrounds()
+    {
+        // Dialogue name background
+        data1 = ImageManipulation.Crop(TexIO.TexToBitmap(new MemoryStream(Plugin.DataManager.GetFile("ui/uld/talk_hr1.tex").Data)), new Vector2(575, 72));
+        // First 3 talk bubbles.
+        var data2 = TexIO.TexToBitmap(new MemoryStream(Plugin.DataManager.GetFile("ui/uld/talk_basic_hr1.tex").Data));
+        // Next 6 talk bubbles
+        var data3 = TexIO.TexToBitmap(new MemoryStream(Plugin.DataManager.GetFile("ui/uld/talk_other_hr1.tex").Data));
+        _nameTitleStyle = ImageToBytes(data1);
+        foreach (var item in ImageManipulation.DivideImageVertically(data2, 3))
+        {
+            _dialogueBoxStyles.Add(ImageToBytes(item));
+        }
+        foreach (var item in ImageManipulation.DivideImageVertically(data3, 6))
+        {
+            _dialogueBoxStyles.Add(ImageToBytes(item));
+        }
     }
     private void ChoiceWindow_OnChoiceMade(object? sender, int e)
     {
@@ -74,7 +116,46 @@ public class DialogueWindow : Window, IDisposable
     {
         var values = ImGui.GetWindowViewport().WorkSize;
         Position = new Vector2((values.X / 2) - (Size.Value.X / 2), values.Y - Size.Value.Y);
-        if (textTimer.ElapsedMilliseconds > 10)
+        if (!_alreadyLoadingFrame)
+        {
+            Task.Run(async () =>
+            {
+                _alreadyLoadingFrame = true;
+                if (_lastLoadedFrame != _dialogueBoxStyles[_currentDialogueBoxIndex])
+                {
+                    _dialogueStyleToLoad = await Plugin.TextureProvider.CreateFromImageAsync(_dialogueBoxStyles[_currentDialogueBoxIndex]);
+                    _lastLoadedFrame = _dialogueBoxStyles[_currentDialogueBoxIndex];
+                }
+                _alreadyLoadingFrame = false;
+            });
+        }
+        if (_dialogueStyleToLoad != null)
+        {
+            ImGui.Image(_dialogueStyleToLoad.ImGuiHandle, new Vector2(Size.Value.X, Size.Value.Y));
+        }
+
+        if (_currentName.ToLower() != "system")
+        {
+            if (!_alreadyLoadingTitleFrame)
+            {
+                Task.Run(async () =>
+                {
+                    _alreadyLoadingTitleFrame = true;
+                    if (_lastLoadedFrame != _nameTitleStyle)
+                    {
+                        _dialogueTitleStyleToLoad = await Plugin.TextureProvider.CreateFromImageAsync(_nameTitleStyle);
+                        _lastLoadedTitleFrame = _nameTitleStyle;
+                    }
+                    _alreadyLoadingTitleFrame = false;
+                });
+            }
+            if (_dialogueTitleStyleToLoad != null)
+            {
+                ImGui.SetCursorPos(new Vector2(50, 0));
+                ImGui.Image(_dialogueTitleStyleToLoad.ImGuiHandle, new Vector2(data1.Width, data1.Height));
+            }
+        }
+        if (textTimer.ElapsedMilliseconds > 5)
         {
             if (_currentCharacter < _targetText.Length)
             {
@@ -86,10 +167,41 @@ public class DialogueWindow : Window, IDisposable
                 textTimer.Reset();
             }
         }
-        ImGui.LabelText("##nameLabel", _currentName);
-        ImGui.SetWindowFontScale(2);
-        ImGui.TextWrapped(_currentText);
+        ImGui.SetCursorPos(new Vector2(0, 0));
+        ImGui.BeginTable("##Dialogue Table", 3);
+        ImGui.TableSetupColumn("Padding 1", ImGuiTableColumnFlags.WidthFixed, 100);
+        ImGui.TableSetupColumn("Center", ImGuiTableColumnFlags.WidthStretch, 888);
+        ImGui.TableSetupColumn("Padding 2", ImGuiTableColumnFlags.WidthStretch, 100);
+        //ImGui.TableHeadersRow();
+        ImGui.TableNextRow();
+        ImGui.TableSetColumnIndex(0);
+
+        ImGui.TableSetColumnIndex(1);
+        DialogueDrawing();
+        ImGui.TableSetColumnIndex(2);
+
+        ImGui.EndTable();
     }
+
+    private void DialogueDrawing()
+    {
+        ImGui.SetCursorPosY(12);
+        ImGui.LabelText("##nameLabel", _currentName.ToLower() == "system" ? "" : _currentName);
+        ImGui.SetWindowFontScale(2);
+        ImGui.SetCursorPosY(60);
+        ImGui.SetNextItemWidth(300);
+        if (_currentDialogueBoxIndex != 8 && _currentDialogueBoxIndex != 2 && _currentDialogueBoxIndex != 4)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
+        }
+        else
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(255, 255, 255, 255));
+        }
+        ImGui.TextWrapped(_currentText);
+        ImGui.PopStyleColor();
+    }
+
     public void NewText(QuestDisplayObject newQuestText)
     {
         _settingNewText = true;
@@ -136,6 +248,11 @@ public class DialogueWindow : Window, IDisposable
             _currentText = "";
             _targetText = item.Dialogue;
             _currentName = item.NpcName;
+            _currentDialogueBoxIndex = item.DialogueBoxStyle;
+            if (_currentName.ToLower() == "system")
+            {
+                _currentDialogueBoxIndex = _dialogueBoxStyles.Count - 1;
+            }
             if (Plugin.AQuestReborn.SpawnedNPCs.ContainsKey(item.NpcName))
             {
                 if ((ushort)item.BodyExpression > 0)
@@ -195,6 +312,7 @@ public class DialogueWindow : Window, IDisposable
             textTimer.Reset();
             questDisplayObject.QuestEvents?.Invoke(this, EventArgs.Empty);
             Plugin.AQuestReborn.RefreshNPCs(Plugin.ClientState.TerritoryType, true);
+            Plugin.AQuestReborn.RefreshMapMarkers();
             Plugin.SaveProgress();
         }
     }

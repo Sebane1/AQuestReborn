@@ -37,7 +37,9 @@ public class EditorWindow : Window, IDisposable
     private int _selectedDialogue;
     private int _selectedBranchingChoice;
     private string[] _branchingChoices = new string[] { };
-
+    private string[] _boxStyles = new string[] {
+        "Normal", "Style2", "Telepathic", "Omicron/Machine", "Shout",
+        "Written Lore", "Monster/Creature", "Dragon/Linkpearl", "System/Ascian" };
     public RoleplayingQuestCreator RoleplayingQuestCreator { get => _roleplayingQuestCreator; set => _roleplayingQuestCreator = value; }
 
     // We give this window a hidden ID using ##
@@ -93,6 +95,7 @@ public class EditorWindow : Window, IDisposable
                 _roleplayingQuestCreator.SaveQuest(Path.Combine(Plugin.Configuration.QuestInstallFolder, _roleplayingQuestCreator.CurrentQuest.QuestName));
                 Plugin.RoleplayingQuestManager.ScanDirectory();
                 Plugin.AQuestReborn.RefreshNPCs(Plugin.ClientState.TerritoryType, true);
+                Plugin.AQuestReborn.RefreshMapMarkers();
             }
             ImGui.SameLine();
             if (ImGui.Button("New Quest"))
@@ -278,14 +281,15 @@ public class EditorWindow : Window, IDisposable
             var bodyExpression = item.BodyExpression;
             var npcName = item.NpcName;
             var dialogue = item.Dialogue;
+            var boxStyle = item.DialogueBoxStyle;
             var dialogueAudio = item.DialogueAudio;
             var dialogueBackgroundType = (int)item.TypeOfDialogueBackground;
             var dialogueBackground = item.DialogueBackground;
             var dialogueEndBehaviour = (int)item.DialogueEndBehaviour;
             var dialogueNumberToSkipTo = item.DialogueNumberToSkipTo;
-
             var dialogueEndTypes = Enum.GetNames(typeof(QuestText.DialogueEndBehaviourType));
             var dialogueBackgroundTypes = Enum.GetNames(typeof(QuestText.DialogueBackgroundType));
+
             if (ImGui.InputText("Npc Name##", ref npcName, 20))
             {
                 item.NpcName = npcName;
@@ -293,6 +297,10 @@ public class EditorWindow : Window, IDisposable
             if (ImGui.InputText("Dialogue##", ref dialogue, 500))
             {
                 item.Dialogue = dialogue;
+            }
+            if (ImGui.Combo("Box Style##", ref boxStyle, _boxStyles, _boxStyles.Length))
+            {
+                item.DialogueBoxStyle = boxStyle;
             }
             ImGui.SetNextItemWidth(100);
             if (ImGui.InputInt("Face Expression Id##", ref faceExpression))

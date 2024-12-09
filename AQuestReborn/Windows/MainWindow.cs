@@ -134,7 +134,7 @@ public class MainWindow : Window, IDisposable
             }
             ImGui.Text($"Author: {roleplayingQuest.QuestAuthor}");
             ImGui.Text($"Quest Name: {roleplayingQuest.QuestName}");
-            ImGui.Text($"Description: {roleplayingQuest.QuestDescription}");
+            ImGui.TextWrapped($"Description: {roleplayingQuest.QuestDescription}");
             if (!string.IsNullOrEmpty(startingLocation))
             {
                 ImGui.Text($"Starting Location: {startingLocation}");
@@ -150,6 +150,7 @@ public class MainWindow : Window, IDisposable
                     Plugin.RoleplayingQuestManager.QuestChains.Remove(roleplayingQuest.QuestId);
                 }
                 Plugin.AQuestReborn.RefreshNPCs(Plugin.ClientState.TerritoryType);
+                Plugin.AQuestReborn.RefreshMapMarkers();
                 Plugin.SaveProgress();
             }
             ImGui.SameLine();

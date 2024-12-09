@@ -1,3 +1,4 @@
+using Anamnesis.Memory;
 using ArtemisRoleplayingKit;
 using Brio.Game.Actor;
 using Brio.IPC;
@@ -9,6 +10,8 @@ using Dalamud.Plugin.Services;
 using DualSenseAPI;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
+using FFXIVClientStructs.FFXIV.Client.System.String;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using RoleplayingMediaCore;
 using RoleplayingQuestCore;
 using RoleplayingVoiceDalamudWrapper;
@@ -22,6 +25,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Utf8String = FFXIVClientStructs.FFXIV.Client.System.String.Utf8String;
 
 namespace AQuestReborn
 {
@@ -44,6 +48,7 @@ namespace AQuestReborn
         private MediaGameObject _playerObject;
         private unsafe Camera* _camera;
         private MediaCameraObject _playerCamera;
+        private Dictionary<RoleplayingQuest, Tuple<int, QuestObjective>> _activeQuestChainObjectives;
 
         public AQuestReborn(Plugin plugin)
         {
@@ -100,7 +105,30 @@ namespace AQuestReborn
                 _triggerRefresh = true;
             });
         }
-
+        public void RefreshMapMarkers()
+        {
+            _activeQuestChainObjectives = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectives(Plugin.ClientState.TerritoryType);
+            unsafe
+            {
+                AgentMap.Instance()->ResetMapMarkers();
+                AgentMap.Instance()->ResetMiniMapMarkers();
+                foreach (var item in _activeQuestChainObjectives)
+                {
+                    Utf8String* stringBuffer = Utf8String.CreateEmpty();
+                    stringBuffer->SetString(item.Key.QuestName);
+                    if (item.Value.Item1 == 0)
+                    {
+                        AgentMap.Instance()->AddMapMarker(item.Value.Item2.Coordinates, 230604, 0, stringBuffer->StringPtr);
+                        AgentMap.Instance()->AddMiniMapMarker(item.Value.Item2.Coordinates, 230604);
+                    }
+                    else
+                    {
+                        AgentMap.Instance()->AddMapMarker(item.Value.Item2.Coordinates, 230605, 0, stringBuffer->StringPtr);
+                        AgentMap.Instance()->AddMiniMapMarker(item.Value.Item2.Coordinates, 230605);
+                    }
+                }
+            }
+        }
         private void _clientState_Login()
         {
             if (Plugin.ClientState.IsLoggedIn)
@@ -149,6 +177,7 @@ namespace AQuestReborn
         {
             if (_triggerRefresh)
             {
+                RefreshMapMarkers();
                 RefreshNPCs(Plugin.ClientState.TerritoryType);
                 _triggerRefresh = false;
             }
