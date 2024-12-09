@@ -81,13 +81,15 @@ public sealed class Plugin : IDalamudPlugin
     public IDalamudPluginInterface DalamudPluginInterface { get => _dalamudPluginInterface; set => _dalamudPluginInterface = value; }
     internal AQuestReborn.AQuestReborn AQuestReborn { get => _aQuestReborn; set => _aQuestReborn = value; }
     public AnamcoreManager AnamcoreManager { get => _anamcoreManager; set => _anamcoreManager = value; }
+    public IGameConfig GameConfig { get => _gameConfig; set => _gameConfig = value; }
 
     private EmoteReaderHooks _emoteReaderHook;
     private IPluginLog _pluginLog;
+    private IGameConfig _gameConfig;
 
     public Plugin(IClientState clientState, IFramework framework, IToastGui toastGui,
         ITextureProvider textureProvider, IGameGui gameGui, IDalamudPluginInterface dalamudPluginInterface,
-        IGameInteropProvider gameInteropProvider, IObjectTable objectTable, IDataManager dataManager, IPluginLog pluginLog)
+        IGameInteropProvider gameInteropProvider, IObjectTable objectTable, IDataManager dataManager, IPluginLog pluginLog, IGameConfig gameConfig)
     {
         _brio = new Brio.Brio(dalamudPluginInterface);
         _clientState = clientState;
@@ -97,6 +99,7 @@ public sealed class Plugin : IDalamudPlugin
         _textureProvider = textureProvider;
         _dataManager = dataManager;
         _pluginLog = pluginLog;
+        _gameConfig = gameConfig;
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
         // you might normally want to embed resources and load them from the manifest stream

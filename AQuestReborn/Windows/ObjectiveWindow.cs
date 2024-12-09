@@ -188,7 +188,10 @@ public class ObjectiveWindow : Window, IDisposable
                         }
                         var iconDimensions = new Vector2(100, 100);
                         ImGui.SetCursorPos(new Vector2(screenPosition.X - (iconDimensions.X / 2), screenPosition.Y - (iconDimensions.Y / 2)));
-                        ImGui.Image(item.Value.Item1 == 0 ? _questStartIconTextureWrap.ImGuiHandle : _questObjectiveIconTextureWrap.ImGuiHandle, iconDimensions);
+                        if (_questStartIconTextureWrap != null && _questObjectiveIconTextureWrap != null)
+                        {
+                            ImGui.Image(item.Value.Item1 == 0 ? _questStartIconTextureWrap.ImGuiHandle : _questObjectiveIconTextureWrap.ImGuiHandle, iconDimensions);
+                        }
                     }
                 }
             }

@@ -4,6 +4,7 @@ using Brio.Game.Actor;
 using Brio.IPC;
 using Controller_Wrapper;
 using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Game.Config;
 using Dalamud.Game.Gui.Toast;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
@@ -12,8 +13,10 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using NAudio.Lame;
 using RoleplayingMediaCore;
 using RoleplayingQuestCore;
+using RoleplayingVoiceCore;
 using RoleplayingVoiceDalamudWrapper;
 using SamplePlugin;
 using SamplePlugin.Windows;
@@ -25,6 +28,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using static FFXIVClientStructs.FFXIV.Client.LayoutEngine.LayoutManager;
 using Utf8String = FFXIVClientStructs.FFXIV.Client.System.String.Utf8String;
 
 namespace AQuestReborn
@@ -69,6 +73,8 @@ namespace AQuestReborn
             _pollingTimer.Start();
             _controllerCheckTimer = new Stopwatch();
             _controllerCheckTimer.Start();
+            _mcdfRefreshTimer.Start();
+            Plugin.EmoteReaderHook.OnEmote += (instigator, emoteId) => OnEmote(instigator as ICharacter, emoteId);
             Task.Run(() =>
             {
                 while (Brio.Brio._services == null)
@@ -77,14 +83,13 @@ namespace AQuestReborn
                 }
                 Brio.Brio.TryGetService<ActorSpawnService>(out _actorSpawnService);
                 Brio.Brio.TryGetService<MareService>(out _mcdfService);
-            });
-            _mcdfRefreshTimer.Start();
-            Plugin.EmoteReaderHook.OnEmote += (instigator, emoteId) => OnEmote(instigator as ICharacter, emoteId);
-            if (Plugin.ClientState.IsLoggedIn)
-            {
                 InitializeMediaManager();
-                _triggerRefresh = true;
-            }
+                Thread.Sleep(10000);
+                if (Plugin.ClientState.IsLoggedIn)
+                {
+                    _clientState_TerritoryChanged(Plugin.ClientState.TerritoryType);
+                }
+            });
         }
         private void OnEmote(ICharacter character, ushort emoteId)
         {
@@ -98,7 +103,7 @@ namespace AQuestReborn
         {
             Task.Run(() =>
             {
-                while (Plugin.ClientState.LocalPlayer == null)
+                while (Plugin.ClientState.LocalPlayer == null && _actorSpawnService == null)
                 {
                     Thread.Sleep(1000);
                 }
@@ -158,11 +163,33 @@ namespace AQuestReborn
         private void _framework_Update(IFramework framework)
         {
             CheckForNewMCDFLoad();
-            CheckForNPCRefresh();
             ControllerLogic();
             QuestInputCheck();
+            CheckForNPCRefresh();
         }
-
+        private void CheckVolumeLevels()
+        {
+            uint voiceVolume = 0;
+            uint masterVolume = 0;
+            uint soundEffectVolume = 0;
+            uint soundMicPos = 0;
+            try
+            {
+                if (Plugin.GameConfig.TryGet(SystemConfigOption.SoundVoice, out voiceVolume))
+                {
+                    if (Plugin.GameConfig.TryGet(SystemConfigOption.SoundMaster, out masterVolume))
+                    {
+                        if (Plugin.GameConfig.TryGet(SystemConfigOption.SoundMicpos, out soundMicPos))
+                            Plugin.MediaManager.NpcVolume = ((float)voiceVolume / 100f) * ((float)masterVolume / 100f);
+                        Plugin.MediaManager.CameraAndPlayerPositionSlider = (float)soundMicPos / 100f;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Plugin.PluginLog?.Warning(e, e.Message);
+            }
+        }
         private void CheckForNewMCDFLoad()
         {
             if (_mcdfQueue.Count > 0 && _mcdfRefreshTimer.ElapsedMilliseconds > 500)

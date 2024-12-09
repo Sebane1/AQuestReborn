@@ -53,7 +53,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
     // So that the user will see "My Amazing Window" as window title,
     // but for ImGui the ID is "My Amazing Window##With a hidden ID"
     public DialogueBackgroundWindow(Plugin plugin, ITextureProvider textureProvider)
-        : base("Dialogue Background Window##dialoguewindow", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar |
+        : base("Dialogue Background Window##dialoguewindow", ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar |
             ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground)
     {
         //Size = new Vector2(600, 200);
@@ -76,13 +76,21 @@ public class DialogueBackgroundWindow : Window, IDisposable
     public void Dispose() { }
     public override void OnClose()
     {
-        ClearBackground();
-        base.OnClose();
+        if (!_videoWasPlaying)
+        {
+            ClearBackground();
+            base.OnClose();
+        }
+        else
+        {
+            IsOpen = true;
+        }
     }
     public override void Draw()
     {
-        Size = new Vector2(ImGui.GetMainViewport().Size.X, ImGui.GetMainViewport().Size.Y);
-        Position = new Vector2(0, 0);
+        var displaySize = ImGui.GetIO().DisplaySize;
+        Size = displaySize * 1.1f;
+        Position = new Vector2((displaySize.X / 2) - (Size.Value.X / 2), (displaySize.Y / 2) - (Size.Value.Y / 2));
         switch (_currentBackgroundType)
         {
             case QuestText.DialogueBackgroundType.None:
@@ -113,6 +121,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
 
     private void ImageFileDisplay()
     {
+        var displaySize = ImGui.GetIO().DisplaySize;
         CheckMouseDown();
         if (!_alreadyLoadingFrame)
         {
@@ -129,7 +138,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
         }
         if (_frameToLoad != null)
         {
-            ImGui.Image(_frameToLoad.ImGuiHandle, new Vector2(Size.Value.X, Size.Value.Y));/*))*/
+            ImGui.Image(_frameToLoad.ImGuiHandle, new Vector2(Size.Value.X, Size.Value.Y));
         }
         if (!Plugin.DialogueWindow.IsOpen)
         {
@@ -139,6 +148,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
 
     private void VideoFilePlayback()
     {
+        var displaySize = ImGui.GetIO().DisplaySize;
         if (_mediaManager != null && _mediaManager.LastFrame != null && _mediaManager.LastFrame.Length > 0)
         {
             try
@@ -171,7 +181,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
                     }
                     if (_frameToLoad != null)
                     {
-                        ImGui.Image(_frameToLoad.ImGuiHandle, new Vector2(Size.Value.X, Size.Value.X * 0.5625f));
+                        ImGui.Image(_frameToLoad.ImGuiHandle, new Vector2(Size.Value.X, Size.Value.Y));
                     }
                 }
             }
