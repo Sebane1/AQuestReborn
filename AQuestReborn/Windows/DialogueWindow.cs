@@ -190,7 +190,7 @@ public class DialogueWindow : Window, IDisposable
         ImGui.SetWindowFontScale(2);
         ImGui.SetCursorPosY(60);
         ImGui.SetNextItemWidth(300);
-        if (_currentDialogueBoxIndex != 8 && _currentDialogueBoxIndex != 2 && _currentDialogueBoxIndex != 4)
+        if (_currentDialogueBoxIndex != 8 && _currentDialogueBoxIndex != 2 && _currentDialogueBoxIndex != 3)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
         }

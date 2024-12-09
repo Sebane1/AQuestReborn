@@ -45,6 +45,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
     private bool taskAlreadyRunning;
     private QuestText.DialogueBackgroundType _currentBackgroundType;
     private bool _videoWasPlaying;
+    private bool _videoNeedsToPlay;
 
     public event EventHandler ButtonClicked;
 
@@ -144,6 +145,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
             {
                 lock (_mediaManager.LastFrame)
                 {
+                    _videoNeedsToPlay = false;
                     _videoWasPlaying = true;
                     if (!taskAlreadyRunning)
                     {
@@ -179,8 +181,11 @@ public class DialogueBackgroundWindow : Window, IDisposable
         }
         else
         {
-            CheckMouseDown(_videoWasPlaying);
-            _videoWasPlaying = false;
+            if (!_videoNeedsToPlay)
+            {
+                CheckMouseDown(_videoWasPlaying);
+                _videoWasPlaying = false;
+            }
         }
     }
 
@@ -197,6 +202,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
                 _currentBackground = background.ToArray();
                 break;
             case QuestText.DialogueBackgroundType.Video:
+                _videoNeedsToPlay = true;
                 Plugin.MediaManager?.PlayMedia(_dummyObject, path, SoundType.NPC, true);
                 _videoWasPlaying = false;
                 break;
