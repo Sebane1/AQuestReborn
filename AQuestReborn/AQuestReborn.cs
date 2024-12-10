@@ -36,14 +36,14 @@ namespace AQuestReborn
     internal class AQuestReborn
     {
         public Plugin Plugin { get; }
-        public Dictionary<string, ICharacter> SpawnedNPCs { get => _spawnedNPCs; set => _spawnedNPCs = value; }
+        public Dictionary<string, Dictionary<string, ICharacter>> SpawnedNPCs { get => _spawnedNPCs; set => _spawnedNPCs = value; }
         private DualSense _dualSense;
         private Controller xboxController;
         private Stopwatch _pollingTimer;
         private Stopwatch _controllerCheckTimer;
         private Stopwatch _mcdfRefreshTimer = new Stopwatch();
         private bool _screenButtonClicked;
-        private Dictionary<string, ICharacter> _spawnedNPCs = new Dictionary<string, ICharacter>();
+        private Dictionary<string, Dictionary<string, ICharacter>> _spawnedNPCs = new Dictionary<string, Dictionary<string, ICharacter>>();
         private bool _triggerRefresh;
         private bool _waitingForSelectionRelease;
         Queue<KeyValuePair<string, ICharacter>> _mcdfQueue = new Queue<KeyValuePair<string, ICharacter>>();
@@ -139,7 +139,7 @@ namespace AQuestReborn
             if (Plugin.ClientState.IsLoggedIn)
             {
                 InitializeMediaManager();
-                RefreshNPCs(Plugin.ClientState.TerritoryType);
+                RefreshNpcsForQuest(Plugin.ClientState.TerritoryType);
             }
         }
 
@@ -192,7 +192,7 @@ namespace AQuestReborn
         }
         private void CheckForNewMCDFLoad()
         {
-            if (_mcdfQueue.Count > 0 && _mcdfRefreshTimer.ElapsedMilliseconds > 500)
+            if (_mcdfQueue.Count > 0 && _mcdfRefreshTimer.ElapsedMilliseconds > 100)
             {
                 _mcdfRefreshTimer.Reset();
                 var item = _mcdfQueue.Dequeue();
@@ -210,7 +210,7 @@ namespace AQuestReborn
             if (_triggerRefresh)
             {
                 RefreshMapMarkers();
-                RefreshNPCs(Plugin.ClientState.TerritoryType);
+                RefreshNpcsForQuest(Plugin.ClientState.TerritoryType);
                 _triggerRefresh = false;
             }
         }
@@ -297,67 +297,102 @@ namespace AQuestReborn
             }
             return false;
         }
-        public void DestroyAllNpcs()
+        public void DestroyAllNpcsInQuestId(string questId)
         {
-            foreach (var item in _spawnedNPCs)
+            if (_spawnedNPCs.ContainsKey(questId))
             {
-                if (item.Value != null)
+                int sleepTime = 100;
+                foreach (var item in _spawnedNPCs[questId])
                 {
-                    _actorSpawnService.DestroyObject(item.Value);
+                    if (item.Value != null)
+                    {
+                        try
+                        {
+                            _actorSpawnService.DestroyObject(item.Value);
+                        }
+                        catch
+                        {
+
+                        }
+                    }
                 }
+                _spawnedNPCs[questId].Clear();
             }
-            _spawnedNPCs.Clear();
         }
-        public void RefreshNPCs(ushort territoryId, bool softRefresh = false)
+        public void RefreshNpcsForQuest(ushort territoryId, string questId = "", bool softRefresh = false)
         {
-            if (!softRefresh)
-            {
-                DestroyAllNpcs();
-            }
             if (_actorSpawnService != null)
             {
+                if (!_spawnedNPCs.ContainsKey("DEBUG"))
+                {
+                    _spawnedNPCs["DEBUG"] = new Dictionary<string, ICharacter>();
+                }
                 if (!softRefresh)
                 {
-                    _actorSpawnService.DestroyAllCreated();
+                    if (!string.IsNullOrEmpty(questId))
+                    {
+                        DestroyAllNpcsInQuestId(questId);
+                    }
+                    else
+                    {
+                        DestroyAllNpcsInQuestId("DEBUG");
+                        foreach (var item in Plugin.RoleplayingQuestManager.QuestChains)
+                        {
+                            DestroyAllNpcsInQuestId(item.Value.QuestId);
+                        }
+                        try
+                        {
+                            _actorSpawnService.DestroyAllCreated();
+                        }
+                        catch { }
+                    }
                 }
-                if (!_spawnedNPCs.ContainsKey("First Spawn") || _spawnedNPCs.Count == 0)
+                if (!_spawnedNPCs["DEBUG"].ContainsKey("First Spawn") || _spawnedNPCs["DEBUG"].Count == 0)
                 {
                     ICharacter firstSpawn = null;
                     _actorSpawnService.CreateCharacter(out firstSpawn, SpawnFlags.DefinePosition, true,
                     new System.Numerics.Vector3(float.MaxValue / 2, float.MaxValue / 2, float.MaxValue / 2), 0);
-                    _spawnedNPCs["First Spawn"] = firstSpawn;
+                    _spawnedNPCs["DEBUG"]["First Spawn"] = firstSpawn;
                 }
 
                 var questChains = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectives(territoryId);
                 foreach (var item in questChains)
                 {
-                    string foundPath = item.Key.FoundPath;
-                    foreach (var npcAppearance in item.Key.NpcCustomizations)
+                    if (item.Key.QuestId == questId || string.IsNullOrEmpty(questId))
                     {
-                        if (item.Value.Item2.NpcStartingPositions.ContainsKey(npcAppearance.Value.NpcName))
+                        string foundPath = item.Key.FoundPath;
+                        foreach (var npcAppearance in item.Key.NpcCustomizations)
                         {
-                            if (_spawnedNPCs.ContainsKey(npcAppearance.Value.NpcName))
+                            if (item.Value.Item2.NpcStartingPositions.ContainsKey(npcAppearance.Value.NpcName))
                             {
-                                var npc = _spawnedNPCs[npcAppearance.Value.NpcName];
-                                if (npc != null)
+                                if (!_spawnedNPCs.ContainsKey(item.Key.QuestId))
                                 {
-                                    try
+                                    _spawnedNPCs[item.Key.QuestId] = new Dictionary<string, ICharacter>();
+                                }
+                                var spawnedNpcsList = _spawnedNPCs[item.Key.QuestId];
+                                if (spawnedNpcsList.ContainsKey(npcAppearance.Value.NpcName))
+                                {
+                                    var npc = spawnedNpcsList[npcAppearance.Value.NpcName];
+                                    if (npc != null)
                                     {
-                                        _actorSpawnService.DestroyObject(npc);
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        Plugin.PluginLog.Warning(e, e.Message);
+                                        try
+                                        {
+                                            _actorSpawnService.DestroyObject(npc);
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            Plugin.PluginLog.Warning(e, e.Message);
+                                        }
                                     }
                                 }
-                            }
-                            ICharacter character = null;
-                            var startingInfo = item.Value.Item2.NpcStartingPositions[npcAppearance.Value.NpcName];
-                            _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true, startingInfo.Position, Utility.ConvertDegreesToRadians(startingInfo.EulerRotation.Y));
-                            if (character != null)
-                            {
-                                _spawnedNPCs[npcAppearance.Value.NpcName] = character;
-                                _mcdfQueue.Enqueue(new KeyValuePair<string, ICharacter>(Path.Combine(foundPath, npcAppearance.Value.AppearanceData), character));
+                                ICharacter character = null;
+                                var startingInfo = item.Value.Item2.NpcStartingPositions[npcAppearance.Value.NpcName];
+                                _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true, startingInfo.Position, Utility.ConvertDegreesToRadians(startingInfo.EulerRotation.Y));
+                                if (character != null)
+                                {
+                                    spawnedNpcsList[npcAppearance.Value.NpcName] = character;
+                                    _mcdfQueue.Enqueue(new KeyValuePair<string, ICharacter>(Path.Combine(foundPath, npcAppearance.Value.AppearanceData), character));
+                                }
                             }
                         }
                     }

@@ -94,7 +94,7 @@ public class EditorWindow : Window, IDisposable
             {
                 _roleplayingQuestCreator.SaveQuest(Path.Combine(Plugin.Configuration.QuestInstallFolder, _roleplayingQuestCreator.CurrentQuest.QuestName));
                 Plugin.RoleplayingQuestManager.ScanDirectory();
-                Plugin.AQuestReborn.RefreshNPCs(Plugin.ClientState.TerritoryType, true);
+                Plugin.AQuestReborn.RefreshNpcsForQuest(Plugin.ClientState.TerritoryType, _roleplayingQuestCreator.CurrentQuest.QuestId, true);
                 Plugin.AQuestReborn.RefreshMapMarkers();
             }
             ImGui.SameLine();
@@ -279,6 +279,7 @@ public class EditorWindow : Window, IDisposable
             var item = questText[_selectedDialogue];
             var faceExpression = item.FaceExpression;
             var bodyExpression = item.BodyExpression;
+            var npcAlias = item.NpcAlias;
             var npcName = item.NpcName;
             var dialogue = item.Dialogue;
             var boxStyle = item.DialogueBoxStyle;
@@ -290,7 +291,10 @@ public class EditorWindow : Window, IDisposable
             var dialogueEndTypes = Enum.GetNames(typeof(QuestText.DialogueEndBehaviourType));
             var dialogueBackgroundTypes = Enum.GetNames(typeof(QuestText.DialogueBackgroundType));
             var appearanceSwap = item.AppearanceSwap;
-
+            if (ImGui.InputText("Npc Alias##", ref npcAlias, 20))
+            {
+                item.NpcAlias = npcAlias;
+            }
             if (ImGui.InputText("Npc Name##", ref npcName, 20))
             {
                 item.NpcName = npcName;

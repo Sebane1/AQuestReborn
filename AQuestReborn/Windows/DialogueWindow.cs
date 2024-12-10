@@ -251,7 +251,7 @@ public class DialogueWindow : Window, IDisposable
             _currentCharacter = 0;
             _currentText = "";
             _targetText = item.Dialogue;
-            _currentName = item.NpcName;
+            _currentName = string.IsNullOrEmpty(item.NpcAlias) ? item.NpcName : item.NpcAlias;
             _currentDialogueBoxIndex = item.DialogueBoxStyle;
             _mcdfSwap = item.AppearanceSwap;
             string customAudioPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueAudio);
@@ -259,24 +259,27 @@ public class DialogueWindow : Window, IDisposable
             string customMcdfPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.AppearanceSwap);
             if (!string.IsNullOrEmpty(_mcdfSwap) && File.Exists(customMcdfPath))
             {
-                if (Plugin.RoleplayingQuestManager.SwapMCDF(questDisplayObject.RoleplayingQuest, _currentName, item.AppearanceSwap))
+                if (Plugin.RoleplayingQuestManager.SwapMCDF(questDisplayObject.RoleplayingQuest, item.NpcName, item.AppearanceSwap))
                 {
-                    Plugin.AQuestReborn.RefreshNPCs(Plugin.ClientState.TerritoryType);
+                    Plugin.AQuestReborn.RefreshNpcsForQuest(Plugin.ClientState.TerritoryType, questDisplayObject.RoleplayingQuest.QuestId);
                 }
             }
             if (_currentName.ToLower() == "system")
             {
                 _currentDialogueBoxIndex = _dialogueBoxStyles.Count - 1;
             }
-            if (Plugin.AQuestReborn.SpawnedNPCs.ContainsKey(item.NpcName))
+            if (Plugin.AQuestReborn.SpawnedNPCs.ContainsKey(questDisplayObject.RoleplayingQuest.QuestId))
             {
-                if ((ushort)item.BodyExpression > 0)
+                if (Plugin.AQuestReborn.SpawnedNPCs[questDisplayObject.RoleplayingQuest.QuestId].ContainsKey(item.NpcName))
                 {
-                    Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.AQuestReborn.SpawnedNPCs[item.NpcName], (ushort)item.BodyExpression);
-                }
-                else
-                {
-                    Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.AQuestReborn.SpawnedNPCs[item.NpcName], (ushort)5810);
+                    if ((ushort)item.BodyExpression > 0)
+                    {
+                        Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.AQuestReborn.SpawnedNPCs[questDisplayObject.RoleplayingQuest.QuestId][item.NpcName], (ushort)item.BodyExpression);
+                    }
+                    else
+                    {
+                        Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.AQuestReborn.SpawnedNPCs[questDisplayObject.RoleplayingQuest.QuestId][item.NpcName], (ushort)5810);
+                    }
                 }
             }
             if (Plugin.MediaManager != null)
@@ -324,7 +327,7 @@ public class DialogueWindow : Window, IDisposable
             _currentCharacter = 0;
             textTimer.Reset();
             questDisplayObject.QuestEvents?.Invoke(this, EventArgs.Empty);
-            Plugin.AQuestReborn.RefreshNPCs(Plugin.ClientState.TerritoryType, true);
+            Plugin.AQuestReborn.RefreshNpcsForQuest(Plugin.ClientState.TerritoryType, questDisplayObject.RoleplayingQuest.QuestId, true);
             Plugin.AQuestReborn.RefreshMapMarkers();
             Plugin.SaveProgress();
         }
