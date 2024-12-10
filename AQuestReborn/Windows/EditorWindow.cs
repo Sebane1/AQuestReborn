@@ -58,7 +58,7 @@ public class EditorWindow : Window, IDisposable
         _fileDialogManager = new FileDialogManager();
         if (_npcTransformEditorWindow == null)
         {
-            _npcTransformEditorWindow = new NPCTransformEditorWindow(Plugin);
+            _npcTransformEditorWindow = new NPCTransformEditorWindow(Plugin, _roleplayingQuestCreator);
             Plugin.WindowSystem.AddWindow(_npcTransformEditorWindow);
         }
     }
@@ -289,6 +289,7 @@ public class EditorWindow : Window, IDisposable
             var dialogueNumberToSkipTo = item.DialogueNumberToSkipTo;
             var dialogueEndTypes = Enum.GetNames(typeof(QuestText.DialogueEndBehaviourType));
             var dialogueBackgroundTypes = Enum.GetNames(typeof(QuestText.DialogueBackgroundType));
+            var appearanceSwap = item.AppearanceSwap;
 
             if (ImGui.InputText("Npc Name##", ref npcName, 20))
             {
@@ -297,6 +298,14 @@ public class EditorWindow : Window, IDisposable
             if (ImGui.InputText("Dialogue##", ref dialogue, 500))
             {
                 item.Dialogue = dialogue;
+            }
+            if (ImGui.InputText("Dialogue Audio Path##", ref dialogueAudio, 255))
+            {
+                item.DialogueAudio = dialogueAudio;
+            }
+            if (ImGui.InputText("Appearance Swap##", ref appearanceSwap, 255))
+            {
+                item.AppearanceSwap = appearanceSwap;
             }
             if (ImGui.Combo("Box Style##", ref boxStyle, _boxStyles, _boxStyles.Length))
             {
@@ -312,10 +321,6 @@ public class EditorWindow : Window, IDisposable
             if (ImGui.InputInt("Body Expression Id##", ref bodyExpression))
             {
                 item.BodyExpression = bodyExpression;
-            }
-            if (ImGui.InputText("Dialogue Audio Path##", ref dialogueAudio, 255))
-            {
-                item.DialogueAudio = dialogueAudio;
             }
             if (ImGui.Combo("Dialogue Background Type##", ref dialogueBackgroundType, dialogueBackgroundTypes, dialogueBackgroundTypes.Length))
             {
@@ -533,6 +538,7 @@ public class EditorWindow : Window, IDisposable
             _roleplayingQuestCreator.AddQuestObjective(new QuestObjective()
             {
                 Coordinates = Plugin.ClientState.LocalPlayer.Position,
+                Rotation = new Vector3(0, Utility.ConvertRadiansToDegrees(Plugin.ClientState.LocalPlayer.Rotation), 0),
                 TerritoryId = Plugin.ClientState.TerritoryType
             });
             _nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");

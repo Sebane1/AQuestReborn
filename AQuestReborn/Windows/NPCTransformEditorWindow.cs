@@ -15,6 +15,7 @@ public class NPCTransformEditorWindow : Window, IDisposable
     private string GoatImagePath;
     private Plugin Plugin;
     private FileDialogManager _fileDialogManager;
+    private RoleplayingQuestCreator _roleplayingQuestCreator;
     private QuestObjective _questObjective;
     private RoleplayingQuest _roleplayingQuest;
     private int _selectedNpcTransform;
@@ -23,7 +24,7 @@ public class NPCTransformEditorWindow : Window, IDisposable
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
     // but for ImGui the ID is "My Amazing Window##With a hidden ID"
-    public NPCTransformEditorWindow(Plugin plugin)
+    public NPCTransformEditorWindow(Plugin plugin, RoleplayingQuestCreator roleplayingQuestCreator)
         : base("NPC Transform Editor Window##" + Guid.NewGuid().ToString(), ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {
         SizeConstraints = new WindowSizeConstraints
@@ -34,6 +35,7 @@ public class NPCTransformEditorWindow : Window, IDisposable
 
         Plugin = plugin;
         _fileDialogManager = new FileDialogManager();
+        _roleplayingQuestCreator = roleplayingQuestCreator;
     }
 
     public void Dispose() { }
@@ -107,7 +109,7 @@ public class NPCTransformEditorWindow : Window, IDisposable
 
             if (ImGui.Button("Set Transform Coordinates From Standing Position"))
             {
-                SetStartingTransformDataToPlayer(item.Value);
+                _roleplayingQuestCreator.SetStartingTransformDataToPlayer(Plugin.RoleplayingQuestManager.MainPlayer, item.Value);
             }
         }
     }
@@ -129,38 +131,9 @@ public class NPCTransformEditorWindow : Window, IDisposable
     {
         if (_questObjective != null)
         {
+            _roleplayingQuestCreator.GenerateObjectiveNPCPositions(_questObjective);
             _npcTransformsSelection = Utility.FillNewList(_questObjective.NpcStartingPositions.Count, "NPC Transform");
             _selectedNpcTransform = _npcTransformsSelection.Length - 1;
-            var npcsInDialogue = _questObjective.EnumerateCharactersAtObjective();
-            foreach (var npc in npcsInDialogue)
-            {
-                if (!_questObjective.NpcStartingPositions.ContainsKey(npc))
-                {
-                    var newTransform = new Transform() { Name = npc };
-                    SetStartingTransformData(newTransform);
-                    _questObjective.NpcStartingPositions[npc] = newTransform;
-                }
-            }
-            for (int i = 0; i > 0; i--)
-            {
-                var transform = _questObjective.NpcStartingPositions.ElementAt(i);
-                if (!npcsInDialogue.Contains(transform.Key))
-                {
-                    _questObjective.NpcStartingPositions.Remove(transform.Key);
-                }
-            }
         }
-    }
-
-    public void SetStartingTransformData(Transform item)
-    {
-        item.Position = _questObjective.Coordinates;
-        item.EulerRotation = new Vector3(0, Utility.ConvertRadiansToDegrees(Plugin.ClientState.LocalPlayer.Rotation) + 180, 0);
-    }
-
-    public void SetStartingTransformDataToPlayer(Transform item)
-    {
-        item.Position = Plugin.ClientState.LocalPlayer.Position;
-        item.EulerRotation = new Vector3(0, Utility.ConvertRadiansToDegrees(Plugin.ClientState.LocalPlayer.Rotation) + 180, 0);
     }
 }

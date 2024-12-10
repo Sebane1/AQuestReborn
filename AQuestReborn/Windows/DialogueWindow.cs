@@ -36,6 +36,7 @@ public class DialogueWindow : Window, IDisposable
     private DummyObject _dummyObject;
     List<byte[]> _dialogueBoxStyles = new List<byte[]>();
     int _currentDialogueBoxIndex = 0;
+    private string _mcdfSwap;
     private bool _alreadyLoadingFrame;
     private IDalamudTextureWrap _dialogueStyleToLoad;
     private IDalamudTextureWrap _dialogueTitleStyleToLoad;
@@ -252,6 +253,15 @@ public class DialogueWindow : Window, IDisposable
             _targetText = item.Dialogue;
             _currentName = item.NpcName;
             _currentDialogueBoxIndex = item.DialogueBoxStyle;
+            _mcdfSwap = item.AppearanceSwap;
+            string customAudioPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueAudio);
+            string customBackgroundPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueBackground);
+            string customMcdfPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.AppearanceSwap);
+            if (!string.IsNullOrEmpty(_mcdfSwap) && File.Exists(customMcdfPath))
+            {
+                Plugin.RoleplayingQuestManager.SwapMCDF(questDisplayObject.RoleplayingQuest, _currentName, customMcdfPath);
+                Plugin.AQuestReborn.RefreshNPCs(Plugin.ClientState.TerritoryType);
+            }
             if (_currentName.ToLower() == "system")
             {
                 _currentDialogueBoxIndex = _dialogueBoxStyles.Count - 1;
@@ -267,8 +277,6 @@ public class DialogueWindow : Window, IDisposable
                     Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.AQuestReborn.SpawnedNPCs[item.NpcName], (ushort)5810);
                 }
             }
-            string customAudioPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueAudio);
-            string customBackgroundPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueBackground);
             if (Plugin.MediaManager != null)
             {
                 if (File.Exists(customAudioPath))
