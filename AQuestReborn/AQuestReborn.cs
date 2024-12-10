@@ -84,7 +84,7 @@ namespace AQuestReborn
                 Brio.Brio.TryGetService<ActorSpawnService>(out _actorSpawnService);
                 Brio.Brio.TryGetService<MareService>(out _mcdfService);
                 InitializeMediaManager();
-                Thread.Sleep(10000);
+                Thread.Sleep(500);
                 if (Plugin.ClientState.IsLoggedIn)
                 {
                     _clientState_TerritoryChanged(Plugin.ClientState.TerritoryType);
@@ -194,8 +194,13 @@ namespace AQuestReborn
         {
             if (_mcdfQueue.Count > 0 && _mcdfRefreshTimer.ElapsedMilliseconds > 500)
             {
+                _mcdfRefreshTimer.Reset();
                 var item = _mcdfQueue.Dequeue();
-                _mcdfService.LoadMcdfAsync(item.Key, item.Value);
+
+                if (!_mcdfService.LoadMcdfAsync(item.Key, item.Value))
+                {
+                    _mcdfQueue.Enqueue(item);
+                }
                 _mcdfRefreshTimer.Restart();
             }
         }
