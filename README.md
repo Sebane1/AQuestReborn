@@ -13,6 +13,8 @@ Instructions:
 - Pick a default install location for custom quests.
 - Create a custom quest, or install a custom quest to play.
 
+(Note: Custom Quests only run locally and do not communicate with game servers in any way)
+
 Need a demo questline? Check out this one! https://www.xivmodarchive.com/modid/124163
 
 Basic quest creation tutorial:
