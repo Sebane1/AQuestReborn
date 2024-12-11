@@ -84,7 +84,10 @@ namespace AQuestReborn
                 Brio.Brio.TryGetService<ActorSpawnService>(out _actorSpawnService);
                 Brio.Brio.TryGetService<MareService>(out _mcdfService);
                 InitializeMediaManager();
-                Thread.Sleep(500);
+                while (!Plugin.ClientState.IsLoggedIn)
+                {
+                    Thread.Sleep(500);
+                }
                 if (Plugin.ClientState.IsLoggedIn)
                 {
                     _clientState_TerritoryChanged(Plugin.ClientState.TerritoryType);
@@ -331,6 +334,7 @@ namespace AQuestReborn
                 {
                     if (!string.IsNullOrEmpty(questId))
                     {
+                        DestroyAllNpcsInQuestId("DEBUG");
                         DestroyAllNpcsInQuestId(questId);
                     }
                     else

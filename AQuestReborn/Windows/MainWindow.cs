@@ -149,7 +149,7 @@ public class MainWindow : Window, IDisposable
                 {
                     Plugin.RoleplayingQuestManager.QuestChains.Remove(roleplayingQuest.QuestId);
                 }
-                Plugin.AQuestReborn.RefreshNpcsForQuest(Plugin.ClientState.TerritoryType);
+                Plugin.AQuestReborn.RefreshNpcsForQuest(Plugin.ClientState.TerritoryType, roleplayingQuest.QuestId);
                 Plugin.AQuestReborn.RefreshMapMarkers();
                 Plugin.SaveProgress();
             }
