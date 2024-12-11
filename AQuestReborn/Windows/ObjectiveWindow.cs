@@ -50,6 +50,7 @@ public class ObjectiveWindow : Window, IDisposable
             | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground;
         _hoverFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse
             | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground;
+        Flags = _defaultFlags;
         LoadQuestIcons();
     }
     private void LoadQuestIcons()
@@ -69,16 +70,6 @@ public class ObjectiveWindow : Window, IDisposable
         questObjectiveIcon.Position = 0;
         _questStartIconData = questStartIcon.ToArray();
         _questObjectiveIconData = questObjectiveIcon.ToArray();
-    }
-    private void LoadQuestObjectiveIcon()
-    {
-
-    }
-    public void Dispose() { }
-
-    public void OnOpen()
-    {
-
     }
 
     public void OnClose()
@@ -187,5 +178,10 @@ public class ObjectiveWindow : Window, IDisposable
                 }
             }
         }
+    }
+
+    public void Dispose()
+    {
+
     }
 }

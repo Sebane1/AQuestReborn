@@ -48,23 +48,23 @@ public class MainWindow : Window, IDisposable
     }
     public override void Draw()
     {
-        if (string.IsNullOrEmpty(Plugin.Configuration.QuestInstallFolder))
+        DrawInitialSetup();
+        if (!string.IsNullOrEmpty(Plugin.Configuration.QuestInstallFolder) && Directory.Exists(Plugin.Configuration.QuestInstallFolder))
         {
-            DrawInitialSetup();
-        }
-        else if (ImGui.BeginTabBar("ConfigTabs"))
-        {
-            if (ImGui.BeginTabItem("Installed Quests"))
+            if (ImGui.BeginTabBar("ConfigTabs"))
             {
-                DrawInstalledQuests();
-                ImGui.EndTabItem();
+                if (ImGui.BeginTabItem("Installed Quests"))
+                {
+                    DrawInstalledQuests();
+                    ImGui.EndTabItem();
+                }
+                if (ImGui.BeginTabItem("Quest Objectives"))
+                {
+                    DrawQuestObjectives();
+                    ImGui.EndTabItem();
+                }
+                ImGui.EndTabBar();
             }
-            if (ImGui.BeginTabItem("Quest Objectives"))
-            {
-                DrawQuestObjectives();
-                ImGui.EndTabItem();
-            }
-            ImGui.EndTabBar();
         }
     }
 
@@ -82,12 +82,15 @@ public class MainWindow : Window, IDisposable
             {
                 if (isOk)
                 {
-                    Directory.CreateDirectory(folder);
-                    if (Directory.GetFiles(folder).Length == 0)
+                    if (!folder.Contains("Program Files"))
                     {
-                        Plugin.Configuration.QuestInstallFolder = folder;
-                        Plugin.RoleplayingQuestManager.QuestInstallFolder = folder;
-                        Plugin.Configuration.Save();
+                        Directory.CreateDirectory(folder);
+                        if (Directory.GetFiles(folder).Length == 0)
+                        {
+                            Plugin.Configuration.QuestInstallFolder = folder;
+                            Plugin.RoleplayingQuestManager.QuestInstallFolder = folder;
+                            Plugin.Configuration.Save();
+                        }
                     }
                 }
             }, null, true);
@@ -190,7 +193,7 @@ public class MainWindow : Window, IDisposable
                     zipPath = Path.Combine(Plugin.Configuration.QuestInstallFolder, roleplayingQuest.QuestName);
                 }
                 Plugin.RoleplayingQuestManager.ExportQuestPack(zipPath);
-                string path = Path.GetDirectoryName(zipPath + "qmp");
+                string path = Path.GetDirectoryName(zipPath);
                 ProcessStartInfo ProcessInfo;
                 Process Process; ;
                 try
@@ -203,6 +206,21 @@ public class MainWindow : Window, IDisposable
                 ProcessInfo = new ProcessStartInfo("explorer.exe", @"""" + path + @"""");
                 ProcessInfo.UseShellExecute = true;
                 Process = Process.Start(ProcessInfo);
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Recover Quest"))
+            {
+                string foundPath = roleplayingQuest.FoundPath;
+                string recoveryPath = "";
+                if (string.IsNullOrEmpty(foundPath))
+                {
+                    recoveryPath = Path.GetDirectoryName(foundPath);
+                }
+                else
+                {
+                    recoveryPath = Path.Combine(Plugin.Configuration.QuestInstallFolder, roleplayingQuest.QuestName);
+                }
+                Plugin.RoleplayingQuestManager.RecoverDeletedQuest(roleplayingQuest, recoveryPath);
             }
         }
     }

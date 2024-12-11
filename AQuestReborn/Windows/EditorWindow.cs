@@ -87,9 +87,9 @@ public class EditorWindow : Window, IDisposable
     }
     public override void Draw()
     {
+        _fileDialogManager.Draw();
         if (!_roleplayingQuestCreator.CurrentQuest.IsSubQuest)
         {
-            _fileDialogManager.Draw();
             if (ImGui.Button("Save Quest"))
             {
                 _roleplayingQuestCreator.SaveQuest(Path.Combine(Plugin.Configuration.QuestInstallFolder, _roleplayingQuestCreator.CurrentQuest.QuestName));
@@ -169,6 +169,22 @@ public class EditorWindow : Window, IDisposable
                     }
                 }
             }
+        }
+        if (ImGui.Button("Export for re-use"))
+        {
+            _fileDialogManager.Reset();
+            ImGui.OpenPopup("OpenPathDialog##editorwindow");
+        }
+        if (ImGui.BeginPopup("OpenPathDialog##editorwindow"))
+        {
+            _fileDialogManager.SaveFileDialog("Export quest line data", ".quest", "", ".quest", (isOk, file) =>
+            {
+                if (isOk)
+                {
+                    _roleplayingQuestCreator.SaveQuestline(_roleplayingQuestCreator.CurrentQuest, file);
+                }
+            }, "", true);
+            ImGui.EndPopup();
         }
         ImGui.BeginTable("##Editor Table", 2);
         ImGui.TableSetupColumn("Objective List", ImGuiTableColumnFlags.WidthFixed, 100);
@@ -427,6 +443,24 @@ public class EditorWindow : Window, IDisposable
                             _subEditorWindow.RoleplayingQuestCreator.EditQuest(roleplayingQuest);
                             _subEditorWindow.RefreshMenus();
                         }
+                        ImGui.SameLine();
+                        if (ImGui.Button("Import Branching Questline"))
+                        {
+                            _fileDialogManager.Reset();
+                            ImGui.OpenPopup("OpenPathDialog##editorwindow");
+                        }
+                        if (ImGui.BeginPopup("OpenPathDialog##editorwindow"))
+                        {
+                            _fileDialogManager.OpenFileDialog("Select quest line data", ".quest", (isOk, file) =>
+                            {
+                                if (isOk)
+                                {
+                                    item.RoleplayingQuest = _roleplayingQuestCreator.ImportQuestline(file[0]);
+                                    item.RoleplayingQuest.ConfigureSubQuest(_roleplayingQuestCreator.CurrentQuest);
+                                }
+                            }, 0, "", true);
+                            ImGui.EndPopup();
+                        }
                         break;
                 }
             }
@@ -448,7 +482,7 @@ public class EditorWindow : Window, IDisposable
             {
                 var branchingChoice = new BranchingChoice();
                 branchingChoices.Add(branchingChoice);
-                branchingChoice.RoleplayingQuest.CopyAuthorData(_roleplayingQuestCreator.CurrentQuest);
+                branchingChoice.RoleplayingQuest.ConfigureSubQuest(_roleplayingQuestCreator.CurrentQuest);
                 branchingChoice.RoleplayingQuest.IsSubQuest = true;
                 _branchingChoices = Utility.FillNewList(branchingChoices.Count, "Choice");
                 _selectedBranchingChoice = branchingChoices.Count - 1;

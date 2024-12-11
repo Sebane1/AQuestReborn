@@ -108,13 +108,16 @@ public class DialogueBackgroundWindow : Window, IDisposable
 
     public void CheckMouseDown(bool doClick = false)
     {
-        var values = ImGui.GetIO().MouseDown;
-        for (int i = 0; i < values.Count; i++)
+        if (!Plugin.RewardWindow.IsOpen)
         {
-            if (values[i] || doClick)
+            var values = ImGui.GetIO().MouseDown;
+            for (int i = 0; i < values.Count; i++)
             {
-                ButtonClicked?.Invoke(this, EventArgs.Empty);
-                break;
+                if (values[i] || doClick)
+                {
+                    ButtonClicked?.Invoke(this, EventArgs.Empty);
+                    break;
+                }
             }
         }
     }

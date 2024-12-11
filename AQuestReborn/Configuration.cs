@@ -9,7 +9,7 @@ namespace SamplePlugin;
 public class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 0;
-    private string questInstallFolder;
+    private string _questInstallFolder;
 
     public Dictionary<string, RoleplayingQuest> _questChains = new Dictionary<string, RoleplayingQuest>();
     public Dictionary<string, int> _questProgression = new Dictionary<string, int>();
@@ -18,7 +18,18 @@ public class Configuration : IPluginConfiguration
     public bool SomePropertyToBeSavedAndWithADefault { get; set; } = true;
     public Dictionary<string, RoleplayingQuest> QuestChains { get => _questChains; set => _questChains = value; }
     public Dictionary<string, int> QuestProgression { get => _questProgression; set => _questProgression = value; }
-    public string QuestInstallFolder { get => questInstallFolder; set => questInstallFolder = value; }
+    public string QuestInstallFolder
+    {
+        get
+        {
+            if (_questInstallFolder.Contains("Program Files"))
+            {
+                _questInstallFolder = "";
+            }
+            return _questInstallFolder;
+        }
+        set => _questInstallFolder = value;
+    }
 
     // the below exist just to make saving less cumbersome
     public void Save()

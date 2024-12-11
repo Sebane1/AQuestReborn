@@ -66,6 +66,7 @@ namespace AQuestReborn
             plugin.RoleplayingQuestManager.OnQuestCompleted += _roleplayingQuestManager_OnQuestCompleted;
             plugin.RoleplayingQuestManager.OnObjectiveCompleted += _roleplayingQuestManager_OnObjectiveCompleted;
             plugin.RoleplayingQuestManager.OnQuestAcceptancePopup += _roleplayingQuestManager_OnQuestAcceptancePopup;
+            plugin.RewardWindow.OnRewardClosed += RewardWindow_OnRewardClosed;
             Plugin.Framework.Update += _framework_Update;
             Plugin.ClientState.Login += _clientState_Login;
             Plugin.ClientState.TerritoryChanged += _clientState_TerritoryChanged;
@@ -94,6 +95,14 @@ namespace AQuestReborn
                 }
             });
         }
+
+        private void RewardWindow_OnRewardClosed(object? sender, EventArgs e)
+        {
+            QuestToastOptions questToastOptions = new QuestToastOptions();
+            Plugin.ToastGui.ShowQuest("Quest Completed");
+            Plugin.Configuration.Save();
+        }
+
         private void OnEmote(ICharacter character, ushort emoteId)
         {
             if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
@@ -423,11 +432,9 @@ namespace AQuestReborn
             });
         }
 
-        private void _roleplayingQuestManager_OnQuestCompleted(object? sender, EventArgs e)
+        private void _roleplayingQuestManager_OnQuestCompleted(object? sender, RoleplayingQuest e)
         {
-            QuestToastOptions questToastOptions = new QuestToastOptions();
-            Plugin.ToastGui.ShowQuest("Quest Completed");
-            Plugin.Configuration.Save();
+            Plugin.RewardWindow.PromptReward(e);
         }
 
         private void _roleplayingQuestManager_OnQuestStarted(object? sender, EventArgs e)

@@ -65,6 +65,7 @@ public sealed class Plugin : IDalamudPlugin
     public DialogueBackgroundWindow DialogueBackgroundWindow { get; private set; }
     public ObjectiveWindow ObjectiveWindow { get; private set; }
     public QuestAcceptanceWindow QuestAcceptanceWindow { get; private set; }
+    public RewardWindow RewardWindow { get; private set; }
     public EditorWindow EditorWindow { get; init; }
     public ChoiceWindow ChoiceWindow { get; private set; }
     public DialogueWindow DialogueWindow { get; init; }
@@ -112,6 +113,8 @@ public sealed class Plugin : IDalamudPlugin
         DialogueBackgroundWindow = new DialogueBackgroundWindow(this, textureProvider);
         ObjectiveWindow = new ObjectiveWindow(this);
         QuestAcceptanceWindow = new QuestAcceptanceWindow(this);
+        RewardWindow = new RewardWindow(this);
+
         WindowSystem.AddWindow(EditorWindow);
         WindowSystem.AddWindow(DialogueBackgroundWindow);
         WindowSystem.AddWindow(DialogueWindow);
