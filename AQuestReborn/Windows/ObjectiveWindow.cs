@@ -22,7 +22,6 @@ public class ObjectiveWindow : Window, IDisposable
     private Plugin Plugin;
     private FileDialogManager _fileDialogManager;
     private byte[] emptyBackground;
-    private byte[] _currentBackground;
     private bool _alreadyLoadingQuestStartIcon;
     private IDalamudTextureWrap _questStartIconTextureWrap;
     private byte[] _lastQuestStartIconData;
@@ -46,14 +45,6 @@ public class ObjectiveWindow : Window, IDisposable
             ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground)
     {
         Plugin = plugin;
-        MemoryStream blank = new MemoryStream();
-        Bitmap none = new Bitmap(1, 1);
-        Graphics graphics = Graphics.FromImage(none);
-        graphics.Clear(Color.Red);
-        none.Save(blank, ImageFormat.Png);
-        blank.Position = 0;
-        emptyBackground = blank.ToArray();
-        _currentBackground = emptyBackground;
         AllowClickthrough = true;
         _defaultFlags = ImGuiWindowFlags.NoInputs | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar
             | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground;
@@ -122,7 +113,7 @@ public class ObjectiveWindow : Window, IDisposable
                     {
                         _questStartIconTextureWrap = await Plugin.TextureProvider.CreateFromImageAsync(_questStartIconData);
                     }
-                    _lastQuestStartIconData = _currentBackground;
+                    _lastQuestStartIconData = _questStartIconData;
                 }
                 _alreadyLoadingQuestStartIcon = false;
             });
