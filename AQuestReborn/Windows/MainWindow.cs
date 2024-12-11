@@ -86,6 +86,7 @@ public class MainWindow : Window, IDisposable
                     if (Directory.GetFiles(folder).Length == 0)
                     {
                         Plugin.Configuration.QuestInstallFolder = folder;
+                        Plugin.RoleplayingQuestManager.QuestInstallFolder = folder;
                         Plugin.Configuration.Save();
                     }
                 }
