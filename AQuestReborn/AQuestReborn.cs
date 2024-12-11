@@ -106,9 +106,9 @@ namespace AQuestReborn
         {
             Task.Run(() =>
             {
-                while (Plugin.ClientState.LocalPlayer == null && _actorSpawnService == null)
+                while (Plugin.ClientState.LocalPlayer == null || _actorSpawnService == null)
                 {
-                    Thread.Sleep(1000);
+                    Thread.Sleep(3000);
                 }
                 _triggerRefresh = true;
             });
