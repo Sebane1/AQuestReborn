@@ -1,8 +1,6 @@
 Play custom quests made by the community, or make your own!
 
-A proof of concept for making and playing custom quest lines.
-
-Custom NPC's made possible via the progress made with [brio.](https://github.com/Etheirys/Brio)
+Custom quest NPC's made possible via the progress made with brio.
 
 Dalamud compatible repo link.
 ```
@@ -10,14 +8,15 @@ https://raw.githubusercontent.com/Sebane1/AQuestReborn/master/repo.json
 ```
 
 Instructions:
+- Copy paste the repo link into the dalamud experimental tab
+- Install the A Quest Reborn Plugin
 - Pick a default install location for custom quests.
 - Create a custom quest, or install a custom quest to play.
 
-Need a demo questline? Check out this one!
-https://www.xivmodarchive.com/modid/124163
+Need a demo questline? Check out this one! https://www.xivmodarchive.com/modid/124163
 
-Support Discord:
-https://discord.gg/rtGXwMn7pX
+Basic quest creation tutorial:
+https://www.youtube.com/watch?v=p6FSnRm_DoM
 
-If you wish to donate you can do so here:
-https://ko-fi.com/sebastina
+Support Discord: https://discord.gg/rtGXwMn7pX
+If you wish to donate you can do so here: https://ko-fi.com/sebastina
