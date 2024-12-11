@@ -45,6 +45,7 @@ public class DialogueWindow : Window, IDisposable
     private byte[] _nameTitleStyle;
     private bool _alreadyLoadingTitleFrame;
     private Bitmap data1;
+    private float _globalScale;
 
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
@@ -116,9 +117,9 @@ public class DialogueWindow : Window, IDisposable
 
     public override void Draw()
     {
-        var globalScale = ImGuiHelpers.GlobalScale;
+        _globalScale = ImGuiHelpers.GlobalScale * 0.95f;
         var values = ImGui.GetIO().DisplaySize;
-        Size = new Vector2(1088 * globalScale, 288 * globalScale);
+        Size = new Vector2(1088 * _globalScale, 288 * _globalScale);
         Position = new Vector2((values.X / 2) - (Size.Value.X / 2), values.Y - Size.Value.Y);
         if (!_alreadyLoadingFrame)
         {
@@ -155,8 +156,8 @@ public class DialogueWindow : Window, IDisposable
             }
             if (_dialogueTitleStyleToLoad != null)
             {
-                ImGui.SetCursorPos(new Vector2(50 * globalScale, 0));
-                ImGui.Image(_dialogueTitleStyleToLoad.ImGuiHandle, new Vector2(data1.Width * globalScale, data1.Height * globalScale));
+                ImGui.SetCursorPos(new Vector2(50 * _globalScale, 8 * _globalScale));
+                ImGui.Image(_dialogueTitleStyleToLoad.ImGuiHandle, new Vector2(data1.Width * _globalScale, data1.Height * _globalScale));
             }
         }
         if (textTimer.ElapsedMilliseconds > 5)
@@ -173,9 +174,9 @@ public class DialogueWindow : Window, IDisposable
         }
         ImGui.SetCursorPos(new Vector2(0, 0));
         ImGui.BeginTable("##Dialogue Table", 3);
-        ImGui.TableSetupColumn("Padding 1", ImGuiTableColumnFlags.WidthFixed, 100 * globalScale);
-        ImGui.TableSetupColumn("Center", ImGuiTableColumnFlags.WidthFixed, 888 * globalScale);
-        ImGui.TableSetupColumn("Padding 2", ImGuiTableColumnFlags.WidthFixed, 100 * globalScale);
+        ImGui.TableSetupColumn("Padding 1", ImGuiTableColumnFlags.WidthFixed, 100 * _globalScale);
+        ImGui.TableSetupColumn("Center", ImGuiTableColumnFlags.WidthFixed, 888 * _globalScale);
+        ImGui.TableSetupColumn("Padding 2", ImGuiTableColumnFlags.WidthFixed, 100 * _globalScale);
         //ImGui.TableHeadersRow();
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
@@ -189,11 +190,11 @@ public class DialogueWindow : Window, IDisposable
 
     private void DialogueDrawing()
     {
-        var globalScale = ImGuiHelpers.GlobalScale;
-        ImGui.SetCursorPosY(12 * globalScale);
+        ImGui.SetCursorPosY(22 * _globalScale);
+        ImGui.SetWindowFontScale(2.2f);
         ImGui.LabelText("##nameLabel", _currentName.ToLower() == "system" ? "" : _currentName);
         ImGui.SetWindowFontScale(2);
-        ImGui.SetCursorPosY(70 * globalScale);
+        ImGui.SetCursorPosY(75 * _globalScale);
         if (_currentDialogueBoxIndex != 8 && _currentDialogueBoxIndex != 2 && _currentDialogueBoxIndex != 3)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
