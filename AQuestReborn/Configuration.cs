@@ -9,7 +9,7 @@ namespace SamplePlugin;
 public class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 0;
-    private string _questInstallFolder;
+    private string _questInstallFolder = "";
 
     public Dictionary<string, RoleplayingQuest> _questChains = new Dictionary<string, RoleplayingQuest>();
     public Dictionary<string, int> _questProgression = new Dictionary<string, int>();
@@ -22,7 +22,7 @@ public class Configuration : IPluginConfiguration
     {
         get
         {
-            if (_questInstallFolder.Contains("Program Files"))
+            if (!string.IsNullOrEmpty(_questInstallFolder) && _questInstallFolder.Contains("Program Files"))
             {
                 _questInstallFolder = "";
             }
