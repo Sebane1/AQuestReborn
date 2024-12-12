@@ -174,10 +174,13 @@ namespace AQuestReborn
 
         private void _framework_Update(IFramework framework)
         {
-            CheckForNewMCDFLoad();
-            ControllerLogic();
-            QuestInputCheck();
-            CheckForNPCRefresh();
+            if (!Plugin.ClientState.IsGPosing)
+            {
+                CheckForNewMCDFLoad();
+                ControllerLogic();
+                QuestInputCheck();
+                CheckForNPCRefresh();
+            }
         }
         private void CheckVolumeLevels()
         {
