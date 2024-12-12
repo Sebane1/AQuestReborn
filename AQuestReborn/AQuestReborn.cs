@@ -174,7 +174,9 @@ namespace AQuestReborn
 
         private void _framework_Update(IFramework framework)
         {
-            if (!Plugin.ClientState.IsGPosing)
+            if (!Plugin.ClientState.IsGPosing && !Plugin.ClientState.IsPvPExcludingDen &&
+                !Conditions.IsBoundByDuty && !Conditions.IsInBetweenAreas && !Conditions.IsWatchingCutscene
+                && !Conditions.IsOccupied && !Conditions.IsInCombat)
             {
                 CheckForNewMCDFLoad();
                 ControllerLogic();
@@ -228,7 +230,11 @@ namespace AQuestReborn
             {
                 if (_activeQuestChainObjectives == null || _activeQuestChainObjectives.Count == 0)
                 {
-                    _actorSpawnService.TargetService.GPoseTarget = null;
+                    if (_mcdfRefreshTimer.ElapsedMilliseconds > 10000)
+                    {
+                        _actorSpawnService.TargetService.GPoseTarget = null;
+                        _actorSpawnService.DestroyAllCreated();
+                    }
                 }
             }
         }
@@ -312,16 +318,23 @@ namespace AQuestReborn
                     {
                         _dualSense = controllers.First();
                         _dualSense.Acquire();
-                        _dualSense.BeginPolling(20);
+                        _dualSense.BeginPolling(40);
                     }
                 });
             }
         }
         private bool CheckDualsenseInput()
         {
-            if (_dualSense != null)
+            try
             {
-                return _dualSense.InputState.CrossButton;
+                if (_dualSense != null)
+                {
+                    return _dualSense.InputState.CrossButton;
+                }
+            }
+            catch
+            {
+                _dualSense = null;
             }
             return false;
         }
