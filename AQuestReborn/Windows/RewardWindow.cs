@@ -30,7 +30,7 @@ public class RewardWindow : Window, IDisposable
         Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse;
 
-        Size = new Vector2(500, 250);
+        Size = new Vector2(600, 250);
         SizeCondition = ImGuiCond.Always;
         Plugin = plugin;
     }
@@ -44,22 +44,22 @@ public class RewardWindow : Window, IDisposable
     public override void Draw()
     {
         var screen = ImGui.GetIO().DisplaySize;
-        Position = new Vector2((screen.X / 2) - (Size.Value.X / 2), screen.Y - (Size.Value.Y / 2));
+        Position = new Vector2((screen.X / 2) - (Size.Value.X / 2), (screen.Y / 2) - (Size.Value.Y / 2));
         string questName = _questToDisplay.QuestName;
         string questReward = AddSpacesToSentence(_questToDisplay.TypeOfReward.ToString(), false);
         string description = _questToDisplay.QuestDescription;
         string thumbnailPath = _questToDisplay.QuestThumbnailPath;
         string contentRating = AddSpacesToSentence(_questToDisplay.ContentRating.ToString(), false);
-        ImGui.SetWindowFontScale(1.5f);
+        ImGui.SetWindowFontScale(2f);
         ImGui.LabelText("", questName);
-        ImGui.SetWindowFontScale(2);
+        ImGui.SetWindowFontScale(1.5f);
         switch (_questToDisplay.TypeOfReward)
         {
             case RoleplayingQuest.QuestRewardType.None:
-                ImGui.TextWrapped("You were rewarded with a journey of finishing this quest!");
+                ImGui.TextUnformatted("You were rewarded with a journey of finishing this quest!");
                 break;
             case RoleplayingQuest.QuestRewardType.SecretMessage:
-                ImGui.LabelText("##textReward", "You have been awarded the following message:");
+                ImGui.TextUnformatted("You have been awarded the following message:");
                 ImGui.TextWrapped(_questToDisplay.QuestReward);
                 break;
             case RoleplayingQuest.QuestRewardType.DownloadLink:

@@ -121,8 +121,8 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.AddWindow(ChoiceWindow);
         WindowSystem.AddWindow(ObjectiveWindow);
         WindowSystem.AddWindow(QuestAcceptanceWindow);
+        WindowSystem.AddWindow(RewardWindow);
         WindowSystem.AddWindow(MainWindow);
-
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
             HelpMessage = "Opens settings."
