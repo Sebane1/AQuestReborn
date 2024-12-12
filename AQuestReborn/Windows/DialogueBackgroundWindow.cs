@@ -54,7 +54,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
     // but for ImGui the ID is "My Amazing Window##With a hidden ID"
     public DialogueBackgroundWindow(Plugin plugin, ITextureProvider textureProvider)
         : base("Dialogue Background Window##dialoguewindow", ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar |
-            ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground)
+            ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground, true)
     {
         //Size = new Vector2(600, 200);
         Plugin = plugin;
