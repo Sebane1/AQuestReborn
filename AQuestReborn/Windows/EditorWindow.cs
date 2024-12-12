@@ -111,6 +111,7 @@ public class EditorWindow : Window, IDisposable
                 var contentRating = (int)_roleplayingQuestCreator.CurrentQuest.ContentRating;
                 var questReward = _roleplayingQuestCreator.CurrentQuest.QuestReward;
                 var questRewardType = (int)_roleplayingQuestCreator.CurrentQuest.TypeOfReward;
+                var questThumbnail = _roleplayingQuestCreator.CurrentQuest.QuestThumbnailPath;
                 var contentRatingTypes = Enum.GetNames(typeof(QuestContentRating));
                 var questRewardTypes = Enum.GetNames(typeof(QuestRewardType));
 
@@ -125,6 +126,10 @@ public class EditorWindow : Window, IDisposable
                 if (ImGui.InputText("Quest Description##", ref questDescription, 255))
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestDescription = questDescription;
+                }
+                if (ImGui.InputText("Quest Thumbnail##", ref questThumbnail, 255))
+                {
+                    _roleplayingQuestCreator.CurrentQuest.QuestThumbnailPath = questThumbnail;
                 }
                 if (ImGui.Combo("Content Rating##", ref contentRating, contentRatingTypes, contentRatingTypes.Length))
                 {

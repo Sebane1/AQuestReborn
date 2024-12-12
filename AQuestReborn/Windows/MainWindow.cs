@@ -48,6 +48,7 @@ public class MainWindow : Window, IDisposable
     }
     public override void Draw()
     {
+        _fileDialogManager.Draw();
         DrawInitialSetup();
         if (!string.IsNullOrEmpty(Plugin.Configuration.QuestInstallFolder) && Directory.Exists(Plugin.Configuration.QuestInstallFolder))
         {
@@ -70,7 +71,6 @@ public class MainWindow : Window, IDisposable
 
     private void DrawInitialSetup()
     {
-        _fileDialogManager.Draw();
         if (ImGui.Button("Pick Empty Folder For Custom Quest Installs"))
         {
             _fileDialogManager.Reset();
@@ -243,7 +243,6 @@ public class MainWindow : Window, IDisposable
         {
             Plugin.EditorWindow.IsOpen = true;
         }
-        _fileDialogManager.Draw();
         if (ImGui.Button("Install Quest"))
         {
             _fileDialogManager.Reset();

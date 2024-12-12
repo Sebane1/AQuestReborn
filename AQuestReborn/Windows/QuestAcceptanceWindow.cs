@@ -49,7 +49,7 @@ public class QuestAcceptanceWindow : Window, IDisposable
         ImGui.LabelText("", questName);
         ImGui.LabelText("", "Content Rating: " + contentRating);
 
-        if (!string.IsNullOrEmpty(_questToDisplay.QuestThumbnailPath))
+        if (_currentThumbnail != null)
         {
             if (!_alreadyLoadingFrame)
             {
@@ -105,7 +105,7 @@ public class QuestAcceptanceWindow : Window, IDisposable
     public void PromptQuest(RoleplayingQuest quest)
     {
         _questToDisplay = quest;
-        if (!string.IsNullOrEmpty(_questToDisplay.QuestThumbnailPath))
+        if (!string.IsNullOrEmpty(Path.Combine(Path.GetDirectoryName(quest.FoundPath), _questToDisplay.QuestThumbnailPath)))
         {
             SetThumbnail(_questToDisplay.QuestThumbnailPath);
         }
@@ -113,9 +113,16 @@ public class QuestAcceptanceWindow : Window, IDisposable
     }
     public void SetThumbnail(string path)
     {
-        MemoryStream background = new MemoryStream();
-        Bitmap none = new Bitmap(path);
-        background.Position = 0;
-        _currentThumbnail = background.ToArray();
+        if (!string.IsNullOrEmpty(_questToDisplay.QuestThumbnailPath) && File.Exists(path))
+        {
+            MemoryStream background = new MemoryStream();
+            Bitmap none = new Bitmap(path);
+            background.Position = 0;
+            _currentThumbnail = background.ToArray();
+        }
+        else
+        {
+            _currentThumbnail = null;
+        }
     }
 }
