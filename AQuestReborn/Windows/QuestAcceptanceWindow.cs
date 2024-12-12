@@ -105,15 +105,13 @@ public class QuestAcceptanceWindow : Window, IDisposable
     public void PromptQuest(RoleplayingQuest quest)
     {
         _questToDisplay = quest;
-        if (!string.IsNullOrEmpty(Path.Combine(Path.GetDirectoryName(quest.FoundPath), _questToDisplay.QuestThumbnailPath)))
-        {
-            SetThumbnail(_questToDisplay.QuestThumbnailPath);
-        }
+        string thumbnailPath = Path.Combine(Path.GetDirectoryName(quest.FoundPath), _questToDisplay.QuestThumbnailPath);
+        SetThumbnail(thumbnailPath);
         IsOpen = true;
     }
     public void SetThumbnail(string path)
     {
-        if (!string.IsNullOrEmpty(_questToDisplay.QuestThumbnailPath) && File.Exists(path))
+        if (!string.IsNullOrEmpty(path) && File.Exists(path))
         {
             MemoryStream background = new MemoryStream();
             Bitmap none = new Bitmap(path);

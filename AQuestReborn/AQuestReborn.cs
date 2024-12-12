@@ -204,16 +204,29 @@ namespace AQuestReborn
         }
         private void CheckForNewMCDFLoad()
         {
-            if (_mcdfQueue.Count > 0 && _mcdfRefreshTimer.ElapsedMilliseconds > 100)
+            if (_mcdfQueue.Count > 0)
             {
-                _mcdfRefreshTimer.Reset();
-                var item = _mcdfQueue.Dequeue();
-
-                if (!_mcdfService.LoadMcdfAsync(item.Key, item.Value))
+                if (_mcdfRefreshTimer.ElapsedMilliseconds > 100)
                 {
-                    _mcdfQueue.Enqueue(item);
+                    _mcdfRefreshTimer.Reset();
+                    var item = _mcdfQueue.Dequeue();
+                    if (_actorSpawnService.TargetService.GPoseTarget == null)
+                    {
+                        _actorSpawnService.TargetService.GPoseTarget = Plugin.ClientState.LocalPlayer;
+                    }
+                    if (!_mcdfService.LoadMcdfAsync(item.Key, item.Value))
+                    {
+                        _mcdfQueue.Enqueue(item);
+                    }
+                    _mcdfRefreshTimer.Restart();
                 }
-                _mcdfRefreshTimer.Restart();
+            }
+            else
+            {
+                if (_activeQuestChainObjectives == null || _activeQuestChainObjectives.Count == 0)
+                {
+                    _actorSpawnService.TargetService.GPoseTarget = null;
+                }
             }
         }
 
@@ -466,6 +479,7 @@ namespace AQuestReborn
                 _dualSense.EndPolling();
                 _dualSense.Release();
             }
+            _actorSpawnService.TargetService.GPoseTarget = null;
         }
     }
 }
