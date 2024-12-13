@@ -9,9 +9,7 @@ using RoleplayingQuestCore;
 using System;
 using System.Collections.Generic;
 using Dalamud.Game.ClientState.Objects.Types;
-using DualSenseAPI;
 using System.Linq;
-using Controller_Wrapper;
 using System.Diagnostics;
 using Dalamud.Game.Gui.Toast;
 using RoleplayingMediaCore;
@@ -26,7 +24,6 @@ using System.Threading;
 using Anamnesis.GameData;
 using EmbedIO.Authentication;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
-using SharpDX;
 using AQuestReborn;
 using ArtemisRoleplayingKit;
 using AnamCore;
@@ -84,16 +81,18 @@ public sealed class Plugin : IDalamudPlugin
     public AnamcoreManager AnamcoreManager { get => _anamcoreManager; set => _anamcoreManager = value; }
     public IGameConfig GameConfig { get => _gameConfig; set => _gameConfig = value; }
     public IChatGui ChatGui { get => _chatGui; set => _chatGui = value; }
+    public IGamepadState GamepadState { get => _gamepadState; set => _gamepadState = value; }
 
     private EmoteReaderHooks _emoteReaderHook;
     private IPluginLog _pluginLog;
     private IGameConfig _gameConfig;
     private IChatGui _chatGui;
+    private IGamepadState _gamepadState;
 
     public Plugin(IClientState clientState, IFramework framework, IToastGui toastGui,
         ITextureProvider textureProvider, IGameGui gameGui, IDalamudPluginInterface dalamudPluginInterface,
         IGameInteropProvider gameInteropProvider, IObjectTable objectTable, IDataManager dataManager,
-        IPluginLog pluginLog, IGameConfig gameConfig, IChatGui chatGui)
+        IPluginLog pluginLog, IGameConfig gameConfig, IChatGui chatGui, IGamepadState gamepadState)
     {
         _brio = new Brio.Brio(dalamudPluginInterface);
         _clientState = clientState;
@@ -105,6 +104,7 @@ public sealed class Plugin : IDalamudPlugin
         _pluginLog = pluginLog;
         _gameConfig = gameConfig;
         _chatGui = chatGui;
+        _gamepadState = gamepadState;
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
         // you might normally want to embed resources and load them from the manifest stream

@@ -1,36 +1,25 @@
-using Anamnesis.Memory;
-using ArtemisRoleplayingKit;
 using Brio.Game.Actor;
 using Brio.IPC;
-using Controller_Wrapper;
+using Dalamud.Game.ClientState.GamePad;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.Config;
 using Dalamud.Game.Gui.Toast;
-using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using DualSenseAPI;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
-using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using Lumina.Excel.Sheets;
-using NAudio.Lame;
 using RoleplayingMediaCore;
 using RoleplayingQuestCore;
-using RoleplayingVoiceCore;
 using RoleplayingVoiceDalamudWrapper;
 using SamplePlugin;
-using SamplePlugin.Windows;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using static FFXIVClientStructs.FFXIV.Client.LayoutEngine.LayoutManager;
 using Utf8String = FFXIVClientStructs.FFXIV.Client.System.String.Utf8String;
 
 namespace AQuestReborn
@@ -39,8 +28,6 @@ namespace AQuestReborn
     {
         public Plugin Plugin { get; }
         public Dictionary<string, Dictionary<string, ICharacter>> SpawnedNPCs { get => _spawnedNPCsDictionary; set => _spawnedNPCsDictionary = value; }
-        private DualSense _dualSense;
-        private Controller xboxController;
         private Stopwatch _pollingTimer;
         private Stopwatch _controllerCheckTimer;
         private Stopwatch _mcdfRefreshTimer = new Stopwatch();
@@ -104,10 +91,18 @@ namespace AQuestReborn
         private void ChatGui_ChatMessage(Dalamud.Game.Text.XivChatType type, int timestamp, ref Dalamud.Game.Text.SeStringHandling.SeString sender, ref Dalamud.Game.Text.SeStringHandling.SeString message, ref bool isHandled)
         {
             Plugin.PluginLog.Debug((int)type + " " + message);
+            var messageAsString = message.ToString();
             switch ((int)type)
             {
                 case 2874:
-                    Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.KillEnemy, message.ToString(), true);
+                    Task.Run(() =>
+                    {
+                        while (Conditions.IsInCombat)
+                        {
+                            Thread.Sleep(1000);
+                        }
+                        Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.KillEnemy, messageAsString, true);
+                    });
                     break;
             }
         }
@@ -198,7 +193,6 @@ namespace AQuestReborn
                 && !Conditions.IsOccupied && !Conditions.IsInCombat && Plugin.ClientState.IsLoggedIn)
             {
                 CheckForNewMCDFLoad();
-                ControllerLogic();
                 QuestInputCheck();
                 CheckForNPCRefresh();
                 CheckForMapRefresh();
@@ -299,21 +293,13 @@ namespace AQuestReborn
             }
         }
 
-        private void ControllerLogic()
-        {
-            if (_controllerCheckTimer.ElapsedMilliseconds > 5000)
-            {
-                ControllerConnectionCheck();
-                _controllerCheckTimer.Restart();
-            }
-        }
 
         private void QuestInputCheck()
         {
             if (_pollingTimer.ElapsedMilliseconds > 100)
             {
                 Plugin.ObjectiveWindow.IsOpen = true;
-                if ((CheckXboxInput() || CheckDualsenseInput() || _screenButtonClicked))
+                if (Plugin.GamepadState.Raw(GamepadButtons.South) == 1 || _screenButtonClicked)
                 {
                     _screenButtonClicked = false;
                     if (!_waitingForSelectionRelease)
@@ -337,64 +323,6 @@ namespace AQuestReborn
             }
         }
 
-        private bool CheckXboxInput()
-        {
-            if (xboxController != null)
-            {
-                return xboxController.A;
-            }
-            return false;
-        }
-
-        private void ControllerConnectionCheck()
-        {
-            if (xboxController == null)
-            {
-                Task.Run(() =>
-                {
-                    var controllers = Controller_Wrapper.Controller.GetConnectedControllers();
-                    if (controllers.Length > 0)
-                    {
-                        xboxController = controllers[0];
-                    }
-                });
-            }
-            if (_dualSense == null)
-            {
-                Task.Run(() =>
-                {
-                    try
-                    {
-                        var controllers = DualSense.EnumerateControllers();
-                        if (controllers != null && controllers.Count() > 0)
-                        {
-                            _dualSense = controllers.First();
-                            _dualSense.Acquire();
-                            _dualSense.BeginPolling(40);
-                        }
-                    }
-                    catch
-                    {
-
-                    }
-                });
-            }
-        }
-        private bool CheckDualsenseInput()
-        {
-            try
-            {
-                if (_dualSense != null)
-                {
-                    return _dualSense.InputState.CrossButton;
-                }
-            }
-            catch
-            {
-                _dualSense = null;
-            }
-            return false;
-        }
         public void DestroyAllNpcsInQuestId(string questId)
         {
             if (_spawnedNPCsDictionary.ContainsKey(questId))
@@ -548,11 +476,6 @@ namespace AQuestReborn
         }
         public void Dispose()
         {
-            if (_dualSense != null)
-            {
-                _dualSense.EndPolling();
-                _dualSense.Release();
-            }
             _actorSpawnService.TargetService.GPoseTarget = null;
         }
     }
