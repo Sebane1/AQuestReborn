@@ -13,6 +13,7 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using Lumina.Excel.Sheets;
 using NAudio.Lame;
 using RoleplayingMediaCore;
 using RoleplayingQuestCore;
@@ -25,6 +26,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,14 +38,14 @@ namespace AQuestReborn
     internal class AQuestReborn
     {
         public Plugin Plugin { get; }
-        public Dictionary<string, Dictionary<string, ICharacter>> SpawnedNPCs { get => _spawnedNPCs; set => _spawnedNPCs = value; }
+        public Dictionary<string, Dictionary<string, ICharacter>> SpawnedNPCs { get => _spawnedNPCsDictionary; set => _spawnedNPCsDictionary = value; }
         private DualSense _dualSense;
         private Controller xboxController;
         private Stopwatch _pollingTimer;
         private Stopwatch _controllerCheckTimer;
         private Stopwatch _mcdfRefreshTimer = new Stopwatch();
         private bool _screenButtonClicked;
-        private Dictionary<string, Dictionary<string, ICharacter>> _spawnedNPCs = new Dictionary<string, Dictionary<string, ICharacter>>();
+        private Dictionary<string, Dictionary<string, ICharacter>> _spawnedNPCsDictionary = new Dictionary<string, Dictionary<string, ICharacter>>();
         private bool _triggerRefresh;
         private bool _waitingForSelectionRelease;
         Queue<KeyValuePair<string, ICharacter>> _mcdfQueue = new Queue<KeyValuePair<string, ICharacter>>();
@@ -52,7 +54,7 @@ namespace AQuestReborn
         private MediaGameObject _playerObject;
         private unsafe Camera* _camera;
         private MediaCameraObject _playerCamera;
-        private Dictionary<RoleplayingQuest, Tuple<int, QuestObjective>> _activeQuestChainObjectives;
+        private List<Tuple<int, QuestObjective, RoleplayingQuest>> _activeQuestChainObjectives;
 
         public AQuestReborn(Plugin plugin)
         {
@@ -70,6 +72,7 @@ namespace AQuestReborn
             Plugin.Framework.Update += _framework_Update;
             Plugin.ClientState.Login += _clientState_Login;
             Plugin.ClientState.TerritoryChanged += _clientState_TerritoryChanged;
+            Plugin.ChatGui.ChatMessage += ChatGui_ChatMessage;
             _pollingTimer = new Stopwatch();
             _pollingTimer.Start();
             _controllerCheckTimer = new Stopwatch();
@@ -96,6 +99,17 @@ namespace AQuestReborn
             });
         }
 
+        private void ChatGui_ChatMessage(Dalamud.Game.Text.XivChatType type, int timestamp, ref Dalamud.Game.Text.SeStringHandling.SeString sender, ref Dalamud.Game.Text.SeStringHandling.SeString message, ref bool isHandled)
+        {
+            Plugin.PluginLog.Debug((int)type + " " + message);
+            switch ((int)type)
+            {
+                case 2874:
+                    Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.KillEnemy, message.ToString(), true);
+                    break;
+            }
+        }
+
         private void RewardWindow_OnRewardClosed(object? sender, EventArgs e)
         {
             QuestToastOptions questToastOptions = new QuestToastOptions();
@@ -107,7 +121,7 @@ namespace AQuestReborn
         {
             if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
             {
-                Plugin.RoleplayingQuestManager.ProgressTriggerQuestObjective(QuestObjective.ObjectiveTriggerType.DoEmote, emoteId.ToString());
+                Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.DoEmote, emoteId.ToString());
             }
         }
 
@@ -124,7 +138,7 @@ namespace AQuestReborn
         }
         public void RefreshMapMarkers()
         {
-            _activeQuestChainObjectives = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectives(Plugin.ClientState.TerritoryType);
+            _activeQuestChainObjectives = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType);
             unsafe
             {
                 AgentMap.Instance()->ResetMapMarkers();
@@ -132,16 +146,16 @@ namespace AQuestReborn
                 foreach (var item in _activeQuestChainObjectives)
                 {
                     Utf8String* stringBuffer = Utf8String.CreateEmpty();
-                    stringBuffer->SetString(item.Key.QuestName);
-                    if (item.Value.Item1 == 0)
+                    stringBuffer->SetString(item.Item3.QuestName);
+                    if (item.Item1 == 0)
                     {
-                        AgentMap.Instance()->AddMapMarker(item.Value.Item2.Coordinates, 230604, 0, stringBuffer->StringPtr);
-                        AgentMap.Instance()->AddMiniMapMarker(item.Value.Item2.Coordinates, 230604);
+                        AgentMap.Instance()->AddMapMarker(item.Item2.Coordinates, 230604, 0, stringBuffer->StringPtr);
+                        AgentMap.Instance()->AddMiniMapMarker(item.Item2.Coordinates, 230604);
                     }
                     else
                     {
-                        AgentMap.Instance()->AddMapMarker(item.Value.Item2.Coordinates, 230605, 0, stringBuffer->StringPtr);
-                        AgentMap.Instance()->AddMiniMapMarker(item.Value.Item2.Coordinates, 230605);
+                        AgentMap.Instance()->AddMapMarker(item.Item2.Coordinates, 230605, 0, stringBuffer->StringPtr);
+                        AgentMap.Instance()->AddMiniMapMarker(item.Item2.Coordinates, 230605);
                     }
                 }
             }
@@ -230,14 +244,34 @@ namespace AQuestReborn
             {
                 if (_activeQuestChainObjectives == null || _activeQuestChainObjectives.Count == 0)
                 {
-                    if (_mcdfRefreshTimer.ElapsedMilliseconds > 10000)
+                    if (_actorSpawnService.TargetService.GPoseTarget != null)
                     {
-                        _actorSpawnService.TargetService.GPoseTarget = null;
-                        _actorSpawnService.DestroyAllCreated();
+                        bool timeToDestroyNPCs = true;
+                        Vector2 screenPosition;
+                        foreach (var spawnList in _spawnedNPCsDictionary)
+                        {
+                            foreach (var spawn in spawnList.Value)
+                            {
+                                bool inView = false;
+                                Plugin.GameGui.WorldToScreen(spawn.Value.Position, out screenPosition, out inView);
+                                if (inView)
+                                {
+                                    timeToDestroyNPCs = !inView;
+                                    break;
+                                }
+                            }
+                        }
+                        if ((timeToDestroyNPCs))
+                        {
+                            _actorSpawnService.TargetService.GPoseTarget = null;
+                            _actorSpawnService.DestroyAllCreated();
+                            _spawnedNPCsDictionary.Clear();
+                        }
                     }
                 }
             }
         }
+
 
         private void CheckForNPCRefresh()
         {
@@ -270,7 +304,7 @@ namespace AQuestReborn
                     {
                         if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
                         {
-                            Plugin.RoleplayingQuestManager.ProgressTriggerQuestObjective();
+                            Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective();
                         }
                         else
                         {
@@ -313,12 +347,19 @@ namespace AQuestReborn
             {
                 Task.Run(() =>
                 {
-                    var controllers = DualSense.EnumerateControllers();
-                    if (controllers.Count() > 0)
+                    try
                     {
-                        _dualSense = controllers.First();
-                        _dualSense.Acquire();
-                        _dualSense.BeginPolling(40);
+                        var controllers = DualSense.EnumerateControllers();
+                        if (controllers != null && controllers.Count() > 0)
+                        {
+                            _dualSense = controllers.First();
+                            _dualSense.Acquire();
+                            _dualSense.BeginPolling(40);
+                        }
+                    }
+                    catch
+                    {
+
                     }
                 });
             }
@@ -340,10 +381,10 @@ namespace AQuestReborn
         }
         public void DestroyAllNpcsInQuestId(string questId)
         {
-            if (_spawnedNPCs.ContainsKey(questId))
+            if (_spawnedNPCsDictionary.ContainsKey(questId))
             {
                 int sleepTime = 100;
-                foreach (var item in _spawnedNPCs[questId])
+                foreach (var item in _spawnedNPCsDictionary[questId])
                 {
                     if (item.Value != null)
                     {
@@ -357,16 +398,16 @@ namespace AQuestReborn
                         }
                     }
                 }
-                _spawnedNPCs[questId].Clear();
+                _spawnedNPCsDictionary[questId].Clear();
             }
         }
         public void RefreshNpcsForQuest(ushort territoryId, string questId = "", bool softRefresh = false)
         {
             if (_actorSpawnService != null)
             {
-                if (!_spawnedNPCs.ContainsKey("DEBUG"))
+                if (!_spawnedNPCsDictionary.ContainsKey("DEBUG"))
                 {
-                    _spawnedNPCs["DEBUG"] = new Dictionary<string, ICharacter>();
+                    _spawnedNPCsDictionary["DEBUG"] = new Dictionary<string, ICharacter>();
                 }
                 if (!softRefresh)
                 {
@@ -389,29 +430,29 @@ namespace AQuestReborn
                         catch { }
                     }
                 }
-                if (!_spawnedNPCs["DEBUG"].ContainsKey("First Spawn") || _spawnedNPCs["DEBUG"].Count == 0)
+                if (!_spawnedNPCsDictionary["DEBUG"].ContainsKey("First Spawn") || _spawnedNPCsDictionary["DEBUG"].Count == 0)
                 {
                     ICharacter firstSpawn = null;
                     _actorSpawnService.CreateCharacter(out firstSpawn, SpawnFlags.DefinePosition, true,
                     new System.Numerics.Vector3(float.MaxValue / 2, float.MaxValue / 2, float.MaxValue / 2), 0);
-                    _spawnedNPCs["DEBUG"]["First Spawn"] = firstSpawn;
+                    _spawnedNPCsDictionary["DEBUG"]["First Spawn"] = firstSpawn;
                 }
 
-                var questChains = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectives(territoryId);
+                var questChains = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(territoryId);
                 foreach (var item in questChains)
                 {
-                    if (item.Key.QuestId == questId || string.IsNullOrEmpty(questId))
+                    if (item.Item3.QuestId == questId || string.IsNullOrEmpty(questId))
                     {
-                        string foundPath = item.Key.FoundPath;
-                        foreach (var npcAppearance in item.Key.NpcCustomizations)
+                        string foundPath = item.Item3.FoundPath;
+                        foreach (var npcAppearance in item.Item3.NpcCustomizations)
                         {
-                            if (item.Value.Item2.NpcStartingPositions.ContainsKey(npcAppearance.Value.NpcName))
+                            if (item.Item2.NpcStartingPositions.ContainsKey(npcAppearance.Value.NpcName))
                             {
-                                if (!_spawnedNPCs.ContainsKey(item.Key.QuestId))
+                                if (!_spawnedNPCsDictionary.ContainsKey(item.Item3.QuestId))
                                 {
-                                    _spawnedNPCs[item.Key.QuestId] = new Dictionary<string, ICharacter>();
+                                    _spawnedNPCsDictionary[item.Item3.QuestId] = new Dictionary<string, ICharacter>();
                                 }
-                                var spawnedNpcsList = _spawnedNPCs[item.Key.QuestId];
+                                var spawnedNpcsList = _spawnedNPCsDictionary[item.Item3.QuestId];
                                 if (spawnedNpcsList.ContainsKey(npcAppearance.Value.NpcName))
                                 {
                                     var npc = spawnedNpcsList[npcAppearance.Value.NpcName];
@@ -428,12 +469,13 @@ namespace AQuestReborn
                                     }
                                 }
                                 ICharacter character = null;
-                                var startingInfo = item.Value.Item2.NpcStartingPositions[npcAppearance.Value.NpcName];
+                                var startingInfo = item.Item2.NpcStartingPositions[npcAppearance.Value.NpcName];
                                 _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true, startingInfo.Position, Utility.ConvertDegreesToRadians(startingInfo.EulerRotation.Y));
                                 if (character != null)
                                 {
                                     spawnedNpcsList[npcAppearance.Value.NpcName] = character;
                                     _mcdfQueue.Enqueue(new KeyValuePair<string, ICharacter>(Path.Combine(foundPath, npcAppearance.Value.AppearanceData), character));
+                                    Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)startingInfo.DefaultAnimationId);
                                 }
                             }
                         }
@@ -448,7 +490,7 @@ namespace AQuestReborn
 
         private void QuestAcceptanceWindow_OnQuestAccepted(object? sender, EventArgs e)
         {
-            Plugin.RoleplayingQuestManager.ProgressTriggerQuestObjective();
+            Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective();
         }
 
         private void _roleplayingQuestManager_OnObjectiveCompleted(object? sender, QuestObjective e)

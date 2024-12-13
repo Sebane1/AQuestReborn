@@ -49,10 +49,9 @@ public class MainWindow : Window, IDisposable
     public override void Draw()
     {
         _fileDialogManager.Draw();
-        DrawInitialSetup();
-        if (!string.IsNullOrEmpty(Plugin.Configuration.QuestInstallFolder) && Directory.Exists(Plugin.Configuration.QuestInstallFolder))
+        if (ImGui.BeginTabBar("ConfigTabs"))
         {
-            if (ImGui.BeginTabBar("ConfigTabs"))
+            if (!string.IsNullOrEmpty(Plugin.Configuration.QuestInstallFolder) && Directory.Exists(Plugin.Configuration.QuestInstallFolder))
             {
                 if (ImGui.BeginTabItem("Installed Quests"))
                 {
@@ -64,8 +63,13 @@ public class MainWindow : Window, IDisposable
                     DrawQuestObjectives();
                     ImGui.EndTabItem();
                 }
-                ImGui.EndTabBar();
             }
+            if (ImGui.BeginTabItem("Settings"))
+            {
+                DrawInitialSetup();
+                ImGui.EndTabItem();
+            }
+            ImGui.EndTabBar();
         }
     }
 

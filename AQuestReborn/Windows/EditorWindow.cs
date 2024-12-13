@@ -224,6 +224,9 @@ public class EditorWindow : Window, IDisposable
             var objectiveTriggerTypes = Enum.GetNames(typeof(ObjectiveTriggerType));
             var triggerText = questObjective.TriggerText;
 
+            var minimum3dIndicatorDistance = questObjective.Minimum3dIndicatorDistance;
+            var dontShowOnMap = questObjective.DontShowOnMap;
+
             ImGui.SetNextItemWidth(200);
             ImGui.LabelText("##coordinatesLabel", $"Coordinates: X:{Math.Round(questObjective.Coordinates.X)}," +
                 $"Y:{Math.Round(questObjective.Coordinates.Y)}," +
@@ -236,6 +239,14 @@ public class EditorWindow : Window, IDisposable
             {
                 questObjective.Coordinates = Plugin.ClientState.LocalPlayer.Position;
                 questObjective.TerritoryId = Plugin.ClientState.TerritoryType;
+            }
+            if (ImGui.InputFloat("Minimum Indicator Distance##", ref minimum3dIndicatorDistance))
+            {
+                questObjective.Minimum3dIndicatorDistance = minimum3dIndicatorDistance;
+            }
+            if (ImGui.Checkbox("Dont Show On Map##", ref dontShowOnMap))
+            {
+                questObjective.DontShowOnMap = dontShowOnMap;
             }
             if (ImGui.InputText("Objective Text##", ref objective, 500))
             {
@@ -269,6 +280,14 @@ public class EditorWindow : Window, IDisposable
                     {
                         questObjective.TriggerText = triggerText;
                     }
+                    break;
+                case ObjectiveTriggerType.KillEnemy:
+                    if (ImGui.InputText("Enemy Name##", ref triggerText, 500))
+                    {
+                        questObjective.TriggerText = triggerText;
+                    }
+                    break;
+                case ObjectiveTriggerType.SearchArea:
                     break;
             }
             if (ImGui.Button("Edit NPC Transform Data##"))

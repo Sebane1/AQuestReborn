@@ -71,11 +71,9 @@ public class NPCTransformEditorWindow : Window, IDisposable
         {
             var item = npcCustomization.ElementAt(_selectedNpcTransform);
             var name = item.Value.Name;
-
+            var defaultAnimationId = item.Value.DefaultAnimationId;
             var position = item.Value.Position;
-
             var eulerRotation = item.Value.EulerRotation;
-
             var scale = item.Value.Scale;
 
             ImGui.SetNextItemWidth(100);
@@ -83,6 +81,15 @@ public class NPCTransformEditorWindow : Window, IDisposable
             {
                 item.Value.Name = name;
             }
+
+            ImGui.SetNextItemWidth(100);
+            ImGui.LabelText("##defaultAnimationId", "Default Animation Id: ");
+            ImGui.SameLine();
+            if (ImGui.InputInt("##Default Animation Id", ref defaultAnimationId))
+            {
+                item.Value.DefaultAnimationId = defaultAnimationId;
+            }
+
             ImGui.SetNextItemWidth(100);
             ImGui.LabelText("##positon", "Position: ");
             ImGui.SameLine();
@@ -106,7 +113,6 @@ public class NPCTransformEditorWindow : Window, IDisposable
             {
                 item.Value.Scale = scale;
             }
-
             if (ImGui.Button("Set Transform Coordinates From Standing Position"))
             {
                 _roleplayingQuestCreator.SetStartingTransformDataToPlayer(Plugin.RoleplayingQuestManager.MainPlayer, item.Value);

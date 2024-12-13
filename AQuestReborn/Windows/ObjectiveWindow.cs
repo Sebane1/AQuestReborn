@@ -127,14 +127,14 @@ public class ObjectiveWindow : Window, IDisposable
         }
         if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
         {
-            var questChains = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectives(Plugin.ClientState.TerritoryType);
+            var questChains = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType);
             _mouseDistanceIsCloseToObjective = false;
             foreach (var item in questChains)
             {
                 Vector2 screenPosition = new Vector2();
                 bool inView = false;
                 Vector3 offset = new Vector3();
-                switch (item.Value.Item2.TypeOfQuestPoint)
+                switch (item.Item2.TypeOfQuestPoint)
                 {
                     case RoleplayingQuestCore.QuestObjective.QuestPointType.NPC:
                         offset = new Vector3(0, 2.5f, 0);
@@ -146,7 +146,7 @@ public class ObjectiveWindow : Window, IDisposable
                         // To do: Display something unique?
                         break;
                 }
-                Plugin.GameGui.WorldToScreen(item.Value.Item2.Coordinates + offset, out screenPosition, out inView);
+                Plugin.GameGui.WorldToScreen(item.Item2.Coordinates + offset, out screenPosition, out inView);
                 if (inView)
                 {
                     if (_questStartIconTextureWrap != null)
@@ -154,7 +154,7 @@ public class ObjectiveWindow : Window, IDisposable
                         var value = ImGui.GetIO().MousePos;
                         var distance = Vector2.Distance(new Vector2(screenPosition.X / Size.Value.X, 0),
                             new Vector2(value.X / Size.Value.X, 0));
-                        var playerDistance = Vector3.Distance(Plugin.ClientState.LocalPlayer.Position, item.Value.Item2.Coordinates);
+                        var playerDistance = Vector3.Distance(Plugin.ClientState.LocalPlayer.Position, item.Item2.Coordinates);
                         if (distance < 0.1f && playerDistance < Plugin.RoleplayingQuestManager.MinimumDistance)
                         {
                             _mouseDistanceIsCloseToObjective = true;
@@ -168,11 +168,14 @@ public class ObjectiveWindow : Window, IDisposable
                                 }
                             }
                         }
-                        var iconDimensions = new Vector2(100, 100);
-                        ImGui.SetCursorPos(new Vector2(screenPosition.X - (iconDimensions.X / 2), screenPosition.Y - (iconDimensions.Y / 2)));
-                        if (_questStartIconTextureWrap != null && _questObjectiveIconTextureWrap != null)
+                        if (playerDistance < item.Item2.Minimum3dIndicatorDistance)
                         {
-                            ImGui.Image(item.Value.Item1 == 0 ? _questStartIconTextureWrap.ImGuiHandle : _questObjectiveIconTextureWrap.ImGuiHandle, iconDimensions);
+                            var iconDimensions = new Vector2(100, 100);
+                            ImGui.SetCursorPos(new Vector2(screenPosition.X - (iconDimensions.X / 2), screenPosition.Y - (iconDimensions.Y / 2)));
+                            if (_questStartIconTextureWrap != null && _questObjectiveIconTextureWrap != null)
+                            {
+                                ImGui.Image(item.Item1 == 0 ? _questStartIconTextureWrap.ImGuiHandle : _questObjectiveIconTextureWrap.ImGuiHandle, iconDimensions);
+                            }
                         }
                     }
                 }

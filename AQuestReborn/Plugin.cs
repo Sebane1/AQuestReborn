@@ -83,14 +83,17 @@ public sealed class Plugin : IDalamudPlugin
     internal AQuestReborn.AQuestReborn AQuestReborn { get => _aQuestReborn; set => _aQuestReborn = value; }
     public AnamcoreManager AnamcoreManager { get => _anamcoreManager; set => _anamcoreManager = value; }
     public IGameConfig GameConfig { get => _gameConfig; set => _gameConfig = value; }
+    public IChatGui ChatGui { get => _chatGui; set => _chatGui = value; }
 
     private EmoteReaderHooks _emoteReaderHook;
     private IPluginLog _pluginLog;
     private IGameConfig _gameConfig;
+    private IChatGui _chatGui;
 
     public Plugin(IClientState clientState, IFramework framework, IToastGui toastGui,
         ITextureProvider textureProvider, IGameGui gameGui, IDalamudPluginInterface dalamudPluginInterface,
-        IGameInteropProvider gameInteropProvider, IObjectTable objectTable, IDataManager dataManager, IPluginLog pluginLog, IGameConfig gameConfig)
+        IGameInteropProvider gameInteropProvider, IObjectTable objectTable, IDataManager dataManager,
+        IPluginLog pluginLog, IGameConfig gameConfig, IChatGui chatGui)
     {
         _brio = new Brio.Brio(dalamudPluginInterface);
         _clientState = clientState;
@@ -101,10 +104,10 @@ public sealed class Plugin : IDalamudPlugin
         _dataManager = dataManager;
         _pluginLog = pluginLog;
         _gameConfig = gameConfig;
+        _chatGui = chatGui;
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
         // you might normally want to embed resources and load them from the manifest stream
-        var goatImagePath = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "goat.png");
 
         ChoiceWindow = new ChoiceWindow(this);
         DialogueWindow = new DialogueWindow(this);
@@ -150,7 +153,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         if (!DialogueWindow.IsOpen && !ChoiceWindow.IsOpen)
         {
-            _roleplayingQuestManager.ProgressTriggerQuestObjective(QuestObjective.ObjectiveTriggerType.SayPhrase, arguments);
+            _roleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.SayPhrase, arguments);
         }
     }
 
