@@ -168,7 +168,7 @@ public class ObjectiveWindow : Window, IDisposable
                                 }
                             }
                         }
-                        if (playerDistance < item.Item2.Minimum3dIndicatorDistance)
+                        if (playerDistance < item.Item2.Maximum3dIndicatorDistance)
                         {
                             var iconDimensions = new Vector2(100, 100);
                             ImGui.SetCursorPos(new Vector2(screenPosition.X - (iconDimensions.X / 2), screenPosition.Y - (iconDimensions.Y / 2)));
