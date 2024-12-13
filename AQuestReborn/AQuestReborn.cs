@@ -188,8 +188,7 @@ namespace AQuestReborn
 
         private void _framework_Update(IFramework framework)
         {
-            if (!Plugin.ClientState.IsGPosing && !Plugin.ClientState.IsPvPExcludingDen &&
-                !Conditions.IsBoundByDuty && !Conditions.IsInBetweenAreas && !Conditions.IsWatchingCutscene
+            if (!Plugin.ClientState.IsGPosing && !Plugin.ClientState.IsPvPExcludingDen && !Conditions.IsInBetweenAreas && !Conditions.IsWatchingCutscene
                 && !Conditions.IsOccupied && !Conditions.IsInCombat && Plugin.ClientState.IsLoggedIn)
             {
                 CheckForNewMCDFLoad();
