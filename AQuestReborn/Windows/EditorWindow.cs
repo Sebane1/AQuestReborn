@@ -331,11 +331,11 @@ public class EditorWindow : Window, IDisposable
             var dialogueEndTypes = Enum.GetNames(typeof(QuestText.DialogueEndBehaviourType));
             var dialogueBackgroundTypes = Enum.GetNames(typeof(QuestText.DialogueBackgroundType));
             var appearanceSwap = item.AppearanceSwap;
-            if (ImGui.InputText("Npc Alias##", ref npcAlias, 20))
+            if (ImGui.InputText("Npc Alias##", ref npcAlias, 40))
             {
                 item.NpcAlias = npcAlias;
             }
-            if (ImGui.InputText("Npc Name##", ref npcName, 20))
+            if (ImGui.InputText("Npc Name##", ref npcName, 40))
             {
                 item.NpcName = npcName;
             }

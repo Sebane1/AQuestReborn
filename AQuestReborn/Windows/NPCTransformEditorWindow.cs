@@ -77,7 +77,7 @@ public class NPCTransformEditorWindow : Window, IDisposable
             var scale = item.Value.Scale;
 
             ImGui.SetNextItemWidth(100);
-            if (ImGui.InputText("##name", ref name, 20))
+            if (ImGui.InputText("##name", ref name, 40))
             {
                 item.Value.Name = name;
             }

@@ -68,7 +68,7 @@ public class NPCEditorWindow : Window, IDisposable
             var npcName = item.NpcName;
             var appearanceData = item.AppearanceData;
             var branchingChoiceTypes = Enum.GetNames(typeof(BranchingChoiceType));
-            if (ImGui.InputText("Npc Name##", ref npcName, 20))
+            if (ImGui.InputText("Npc Name##", ref npcName, 40))
             {
                 item.NpcName = npcName;
             }
