@@ -12,6 +12,7 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using ImGuiNET;
+using Lumina.Excel.Sheets;
 using RoleplayingMediaCore;
 using RoleplayingQuestCore;
 using RoleplayingVoiceDalamudWrapper;
@@ -32,7 +33,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
     string _currentName = "";
     Stopwatch textTimer = new Stopwatch();
     private bool _choicesAreNext;
-    byte[] emptyBackground;
+    byte[] _emptyBackground;
     byte[] _currentBackground;
     private bool _alreadyLoadingFrame;
 
@@ -46,6 +47,11 @@ public class DialogueBackgroundWindow : Window, IDisposable
     private QuestText.DialogueBackgroundType _currentBackgroundType;
     private bool _videoWasPlaying;
     private bool _videoNeedsToPlay;
+    private bool _wasClosed;
+    private float _currentBackgroundAspectRatio = 0.5625f;
+    private bool _isPortrait = false;
+    private byte[] _blackBars;
+    private IDalamudTextureWrap _blackBarsFrame;
 
     public event EventHandler ButtonClicked;
 
@@ -58,16 +64,29 @@ public class DialogueBackgroundWindow : Window, IDisposable
     {
         //Size = new Vector2(600, 200);
         Plugin = plugin;
-        MemoryStream blank = new MemoryStream();
+        InitializePlaceholders();
+        _currentBackground = _emptyBackground;
+        _textureProvider = textureProvider;
+        _dummyObject = new DummyObject();
+    }
+
+    private void InitializePlaceholders()
+    {
+        MemoryStream memoryData = new MemoryStream();
         Bitmap none = new Bitmap(1, 1);
         Graphics graphics = Graphics.FromImage(none);
         graphics.Clear(Color.Transparent);
-        none.Save(blank, ImageFormat.Png);
-        blank.Position = 0;
-        emptyBackground = blank.ToArray();
-        _currentBackground = emptyBackground;
-        _textureProvider = textureProvider;
-        _dummyObject = new DummyObject();
+        none.Save(memoryData, ImageFormat.Png);
+        memoryData.Position = 0;
+        _emptyBackground = memoryData.ToArray();
+
+        memoryData = new MemoryStream();
+        Bitmap blackBars = new Bitmap(1, 1);
+        graphics = Graphics.FromImage(blackBars);
+        graphics.Clear(Color.Black);
+        blackBars.Save(memoryData, ImageFormat.Png);
+        memoryData.Position = 0;
+        _blackBars = memoryData.ToArray();
     }
 
     public QuestDisplayObject QuestTexts { get => questDisplayObject; set => questDisplayObject = value; }
@@ -78,6 +97,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
     {
         if (!_videoWasPlaying)
         {
+            _wasClosed = true;
             ClearBackground();
             base.OnClose();
         }
@@ -94,7 +114,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
         switch (_currentBackgroundType)
         {
             case QuestText.DialogueBackgroundType.None:
-                _currentBackground = emptyBackground;
+                _currentBackground = _emptyBackground;
                 ImageFileDisplay();
                 break;
             case QuestText.DialogueBackgroundType.Image:
@@ -124,7 +144,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
 
     private void ImageFileDisplay()
     {
-        var displaySize = ImGui.GetIO().DisplaySize;
+        var displaySize = Size.Value;
         CheckMouseDown();
         if (!_alreadyLoadingFrame)
         {
@@ -136,12 +156,23 @@ public class DialogueBackgroundWindow : Window, IDisposable
                     _frameToLoad = await _textureProvider.CreateFromImageAsync(_currentBackground);
                     _lastLoadedFrame = _currentBackground;
                 }
+                if(_blackBarsFrame == null)
+                {
+                    _blackBarsFrame = await _textureProvider.CreateFromImageAsync(_blackBars);
+                }
                 _alreadyLoadingFrame = false;
             });
         }
         if (_frameToLoad != null)
         {
-            ImGui.Image(_frameToLoad.ImGuiHandle, new Vector2(Size.Value.X, Size.Value.Y));
+            Vector2 scaledSize = new Vector2(displaySize.Y * _currentBackgroundAspectRatio, displaySize.Y);
+
+            if (_blackBarsFrame != null && _currentBackgroundType == QuestText.DialogueBackgroundType.Image)
+            {
+                ImGui.Image(_blackBarsFrame.ImGuiHandle, displaySize);
+            }
+            ImGui.SetCursorPos(new Vector2((displaySize.X / 2) - (scaledSize.X / 2), (displaySize.Y / 2) - (scaledSize.Y / 2)));
+            ImGui.Image(_frameToLoad.ImGuiHandle, scaledSize);
         }
         if (!Plugin.DialogueWindow.IsOpen)
         {
@@ -151,7 +182,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
 
     private void VideoFilePlayback()
     {
-        var displaySize = ImGui.GetIO().DisplaySize;
+        var displaySize = Size.Value;
         if (_mediaManager != null && _mediaManager.LastFrame != null && _mediaManager.LastFrame.Length > 0)
         {
             try
@@ -184,7 +215,10 @@ public class DialogueBackgroundWindow : Window, IDisposable
                     }
                     if (_frameToLoad != null)
                     {
-                        ImGui.Image(_frameToLoad.ImGuiHandle, new Vector2(Size.Value.X, Size.Value.Y));
+                        float ratio = 1080 / 1920;
+                        Vector2 scaledSize = new Vector2(displaySize.Y * ratio, displaySize.Y);
+                        ImGui.SetCursorPos(new Vector2((displaySize.X / 2) - (scaledSize.X / 2), (displaySize.Y / 2) - (scaledSize.Y / 2)));
+                        ImGui.Image(_frameToLoad.ImGuiHandle, scaledSize);
                     }
                 }
             }
@@ -204,13 +238,19 @@ public class DialogueBackgroundWindow : Window, IDisposable
 
     public void SetBackground(string path, QuestText.DialogueBackgroundType dialogueBackgroundType)
     {
+        if (_wasClosed)
+        {
+            ClearBackground();
+            _wasClosed = false;
+        }
         _currentBackgroundType = dialogueBackgroundType;
         switch (dialogueBackgroundType)
         {
             case QuestText.DialogueBackgroundType.Image:
                 MemoryStream background = new MemoryStream();
-                Bitmap none = new Bitmap(path);
-                none.Save(background, ImageFormat.Png);
+                Bitmap newImage = new Bitmap(path);
+                _currentBackgroundAspectRatio = (float)newImage.Width / newImage.Height;
+                newImage.Save(background, ImageFormat.Png);
                 background.Position = 0;
                 _currentBackground = background.ToArray();
                 break;
@@ -226,7 +266,8 @@ public class DialogueBackgroundWindow : Window, IDisposable
     }
     public void ClearBackground()
     {
-        _currentBackground = emptyBackground;
+        _currentBackgroundType = QuestText.DialogueBackgroundType.None;
+        _currentBackground = _emptyBackground;
         Plugin.MediaManager?.StopAudio(_dummyObject);
     }
 }
