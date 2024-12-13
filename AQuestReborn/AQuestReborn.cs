@@ -44,6 +44,7 @@ namespace AQuestReborn
         private Stopwatch _pollingTimer;
         private Stopwatch _controllerCheckTimer;
         private Stopwatch _mcdfRefreshTimer = new Stopwatch();
+        private Stopwatch _mapRefreshTimer = new Stopwatch();
         private bool _screenButtonClicked;
         private Dictionary<string, Dictionary<string, ICharacter>> _spawnedNPCsDictionary = new Dictionary<string, Dictionary<string, ICharacter>>();
         private bool _triggerRefresh;
@@ -78,6 +79,7 @@ namespace AQuestReborn
             _controllerCheckTimer = new Stopwatch();
             _controllerCheckTimer.Start();
             _mcdfRefreshTimer.Start();
+            _mapRefreshTimer.Start();
             Plugin.EmoteReaderHook.OnEmote += (instigator, emoteId) => OnEmote(instigator as ICharacter, emoteId);
             Task.Run(() =>
             {
@@ -145,17 +147,20 @@ namespace AQuestReborn
                 AgentMap.Instance()->ResetMiniMapMarkers();
                 foreach (var item in _activeQuestChainObjectives)
                 {
-                    Utf8String* stringBuffer = Utf8String.CreateEmpty();
-                    stringBuffer->SetString(item.Item3.QuestName);
-                    if (item.Item1 == 0)
+                    if (!item.Item2.DontShowOnMap)
                     {
-                        AgentMap.Instance()->AddMapMarker(item.Item2.Coordinates, 230604, 0, stringBuffer->StringPtr);
-                        AgentMap.Instance()->AddMiniMapMarker(item.Item2.Coordinates, 230604);
-                    }
-                    else
-                    {
-                        AgentMap.Instance()->AddMapMarker(item.Item2.Coordinates, 230605, 0, stringBuffer->StringPtr);
-                        AgentMap.Instance()->AddMiniMapMarker(item.Item2.Coordinates, 230605);
+                        Utf8String* stringBuffer = Utf8String.CreateEmpty();
+                        stringBuffer->SetString(item.Item3.QuestName);
+                        if (item.Item1 == 0)
+                        {
+                            AgentMap.Instance()->AddMapMarker(item.Item2.Coordinates, 230604, 0, stringBuffer->StringPtr);
+                            AgentMap.Instance()->AddMiniMapMarker(item.Item2.Coordinates, 230604);
+                        }
+                        else
+                        {
+                            AgentMap.Instance()->AddMapMarker(item.Item2.Coordinates, 230605, 0, stringBuffer->StringPtr);
+                            AgentMap.Instance()->AddMiniMapMarker(item.Item2.Coordinates, 230605);
+                        }
                     }
                 }
             }
@@ -190,14 +195,25 @@ namespace AQuestReborn
         {
             if (!Plugin.ClientState.IsGPosing && !Plugin.ClientState.IsPvPExcludingDen &&
                 !Conditions.IsBoundByDuty && !Conditions.IsInBetweenAreas && !Conditions.IsWatchingCutscene
-                && !Conditions.IsOccupied && !Conditions.IsInCombat)
+                && !Conditions.IsOccupied && !Conditions.IsInCombat && Plugin.ClientState.IsLoggedIn)
             {
                 CheckForNewMCDFLoad();
                 ControllerLogic();
                 QuestInputCheck();
                 CheckForNPCRefresh();
+                CheckForMapRefresh();
             }
         }
+
+        private void CheckForMapRefresh()
+        {
+            if (_mapRefreshTimer.ElapsedMilliseconds > 10000)
+            {
+                RefreshMapMarkers();
+                _mapRefreshTimer.Restart();
+            }
+        }
+
         private void CheckVolumeLevels()
         {
             uint voiceVolume = 0;
