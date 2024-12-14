@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
 using System.Text;
@@ -21,6 +22,7 @@ public class QuestAcceptanceWindow : Window, IDisposable
     private byte[] _lastLoadedFrame;
     public event EventHandler OnQuestAccepted;
     private Stopwatch _timeSinceLastQuestAccepted = new Stopwatch();
+    private int _thumbnailRatio;
 
     public Stopwatch TimeSinceLastQuestAccepted { get => _timeSinceLastQuestAccepted; set => _timeSinceLastQuestAccepted = value; }
 
@@ -71,7 +73,7 @@ public class QuestAcceptanceWindow : Window, IDisposable
             }
             if (_frameToLoad != null)
             {
-                ImGui.Image(_frameToLoad.ImGuiHandle, new Vector2(500, 200));
+                ImGui.Image(_frameToLoad.ImGuiHandle, new Vector2(_thumbnailRatio * 200, 200));
             }
         }
         ImGui.LabelText("", "Reward: " + questReward);
@@ -119,10 +121,12 @@ public class QuestAcceptanceWindow : Window, IDisposable
     {
         if (!string.IsNullOrEmpty(path) && File.Exists(path))
         {
-            MemoryStream background = new MemoryStream();
-            Bitmap none = new Bitmap(path);
-            background.Position = 0;
-            _currentThumbnail = background.ToArray();
+            MemoryStream thumbnail = new MemoryStream();
+            Bitmap thumbnailBitmap = new Bitmap(path);
+            _thumbnailRatio = thumbnailBitmap.Width / thumbnailBitmap.Height;
+            thumbnailBitmap.Save(thumbnail, ImageFormat.Png);
+            thumbnail.Position = 0;
+            _currentThumbnail = thumbnail.ToArray();
         }
         else
         {
