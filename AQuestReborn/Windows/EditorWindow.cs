@@ -609,9 +609,14 @@ public class EditorWindow : Window, IDisposable
             {
                 if (ImGui.TreeNode(objective.Objective + "##" + i))
                 {
+                    if(level > 0)
+                    {
+                        objective.IsAPrimaryObjective = false;
+                    }
                     if (ImGui.Button("Edit##" + i))
                     {
                         _objectiveInFocus = objective;
+                        RefreshMenus();
                     }
                     ImGui.SameLine();
                     if (ImGui.Button("Add Child##" + i))
