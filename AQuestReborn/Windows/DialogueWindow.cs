@@ -275,7 +275,14 @@ public class DialogueWindow : Window, IDisposable
                 {
                     if ((ushort)item.BodyExpression > 0)
                     {
-                        Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.AQuestReborn.SpawnedNPCs[questDisplayObject.RoleplayingQuest.QuestId][item.NpcName], (ushort)item.BodyExpression);
+                        if (!item.LoopAnimation)
+                        {
+                            Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.AQuestReborn.SpawnedNPCs[questDisplayObject.RoleplayingQuest.QuestId][item.NpcName], (ushort)item.BodyExpression);
+                        }
+                        else
+                        {
+                            Plugin.AnamcoreManager.TriggerEmote(Plugin.AQuestReborn.SpawnedNPCs[questDisplayObject.RoleplayingQuest.QuestId][item.NpcName].Address, (ushort)item.BodyExpression);
+                        }
                     }
                     else
                     {

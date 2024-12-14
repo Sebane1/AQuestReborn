@@ -331,6 +331,7 @@ public class EditorWindow : Window, IDisposable
             var dialogueEndTypes = Enum.GetNames(typeof(QuestText.DialogueEndBehaviourType));
             var dialogueBackgroundTypes = Enum.GetNames(typeof(QuestText.DialogueBackgroundType));
             var appearanceSwap = item.AppearanceSwap;
+            var loopAnimation = item.LoopAnimation;
             if (ImGui.InputText("Npc Alias##", ref npcAlias, 40))
             {
                 item.NpcAlias = npcAlias;
@@ -365,6 +366,10 @@ public class EditorWindow : Window, IDisposable
             if (ImGui.InputInt("Body Expression Id##", ref bodyExpression))
             {
                 item.BodyExpression = bodyExpression;
+            }
+            if (ImGui.Checkbox("Loop Animation##", ref loopAnimation))
+            {
+                item.LoopAnimation = loopAnimation;
             }
             if (ImGui.Combo("Dialogue Background Type##", ref dialogueBackgroundType, dialogueBackgroundTypes, dialogueBackgroundTypes.Length))
             {
