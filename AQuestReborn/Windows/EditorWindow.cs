@@ -616,7 +616,12 @@ public class EditorWindow : Window, IDisposable
                     ImGui.SameLine();
                     if (ImGui.Button("Add Child##" + i))
                     {
-                        objective.SubObjectives.Add(new QuestObjective());
+                        objective.SubObjectives.Add(new QuestObjective()
+                        {
+                            Coordinates = Plugin.ClientState.LocalPlayer.Position,
+                            Rotation = new Vector3(0, Utility.ConvertRadiansToDegrees(Plugin.ClientState.LocalPlayer.Rotation), 0),
+                            TerritoryId = Plugin.ClientState.TerritoryType
+                        });
                     }
                     ImGui.SameLine();
                     if (ImGui.Button("Delete##" + i))
