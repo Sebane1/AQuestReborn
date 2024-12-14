@@ -220,6 +220,7 @@ public class EditorWindow : Window, IDisposable
             var objectiveStatusTypes = Enum.GetNames(typeof(ObjectiveStatusType));
             var objectiveTriggerTypes = Enum.GetNames(typeof(ObjectiveTriggerType));
             var triggerText = questObjective.TriggerText;
+            var objectiveImmediatelySatisfiesParent = questObjective.ObjectiveImmediatelySatisfiesParent;
 
             var maximum3dIndicatorDistance = questObjective.Maximum3dIndicatorDistance;
             var dontShowOnMap = questObjective.DontShowOnMap;
@@ -244,6 +245,13 @@ public class EditorWindow : Window, IDisposable
             if (ImGui.Checkbox("Dont Show On Map##", ref dontShowOnMap))
             {
                 questObjective.DontShowOnMap = dontShowOnMap;
+            }
+            if (!questObjective.IsAPrimaryObjective)
+            {
+                if (ImGui.Checkbox("Immediately Satisfies Parent Objective##", ref objectiveImmediatelySatisfiesParent))
+                {
+                    questObjective.ObjectiveImmediatelySatisfiesParent = objectiveImmediatelySatisfiesParent;
+                }
             }
             if (ImGui.InputText("Objective Text##", ref objective, 500))
             {
@@ -651,7 +659,7 @@ public class EditorWindow : Window, IDisposable
     private void DrawQuestObjectives()
     {
         DrawQuestObjectivesRecursive(_roleplayingQuestCreator.CurrentQuest.QuestObjectives, 0);
-        if (ImGui.Button("Add## Objective"))
+        if (ImGui.Button("Add Objective"))
         {
             _npcTransformEditorWindow.RefreshMenus();
             _roleplayingQuestCreator.AddQuestObjective(new QuestObjective()
