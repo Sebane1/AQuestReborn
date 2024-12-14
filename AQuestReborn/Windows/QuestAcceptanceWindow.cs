@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Numerics;
@@ -19,6 +20,9 @@ public class QuestAcceptanceWindow : Window, IDisposable
     private IDalamudTextureWrap _frameToLoad;
     private byte[] _lastLoadedFrame;
     public event EventHandler OnQuestAccepted;
+    private Stopwatch _timeSinceLastQuestAccepted = new Stopwatch();
+
+    public Stopwatch TimeSinceLastQuestAccepted { get => _timeSinceLastQuestAccepted; set => _timeSinceLastQuestAccepted = value; }
 
     // We give this window a constant ID using ###
     // This allows for labels being dynamic, like "{FPS Counter}fps###XYZ counter window",
@@ -30,6 +34,7 @@ public class QuestAcceptanceWindow : Window, IDisposable
 
         Size = new Vector2(500, 500);
         SizeCondition = ImGuiCond.Always;
+        _timeSinceLastQuestAccepted.Start();
     }
 
     public void Dispose() { }
@@ -75,6 +80,7 @@ public class QuestAcceptanceWindow : Window, IDisposable
         ImGui.SetWindowFontScale(2);
         if (ImGui.Button("Accept"))
         {
+            _timeSinceLastQuestAccepted.Restart();
             _questToDisplay.HasQuestAcceptancePopup = false;
             OnQuestAccepted?.Invoke(this, EventArgs.Empty);
             IsOpen = false;

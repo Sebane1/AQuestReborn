@@ -1,13 +1,10 @@
+using Dalamud.Interface.Windowing;
+using ImGuiNET;
+using RoleplayingQuestCore;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
-using Dalamud.Interface.Internal;
-using Dalamud.Interface.Utility;
-using Dalamud.Interface.Windowing;
-using Dalamud.Plugin.Services;
-using ImGuiNET;
-using RoleplayingQuestCore;
 
 namespace SamplePlugin.Windows;
 
@@ -20,8 +17,11 @@ public class ChoiceWindow : Window, IDisposable
     string _targetText = "";
     string _currentText = "";
     string _currentName = "";
-    Stopwatch textTimer = new Stopwatch();
+    Stopwatch _timeSinceLastChoiceMade = new Stopwatch();
     List<BranchingChoice> _branchingChoices = new List<BranchingChoice>();
+
+    public Stopwatch TimeSinceLastChoiceMade { get => _timeSinceLastChoiceMade; set => _timeSinceLastChoiceMade = value; }
+
     public event EventHandler<int> OnChoiceMade;
 
     // We give this window a hidden ID using ##
@@ -32,6 +32,7 @@ public class ChoiceWindow : Window, IDisposable
     {
         Size = new Vector2(500, 200);
         Plugin = plugin;
+        _timeSinceLastChoiceMade.Start();
     }
 
 
@@ -46,10 +47,12 @@ public class ChoiceWindow : Window, IDisposable
         {
             ImGui.SetWindowFontScale(1.5f);
             ImGui.SetNextItemWidth(Size.Value.X);
-            if (ImGui.Button(choice.ChoiceText + "##" + i))
+            if (ImGui.Button(choice.ChoiceText + "##" + i) && IsOpen)
             {
-                OnChoiceMade?.Invoke(this, i);
+                _timeSinceLastChoiceMade.Restart();
                 IsOpen = false;
+                OnChoiceMade?.Invoke(this, i);
+                break;
             }
             i++;
         }

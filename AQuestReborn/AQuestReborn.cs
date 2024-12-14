@@ -29,7 +29,7 @@ namespace AQuestReborn
         public Plugin Plugin { get; }
         public Dictionary<string, Dictionary<string, ICharacter>> SpawnedNPCs { get => _spawnedNPCsDictionary; set => _spawnedNPCsDictionary = value; }
         private Stopwatch _pollingTimer;
-        private Stopwatch _controllerCheckTimer;
+        private Stopwatch _inputCooldown;
         private Stopwatch _mcdfRefreshTimer = new Stopwatch();
         private Stopwatch _mapRefreshTimer = new Stopwatch();
         private bool _screenButtonClicked;
@@ -63,8 +63,8 @@ namespace AQuestReborn
             Plugin.ChatGui.ChatMessage += ChatGui_ChatMessage;
             _pollingTimer = new Stopwatch();
             _pollingTimer.Start();
-            _controllerCheckTimer = new Stopwatch();
-            _controllerCheckTimer.Start();
+            _inputCooldown = new Stopwatch();
+            _inputCooldown.Start();
             _mcdfRefreshTimer.Start();
             _mapRefreshTimer.Start();
             Plugin.EmoteReaderHook.OnEmote += (instigator, emoteId) => OnEmote(instigator as ICharacter, emoteId);
@@ -298,18 +298,23 @@ namespace AQuestReborn
             if (_pollingTimer.ElapsedMilliseconds > 100)
             {
                 Plugin.ObjectiveWindow.IsOpen = true;
-                if (Plugin.GamepadState.Raw(GamepadButtons.South) == 1 || _screenButtonClicked)
+                if (((Plugin.GamepadState.Raw(GamepadButtons.South) == 1) || _screenButtonClicked))
                 {
                     _screenButtonClicked = false;
                     if (!_waitingForSelectionRelease)
                     {
-                        if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
+                        if (Plugin.QuestAcceptanceWindow.TimeSinceLastQuestAccepted.ElapsedMilliseconds > 250 
+                            && Plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 250)
                         {
-                            Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective();
-                        }
-                        else
-                        {
-                            Plugin.DialogueWindow.NextText();
+                            _inputCooldown.Restart();
+                            if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
+                            {
+                                Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective();
+                            }
+                            else
+                            {
+                                Plugin.DialogueWindow.NextText();
+                            }
                         }
                         _waitingForSelectionRelease = true;
                     }
