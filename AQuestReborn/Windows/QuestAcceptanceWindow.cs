@@ -22,7 +22,7 @@ public class QuestAcceptanceWindow : Window, IDisposable
     private byte[] _lastLoadedFrame;
     public event EventHandler OnQuestAccepted;
     private Stopwatch _timeSinceLastQuestAccepted = new Stopwatch();
-    private int _thumbnailRatio;
+    private float _thumbnailRatio;
 
     public Stopwatch TimeSinceLastQuestAccepted { get => _timeSinceLastQuestAccepted; set => _timeSinceLastQuestAccepted = value; }
 
@@ -113,17 +113,17 @@ public class QuestAcceptanceWindow : Window, IDisposable
     public void PromptQuest(RoleplayingQuest quest)
     {
         _questToDisplay = quest;
-        string thumbnailPath = Path.Combine(Path.GetDirectoryName(quest.FoundPath), _questToDisplay.QuestThumbnailPath);
+        string thumbnailPath = Path.Combine(quest.FoundPath, _questToDisplay.QuestThumbnailPath);
         SetThumbnail(thumbnailPath);
         IsOpen = true;
     }
     public void SetThumbnail(string path)
-    {
+        {
         if (!string.IsNullOrEmpty(path) && File.Exists(path))
         {
             MemoryStream thumbnail = new MemoryStream();
             Bitmap thumbnailBitmap = new Bitmap(path);
-            _thumbnailRatio = thumbnailBitmap.Width / thumbnailBitmap.Height;
+            _thumbnailRatio = (float)thumbnailBitmap.Width / (float)thumbnailBitmap.Height;
             thumbnailBitmap.Save(thumbnail, ImageFormat.Png);
             thumbnail.Position = 0;
             _currentThumbnail = thumbnail.ToArray();
