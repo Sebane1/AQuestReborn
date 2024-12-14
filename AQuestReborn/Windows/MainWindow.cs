@@ -105,9 +105,19 @@ public class MainWindow : Window, IDisposable
     private void DrawQuestObjectives()
     {
         int index = 0;
+        List<string> strings = new List<string>();
         foreach (var item in Plugin.RoleplayingQuestManager.GetCurrentObjectives())
         {
-            ImGui.TextWrapped(item.Objective + $" ({_territorySheets.GetRow((uint)item.TerritoryId).PlaceName.Value.Name.ToString()})");
+            if (item.Item2.SubObjectivesComplete() && !item.Item2.ObjectiveCompleted && !item.Item3.HasQuestAcceptancePopup)
+            {
+                if (!strings.Contains(item.Item3.QuestName))
+                {
+                    ImGui.TextWrapped(item.Item3.QuestName);
+                    strings.Add(item.Item3.QuestName);
+                }
+                ImGui.SetCursorPosX(50);
+                ImGui.TextWrapped(item.Item2.Objective + $" ({_territorySheets.GetRow((uint)item.Item2.TerritoryId).PlaceName.Value.Name.ToString()})");
+            }
             index++;
         }
     }
