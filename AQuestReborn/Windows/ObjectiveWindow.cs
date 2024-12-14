@@ -127,54 +127,57 @@ public class ObjectiveWindow : Window, IDisposable
         }
         if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
         {
-            var questChains = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType);
+            var questChainObjectives = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType);
             _mouseDistanceIsCloseToObjective = false;
-            foreach (var item in questChains)
+            foreach (var item in questChainObjectives)
             {
-                Vector2 screenPosition = new Vector2();
-                bool inView = false;
-                Vector3 offset = new Vector3();
-                switch (item.Item2.TypeOfQuestPoint)
+                if (!item.Item2.ObjectiveCompleted)
                 {
-                    case RoleplayingQuestCore.QuestObjective.QuestPointType.NPC:
-                        offset = new Vector3(0, 2.5f, 0);
-                        break;
-                    case RoleplayingQuestCore.QuestObjective.QuestPointType.GroundItem:
-                        // To do: Display something unique?
-                        break;
-                    case RoleplayingQuestCore.QuestObjective.QuestPointType.StandAndWait:
-                        // To do: Display something unique?
-                        break;
-                }
-                Plugin.GameGui.WorldToScreen(item.Item2.Coordinates + offset, out screenPosition, out inView);
-                if (inView)
-                {
-                    if (_questStartIconTextureWrap != null)
+                    Vector2 screenPosition = new Vector2();
+                    bool inView = false;
+                    Vector3 offset = new Vector3();
+                    switch (item.Item2.TypeOfQuestPoint)
                     {
-                        var value = ImGui.GetIO().MousePos;
-                        var distance = Vector2.Distance(new Vector2(screenPosition.X / Size.Value.X, 0),
-                            new Vector2(value.X / Size.Value.X, 0));
-                        var playerDistance = Vector3.Distance(Plugin.ClientState.LocalPlayer.Position, item.Item2.Coordinates);
-                        if (distance < 0.1f && playerDistance < Plugin.RoleplayingQuestManager.MinimumDistance)
+                        case RoleplayingQuestCore.QuestObjective.QuestPointType.NPC:
+                            offset = new Vector3(0, 2.5f, 0);
+                            break;
+                        case RoleplayingQuestCore.QuestObjective.QuestPointType.GroundItem:
+                            // To do: Display something unique?
+                            break;
+                        case RoleplayingQuestCore.QuestObjective.QuestPointType.StandAndWait:
+                            // To do: Display something unique?
+                            break;
+                    }
+                    Plugin.GameGui.WorldToScreen(item.Item2.Coordinates + offset, out screenPosition, out inView);
+                    if (inView)
+                    {
+                        if (_questStartIconTextureWrap != null)
                         {
-                            _mouseDistanceIsCloseToObjective = true;
-                            for (int i = 0; i < mouseDownValues.Count; i++)
+                            var value = ImGui.GetIO().MousePos;
+                            var distance = Vector2.Distance(new Vector2(screenPosition.X / Size.Value.X, 0),
+                                new Vector2(value.X / Size.Value.X, 0));
+                            var playerDistance = Vector3.Distance(Plugin.ClientState.LocalPlayer.Position, item.Item2.Coordinates);
+                            if (distance < 0.1f && playerDistance < Plugin.RoleplayingQuestManager.MinimumDistance)
                             {
-                                if (mouseDownValues[i])
+                                _mouseDistanceIsCloseToObjective = true;
+                                for (int i = 0; i < mouseDownValues.Count; i++)
                                 {
-                                    OnSelectionAttempt?.Invoke(this, EventArgs.Empty);
-                                    _mouseDistanceIsCloseToObjective = false;
-                                    break;
+                                    if (mouseDownValues[i])
+                                    {
+                                        OnSelectionAttempt?.Invoke(this, EventArgs.Empty);
+                                        _mouseDistanceIsCloseToObjective = false;
+                                        break;
+                                    }
                                 }
                             }
-                        }
-                        if (playerDistance < item.Item2.Maximum3dIndicatorDistance)
-                        {
-                            var iconDimensions = new Vector2(100, 100);
-                            ImGui.SetCursorPos(new Vector2(screenPosition.X - (iconDimensions.X / 2), screenPosition.Y - (iconDimensions.Y / 2)));
-                            if (_questStartIconTextureWrap != null && _questObjectiveIconTextureWrap != null)
+                            if (playerDistance < item.Item2.Maximum3dIndicatorDistance)
                             {
-                                ImGui.Image(item.Item1 == 0 ? _questStartIconTextureWrap.ImGuiHandle : _questObjectiveIconTextureWrap.ImGuiHandle, iconDimensions);
+                                var iconDimensions = new Vector2(100, 100);
+                                ImGui.SetCursorPos(new Vector2(screenPosition.X - (iconDimensions.X / 2), screenPosition.Y - (iconDimensions.Y / 2)));
+                                if (_questStartIconTextureWrap != null && _questObjectiveIconTextureWrap != null)
+                                {
+                                    ImGui.Image(item.Item1 == 0 ? _questStartIconTextureWrap.ImGuiHandle : _questObjectiveIconTextureWrap.ImGuiHandle, iconDimensions);
+                                }
                             }
                         }
                     }

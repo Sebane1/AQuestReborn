@@ -142,19 +142,21 @@ namespace AQuestReborn
                 AgentMap.Instance()->ResetMiniMapMarkers();
                 foreach (var item in _activeQuestChainObjectives)
                 {
-                    if (!item.Item2.DontShowOnMap)
+                    if (!item.Item2.DontShowOnMap && !item.Item2.ObjectiveCompleted)
                     {
-                        Utf8String* stringBuffer = Utf8String.CreateEmpty();
-                        stringBuffer->SetString(item.Item3.QuestName);
-                        if (item.Item1 == 0)
                         {
-                            AgentMap.Instance()->AddMapMarker(item.Item2.Coordinates, 230604, 0, stringBuffer->StringPtr);
-                            AgentMap.Instance()->AddMiniMapMarker(item.Item2.Coordinates, 230604);
-                        }
-                        else
-                        {
-                            AgentMap.Instance()->AddMapMarker(item.Item2.Coordinates, 230605, 0, stringBuffer->StringPtr);
-                            AgentMap.Instance()->AddMiniMapMarker(item.Item2.Coordinates, 230605);
+                            Utf8String* stringBuffer = Utf8String.CreateEmpty();
+                            stringBuffer->SetString(item.Item3.QuestName);
+                            if (item.Item1 == 0)
+                            {
+                                AgentMap.Instance()->AddMapMarker(item.Item2.Coordinates, 230604, 0, stringBuffer->StringPtr);
+                                AgentMap.Instance()->AddMiniMapMarker(item.Item2.Coordinates, 230604);
+                            }
+                            else
+                            {
+                                AgentMap.Instance()->AddMapMarker(item.Item2.Coordinates, 230605, 0, stringBuffer->StringPtr);
+                                AgentMap.Instance()->AddMiniMapMarker(item.Item2.Coordinates, 230605);
+                            }
                         }
                     }
                 }
@@ -303,7 +305,7 @@ namespace AQuestReborn
                     _screenButtonClicked = false;
                     if (!_waitingForSelectionRelease)
                     {
-                        if (Plugin.QuestAcceptanceWindow.TimeSinceLastQuestAccepted.ElapsedMilliseconds > 250 
+                        if (Plugin.QuestAcceptanceWindow.TimeSinceLastQuestAccepted.ElapsedMilliseconds > 250
                             && Plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 250)
                         {
                             _inputCooldown.Restart();

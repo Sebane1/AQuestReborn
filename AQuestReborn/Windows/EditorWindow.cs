@@ -607,12 +607,12 @@ public class EditorWindow : Window, IDisposable
         {
             if (objective != null && !objective.Invalidate)
             {
+                if (level > 0)
+                {
+                    objective.IsAPrimaryObjective = false;
+                }
                 if (ImGui.TreeNode(objective.Objective + "##" + i))
                 {
-                    if(level > 0)
-                    {
-                        objective.IsAPrimaryObjective = false;
-                    }
                     if (ImGui.Button("Edit##" + i))
                     {
                         _objectiveInFocus = objective;
