@@ -32,7 +32,6 @@ public class EditorWindow : Window, IDisposable
     private NPCEditorWindow _npcEditorWindow;
     private NPCTransformEditorWindow _npcTransformEditorWindow;
     private string[] _nodeNames = new string[] { };
-    private int _selectedObjectiveNode = 0;
     private string[] _dialogues = new string[] { };
     private int _selectedDialogue;
     private int _selectedBranchingChoice;
@@ -40,6 +39,8 @@ public class EditorWindow : Window, IDisposable
     private string[] _boxStyles = new string[] {
         "Normal", "Style2", "Telepathic", "Omicron/Machine", "Shout",
         "Written Lore", "Monster/Creature", "Dragon/Linkpearl", "System/Ascian" };
+    private QuestObjective _objectiveInFocus;
+
     public RoleplayingQuestCreator RoleplayingQuestCreator { get => _roleplayingQuestCreator; set => _roleplayingQuestCreator = value; }
 
     // We give this window a hidden ID using ##
@@ -192,8 +193,8 @@ public class EditorWindow : Window, IDisposable
             ImGui.EndPopup();
         }
         ImGui.BeginTable("##Editor Table", 2);
-        ImGui.TableSetupColumn("Objective List", ImGuiTableColumnFlags.WidthFixed, 100);
-        ImGui.TableSetupColumn("Objective Editor", ImGuiTableColumnFlags.WidthStretch, 300);
+        ImGui.TableSetupColumn("Objective List", ImGuiTableColumnFlags.WidthFixed, 300);
+        ImGui.TableSetupColumn("Objective Editor", ImGuiTableColumnFlags.WidthStretch, 600);
         ImGui.TableHeadersRow();
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
@@ -205,13 +206,9 @@ public class EditorWindow : Window, IDisposable
 
     private void DrawQuestNodeEditor()
     {
-        if (_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count > 0)
+        if (_objectiveInFocus != null)
         {
-            if (_selectedObjectiveNode > _roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count)
-            {
-                _selectedObjectiveNode = _roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count - 1;
-            }
-            var questObjective = _roleplayingQuestCreator.CurrentQuest.QuestObjectives[_selectedObjectiveNode];
+            var questObjective = _objectiveInFocus;
             var territoryId = questObjective.TerritoryId;
             var objective = questObjective.Objective;
             var coordinates = questObjective.Coordinates;
@@ -313,98 +310,101 @@ public class EditorWindow : Window, IDisposable
 
     private void DrawQuestDialogueEditor()
     {
-        var questText = _roleplayingQuestCreator.CurrentQuest.QuestObjectives[_selectedObjectiveNode].QuestText;
-        if (questText.Count > 0)
+        if (_objectiveInFocus != null)
         {
-            var item = questText[_selectedDialogue];
-            var faceExpression = item.FaceExpression;
-            var bodyExpression = item.BodyExpression;
-            var npcAlias = item.NpcAlias;
-            var npcName = item.NpcName;
-            var dialogue = item.Dialogue;
-            var boxStyle = item.DialogueBoxStyle;
-            var dialogueAudio = item.DialogueAudio;
-            var dialogueBackgroundType = (int)item.TypeOfDialogueBackground;
-            var dialogueBackground = item.DialogueBackground;
-            var dialogueEndBehaviour = (int)item.DialogueEndBehaviour;
-            var dialogueNumberToSkipTo = item.DialogueNumberToSkipTo;
-            var dialogueEndTypes = Enum.GetNames(typeof(QuestText.DialogueEndBehaviourType));
-            var dialogueBackgroundTypes = Enum.GetNames(typeof(QuestText.DialogueBackgroundType));
-            var appearanceSwap = item.AppearanceSwap;
-            var loopAnimation = item.LoopAnimation;
-            if (ImGui.InputText("Npc Alias##", ref npcAlias, 40))
+            var questText = _objectiveInFocus.QuestText;
+            if (questText.Count > 0)
             {
-                item.NpcAlias = npcAlias;
-            }
-            if (ImGui.InputText("Npc Name##", ref npcName, 40))
-            {
-                item.NpcName = npcName;
-            }
-            if (ImGui.InputText("Dialogue##", ref dialogue, 500))
-            {
-                item.Dialogue = dialogue;
-            }
-            if (ImGui.InputText("Dialogue Audio Path##", ref dialogueAudio, 255))
-            {
-                item.DialogueAudio = dialogueAudio;
-            }
-            if (ImGui.InputText("Appearance Swap##", ref appearanceSwap, 255))
-            {
-                item.AppearanceSwap = appearanceSwap;
-            }
-            if (ImGui.Combo("Box Style##", ref boxStyle, _boxStyles, _boxStyles.Length))
-            {
-                item.DialogueBoxStyle = boxStyle;
-            }
-            ImGui.SetNextItemWidth(100);
-            if (ImGui.InputInt("Face Expression Id##", ref faceExpression))
-            {
-                item.FaceExpression = faceExpression;
-            }
-            ImGui.SameLine();
-            ImGui.SetNextItemWidth(100);
-            if (ImGui.InputInt("Body Expression Id##", ref bodyExpression))
-            {
-                item.BodyExpression = bodyExpression;
-            }
-            if (ImGui.Checkbox("Loop Animation##", ref loopAnimation))
-            {
-                item.LoopAnimation = loopAnimation;
-            }
-            if (ImGui.Combo("Dialogue Background Type##", ref dialogueBackgroundType, dialogueBackgroundTypes, dialogueBackgroundTypes.Length))
-            {
-                item.TypeOfDialogueBackground = (DialogueBackgroundType)dialogueBackgroundType;
-            }
-            switch (item.TypeOfDialogueBackground)
-            {
-                case DialogueBackgroundType.Image:
-                    if (ImGui.InputText("Dialogue Background Image Path##", ref dialogueBackground, 255))
-                    {
-                        item.DialogueBackground = dialogueBackground;
-                    }
-                    break;
-                case DialogueBackgroundType.Video:
-                    if (ImGui.InputText("Dialogue Background Video Path##", ref dialogueBackground, 255))
-                    {
-                        item.DialogueBackground = dialogueBackground;
-                    }
-                    break;
-            }
-            if (ImGui.Combo("Dialogue End Behaviour##", ref dialogueEndBehaviour, dialogueEndTypes, dialogueEndTypes.Length))
-            {
-                item.DialogueEndBehaviour = (DialogueEndBehaviourType)dialogueEndBehaviour;
-            }
+                var item = questText[_selectedDialogue];
+                var faceExpression = item.FaceExpression;
+                var bodyExpression = item.BodyExpression;
+                var npcAlias = item.NpcAlias;
+                var npcName = item.NpcName;
+                var dialogue = item.Dialogue;
+                var boxStyle = item.DialogueBoxStyle;
+                var dialogueAudio = item.DialogueAudio;
+                var dialogueBackgroundType = (int)item.TypeOfDialogueBackground;
+                var dialogueBackground = item.DialogueBackground;
+                var dialogueEndBehaviour = (int)item.DialogueEndBehaviour;
+                var dialogueNumberToSkipTo = item.DialogueNumberToSkipTo;
+                var dialogueEndTypes = Enum.GetNames(typeof(QuestText.DialogueEndBehaviourType));
+                var dialogueBackgroundTypes = Enum.GetNames(typeof(QuestText.DialogueBackgroundType));
+                var appearanceSwap = item.AppearanceSwap;
+                var loopAnimation = item.LoopAnimation;
+                if (ImGui.InputText("Npc Alias##", ref npcAlias, 40))
+                {
+                    item.NpcAlias = npcAlias;
+                }
+                if (ImGui.InputText("Npc Name##", ref npcName, 40))
+                {
+                    item.NpcName = npcName;
+                }
+                if (ImGui.InputText("Dialogue##", ref dialogue, 500))
+                {
+                    item.Dialogue = dialogue;
+                }
+                if (ImGui.InputText("Dialogue Audio Path##", ref dialogueAudio, 255))
+                {
+                    item.DialogueAudio = dialogueAudio;
+                }
+                if (ImGui.InputText("Appearance Swap##", ref appearanceSwap, 255))
+                {
+                    item.AppearanceSwap = appearanceSwap;
+                }
+                if (ImGui.Combo("Box Style##", ref boxStyle, _boxStyles, _boxStyles.Length))
+                {
+                    item.DialogueBoxStyle = boxStyle;
+                }
+                ImGui.SetNextItemWidth(100);
+                if (ImGui.InputInt("Face Expression Id##", ref faceExpression))
+                {
+                    item.FaceExpression = faceExpression;
+                }
+                ImGui.SameLine();
+                ImGui.SetNextItemWidth(100);
+                if (ImGui.InputInt("Body Expression Id##", ref bodyExpression))
+                {
+                    item.BodyExpression = bodyExpression;
+                }
+                if (ImGui.Checkbox("Loop Animation##", ref loopAnimation))
+                {
+                    item.LoopAnimation = loopAnimation;
+                }
+                if (ImGui.Combo("Dialogue Background Type##", ref dialogueBackgroundType, dialogueBackgroundTypes, dialogueBackgroundTypes.Length))
+                {
+                    item.TypeOfDialogueBackground = (DialogueBackgroundType)dialogueBackgroundType;
+                }
+                switch (item.TypeOfDialogueBackground)
+                {
+                    case DialogueBackgroundType.Image:
+                        if (ImGui.InputText("Dialogue Background Image Path##", ref dialogueBackground, 255))
+                        {
+                            item.DialogueBackground = dialogueBackground;
+                        }
+                        break;
+                    case DialogueBackgroundType.Video:
+                        if (ImGui.InputText("Dialogue Background Video Path##", ref dialogueBackground, 255))
+                        {
+                            item.DialogueBackground = dialogueBackground;
+                        }
+                        break;
+                }
+                if (ImGui.Combo("Dialogue End Behaviour##", ref dialogueEndBehaviour, dialogueEndTypes, dialogueEndTypes.Length))
+                {
+                    item.DialogueEndBehaviour = (DialogueEndBehaviourType)dialogueEndBehaviour;
+                }
 
-            switch (item.DialogueEndBehaviour)
-            {
-                case DialogueEndBehaviourType.DialogueSkipsToDialogueNumber:
-                    if (ImGui.InputInt("Dialogue Number To Skip To##", ref dialogueNumberToSkipTo))
-                    {
-                        item.DialogueNumberToSkipTo = dialogueNumberToSkipTo;
-                    }
-                    break;
+                switch (item.DialogueEndBehaviour)
+                {
+                    case DialogueEndBehaviourType.DialogueSkipsToDialogueNumber:
+                        if (ImGui.InputInt("Dialogue Number To Skip To##", ref dialogueNumberToSkipTo))
+                        {
+                            item.DialogueNumberToSkipTo = dialogueNumberToSkipTo;
+                        }
+                        break;
+                }
+                DrawBranchingChoicesMenu();
             }
-            DrawBranchingChoicesMenu();
         }
     }
 
@@ -424,73 +424,76 @@ public class EditorWindow : Window, IDisposable
 
     private void DrawBranchingChoicesEditor()
     {
-        var questText = _roleplayingQuestCreator.CurrentQuest.QuestObjectives[_selectedObjectiveNode].QuestText;
-        if (questText.Count > 0)
+        if (_objectiveInFocus != null)
         {
-            if (_selectedDialogue > questText.Count)
+            var questText = _objectiveInFocus.QuestText;
+            if (questText.Count > 0)
             {
-                _selectedDialogue = questText.Count - 1;
-            }
-            var branchingChoices = questText[_selectedDialogue].BranchingChoices;
-            if (branchingChoices.Count > 0)
-            {
-                if (_selectedBranchingChoice > branchingChoices.Count)
+                if (_selectedDialogue > questText.Count)
                 {
-                    _selectedBranchingChoice = branchingChoices.Count - 1;
+                    _selectedDialogue = questText.Count - 1;
                 }
-                var item = branchingChoices[_selectedBranchingChoice];
-                var choiceText = item.ChoiceText;
-                var choiceType = (int)item.ChoiceType;
-                var roleplayingQuest = item.RoleplayingQuest;
-                var dialogueToJumpTo = item.DialogueToJumpTo;
-                var branchingChoiceTypes = Enum.GetNames(typeof(BranchingChoiceType));
-                if (ImGui.InputText("Choice Text##", ref choiceText, 255))
+                var branchingChoices = questText[_selectedDialogue].BranchingChoices;
+                if (branchingChoices.Count > 0)
                 {
-                    item.ChoiceText = choiceText;
-                }
-                if (ImGui.Combo("Branching Choice Type##", ref choiceType, branchingChoiceTypes, branchingChoiceTypes.Length))
-                {
-                    item.ChoiceType = (BranchingChoiceType)choiceType;
-                }
-                switch (item.ChoiceType)
-                {
-                    case BranchingChoiceType.SkipToDialogueNumber:
-                        if (ImGui.InputInt("Dialogue Number To Jump To##", ref dialogueToJumpTo))
-                        {
-                            item.DialogueToJumpTo = dialogueToJumpTo;
-                        }
-                        break;
-                    case BranchingChoiceType.BranchingQuestline:
-                        if (ImGui.Button("Configure Branching Questline"))
-                        {
-                            if (_subEditorWindow == null)
+                    if (_selectedBranchingChoice > branchingChoices.Count)
+                    {
+                        _selectedBranchingChoice = branchingChoices.Count - 1;
+                    }
+                    var item = branchingChoices[_selectedBranchingChoice];
+                    var choiceText = item.ChoiceText;
+                    var choiceType = (int)item.ChoiceType;
+                    var roleplayingQuest = item.RoleplayingQuest;
+                    var dialogueToJumpTo = item.DialogueToJumpTo;
+                    var branchingChoiceTypes = Enum.GetNames(typeof(BranchingChoiceType));
+                    if (ImGui.InputText("Choice Text##", ref choiceText, 255))
+                    {
+                        item.ChoiceText = choiceText;
+                    }
+                    if (ImGui.Combo("Branching Choice Type##", ref choiceType, branchingChoiceTypes, branchingChoiceTypes.Length))
+                    {
+                        item.ChoiceType = (BranchingChoiceType)choiceType;
+                    }
+                    switch (item.ChoiceType)
+                    {
+                        case BranchingChoiceType.SkipToDialogueNumber:
+                            if (ImGui.InputInt("Dialogue Number To Jump To##", ref dialogueToJumpTo))
                             {
-                                _subEditorWindow = new EditorWindow(Plugin);
-                                Plugin.WindowSystem.AddWindow(_subEditorWindow);
+                                item.DialogueToJumpTo = dialogueToJumpTo;
                             }
-                            _subEditorWindow.IsOpen = true;
-                            _subEditorWindow.RoleplayingQuestCreator.EditQuest(roleplayingQuest);
-                            _subEditorWindow.RefreshMenus();
-                        }
-                        ImGui.SameLine();
-                        if (ImGui.Button("Import Branching Questline"))
-                        {
-                            _fileDialogManager.Reset();
-                            ImGui.OpenPopup("OpenPathDialog##editorwindow");
-                        }
-                        if (ImGui.BeginPopup("OpenPathDialog##editorwindow"))
-                        {
-                            _fileDialogManager.OpenFileDialog("Select quest line data", ".quest", (isOk, file) =>
+                            break;
+                        case BranchingChoiceType.BranchingQuestline:
+                            if (ImGui.Button("Configure Branching Questline"))
                             {
-                                if (isOk)
+                                if (_subEditorWindow == null)
                                 {
-                                    item.RoleplayingQuest = _roleplayingQuestCreator.ImportQuestline(file[0]);
-                                    item.RoleplayingQuest.ConfigureSubQuest(_roleplayingQuestCreator.CurrentQuest);
+                                    _subEditorWindow = new EditorWindow(Plugin);
+                                    Plugin.WindowSystem.AddWindow(_subEditorWindow);
                                 }
-                            }, 0, "", true);
-                            ImGui.EndPopup();
-                        }
-                        break;
+                                _subEditorWindow.IsOpen = true;
+                                _subEditorWindow.RoleplayingQuestCreator.EditQuest(roleplayingQuest);
+                                _subEditorWindow.RefreshMenus();
+                            }
+                            ImGui.SameLine();
+                            if (ImGui.Button("Import Branching Questline"))
+                            {
+                                _fileDialogManager.Reset();
+                                ImGui.OpenPopup("OpenPathDialog##editorwindow");
+                            }
+                            if (ImGui.BeginPopup("OpenPathDialog##editorwindow"))
+                            {
+                                _fileDialogManager.OpenFileDialog("Select quest line data", ".quest", (isOk, file) =>
+                                {
+                                    if (isOk)
+                                    {
+                                        item.RoleplayingQuest = _roleplayingQuestCreator.ImportQuestline(file[0]);
+                                        item.RoleplayingQuest.ConfigureSubQuest(_roleplayingQuestCreator.CurrentQuest);
+                                    }
+                                }, 0, "", true);
+                                ImGui.EndPopup();
+                            }
+                            break;
+                    }
                 }
             }
         }
@@ -498,67 +501,73 @@ public class EditorWindow : Window, IDisposable
 
     private void DrawBranchingChoices()
     {
-        var questText = _roleplayingQuestCreator.CurrentQuest.QuestObjectives[_selectedObjectiveNode].QuestText;
-        if (questText.Count > 0)
+        if (_objectiveInFocus != null)
         {
-            var branchingChoices = _roleplayingQuestCreator.CurrentQuest.QuestObjectives[_selectedObjectiveNode].QuestText[_selectedDialogue].BranchingChoices;
-            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-            if (ImGui.ListBox("##branchingChoice", ref _selectedBranchingChoice, _branchingChoices, _branchingChoices.Length, 5))
+            var questText = _objectiveInFocus.QuestText;
+            if (questText.Count > 0)
             {
-                RefreshMenus();
-            }
-            if (ImGui.Button("Add"))
-            {
-                var branchingChoice = new BranchingChoice();
-                branchingChoices.Add(branchingChoice);
-                branchingChoice.RoleplayingQuest.ConfigureSubQuest(_roleplayingQuestCreator.CurrentQuest);
-                branchingChoice.RoleplayingQuest.IsSubQuest = true;
-                _branchingChoices = Utility.FillNewList(branchingChoices.Count, "Choice");
-                _selectedBranchingChoice = branchingChoices.Count - 1;
-                RefreshMenus();
-            }
-            ImGui.SameLine();
-            if (ImGui.Button("Remove"))
-            {
-                branchingChoices.RemoveAt(_selectedBranchingChoice);
-                _branchingChoices = Utility.FillNewList(branchingChoices.Count, "Choice");
-                _selectedBranchingChoice = branchingChoices.Count - 1;
-                RefreshMenus();
+                var branchingChoices = questText[_selectedDialogue].BranchingChoices;
+                ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                if (ImGui.ListBox("##branchingChoice", ref _selectedBranchingChoice, _branchingChoices, _branchingChoices.Length, 5))
+                {
+                    RefreshMenus();
+                }
+                if (ImGui.Button("Add"))
+                {
+                    var branchingChoice = new BranchingChoice();
+                    branchingChoices.Add(branchingChoice);
+                    branchingChoice.RoleplayingQuest.ConfigureSubQuest(_roleplayingQuestCreator.CurrentQuest);
+                    branchingChoice.RoleplayingQuest.IsSubQuest = true;
+                    _branchingChoices = Utility.FillNewList(branchingChoices.Count, "Choice");
+                    _selectedBranchingChoice = branchingChoices.Count - 1;
+                    RefreshMenus();
+                }
+                ImGui.SameLine();
+                if (ImGui.Button("Remove"))
+                {
+                    branchingChoices.RemoveAt(_selectedBranchingChoice);
+                    _branchingChoices = Utility.FillNewList(branchingChoices.Count, "Choice");
+                    _selectedBranchingChoice = branchingChoices.Count - 1;
+                    RefreshMenus();
+                }
             }
         }
     }
 
     private void DrawQuestDialogues()
     {
-        var questText = _roleplayingQuestCreator.CurrentQuest.QuestObjectives[_selectedObjectiveNode].QuestText;
-        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-        if (ImGui.ListBox("##questDialogue", ref _selectedDialogue, _dialogues, _dialogues.Length, 15))
+        if (_objectiveInFocus != null)
         {
-            _selectedBranchingChoice = 0;
-            RefreshMenus();
-        }
-        if (ImGui.Button("Add"))
-        {
-            questText.Add(new QuestText());
-            _dialogues = Utility.FillNewList(questText.Count, "Dialogue");
-            _selectedDialogue = questText.Count - 1;
-            RefreshMenus();
-        }
-        ImGui.SameLine();
-        if (ImGui.Button("Remove"))
-        {
-            questText.RemoveAt(_selectedDialogue);
-            _dialogues = Utility.FillNewList(questText.Count, "Dialogue");
-            _selectedDialogue = questText.Count - 1;
-            RefreshMenus();
+            var questText = _objectiveInFocus.QuestText;
+            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+            if (ImGui.ListBox("##questDialogue", ref _selectedDialogue, _dialogues, _dialogues.Length, 15))
+            {
+                _selectedBranchingChoice = 0;
+                RefreshMenus();
+            }
+            if (ImGui.Button("Add"))
+            {
+                questText.Add(new QuestText());
+                _dialogues = Utility.FillNewList(questText.Count, "Dialogue");
+                _selectedDialogue = questText.Count - 1;
+                RefreshMenus();
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Remove"))
+            {
+                questText.RemoveAt(_selectedDialogue);
+                _dialogues = Utility.FillNewList(questText.Count, "Dialogue");
+                _selectedDialogue = questText.Count - 1;
+                RefreshMenus();
+            }
         }
     }
 
     private void RefreshMenus()
     {
-        if (_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count > 0)
+        if (_objectiveInFocus != null)
         {
-            var questText = _roleplayingQuestCreator.CurrentQuest.QuestObjectives[_selectedObjectiveNode].QuestText;
+            var questText = _objectiveInFocus.QuestText;
             _dialogues = Utility.FillNewList(questText.Count, "Dialogue");
             _nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
             if (questText.Count > 0)
@@ -587,18 +596,51 @@ public class EditorWindow : Window, IDisposable
             _branchingChoices = Utility.FillNewList(0, "Choice");
             _selectedBranchingChoice = 0;
             _selectedDialogue = 0;
-            _selectedObjectiveNode = 0;
         }
     }
 
+    public void DrawQuestObjectivesRecursive(List<QuestObjective> questObjectives, int level)
+    {
+        int i = 0;
+        List<QuestObjective> invalidatedObjectives = new List<QuestObjective>();
+        foreach (var objective in questObjectives)
+        {
+            if (objective != null && !objective.Invalidate)
+            {
+                if (ImGui.TreeNode(objective.Objective + "##" + i))
+                {
+                    if (ImGui.Button("Edit##" + i))
+                    {
+                        _objectiveInFocus = objective;
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button("Add Child##" + i))
+                    {
+                        objective.SubObjectives.Add(new QuestObjective());
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button("Delete##" + i))
+                    {
+                        objective.Invalidate = true;
+                    }
+                    DrawQuestObjectivesRecursive(objective.SubObjectives, level + 1);
+                    ImGui.TreePop();
+                }
+            }
+            else
+            {
+                invalidatedObjectives.Add(objective);
+            }
+            i++;
+        }
+        foreach (var objective in invalidatedObjectives)
+        {
+            questObjectives.Remove(objective);
+        }
+    }
     private void DrawQuestObjectives()
     {
-        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-        if (ImGui.ListBox("##questNodes", ref _selectedObjectiveNode, _nodeNames, _nodeNames.Length, 25))
-        {
-            _selectedDialogue = 0;
-            RefreshMenus();
-        }
+        DrawQuestObjectivesRecursive(_roleplayingQuestCreator.CurrentQuest.QuestObjectives, 0);
         if (ImGui.Button("Add## Objective"))
         {
             _npcTransformEditorWindow.RefreshMenus();
@@ -609,22 +651,28 @@ public class EditorWindow : Window, IDisposable
                 TerritoryId = Plugin.ClientState.TerritoryType
             });
             _nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
-            _selectedObjectiveNode = _roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count - 1;
             RefreshMenus();
         }
-        ImGui.SameLine();
-        if (ImGui.Button("Remove## Objective"))
-        {
-            _roleplayingQuestCreator.CurrentQuest.QuestObjectives.RemoveAt(_selectedObjectiveNode);
-            _nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
-            _selectedObjectiveNode = _roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count - 1;
-            RefreshMenus();
-        }
+        //ImGui.SameLine();
+        //if (ImGui.Button("Remove## Objective"))
+        //{
+        //    _roleplayingQuestCreator.CurrentQuest.QuestObjectives.RemoveAt(_selectedObjectiveNode);
+        //    _nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
+        //    RefreshMenus();
+        //}
     }
 
     private void OpenBranchingQuest(RoleplayingQuest roleplayingQuest)
     {
         _subEditorWindow.RoleplayingQuestCreator.EditQuest(roleplayingQuest);
+        if (roleplayingQuest.QuestObjectives.Count > 0)
+        {
+            _objectiveInFocus = roleplayingQuest.QuestObjectives[0];
+        }
+        else
+        {
+            _objectiveInFocus = null;
+        }
         _subEditorWindow.RefreshMenus();
     }
 }
