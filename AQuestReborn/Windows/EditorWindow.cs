@@ -51,7 +51,7 @@ public class EditorWindow : Window, IDisposable
     {
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(600, 500),
+            MinimumSize = new Vector2(800, 800),
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
         };
 

@@ -37,6 +37,7 @@ public class MainWindow : Window, IDisposable
         Plugin = plugin;
         _fileDialogManager = new FileDialogManager();
         _territorySheets = Plugin.DataManager.GameData.GetExcelSheet<TerritoryType>();
+        Size = new Vector2(500, 500);
     }
 
     public void Dispose() { }
@@ -70,6 +71,14 @@ public class MainWindow : Window, IDisposable
                 ImGui.EndTabItem();
             }
             ImGui.EndTabBar();
+        }
+        if (ImGui.Button("Donate To Futher Development", new Vector2(Size.Value.X, 50)))
+        {
+            ProcessStartInfo ProcessInfo = new ProcessStartInfo();
+            Process Process = new Process();
+            ProcessInfo = new ProcessStartInfo("https://ko-fi.com/sebastina");
+            ProcessInfo.UseShellExecute = true;
+            Process = Process.Start(ProcessInfo);
         }
     }
 
@@ -116,7 +125,7 @@ public class MainWindow : Window, IDisposable
                     strings.Add(item.Item3.QuestName);
                 }
                 ImGui.SetCursorPosX(50);
-                ImGui.TextWrapped(item.Item2.Objective + $" ({_territorySheets.GetRow((uint)item.Item2.TerritoryId).PlaceName.Value.Name.ToString()})");
+                ImGui.TextWrapped(item.Item2.Objective + (item.Item2.DontShowOnMap ? " (Hidden Location)" : $" ({_territorySheets.GetRow((uint)item.Item2.TerritoryId).PlaceName.Value.Name.ToString()})"));
             }
             index++;
         }
@@ -245,7 +254,10 @@ public class MainWindow : Window, IDisposable
         var questItems = new List<string>();
         foreach (var item in installedQuests)
         {
-            questItems.Add(item.Value.QuestName);
+            if (item.Value != null && !string.IsNullOrEmpty(item.Value.QuestName))
+            {
+                questItems.Add(item.Value.QuestName);
+            }
         }
         if (_currentSelectedInstalledQuest > questItems.Count)
         {
