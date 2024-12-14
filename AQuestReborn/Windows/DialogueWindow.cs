@@ -26,6 +26,7 @@ public class DialogueWindow : Window, IDisposable
     private Plugin Plugin;
     QuestDisplayObject questDisplayObject;
     int _index = 0;
+    private bool _blockProgression;
     private bool _settingNewText;
     int _currentCharacter = 0;
     string _targetText = "";
@@ -320,6 +321,10 @@ public class DialogueWindow : Window, IDisposable
                     case QuestText.DialogueEndBehaviourType.DialogueEndsEarlyWhenHit:
                         _index = questDisplayObject.QuestObjective.QuestText.Count;
                         break;
+                    case QuestText.DialogueEndBehaviourType.DialogueEndsEarlyWhenHitNoProgression:
+                        _index = questDisplayObject.QuestObjective.QuestText.Count;
+                        _blockProgression = true;
+                        break;
                     case QuestText.DialogueEndBehaviourType.None:
                         _index++;
                         break;
@@ -334,7 +339,14 @@ public class DialogueWindow : Window, IDisposable
             IsOpen = false;
             _currentCharacter = 0;
             textTimer.Reset();
-            questDisplayObject.QuestEvents?.Invoke(this, EventArgs.Empty);
+            if (!_blockProgression)
+            {
+                questDisplayObject.QuestEvents?.Invoke(this, EventArgs.Empty);
+            }
+            else
+            {
+                _blockProgression = false;
+            }
             Plugin.AQuestReborn.RefreshNpcsForQuest(Plugin.ClientState.TerritoryType, questDisplayObject.RoleplayingQuest.QuestId, true);
             Plugin.AQuestReborn.RefreshMapMarkers();
             Plugin.SaveProgress();
