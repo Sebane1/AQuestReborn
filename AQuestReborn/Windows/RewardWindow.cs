@@ -48,6 +48,7 @@ public class RewardWindow : Window, IDisposable
     {
         var screen = ImGui.GetIO().DisplaySize;
         _globalScale = ImGuiHelpers.GlobalScale;
+        Size = new Vector2(600, 250) * _globalScale;
         Position = new Vector2((screen.X / 2) - (Size.Value.X / 2), (screen.Y / 2) - (Size.Value.Y / 2));
         string questName = _questToDisplay.QuestName;
         string questReward = AddSpacesToSentence(_questToDisplay.TypeOfReward.ToString(), false);
@@ -65,8 +66,8 @@ public class RewardWindow : Window, IDisposable
         ImGui.SetCursorPosY(90 * _globalScale);
         Plugin.UiAtlasManager.DrawSeperator(Size.Value.X);
         var tableOffset = 100 * _globalScale;
-        var contentArea = (Size.Value.X - (tableOffset * 2)) * _globalScale;
-        var buttonSize = new Vector2(contentArea, 50);
+        var contentArea = (Size.Value.X - (tableOffset * 2));
+        var buttonSize = new Vector2(contentArea, 50 * _globalScale);
         ImGui.SetCursorPosX(0);
         ImGui.BeginTable("##Dialogue Table", 3);
         ImGui.TableSetupColumn("Padding 1", ImGuiTableColumnFlags.WidthFixed, tableOffset);
