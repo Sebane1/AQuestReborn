@@ -124,7 +124,7 @@ public class EditorWindow : Window, IDisposable
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestName = questName;
                 }
-                if (ImGui.InputText("Quest Description##", ref questDescription, 255))
+                if (ImGui.InputText("Quest Description##", ref questDescription, 56))
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestDescription = questDescription;
                 }

@@ -27,22 +27,9 @@ public class QuestAcceptanceWindow : Window, IDisposable
     public event EventHandler OnQuestAccepted;
     private Stopwatch _timeSinceLastQuestAccepted = new Stopwatch();
     private float _thumbnailRatio;
-    private IDalamudTextureWrap _seperatorSection;
-    private IDalamudTextureWrap _rewardSection;
-    private IDalamudTextureWrap _biggerBoxSection;
-    private IDalamudTextureWrap _topPiece;
-    private IDalamudTextureWrap _bottomPiece;
-    private IDalamudTextureWrap _sidePiece;
-    private IDalamudTextureWrap _sidePieceRepeated;
-    private IDalamudTextureWrap _topCornerPiece;
-    private IDalamudTextureWrap _bottomCornerPiece;
-    private IDalamudTextureWrap _topCenterPiece;
-    private object _reward;
-    private object _description;
-    private object _rating;
     private float _globalScale;
     private byte[] _backgroundFill;
-    private IDalamudTextureWrap _backgroundImage;
+
 
     public Stopwatch TimeSinceLastQuestAccepted { get => _timeSinceLastQuestAccepted; set => _timeSinceLastQuestAccepted = value; }
     public Plugin Plugin { get; private set; }
@@ -55,17 +42,10 @@ public class QuestAcceptanceWindow : Window, IDisposable
         Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBackground;
         Plugin = plugin;
-        Size = new Vector2(630, 630);
+        Size = new Vector2(450, 450);
         SizeCondition = ImGuiCond.Always;
         _timeSinceLastQuestAccepted.Start();
-        Bitmap background = new Bitmap(1, 1);
-        Graphics graphics = Graphics.FromImage(background);
-        graphics.Clear(Color.FromArgb(255, 232, 225, 216));
-        graphics.Save();
-        MemoryStream memoryStream = new MemoryStream();
-        background.Save(memoryStream, ImageFormat.Png);
-        memoryStream.Position = 0;
-        _backgroundFill = memoryStream.ToArray();
+
     }
 
     public void Dispose() { }
@@ -76,52 +56,105 @@ public class QuestAcceptanceWindow : Window, IDisposable
 
     public override void Draw()
     {
-        _globalScale = ImGuiHelpers.GlobalScale * 0.95f;
+        _globalScale = ImGuiHelpers.GlobalScale;
         string questName = _questToDisplay.QuestName;
         string questReward = AddSpacesToSentence(_questToDisplay.TypeOfReward.ToString(), false);
         string description = _questToDisplay.QuestDescription;
         string thumbnailPath = _questToDisplay.QuestThumbnailPath;
         string contentRating = AddSpacesToSentence(_questToDisplay.ContentRating.ToString(), false);
-        CheckImageAssets();
-        if (_backgroundImage != null)
+        if (_currentThumbnail != null)
         {
-            var relativeSize = Size.Value * 0.98f;
-            ImGui.SetCursorPos(new Vector2((Size.Value.X / 2) - (relativeSize.X / 2), 0));
-            ImGui.Image(_backgroundImage.ImGuiHandle, relativeSize);
+            Size = new Vector2(450, 520) * _globalScale;
         }
-        ImGui.SetCursorPosY(50 * _globalScale);
+        else
+        {
+            Size = new Vector2(450, 320) * _globalScale;
+        }
+        Plugin.UiAtlasManager.CheckImageAssets();
+        Plugin.UiAtlasManager.DrawBackground(Size.Value);
+        ImGui.SetCursorPosY(40 * _globalScale);
         ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
-        TextCentered(questName);
-        ImGui.SetCursorPosY(120 * _globalScale);
-        if (_seperatorSection != null)
+        Plugin.UiAtlasManager.TextCentered(questName, Size.Value);
+        ImGui.PopStyleColor();
+        ImGui.SetCursorPosY(90 * _globalScale);
+        Plugin.UiAtlasManager.DrawSeperator(Size.Value.X);
+        if (_currentThumbnail != null)
         {
-            ImGui.Image(_seperatorSection.ImGuiHandle, new Vector2(Size.Value.X, _seperatorSection.Height));
-        }
-        if (_frameToLoad != null)
-        {
-            var thumbnailSize = new Vector2(_thumbnailRatio * 200, 200) * _globalScale;
-            ImGui.SetCursorPosX((Size.Value.X / 2) - (thumbnailSize.X / 2));
-            ImGui.Image(_frameToLoad.ImGuiHandle, thumbnailSize);
-        }
-        ImGui.SetWindowFontScale(1.5f);
-        ImGui.SetCursorPosX(50 * _globalScale);
-        ImGui.LabelText("", "Reward: " + questReward);
-        ImGui.SetCursorPosX(50 * _globalScale);
-        ImGui.LabelText("", "Description: ");
-        ImGui.SetCursorPosX(50 * _globalScale);
-        ImGui.TextWrapped(description);
-        ImGui.SetCursorPosX(50 * _globalScale);
-        ImGui.LabelText("", "Content Rating: " + contentRating);
+            if (!_alreadyLoadingData)
+            {
+                Task.Run(async () =>
+            {
+                _alreadyLoadingData = true;
+                if (_lastLoadedFrame != _currentThumbnail)
+                {
+                    _frameToLoad = await Plugin.TextureProvider.CreateFromImageAsync(_currentThumbnail);
+                    _lastLoadedFrame = _currentThumbnail;
+                }
 
-        ImGui.SetCursorPosY(560 * _globalScale);
-        if (_seperatorSection != null)
-        {
-            ImGui.Image(_seperatorSection.ImGuiHandle, new Vector2(Size.Value.X, _seperatorSection.Height));
+            });
+            }
+            if (_frameToLoad != null)
+            {
+                var thumbnailSize = new Vector2(_thumbnailRatio * 200, 200) * _globalScale;
+                ImGui.SetCursorPosX((Size.Value.X / 2) - (thumbnailSize.X / 2));
+                ImGui.Image(_frameToLoad.ImGuiHandle, thumbnailSize);
+            }
         }
-        ImGui.SetCursorPosY(580 * _globalScale);
-        ImGui.SetWindowFontScale(2);
-        ImGui.SetCursorPosX(220 * _globalScale);
-        if (ImGui.Button("Accept"))
+        var value = new Vector2(30, 30) * _globalScale;
+        float offset = 30f;
+        ImGui.SetWindowFontScale(1.5f);
+
+        ImGui.SetCursorPosX(offset * _globalScale);
+        Plugin.UiAtlasManager.DrawRatingImage(value);
+        ImGui.SameLine();
+        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
+        ImGui.LabelText("", "Content Rating: " + contentRating);
+        ImGui.PopStyleColor();
+
+        ImGui.SetCursorPosX(offset * _globalScale);
+        Plugin.UiAtlasManager.DrawRewardImage(value);
+        ImGui.SameLine();
+        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
+        ImGui.LabelText("", "Reward: " + questReward);
+        ImGui.PopStyleColor();
+        ImGui.SetCursorPosX(offset * _globalScale);
+        Plugin.UiAtlasManager.DrawDescriptionImage(value);
+        ImGui.SameLine();
+        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
+        ImGui.LabelText("", "Description: ");
+        ImGui.PopStyleColor();
+        //ImGui.SetCursorPosX((offset + 40) * _globalScale);
+        var tableOffset = (offset + 40);
+        ImGui.SetCursorPosX(0);
+        ImGui.BeginTable("##Dialogue Table", 3);
+        ImGui.TableSetupColumn("Padding 1", ImGuiTableColumnFlags.WidthFixed, tableOffset * _globalScale);
+        ImGui.TableSetupColumn("Center", ImGuiTableColumnFlags.WidthFixed, (Size.Value.X - (tableOffset * 2)) * _globalScale);
+        ImGui.TableSetupColumn("Padding 2", ImGuiTableColumnFlags.WidthFixed, tableOffset * _globalScale);
+        //ImGui.TableHeadersRow();
+        ImGui.TableNextRow();
+        ImGui.TableSetColumnIndex(0);
+        ImGui.TableSetColumnIndex(1);
+
+
+        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
+        ImGui.SetWindowFontScale(1.2f);
+        ImGui.TextWrapped(description);
+        ImGui.SetWindowFontScale(1.5f);
+        ImGui.PopStyleColor();
+
+
+        ImGui.TableSetColumnIndex(2);
+
+        ImGui.EndTable();
+        ImGui.SetCursorPosY(Size.Value.Y - (65f * _globalScale));
+        Plugin.UiAtlasManager.DrawSeperator(Size.Value.X);
+        ImGui.SetCursorPosY(Size.Value.Y - (55 * _globalScale));
+        ImGui.SetCursorPosX(70 * _globalScale);
+        ImGui.SetWindowFontScale(1.2f);
+        var buttonSize = new Vector2(150, 25) * _globalScale;
+        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.3137254901960784f, 0.3215686274509804f, 0.3215686274509804f, 255));
+        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 1, 1, 255));
+        if (ImGui.Button("Accept", buttonSize))
         {
             _timeSinceLastQuestAccepted.Restart();
             _questToDisplay.HasQuestAcceptancePopup = false;
@@ -129,163 +162,15 @@ public class QuestAcceptanceWindow : Window, IDisposable
             IsOpen = false;
         }
         ImGui.SameLine();
-        if (ImGui.Button("Decline"))
+        if (ImGui.Button("Decline", buttonSize))
         {
             IsOpen = false;
         }
         ImGui.PopStyleColor();
-        DrawFrameBorders();
+        ImGui.PopStyleColor();
+        Plugin.UiAtlasManager.DrawFrameBorders(Size.Value);
     }
-    private void DrawFrameBorders()
-    {
-        //if (_rewardSection == null)
-        //{
-        //    _rewardSection = await Plugin.TextureProvider.CreateFromImageAsync(Plugin.UiAtlasManager.RewardSection);
-        //}
-        //if (_biggerBoxSection == null)
-        //{
-        //    _biggerBoxSection = await Plugin.TextureProvider.CreateFromImageAsync(Plugin.UiAtlasManager.BiggerBoxSection);
-        //}
-        if (_topCenterPiece != null)
-        {
-            var relativeScaling = _topCenterPiece.Size * _globalScale;
-            ImGui.SetCursorPos(new Vector2((Size.Value.X / 2) - (relativeScaling.X / 2), 0));
-            ImGui.Image(_topCenterPiece.ImGuiHandle, relativeScaling);
-        }
-        if (_topPiece != null)
-        {
-            var relativeScaling = _topPiece.Size * _globalScale;
-            var pieceSize = new Vector2(Size.Value.X, relativeScaling.Y);
-            ImGui.SetCursorPos(new Vector2((Size.Value.X / 2) - (pieceSize.X / 2), 0));
-            ImGui.Image(_topPiece.ImGuiHandle, new Vector2(Size.Value.X, pieceSize.Y));
-        }
-        if (_sidePieceRepeated != null)
-        {
-            var relativeScaling = _sidePieceRepeated.Size * _globalScale;
-            ImGui.SetCursorPos(new Vector2(0, 0));
-            ImGui.Image(_sidePieceRepeated.ImGuiHandle, new Vector2(relativeScaling.X, Size.Value.Y - (20 * _globalScale)));
 
-            ImGui.SetCursorPos(new Vector2(Size.Value.X - relativeScaling.X, 0));
-            ImGui.Image(_sidePieceRepeated.ImGuiHandle, new Vector2(relativeScaling.X, Size.Value.Y - (20 * _globalScale)), new Vector2(1, 0), new Vector2(0, 1));
-        }
-        if (_sidePiece != null)
-        {
-            var relativeScaling = _sidePiece.Size * _globalScale;
-            ImGui.SetCursorPos(new Vector2(0, 83 * _globalScale));
-            ImGui.Image(_sidePiece.ImGuiHandle, relativeScaling);
-
-            ImGui.SetCursorPos(new Vector2(Size.Value.X - relativeScaling.X, 83 * _globalScale));
-            ImGui.Image(_sidePiece.ImGuiHandle, relativeScaling, new Vector2(1, 0), new Vector2(0, 1));
-        }
-        if (_bottomPiece != null)
-        {
-            var relativeScaling = _bottomPiece.Size * _globalScale;
-            var pieceSize = new Vector2(Size.Value.X, relativeScaling.Y);
-            ImGui.SetCursorPos(new Vector2((Size.Value.X / 2) - (pieceSize.X / 2), Size.Value.Y - relativeScaling.Y));
-            ImGui.Image(_bottomPiece.ImGuiHandle, pieceSize);
-        }
-        if (_topCornerPiece != null)
-        {
-            var relativeScaling = _topCornerPiece.Size * _globalScale;
-            ImGui.SetCursorPos(new Vector2(0, 0));
-            ImGui.Image(_topCornerPiece.ImGuiHandle, relativeScaling);
-
-            ImGui.SetCursorPos(new Vector2(Size.Value.X - relativeScaling.X, 0));
-            ImGui.Image(_topCornerPiece.ImGuiHandle, relativeScaling, new Vector2(1, 0), new Vector2(0, 1));
-        }
-        if (_bottomCornerPiece != null)
-        {
-            var relativeScaling = _bottomCornerPiece.Size * _globalScale;
-            ImGui.SetCursorPos(new Vector2(0, Size.Value.Y - relativeScaling.Y));
-            ImGui.Image(_bottomCornerPiece.ImGuiHandle, relativeScaling);
-
-            ImGui.SetCursorPos(new Vector2(Size.Value.X - relativeScaling.X, Size.Value.Y - relativeScaling.Y));
-            ImGui.Image(_bottomCornerPiece.ImGuiHandle, relativeScaling, new Vector2(1, 0), new Vector2(0, 1));
-        }
-    }
-    void TextCentered(string text)
-    {
-        var windowWidth = ImGui.GetWindowSize().X;
-        var textWidth = ImGui.CalcTextSize(text).X;
-        ImGui.SetWindowFontScale(2f);
-        ImGui.SetCursorPosX((windowWidth - textWidth) * 0.5f);
-        ImGui.Text(text);
-    }
-    private void CheckImageAssets()
-    {
-        if (!_alreadyLoadingData)
-        {
-            Task.Run(async () =>
-        {
-            _alreadyLoadingData = true;
-            if (_currentThumbnail != null)
-            {
-                if (_lastLoadedFrame != _currentThumbnail)
-                {
-                    _frameToLoad = await Plugin.TextureProvider.CreateFromImageAsync(_currentThumbnail);
-                    _lastLoadedFrame = _currentThumbnail;
-                }
-            }
-            if (_reward == null)
-            {
-                _reward = await Plugin.TextureProvider.CreateFromImageAsync(Plugin.UiAtlasManager.Icons[2]);
-            }
-            if (_description == null)
-            {
-                _description = await Plugin.TextureProvider.CreateFromImageAsync(Plugin.UiAtlasManager.Icons[3]);
-            }
-            if (_rating == null)
-            {
-                _rating = await Plugin.TextureProvider.CreateFromImageAsync(Plugin.UiAtlasManager.Icons[0]);
-            }
-            if (_seperatorSection == null)
-            {
-                _seperatorSection = await Plugin.TextureProvider.CreateFromImageAsync(Plugin.UiAtlasManager.SeperatorSection);
-            }
-            if (_rewardSection == null)
-            {
-                _rewardSection = await Plugin.TextureProvider.CreateFromImageAsync(Plugin.UiAtlasManager.RewardSection);
-            }
-            if (_biggerBoxSection == null)
-            {
-                _biggerBoxSection = await Plugin.TextureProvider.CreateFromImageAsync(Plugin.UiAtlasManager.BiggerBoxSection);
-            }
-            if (_topPiece == null)
-            {
-                _topPiece = await Plugin.TextureProvider.CreateFromImageAsync(Plugin.UiAtlasManager.TopPiece);
-            }
-            if (_bottomPiece == null)
-            {
-                _bottomPiece = await Plugin.TextureProvider.CreateFromImageAsync(Plugin.UiAtlasManager.BottomPiece);
-            }
-            if (_sidePiece == null)
-            {
-                _sidePiece = await Plugin.TextureProvider.CreateFromImageAsync(Plugin.UiAtlasManager.SidePiece);
-            }
-            if (_sidePieceRepeated == null)
-            {
-                _sidePieceRepeated = await Plugin.TextureProvider.CreateFromImageAsync(Plugin.UiAtlasManager.SidePieceRepeated);
-            }
-            if (_topCornerPiece == null)
-            {
-                _topCornerPiece = await Plugin.TextureProvider.CreateFromImageAsync(Plugin.UiAtlasManager.TopCornerPiece);
-            }
-            if (_bottomCornerPiece == null)
-            {
-                _bottomCornerPiece = await Plugin.TextureProvider.CreateFromImageAsync(Plugin.UiAtlasManager.BottomCornerPiece);
-            }
-            if (_backgroundImage == null)
-            {
-                _backgroundImage = await Plugin.TextureProvider.CreateFromImageAsync(_backgroundFill);
-            }
-            //if (_topCenterPiece == null)
-            //{
-            //    _topCenterPiece = await Plugin.TextureProvider.CreateFromImageAsync(Plugin.UiAtlasManager.TopCenterPiece);
-            //}
-            _alreadyLoadingData = false;
-        });
-        }
-    }
     string AddSpacesToSentence(string text, bool preserveAcronyms)
     {
         if (string.IsNullOrWhiteSpace(text))
