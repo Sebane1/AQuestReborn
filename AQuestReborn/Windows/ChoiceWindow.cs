@@ -59,15 +59,7 @@ public class ChoiceWindow : Window, IDisposable
     }
     public void NewList(List<BranchingChoice> branchingChoiceList)
     {
-        if (branchingChoiceList.Count > 1)
-        {
-            IsOpen = true;
-            _branchingChoices = branchingChoiceList;
-        }
-        else
-        {
-            OnChoiceMade?.Invoke(this, 0);
-            IsOpen = false;
-        }
+        IsOpen = true;
+        _branchingChoices = branchingChoiceList;
     }
 }

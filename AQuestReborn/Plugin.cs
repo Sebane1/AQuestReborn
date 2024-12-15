@@ -27,6 +27,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using AQuestReborn;
 using ArtemisRoleplayingKit;
 using AnamCore;
+using AQuestReborn.UIAtlasing;
 
 namespace SamplePlugin;
 
@@ -41,6 +42,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public Configuration Configuration { get; init; }
 
+    private UiAtlasManager _uiAtlasManager;
     public readonly WindowSystem WindowSystem = new("A Quest Reborn");
     private IClientState _clientState;
     private IFramework _framework;
@@ -82,6 +84,7 @@ public sealed class Plugin : IDalamudPlugin
     public IGameConfig GameConfig { get => _gameConfig; set => _gameConfig = value; }
     public IChatGui ChatGui { get => _chatGui; set => _chatGui = value; }
     public IGamepadState GamepadState { get => _gamepadState; set => _gamepadState = value; }
+    public UiAtlasManager UiAtlasManager { get => _uiAtlasManager; set => _uiAtlasManager = value; }
 
     private EmoteReaderHooks _emoteReaderHook;
     private IPluginLog _pluginLog;
@@ -108,7 +111,7 @@ public sealed class Plugin : IDalamudPlugin
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
         // you might normally want to embed resources and load them from the manifest stream
-
+        _uiAtlasManager = new UiAtlasManager(this);
         ChoiceWindow = new ChoiceWindow(this);
         DialogueWindow = new DialogueWindow(this);
         EditorWindow = new EditorWindow(this);

@@ -255,7 +255,7 @@ namespace AQuestReborn
             {
                 if (_activeQuestChainObjectives == null || _activeQuestChainObjectives.Count == 0)
                 {
-                    if (_actorSpawnService.TargetService.GPoseTarget != null)
+                    if (_actorSpawnService != null && _actorSpawnService.TargetService.GPoseTarget != null)
                     {
                         bool timeToDestroyNPCs = true;
                         Vector2 screenPosition;

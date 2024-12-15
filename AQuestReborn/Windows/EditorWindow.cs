@@ -627,7 +627,7 @@ public class EditorWindow : Window, IDisposable
                         RefreshMenus();
                     }
                     ImGui.SameLine();
-                    if (ImGui.Button("Add Child##" + i))
+                    if (ImGui.Button("Add Sub Objective##" + i))
                     {
                         objective.SubObjectives.Add(new QuestObjective()
                         {
@@ -659,7 +659,7 @@ public class EditorWindow : Window, IDisposable
     private void DrawQuestObjectives()
     {
         DrawQuestObjectivesRecursive(_roleplayingQuestCreator.CurrentQuest.QuestObjectives, 0);
-        if (ImGui.Button("Add Objective"))
+        if (ImGui.Button("Add Dominant Objective"))
         {
             _npcTransformEditorWindow.RefreshMenus();
             _roleplayingQuestCreator.AddQuestObjective(new QuestObjective()
