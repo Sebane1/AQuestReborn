@@ -323,6 +323,10 @@ public class EditorWindow : Window, IDisposable
             var questText = _objectiveInFocus.QuestText;
             if (questText.Count > 0)
             {
+                if (_selectedDialogue > questText.Count)
+                {
+                    _selectedDialogue = 0;
+                }
                 var item = questText[_selectedDialogue];
                 var faceExpression = item.FaceExpression;
                 var bodyExpression = item.BodyExpression;

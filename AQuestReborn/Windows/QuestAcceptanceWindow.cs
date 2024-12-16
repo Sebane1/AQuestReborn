@@ -209,6 +209,7 @@ public class QuestAcceptanceWindow : Window, IDisposable
         else
         {
             _currentThumbnail = null;
+            _frameToLoad = null;
         }
     }
 }
