@@ -596,15 +596,12 @@ public class EditorWindow : Window, IDisposable
                 _subEditorWindow.RefreshMenus();
                 _subEditorWindow.IsOpen = false;
             }
-            else
-            {
-                _branchingChoices = new string[] { };
-                _nodeNames = new string[] { };
-                _dialogues = new string[] { };
-            }
         }
         else
         {
+            _branchingChoices = new string[] { };
+            _nodeNames = new string[] { };
+            _dialogues = new string[] { };
             _dialogues = Utility.FillNewList(0, "Dialogue");
             _nodeNames = Utility.FillNewList(0, "Objective");
             _branchingChoices = Utility.FillNewList(0, "Choice");
