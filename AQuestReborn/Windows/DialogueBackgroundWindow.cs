@@ -156,7 +156,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
                     _frameToLoad = await _textureProvider.CreateFromImageAsync(_currentBackground);
                     _lastLoadedFrame = _currentBackground;
                 }
-                if(_blackBarsFrame == null)
+                if (_blackBarsFrame == null)
                 {
                     _blackBarsFrame = await _textureProvider.CreateFromImageAsync(_blackBars);
                 }
@@ -215,7 +215,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
                     }
                     if (_frameToLoad != null)
                     {
-                        float ratio = 1080 / 1920;
+                        float ratio = (float)1920 / (float)1080;
                         Vector2 scaledSize = new Vector2(displaySize.Y * ratio, displaySize.Y);
                         ImGui.SetCursorPos(new Vector2((displaySize.X / 2) - (scaledSize.X / 2), (displaySize.Y / 2) - (scaledSize.Y / 2)));
                         ImGui.Image(_frameToLoad.ImGuiHandle, scaledSize);
