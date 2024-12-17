@@ -309,9 +309,9 @@ public class EditorWindow : Window, IDisposable
                     _npcTransformEditorWindow.IsOpen = true;
                 }
             }
-            ImGui.SameLine();
             if (questObjective.IsAPrimaryObjective)
             {
+                ImGui.SameLine();
                 if (ImGui.Button("Preview Quest Objective##"))
                 {
                     Plugin.RoleplayingQuestManager.SkipToObjective(_roleplayingQuestCreator.CurrentQuest, questObjective.Index);
