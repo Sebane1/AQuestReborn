@@ -234,7 +234,7 @@ public class EditorWindow : Window, IDisposable
             ImGui.SameLine();
             if (ImGui.Button("Copy To Clipboard"))
             {
-                ImGui.SetClipboardText(questObjective.Id);
+                ImGui.SetClipboardText(questObjective.Id.Trim());
             }
             ImGui.SetNextItemWidth(200);
             ImGui.LabelText("##coordinatesLabel", $"Coordinates: X:{Math.Round(questObjective.Coordinates.X)}," +

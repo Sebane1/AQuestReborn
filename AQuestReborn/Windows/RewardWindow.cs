@@ -94,6 +94,10 @@ public class RewardWindow : Window, IDisposable
                 ImGui.PopStyleColor();
                 break;
             case RoleplayingQuest.QuestRewardType.DownloadLink:
+                ImGui.SetWindowFontScale(0.9f);
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
+                ImGui.TextWrapped("Check URL: " + _questToDisplay.QuestReward);
+                ImGui.PopStyleColor();
                 ImGui.SetWindowFontScale(1.2f);
                 if (ImGui.Button("Awarded A Download", buttonSize))
                 {
