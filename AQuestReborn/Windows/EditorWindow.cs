@@ -40,6 +40,8 @@ public class EditorWindow : Window, IDisposable
         "Normal", "Style2", "Telepathic", "Omicron/Machine", "Shout",
         "Written Lore", "Monster/Creature", "Dragon/Linkpearl", "System/Ascian" };
     private QuestObjective _objectiveInFocus;
+    private float _globalScale;
+    private bool _shiftModifierHeld;
 
     public RoleplayingQuestCreator RoleplayingQuestCreator { get => _roleplayingQuestCreator; set => _roleplayingQuestCreator = value; }
 
@@ -47,14 +49,9 @@ public class EditorWindow : Window, IDisposable
     // So that the user will see "My Amazing Window" as window title,
     // but for ImGui the ID is "My Amazing Window##With a hidden ID"
     public EditorWindow(Plugin plugin)
-        : base("Quest Creator##" + Guid.NewGuid().ToString(), ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+        : base("Quest Creator##" + Guid.NewGuid().ToString(), ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.AlwaysAutoResize)
     {
-        SizeConstraints = new WindowSizeConstraints
-        {
-            MinimumSize = new Vector2(800, 800),
-            MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
-        };
-
+        Size = new Vector2(1000, 1000);
         Plugin = plugin;
         _fileDialogManager = new FileDialogManager();
         if (_npcTransformEditorWindow == null)
@@ -88,6 +85,8 @@ public class EditorWindow : Window, IDisposable
     }
     public override void Draw()
     {
+        _globalScale = ImGuiHelpers.GlobalScale;
+        _shiftModifierHeld = ImGui.GetIO().KeyShift;
         _fileDialogManager.Draw();
         if (!_roleplayingQuestCreator.CurrentQuest.IsSubQuest)
         {
@@ -669,10 +668,18 @@ public class EditorWindow : Window, IDisposable
                             TerritoryId = Plugin.ClientState.TerritoryType
                         });
                     }
+                    if (!_shiftModifierHeld)
+                    {
+                        ImGui.BeginDisabled();
+                    }
                     ImGui.SameLine();
                     if (ImGui.Button("Delete##" + i))
                     {
                         objective.Invalidate = true;
+                    }
+                    if (!_shiftModifierHeld)
+                    {
+                        ImGui.EndDisabled();
                     }
                     DrawQuestObjectivesRecursive(objective.SubObjectives, level + 1);
                     ImGui.TreePop();
@@ -691,7 +698,17 @@ public class EditorWindow : Window, IDisposable
     }
     private void DrawQuestObjectives()
     {
+        var width = ImGui.GetColumnWidth();
+        ImGui.PushID("Vertical Scroll");
+        ImGui.BeginGroup();
+        const ImGuiWindowFlags child_flags = ImGuiWindowFlags.MenuBar;
+        var child_id = ImGui.GetID("Objective");
+        bool child_is_visible = ImGui.BeginChild(child_id, new Vector2(width, 600), true, child_flags);
         DrawQuestObjectivesRecursive(_roleplayingQuestCreator.CurrentQuest.QuestObjectives, 0);
+        ImGui.EndChild();
+        ImGui.EndGroup();
+        ImGui.PopID();
+        ImGui.TextUnformatted("Hold Shift To Delete Objectives");
         if (ImGui.Button("Add Dominant Objective"))
         {
             _npcTransformEditorWindow.RefreshMenus();
@@ -701,7 +718,7 @@ public class EditorWindow : Window, IDisposable
                 Rotation = new Vector3(0, Utility.ConvertRadiansToDegrees(Plugin.ClientState.LocalPlayer.Rotation), 0),
                 TerritoryId = Plugin.ClientState.TerritoryType
             });
-            _nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
+            //_nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
             RefreshMenus();
         }
         //ImGui.SameLine();
