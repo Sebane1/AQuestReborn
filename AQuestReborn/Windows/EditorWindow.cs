@@ -652,7 +652,7 @@ public class EditorWindow : Window, IDisposable
                 {
                     objective.Index = i;
                 }
-                if (ImGui.TreeNode((level == 0 ? i : "") + "" + objective.Objective + "##" + i))
+                if (ImGui.TreeNode((level == 0 ? "(" + i + ") " : "") + "" + objective.Objective + "##" + i))
                 {
                     if (ImGui.Button("Edit##" + i))
                     {
