@@ -244,99 +244,113 @@ public class DialogueWindow : Window, IDisposable
     public void SetText(int index)
     {
         _index = index;
+        bool allowedToContinue = true;
         Plugin.MediaManager.StopAudio(_dummyObject);
         Plugin.DialogueBackgroundWindow.ClearBackground();
         if (_index < questDisplayObject.QuestObjective.QuestText.Count)
         {
             var item = questDisplayObject.QuestObjective.QuestText[_index];
-            Plugin.DialogueBackgroundWindow.IsOpen = true;
-            IsOpen = true;
-            _currentCharacter = 0;
-            _currentText = "";
-            _targetText = item.Dialogue;
-            _currentName = string.IsNullOrEmpty(item.NpcAlias) ? item.NpcName : item.NpcAlias;
-            _currentDialogueBoxIndex = item.DialogueBoxStyle;
-            _mcdfSwap = item.AppearanceSwap;
-            string customAudioPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueAudio);
-            string customBackgroundPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueBackground);
-            string customMcdfPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.AppearanceSwap);
-            if (!string.IsNullOrEmpty(_mcdfSwap) && File.Exists(customMcdfPath))
+            switch (item.ConditionForDialogueToOccur)
             {
-                if (Plugin.RoleplayingQuestManager.SwapMCDF(questDisplayObject.RoleplayingQuest, item.NpcName, item.AppearanceSwap))
-                {
-                    Plugin.AQuestReborn.RefreshNpcsForQuest(Plugin.ClientState.TerritoryType, questDisplayObject.RoleplayingQuest.QuestId);
-                }
-            }
-            if (_currentName.ToLower() == "system")
-            {
-                _currentDialogueBoxIndex = _dialogueBoxStyles.Count - 1;
-            }
-            if (Plugin.AQuestReborn.SpawnedNPCs.ContainsKey(questDisplayObject.RoleplayingQuest.QuestId))
-            {
-                if (Plugin.AQuestReborn.SpawnedNPCs[questDisplayObject.RoleplayingQuest.QuestId].ContainsKey(item.NpcName))
-                {
-                    if ((ushort)item.BodyExpression > 0)
+                case QuestText.DialogueConditionType.CompletedSpecificObjectiveId:
+                    if (!Plugin.RoleplayingQuestManager.CompletedObjectiveExists(item.ObjectiveIdToComplete))
                     {
-                        if (!item.LoopAnimation)
+                        SetText(index + 1);
+                        allowedToContinue = false;
+                    }
+                    break;
+            }
+            if (allowedToContinue)
+            {
+                Plugin.DialogueBackgroundWindow.IsOpen = true;
+                IsOpen = true;
+                _currentCharacter = 0;
+                _currentText = "";
+                _targetText = item.Dialogue;
+                _currentName = string.IsNullOrEmpty(item.NpcAlias) ? item.NpcName : item.NpcAlias;
+                _currentDialogueBoxIndex = item.DialogueBoxStyle;
+                _mcdfSwap = item.AppearanceSwap;
+                string customAudioPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueAudio);
+                string customBackgroundPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueBackground);
+                string customMcdfPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.AppearanceSwap);
+                if (!string.IsNullOrEmpty(_mcdfSwap) && File.Exists(customMcdfPath))
+                {
+                    if (Plugin.RoleplayingQuestManager.SwapMCDF(questDisplayObject.RoleplayingQuest, item.NpcName, item.AppearanceSwap))
+                    {
+                        Plugin.AQuestReborn.RefreshNpcsForQuest(Plugin.ClientState.TerritoryType, questDisplayObject.RoleplayingQuest.QuestId);
+                    }
+                }
+                if (_currentName.ToLower() == "system")
+                {
+                    _currentDialogueBoxIndex = _dialogueBoxStyles.Count - 1;
+                }
+                if (Plugin.AQuestReborn.SpawnedNPCs.ContainsKey(questDisplayObject.RoleplayingQuest.QuestId))
+                {
+                    if (Plugin.AQuestReborn.SpawnedNPCs[questDisplayObject.RoleplayingQuest.QuestId].ContainsKey(item.NpcName))
+                    {
+                        if ((ushort)item.BodyExpression > 0)
                         {
-                            Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.AQuestReborn.SpawnedNPCs[questDisplayObject.RoleplayingQuest.QuestId][item.NpcName], (ushort)item.BodyExpression);
+                            if (!item.LoopAnimation)
+                            {
+                                Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.AQuestReborn.SpawnedNPCs[questDisplayObject.RoleplayingQuest.QuestId][item.NpcName], (ushort)item.BodyExpression);
+                            }
+                            else
+                            {
+                                Plugin.AnamcoreManager.TriggerEmote(Plugin.AQuestReborn.SpawnedNPCs[questDisplayObject.RoleplayingQuest.QuestId][item.NpcName].Address, (ushort)item.BodyExpression);
+                            }
                         }
                         else
                         {
-                            Plugin.AnamcoreManager.TriggerEmote(Plugin.AQuestReborn.SpawnedNPCs[questDisplayObject.RoleplayingQuest.QuestId][item.NpcName].Address, (ushort)item.BodyExpression);
+                            Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.AQuestReborn.SpawnedNPCs[questDisplayObject.RoleplayingQuest.QuestId][item.NpcName], (ushort)5810);
                         }
+                    }
+                }
+                if (Plugin.MediaManager != null)
+                {
+                    if (File.Exists(customAudioPath))
+                    {
+                        Plugin.MediaManager.PlayMedia(_dummyObject, customAudioPath, RoleplayingMediaCore.SoundType.NPC, true);
+                    }
+                    if (File.Exists(customBackgroundPath))
+                    {
+                        Plugin.DialogueBackgroundWindow.SetBackground(customBackgroundPath, item.TypeOfDialogueBackground);
                     }
                     else
                     {
-                        Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.AQuestReborn.SpawnedNPCs[questDisplayObject.RoleplayingQuest.QuestId][item.NpcName], (ushort)5810);
+                        Plugin.DialogueBackgroundWindow.ClearBackground();
                     }
                 }
-            }
-            if (Plugin.MediaManager != null)
-            {
-                if (File.Exists(customAudioPath))
+                if (_index < questDisplayObject.QuestObjective.QuestText.Count &&
+                questDisplayObject.QuestObjective.QuestText[_index].BranchingChoices.Count > 0)
                 {
-                    Plugin.MediaManager.PlayMedia(_dummyObject, customAudioPath, RoleplayingMediaCore.SoundType.NPC, true);
-                }
-                if (File.Exists(customBackgroundPath))
-                {
-                    Plugin.DialogueBackgroundWindow.SetBackground(customBackgroundPath, item.TypeOfDialogueBackground);
+                    _choicesAreNext = true;
                 }
                 else
                 {
-                    Plugin.DialogueBackgroundWindow.ClearBackground();
+                    switch (item.DialogueEndBehaviour)
+                    {
+                        case QuestText.DialogueEndBehaviourType.DialogueSkipsToDialogueNumber:
+                            _index = item.DialogueNumberToSkipTo;
+                            break;
+                        case QuestText.DialogueEndBehaviourType.DialogueEndsEarlyWhenHit:
+                            _index = questDisplayObject.QuestObjective.QuestText.Count;
+                            break;
+                        case QuestText.DialogueEndBehaviourType.DialogueEndsEarlyWhenHitNoProgression:
+                            _index = questDisplayObject.QuestObjective.QuestText.Count;
+                            _blockProgression = true;
+                            break;
+                        case QuestText.DialogueEndBehaviourType.DialogueEndsEarlyWhenHitAndSkipsToObjective:
+                            _index = questDisplayObject.QuestObjective.QuestText.Count;
+                            Plugin.RoleplayingQuestManager.SkipToObjective(questDisplayObject.RoleplayingQuest, item.ObjectiveNumberToSkipTo);
+                            _objectiveSkip = true;
+                            break;
+                        case QuestText.DialogueEndBehaviourType.None:
+                            _index++;
+                            break;
+                    }
                 }
+                textTimer.Restart();
             }
-            if (_index < questDisplayObject.QuestObjective.QuestText.Count &&
-            questDisplayObject.QuestObjective.QuestText[_index].BranchingChoices.Count > 0)
-            {
-                _choicesAreNext = true;
-            }
-            else
-            {
-                switch (item.DialogueEndBehaviour)
-                {
-                    case QuestText.DialogueEndBehaviourType.DialogueSkipsToDialogueNumber:
-                        _index = item.DialogueNumberToSkipTo;
-                        break;
-                    case QuestText.DialogueEndBehaviourType.DialogueEndsEarlyWhenHit:
-                        _index = questDisplayObject.QuestObjective.QuestText.Count;
-                        break;
-                    case QuestText.DialogueEndBehaviourType.DialogueEndsEarlyWhenHitNoProgression:
-                        _index = questDisplayObject.QuestObjective.QuestText.Count;
-                        _blockProgression = true;
-                        break;
-                    case QuestText.DialogueEndBehaviourType.DialogueEndsEarlyWhenHitAndSkipsToObjective:
-                        _index = questDisplayObject.QuestObjective.QuestText.Count;
-                        Plugin.RoleplayingQuestManager.SkipToObjective(questDisplayObject.RoleplayingQuest, item.ObjectiveNumberToSkipTo);
-                        _objectiveSkip = true;
-                        break;
-                    case QuestText.DialogueEndBehaviourType.None:
-                        _index++;
-                        break;
-                }
-            }
-            textTimer.Restart();
         }
         else
         {

@@ -13,6 +13,7 @@ public class Configuration : IPluginConfiguration
 
     public Dictionary<string, RoleplayingQuest> _questChains = new Dictionary<string, RoleplayingQuest>();
     public Dictionary<string, int> _questProgression = new Dictionary<string, int>();
+    private Dictionary<string, List<string>> _completedObjectives = new Dictionary<string, List<string>>();
 
     public bool IsConfigWindowMovable { get; set; } = true;
     public bool SomePropertyToBeSavedAndWithADefault { get; set; } = true;
@@ -30,6 +31,8 @@ public class Configuration : IPluginConfiguration
         }
         set => _questInstallFolder = value;
     }
+
+    public Dictionary<string, List<string>> CompletedObjectives { get { return _completedObjectives;  } set { _completedObjectives = value; } }
 
     // the below exist just to make saving less cumbersome
     public void Save()

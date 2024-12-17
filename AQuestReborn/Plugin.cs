@@ -146,7 +146,7 @@ public sealed class Plugin : IDalamudPlugin
         // Adds another button that is doing the same but for the main ui of the plugin
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
         _anamcoreManager = new AnamcoreManager(this);
-        _roleplayingQuestManager = new RoleplayingQuestManager(Configuration.QuestChains, Configuration.QuestProgression, Configuration.QuestInstallFolder);
+        _roleplayingQuestManager = new RoleplayingQuestManager(Configuration.QuestChains, Configuration.QuestProgression, Configuration.CompletedObjectives, Configuration.QuestInstallFolder);
         _emoteReaderHook = new EmoteReaderHooks(gameInteropProvider, _clientState, objectTable);
         _dalamudPluginInterface = dalamudPluginInterface;
         _aQuestReborn = new AQuestReborn.AQuestReborn(this);

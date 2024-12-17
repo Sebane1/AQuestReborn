@@ -342,6 +342,8 @@ public class EditorWindow : Window, IDisposable
                     _selectedDialogue = 0;
                 }
                 var item = questText[_selectedDialogue];
+                var dialogueCondition = (int)item.ConditionForDialogueToOccur;
+                var objectiveIdToComplete = item.ObjectiveIdToComplete;
                 var faceExpression = item.FaceExpression;
                 var bodyExpression = item.BodyExpression;
                 var npcAlias = item.NpcAlias;
@@ -356,8 +358,25 @@ public class EditorWindow : Window, IDisposable
                 var objectiveNumberToSkipTo = item.ObjectiveNumberToSkipTo;
                 var dialogueEndTypes = Enum.GetNames(typeof(QuestText.DialogueEndBehaviourType));
                 var dialogueBackgroundTypes = Enum.GetNames(typeof(QuestText.DialogueBackgroundType));
+                var dialogueConditionTypes = Enum.GetNames(typeof(QuestText.DialogueConditionType));
                 var appearanceSwap = item.AppearanceSwap;
                 var loopAnimation = item.LoopAnimation;
+
+                if (ImGui.Combo("Condition For Dialogue To Occur##", ref dialogueCondition, dialogueConditionTypes, dialogueConditionTypes.Length))
+                {
+                    item.ConditionForDialogueToOccur = (DialogueConditionType)dialogueCondition;
+                }
+                switch (item.ConditionForDialogueToOccur)
+                {
+                    case DialogueConditionType.None:
+                        break;
+                    case DialogueConditionType.CompletedSpecificObjectiveId:
+                        if (ImGui.InputText("Objective Id To Complete##", ref objectiveIdToComplete, 40))
+                        {
+                            item.ObjectiveIdToComplete =  objectiveIdToComplete;
+                        }
+                        break;
+                }
                 if (ImGui.InputText("Npc Alias##", ref npcAlias, 40))
                 {
                     item.NpcAlias = npcAlias;
