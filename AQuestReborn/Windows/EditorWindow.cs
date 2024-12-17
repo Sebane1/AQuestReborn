@@ -93,10 +93,7 @@ public class EditorWindow : Window, IDisposable
         {
             if (ImGui.Button("Save Quest"))
             {
-                _roleplayingQuestCreator.SaveQuest(Path.Combine(Plugin.Configuration.QuestInstallFolder, _roleplayingQuestCreator.CurrentQuest.QuestName));
-                Plugin.RoleplayingQuestManager.ScanDirectory();
-                Plugin.AQuestReborn.RefreshNpcsForQuest(Plugin.ClientState.TerritoryType, _roleplayingQuestCreator.CurrentQuest.QuestId, true);
-                Plugin.AQuestReborn.RefreshMapMarkers();
+                PersistQuest();
             }
             ImGui.SameLine();
             if (ImGui.Button("New Quest"))
@@ -204,6 +201,15 @@ public class EditorWindow : Window, IDisposable
         ImGui.EndTable();
     }
 
+    private void PersistQuest()
+    {
+        string questPath = Path.Combine(Plugin.Configuration.QuestInstallFolder, _roleplayingQuestCreator.CurrentQuest.QuestName);
+        _roleplayingQuestCreator.SaveQuest(questPath);
+        Plugin.RoleplayingQuestManager.AddQuest(Path.Combine(questPath, "main.quest"), false, true);
+        Plugin.AQuestReborn.RefreshNpcsForQuest(Plugin.ClientState.TerritoryType, _roleplayingQuestCreator.CurrentQuest.QuestId, true);
+        Plugin.AQuestReborn.RefreshMapMarkers();
+    }
+
     private void DrawQuestNodeEditor()
     {
         if (_objectiveInFocus != null)
@@ -301,6 +307,15 @@ public class EditorWindow : Window, IDisposable
                 {
                     _npcTransformEditorWindow.SetEditingQuest(questObjective);
                     _npcTransformEditorWindow.IsOpen = true;
+                }
+            }
+            ImGui.SameLine();
+            if (questObjective.IsAPrimaryObjective)
+            {
+                if (ImGui.Button("Preview Quest Objective##"))
+                {
+                    Plugin.RoleplayingQuestManager.SkipToObjective(_roleplayingQuestCreator.CurrentQuest, questObjective.Index);
+                    PersistQuest();
                 }
             }
             ImGui.BeginTable("##Dialogue Table", 2);
@@ -625,6 +640,10 @@ public class EditorWindow : Window, IDisposable
                 if (level > 0)
                 {
                     objective.IsAPrimaryObjective = false;
+                }
+                else
+                {
+                    objective.Index = i;
                 }
                 if (ImGui.TreeNode(objective.Objective + "##" + i))
                 {
