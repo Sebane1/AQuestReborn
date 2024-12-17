@@ -51,7 +51,7 @@ public class EditorWindow : Window, IDisposable
     public EditorWindow(Plugin plugin)
         : base("Quest Creator##" + Guid.NewGuid().ToString(), ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.AlwaysAutoResize)
     {
-        Size = new Vector2(1000, 1000);
+        Size = new Vector2(1100, 1000);
         Plugin = plugin;
         _fileDialogManager = new FileDialogManager();
         if (_npcTransformEditorWindow == null)
@@ -229,7 +229,13 @@ public class EditorWindow : Window, IDisposable
 
             var maximum3dIndicatorDistance = questObjective.Maximum3dIndicatorDistance;
             var dontShowOnMap = questObjective.DontShowOnMap;
-
+            ImGui.SetNextItemWidth(400);
+            ImGui.LabelText("##objectiveIdLabel", $"Objective Id: " + questObjective.Id);
+            ImGui.SameLine();
+            if (ImGui.Button("Copy To Clipboard"))
+            {
+                ImGui.SetClipboardText(questObjective.Id);
+            }
             ImGui.SetNextItemWidth(200);
             ImGui.LabelText("##coordinatesLabel", $"Coordinates: X:{Math.Round(questObjective.Coordinates.X)}," +
                 $"Y:{Math.Round(questObjective.Coordinates.Y)}," +
@@ -373,7 +379,7 @@ public class EditorWindow : Window, IDisposable
                     case DialogueConditionType.CompletedSpecificObjectiveId:
                         if (ImGui.InputText("Objective Id To Complete##", ref objectiveIdToComplete, 40))
                         {
-                            item.ObjectiveIdToComplete =  objectiveIdToComplete;
+                            item.ObjectiveIdToComplete = objectiveIdToComplete;
                         }
                         break;
                 }
