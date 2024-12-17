@@ -47,6 +47,7 @@ public class DialogueWindow : Window, IDisposable
     private bool _alreadyLoadingTitleFrame;
     private Bitmap data1;
     private float _globalScale;
+    private bool _objectiveSkip;
 
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
@@ -325,6 +326,11 @@ public class DialogueWindow : Window, IDisposable
                         _index = questDisplayObject.QuestObjective.QuestText.Count;
                         _blockProgression = true;
                         break;
+                    case QuestText.DialogueEndBehaviourType.DialogueEndsEarlyWhenHitAndSkipsToObjective:
+                        _index = questDisplayObject.QuestObjective.QuestText.Count;
+                        Plugin.RoleplayingQuestManager.SkipToObjective(questDisplayObject.RoleplayingQuest, item.ObjectiveNumberToSkipTo);
+                        _objectiveSkip = true;
+                        break;
                     case QuestText.DialogueEndBehaviourType.None:
                         _index++;
                         break;
@@ -339,13 +345,14 @@ public class DialogueWindow : Window, IDisposable
             IsOpen = false;
             _currentCharacter = 0;
             textTimer.Reset();
-            if (!_blockProgression)
+            if (!_blockProgression && !_objectiveSkip)
             {
                 questDisplayObject.QuestEvents?.Invoke(this, EventArgs.Empty);
             }
             else
             {
                 _blockProgression = false;
+                _objectiveSkip = false;
             }
             Plugin.AQuestReborn.RefreshNpcsForQuest(Plugin.ClientState.TerritoryType, questDisplayObject.RoleplayingQuest.QuestId, true);
             Plugin.AQuestReborn.RefreshMapMarkers();

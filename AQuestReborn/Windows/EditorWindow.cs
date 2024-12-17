@@ -354,6 +354,7 @@ public class EditorWindow : Window, IDisposable
                 var dialogueBackground = item.DialogueBackground;
                 var dialogueEndBehaviour = (int)item.DialogueEndBehaviour;
                 var dialogueNumberToSkipTo = item.DialogueNumberToSkipTo;
+                var objectiveNumberToSkipTo = item.ObjectiveNumberToSkipTo;
                 var dialogueEndTypes = Enum.GetNames(typeof(QuestText.DialogueEndBehaviourType));
                 var dialogueBackgroundTypes = Enum.GetNames(typeof(QuestText.DialogueBackgroundType));
                 var appearanceSwap = item.AppearanceSwap;
@@ -427,6 +428,12 @@ public class EditorWindow : Window, IDisposable
                         if (ImGui.InputInt("Dialogue Number To Skip To##", ref dialogueNumberToSkipTo))
                         {
                             item.DialogueNumberToSkipTo = dialogueNumberToSkipTo;
+                        }
+                        break;
+                    case DialogueEndBehaviourType.DialogueEndsEarlyWhenHitAndSkipsToObjective:
+                        if (ImGui.InputInt("Objective Number To Skip To##", ref objectiveNumberToSkipTo))
+                        {
+                            item.ObjectiveNumberToSkipTo = objectiveNumberToSkipTo;
                         }
                         break;
                 }
@@ -645,7 +652,7 @@ public class EditorWindow : Window, IDisposable
                 {
                     objective.Index = i;
                 }
-                if (ImGui.TreeNode(objective.Objective + "##" + i))
+                if (ImGui.TreeNode((level == 0 ? i : "") + "" + objective.Objective + "##" + i))
                 {
                     if (ImGui.Button("Edit##" + i))
                     {
