@@ -1,6 +1,8 @@
 Play custom quests made by the community, or make your own!
 
-Custom quest NPC's made possible via the progress made with brio.
+Custom quest NPC's made possible via the progress made with Brio.
+
+Credit to Xoza for the repository logo.
 
 Dalamud compatible repo link.
 ```
