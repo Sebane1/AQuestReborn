@@ -51,7 +51,7 @@ public class EditorWindow : Window, IDisposable
     public EditorWindow(Plugin plugin)
         : base("Quest Creator##" + Guid.NewGuid().ToString(), ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.AlwaysAutoResize)
     {
-        Size = new Vector2(1100, 1000);
+        Size = new Vector2(1100, 1100);
         Plugin = plugin;
         _fileDialogManager = new FileDialogManager();
         if (_npcTransformEditorWindow == null)
