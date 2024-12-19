@@ -157,7 +157,6 @@ namespace AQuestReborn
                             Utf8String* stringBuffer = Utf8String.CreateEmpty();
                             stringBuffer->SetString(item.Item3.QuestName);
                             uint icon = (item.Item1 == 0 ? (uint)230604 : (uint)230605);
-
                             var offset = new Vector3(map.OffsetX, 0, map.OffsetY);
                             AgentMap.Instance()->AddMapMarker(item.Item2.Coordinates + offset, icon, 0, stringBuffer->StringPtr);
                             AgentMap.Instance()->AddMiniMapMarker(item.Item2.Coordinates + offset, icon);
