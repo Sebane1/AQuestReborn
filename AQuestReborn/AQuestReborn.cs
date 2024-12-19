@@ -8,6 +8,7 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using Lumina.Excel.Sheets;
 using RoleplayingMediaCore;
 using RoleplayingQuestCore;
 using RoleplayingVoiceDalamudWrapper;
@@ -119,6 +120,12 @@ namespace AQuestReborn
             if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
             {
                 Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.DoEmote, emoteId.ToString());
+            }
+            if (Plugin.EditorWindow.IsOpen)
+            {
+                Emote emote = Plugin.DataManager.GetExcelSheet<Emote>().GetRow(emoteId);
+                Plugin.ChatGui.Print("Emote Id: " + emoteId);
+                Plugin.ChatGui.Print("Body Animation Id: " + emote.ActionTimeline[0].Value.RowId);
             }
         }
 
