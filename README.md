@@ -20,7 +20,7 @@ Instructions:
 Need a demo questline? Check out this one! https://www.xivmodarchive.com/modid/124163
 
 Basic quest creation tutorial:
-https://www.youtube.com/watch?v=p6FSnRm_DoM
+https://www.youtube.com/watch?v=JJM9aHRHkDw
 
 Support Discord: https://discord.gg/rtGXwMn7pX
 
