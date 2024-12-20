@@ -243,45 +243,11 @@ namespace AQuestReborn
                 {
                     _mcdfRefreshTimer.Reset();
                     var item = _mcdfQueue.Dequeue();
-                    if (_actorSpawnService.TargetService.GPoseTarget == null)
-                    {
-                        _actorSpawnService.TargetService.GPoseTarget = Plugin.ClientState.LocalPlayer;
-                    }
                     if (!_mcdfService.LoadMcdfAsync(item.Key, item.Value))
                     {
                         _mcdfQueue.Enqueue(item);
                     }
                     _mcdfRefreshTimer.Restart();
-                }
-            }
-            else
-            {
-                if (_activeQuestChainObjectives == null || _activeQuestChainObjectives.Count == 0)
-                {
-                    if (_actorSpawnService != null && _actorSpawnService.TargetService.GPoseTarget != null)
-                    {
-                        bool timeToDestroyNPCs = true;
-                        Vector2 screenPosition;
-                        foreach (var spawnList in _spawnedNPCsDictionary)
-                        {
-                            foreach (var spawn in spawnList.Value)
-                            {
-                                bool inView = false;
-                                Plugin.GameGui.WorldToScreen(spawn.Value.Position, out screenPosition, out inView);
-                                if (inView)
-                                {
-                                    timeToDestroyNPCs = !inView;
-                                    break;
-                                }
-                            }
-                        }
-                        if ((timeToDestroyNPCs))
-                        {
-                            _actorSpawnService.TargetService.GPoseTarget = null;
-                            _actorSpawnService.DestroyAllCreated();
-                            _spawnedNPCsDictionary.Clear();
-                        }
-                    }
                 }
             }
         }
