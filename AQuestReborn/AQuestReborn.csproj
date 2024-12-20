@@ -24,7 +24,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Brio\Brio\Brio.csproj" />
     <ProjectReference Include="..\LooseTextureCompilerCore\LooseTextureCompilerCore.csproj" />
-    <ProjectReference Include="..\MCDF-Loader\MareAPI\MareSynchronosAPI\MareSynchronos.API.csproj" />
     <ProjectReference Include="..\MCDF-Loader\MareSynchronos\McdfDataImporter.csproj" />
     <ProjectReference Include="..\RoleplayingQuestCore\RoleplayingQuestCore.csproj" />
     <ProjectReference Include="..\RoleplayingVoiceCore\RoleplayingVoiceCore.csproj" />
