@@ -19,3 +19,6 @@
 [submodule "LooseTextureCompilerCore"]
 	path = LooseTextureCompilerCore
 	url = https://github.com/Sebane1/LooseTextureCompilerCore.git
+[submodule "MCDF-Loader"]
+	path = MCDF-Loader
+	url = https://github.com/Sebane1/MCDF-Loader

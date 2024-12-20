@@ -28,6 +28,8 @@ using AQuestReborn;
 using ArtemisRoleplayingKit;
 using AnamCore;
 using AQuestReborn.UIAtlasing;
+using MareSynchronos;
+using Dalamud.Game.ClientState.Objects;
 
 namespace SamplePlugin;
 
@@ -46,6 +48,7 @@ public sealed class Plugin : IDalamudPlugin
     public readonly WindowSystem WindowSystem = new("A Quest Reborn");
     private IClientState _clientState;
     private IFramework _framework;
+    private EntryPoint _mcdfEntryPoint;
     private AnamcoreManager _anamcoreManager;
     private RoleplayingQuestManager _roleplayingQuestManager;
     private IToastGui _toastGui;
@@ -85,6 +88,7 @@ public sealed class Plugin : IDalamudPlugin
     public IChatGui ChatGui { get => _chatGui; set => _chatGui = value; }
     public IGamepadState GamepadState { get => _gamepadState; set => _gamepadState = value; }
     public UiAtlasManager UiAtlasManager { get => _uiAtlasManager; set => _uiAtlasManager = value; }
+    public EntryPoint McdfEntryPoint { get => _mcdfEntryPoint; set => _mcdfEntryPoint = value; }
 
     private EmoteReaderHooks _emoteReaderHook;
     private IPluginLog _pluginLog;
@@ -95,9 +99,10 @@ public sealed class Plugin : IDalamudPlugin
     public Plugin(IClientState clientState, IFramework framework, IToastGui toastGui,
         ITextureProvider textureProvider, IGameGui gameGui, IDalamudPluginInterface dalamudPluginInterface,
         IGameInteropProvider gameInteropProvider, IObjectTable objectTable, IDataManager dataManager,
-        IPluginLog pluginLog, IGameConfig gameConfig, IChatGui chatGui, IGamepadState gamepadState)
+        IPluginLog pluginLog, IGameConfig gameConfig, IChatGui chatGui, IGamepadState gamepadState,
+        ICommandManager commandManager, ICondition condition, IDtrBar dtrBar, ITargetManager targetManager,
+        INotificationManager notificationManager, IContextMenu contextMenu)
     {
-        _brio = new Brio.Brio(dalamudPluginInterface);
         _clientState = clientState;
         _framework = framework;
         _toastGui = toastGui;
@@ -109,7 +114,9 @@ public sealed class Plugin : IDalamudPlugin
         _chatGui = chatGui;
         _gamepadState = gamepadState;
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-
+        _mcdfEntryPoint = new EntryPoint(PluginInterface, commandManager, dataManager, framework, objectTable, clientState, condition, chatGui, gameGui, dtrBar, pluginLog,
+        targetManager, notificationManager, textureProvider, contextMenu, gameInteropProvider, Path.Combine(Path.GetDirectoryName(Configuration.QuestInstallFolder + ".poop"), "QuestCache\\"));
+        _brio = new Brio.Brio(dalamudPluginInterface);
         // you might normally want to embed resources and load them from the manifest stream
         _uiAtlasManager = new UiAtlasManager(this);
         ChoiceWindow = new ChoiceWindow(this);

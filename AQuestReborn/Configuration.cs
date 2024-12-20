@@ -1,7 +1,10 @@
 using Dalamud.Configuration;
+using FFXIVClientStructs.FFXIV.Common.Lua;
+using McdfDataImporter;
 using RoleplayingQuestCore;
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace SamplePlugin;
 
@@ -27,12 +30,17 @@ public class Configuration : IPluginConfiguration
             {
                 _questInstallFolder = "";
             }
+            CachePath.CacheLocation = Path.Combine(Path.GetDirectoryName(_questInstallFolder + ".poop"), "QuestCache\\");
             return _questInstallFolder;
         }
-        set => _questInstallFolder = value;
+        set
+        {
+            _questInstallFolder = value;
+            CachePath.CacheLocation = Path.Combine(Path.GetDirectoryName(value + ".poop"), "QuestCache\\");
+        }
     }
 
-    public Dictionary<string, List<string>> CompletedObjectives { get { return _completedObjectives;  } set { _completedObjectives = value; } }
+    public Dictionary<string, List<string>> CompletedObjectives { get { return _completedObjectives; } set { _completedObjectives = value; } }
 
     // the below exist just to make saving less cumbersome
     public void Save()
