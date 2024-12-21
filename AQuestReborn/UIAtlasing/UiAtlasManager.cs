@@ -187,15 +187,24 @@ namespace AQuestReborn.UIAtlasing
         }
         public void DrawRewardImage(Vector2 size)
         {
-            ImGui.Image(_reward.ImGuiHandle, size);
+            if (_reward != null)
+            {
+                ImGui.Image(_reward.ImGuiHandle, size);
+            }
         }
         public void DrawDescriptionImage(Vector2 size)
         {
-            ImGui.Image(_description.ImGuiHandle, size);
+            if (_description != null)
+            {
+                ImGui.Image(_description.ImGuiHandle, size);
+            }
         }
         public void DrawRatingImage(Vector2 size)
         {
-            ImGui.Image(_rating.ImGuiHandle, size);
+            if (_rating != null)
+            {
+                ImGui.Image(_rating.ImGuiHandle, size);
+            }
         }
         public void CheckImageAssets()
         {
