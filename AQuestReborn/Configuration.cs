@@ -33,8 +33,15 @@ public class Configuration : IPluginConfiguration
             }
             if (!string.IsNullOrEmpty(_questInstallFolder))
             {
-                CachePath.CacheLocation = Path.Combine(Path.GetDirectoryName(_questInstallFolder + ".poop"), "QuestCache\\");
-                Directory.CreateDirectory(CachePath.CacheLocation);
+                try
+                {
+                    CachePath.CacheLocation = Path.Combine(Path.GetDirectoryName(_questInstallFolder + ".poop"), "QuestCache\\");
+                    Directory.CreateDirectory(CachePath.CacheLocation);
+                }
+                catch
+                {
+                    _questInstallFolder = "";
+                }
             }
             return _questInstallFolder;
         }
