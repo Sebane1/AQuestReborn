@@ -95,7 +95,7 @@ public class MainWindow : Window, IDisposable
             {
                 if (isOk)
                 {
-                    if (!folder.Contains("Program Files"))
+                    if (!folder.Contains("Program Files") && !folder.Contains("FINAL FANTASY XIV - A Realm Reborn"))
                     {
                         Directory.CreateDirectory(folder);
                         if (Directory.GetFiles(folder).Length == 0)

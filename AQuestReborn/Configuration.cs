@@ -26,7 +26,8 @@ public class Configuration : IPluginConfiguration
     {
         get
         {
-            if (!string.IsNullOrEmpty(_questInstallFolder) && _questInstallFolder.Contains("Program Files"))
+            if (!string.IsNullOrEmpty(_questInstallFolder) && (_questInstallFolder.Contains("Program Files")
+                || _questInstallFolder.Contains("FINAL FANTASY XIV - A Realm Reborn")))
             {
                 _questInstallFolder = "";
             }
@@ -43,6 +44,7 @@ public class Configuration : IPluginConfiguration
             if (!string.IsNullOrEmpty(_questInstallFolder))
             {
                 CachePath.CacheLocation = Path.Combine(Path.GetDirectoryName(value + ".poop"), "QuestCache\\");
+                CachePath.CacheLocation = Path.Combine(Path.GetDirectoryName(_questInstallFolder + ".poop"), "QuestCache\\");
             }
         }
     }
