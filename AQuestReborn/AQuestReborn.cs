@@ -1,3 +1,4 @@
+using Anamnesis.GameData;
 using Brio.Game.Actor;
 using Brio.IPC;
 using Dalamud.Game.ClientState.GamePad;
@@ -8,7 +9,9 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Common.Lua;
 using Lumina.Excel.Sheets;
+using McdfDataImporter;
 using RoleplayingMediaCore;
 using RoleplayingQuestCore;
 using RoleplayingVoiceDalamudWrapper;
@@ -32,18 +35,22 @@ namespace AQuestReborn
         private Stopwatch _pollingTimer;
         private Stopwatch _inputCooldown;
         private Stopwatch _mcdfRefreshTimer = new Stopwatch();
+        private Stopwatch _actorSpawnRefreshTimer = new Stopwatch();
         private Stopwatch _mapRefreshTimer = new Stopwatch();
         private bool _screenButtonClicked;
         private Dictionary<string, Dictionary<string, ICharacter>> _spawnedNPCsDictionary = new Dictionary<string, Dictionary<string, ICharacter>>();
         private bool _triggerRefresh;
         private bool _waitingForSelectionRelease;
         Queue<KeyValuePair<string, ICharacter>> _mcdfQueue = new Queue<KeyValuePair<string, ICharacter>>();
+        Queue<Tuple<Transform, string, string, Dictionary<string, ICharacter>>> _npcActorSpawnQueue = new Queue<Tuple<Transform, string, string, Dictionary<string, ICharacter>>>();
         private ActorSpawnService _actorSpawnService;
         private MareService _mcdfService;
         private MediaGameObject _playerObject;
         private unsafe Camera* _camera;
         private MediaCameraObject _playerCamera;
         private List<Tuple<int, QuestObjective, RoleplayingQuest>> _activeQuestChainObjectives;
+        private bool alreadyProcessingRespawns;
+        private bool waitingForMcdfLoad;
 
         public AQuestReborn(Plugin plugin)
         {
@@ -62,12 +69,6 @@ namespace AQuestReborn
             Plugin.ClientState.Login += _clientState_Login;
             Plugin.ClientState.TerritoryChanged += _clientState_TerritoryChanged;
             Plugin.ChatGui.ChatMessage += ChatGui_ChatMessage;
-            _pollingTimer = new Stopwatch();
-            _pollingTimer.Start();
-            _inputCooldown = new Stopwatch();
-            _inputCooldown.Start();
-            _mcdfRefreshTimer.Start();
-            _mapRefreshTimer.Start();
             Plugin.EmoteReaderHook.OnEmote += (instigator, emoteId) => OnEmote(instigator as ICharacter, emoteId);
             Task.Run(() =>
             {
@@ -131,6 +132,12 @@ namespace AQuestReborn
 
         private void _clientState_TerritoryChanged(ushort territory)
         {
+            _pollingTimer = new Stopwatch();
+            _pollingTimer.Start();
+            _inputCooldown = new Stopwatch();
+            _inputCooldown.Start();
+            _actorSpawnRefreshTimer.Start();
+            _mapRefreshTimer.Start();
             Task.Run(() =>
             {
                 while (Plugin.ClientState.LocalPlayer == null || _actorSpawnService == null)
@@ -139,6 +146,10 @@ namespace AQuestReborn
                 }
                 _triggerRefresh = true;
             });
+            foreach (var file in Directory.EnumerateFiles(CachePath.CacheLocation, "*.tmp"))
+            {
+                File.Delete(file);
+            }
         }
         public void RefreshMapMarkers()
         {
@@ -198,8 +209,47 @@ namespace AQuestReborn
             {
                 CheckForNewMCDFLoad();
                 QuestInputCheck();
+                CheckForNewPlayerCreationLoad();
                 CheckForNPCRefresh();
                 CheckForMapRefresh();
+            }
+        }
+
+        private void CheckForNewPlayerCreationLoad()
+        {
+            if (_npcActorSpawnQueue != null)
+            {
+                if (_actorSpawnRefreshTimer.ElapsedMilliseconds > 200)
+                {
+                    if (_npcActorSpawnQueue.Count > 0)
+                    {
+                        if (!waitingForMcdfLoad)
+                        {
+                            waitingForMcdfLoad = true;
+                            var value = _npcActorSpawnQueue.Dequeue();
+                            ICharacter character = null;
+                            _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
+                            value.Item1.Position, Utility.ConvertDegreesToRadians(value.Item1.EulerRotation.Y));
+                            value.Item4[value.Item2] = character;
+                            if (character != null)
+                            {
+                                Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)value.Item1.DefaultAnimationId);
+                                Task.Run(() =>
+                                {
+                                    lock (_npcActorSpawnQueue)
+                                    {
+                                        Thread.Sleep(200);
+                                        while (_mcdfQueue.Count > 0)
+                                        {
+                                            Thread.Sleep(200);
+                                        }
+                                        _mcdfQueue.Enqueue(new KeyValuePair<string, ICharacter>(value.Item3, character));
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -239,15 +289,25 @@ namespace AQuestReborn
         {
             if (_mcdfQueue.Count > 0)
             {
-                if (_mcdfRefreshTimer.ElapsedMilliseconds > 100)
+                if (waitingForMcdfLoad && _mcdfRefreshTimer.ElapsedMilliseconds > 500)
                 {
-                    _mcdfRefreshTimer.Reset();
                     var item = _mcdfQueue.Dequeue();
                     if (!_mcdfService.LoadMcdfAsync(item.Key, item.Value))
                     {
                         _mcdfQueue.Enqueue(item);
                     }
+                    else
+                    {
+                        waitingForMcdfLoad = false;
+                    }
                     _mcdfRefreshTimer.Restart();
+                }
+                else
+                {
+                    if (!_mcdfRefreshTimer.IsRunning)
+                    {
+                        _mcdfRefreshTimer.Start();
+                    }
                 }
             }
         }
@@ -387,15 +447,9 @@ namespace AQuestReborn
                                         }
                                     }
                                 }
-                                ICharacter character = null;
                                 var startingInfo = item.Item2.NpcStartingPositions[npcAppearance.Value.NpcName];
-                                _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true, startingInfo.Position, Utility.ConvertDegreesToRadians(startingInfo.EulerRotation.Y));
-                                if (character != null)
-                                {
-                                    spawnedNpcsList[npcAppearance.Value.NpcName] = character;
-                                    _mcdfQueue.Enqueue(new KeyValuePair<string, ICharacter>(Path.Combine(foundPath, npcAppearance.Value.AppearanceData), character));
-                                    Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)startingInfo.DefaultAnimationId);
-                                }
+                                var value = new Tuple<Transform, string, string, Dictionary<string, ICharacter>>(startingInfo, npcAppearance.Value.NpcName, Path.Combine(foundPath, npcAppearance.Value.AppearanceData), spawnedNpcsList);
+                                _npcActorSpawnQueue.Enqueue(value);
                             }
                         }
                     }
