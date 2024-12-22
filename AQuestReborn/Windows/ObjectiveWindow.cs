@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Dalamud.Interface.Textures.TextureWraps;
 using FFXIVClientStructs.FFXIV.Client.System.Input;
 using FFXIVLooseTextureCompiler.ImageProcessing;
+using AQuestReborn;
 
 namespace SamplePlugin.Windows;
 
@@ -127,7 +128,7 @@ public class ObjectiveWindow : Window, IDisposable
         }
         if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
         {
-            var questChainObjectives = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType);
+            var questChainObjectives = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType, DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState));
             _mouseDistanceIsCloseToObjective = false;
             foreach (var item in questChainObjectives)
             {

@@ -153,7 +153,7 @@ namespace AQuestReborn
         }
         public void RefreshMapMarkers()
         {
-            _activeQuestChainObjectives = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType);
+            _activeQuestChainObjectives = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType, DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState));
             unsafe
             {
                 AgentMap.Instance()->ResetMapMarkers();
@@ -417,7 +417,7 @@ namespace AQuestReborn
                     _spawnedNPCsDictionary["DEBUG"]["First Spawn"] = firstSpawn;
                 }
 
-                var questChains = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(territoryId);
+                var questChains = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(territoryId, DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState));
                 foreach (var item in questChains)
                 {
                     if (item.Item3.QuestId == questId || string.IsNullOrEmpty(questId))

@@ -20,6 +20,7 @@ using static RoleplayingQuestCore.QuestText;
 using AQuestReborn;
 using System.IO;
 using System.Speech.Recognition;
+using Lumina.Excel.Sheets;
 
 namespace SamplePlugin.Windows;
 
@@ -215,6 +216,8 @@ public class EditorWindow : Window, IDisposable
         {
             var questObjective = _objectiveInFocus;
             var territoryId = questObjective.TerritoryId;
+            var territoryDiscriminator = questObjective.TerritoryDiscriminator;
+            var usesTerritoryDiscriminator = questObjective.UsesTerritoryDiscriminator;
             var objective = questObjective.Objective;
             var coordinates = questObjective.Coordinates;
             var questText = questObjective.QuestText;
@@ -240,14 +243,17 @@ public class EditorWindow : Window, IDisposable
             ImGui.LabelText("##coordinatesLabel", $"Coordinates: X:{Math.Round(questObjective.Coordinates.X)}," +
                 $"Y:{Math.Round(questObjective.Coordinates.Y)}," +
                 $"Z:{Math.Round(questObjective.Coordinates.Z)}");
-            ImGui.SameLine();
             ImGui.SetNextItemWidth(125);
+            ImGui.SameLine();
             ImGui.LabelText("##territoryLabel", $"Territory Id: {questObjective.TerritoryId}");
+            ImGui.SetNextItemWidth(500);
+            ImGui.LabelText("##discriminatorLabel", $"Discriminator: " + questObjective.TerritoryDiscriminator);
             ImGui.SameLine();
             if (ImGui.Button("Set Quest Objective Coordinates"))
             {
                 questObjective.Coordinates = Plugin.ClientState.LocalPlayer.Position;
                 questObjective.TerritoryId = Plugin.ClientState.TerritoryType;
+                questObjective.TerritoryDiscriminator = DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState);
             }
             if (ImGui.InputFloat("Maximum Indicator Distance##", ref maximum3dIndicatorDistance))
             {
@@ -256,6 +262,10 @@ public class EditorWindow : Window, IDisposable
             if (ImGui.Checkbox("Dont Show On Map##", ref dontShowOnMap))
             {
                 questObjective.DontShowOnMap = dontShowOnMap;
+            }
+            if (ImGui.Checkbox("Use Territory Discriminator (Locks this objective to server/ward/plot/room)##", ref usesTerritoryDiscriminator))
+            {
+                questObjective.UsesTerritoryDiscriminator = usesTerritoryDiscriminator;
             }
             if (!questObjective.IsAPrimaryObjective)
             {
@@ -741,7 +751,8 @@ public class EditorWindow : Window, IDisposable
             {
                 Coordinates = Plugin.ClientState.LocalPlayer.Position,
                 Rotation = new Vector3(0, Utility.ConvertRadiansToDegrees(Plugin.ClientState.LocalPlayer.Rotation), 0),
-                TerritoryId = Plugin.ClientState.TerritoryType
+                TerritoryId = Plugin.ClientState.TerritoryType,
+                TerritoryDiscriminator = DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState)
             });
             //_nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
             RefreshMenus();
