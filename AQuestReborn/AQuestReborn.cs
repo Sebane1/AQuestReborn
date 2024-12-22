@@ -138,6 +138,8 @@ namespace AQuestReborn
             _inputCooldown.Start();
             _actorSpawnRefreshTimer.Start();
             _mapRefreshTimer.Start();
+            _mcdfQueue.Clear();
+            _npcActorSpawnQueue.Clear();
             Task.Run(() =>
             {
                 while (Plugin.ClientState.LocalPlayer == null || _actorSpawnService == null)
