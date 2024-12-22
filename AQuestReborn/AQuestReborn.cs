@@ -204,14 +204,21 @@ namespace AQuestReborn
 
         private void _framework_Update(IFramework framework)
         {
-            if (!Plugin.ClientState.IsGPosing && !Plugin.ClientState.IsPvPExcludingDen && !Conditions.IsInBetweenAreas && !Conditions.IsWatchingCutscene
-                && !Conditions.IsOccupied && !Conditions.IsInCombat && Plugin.ClientState.IsLoggedIn)
+            try
             {
-                CheckForNewMCDFLoad();
-                QuestInputCheck();
-                CheckForNewPlayerCreationLoad();
-                CheckForNPCRefresh();
-                CheckForMapRefresh();
+                if (!Plugin.ClientState.IsGPosing && !Plugin.ClientState.IsPvPExcludingDen && !Conditions.IsInBetweenAreas && !Conditions.IsWatchingCutscene
+                    && !Conditions.IsOccupied && !Conditions.IsInCombat && Plugin.ClientState.IsLoggedIn)
+                {
+                    CheckForNewMCDFLoad();
+                    QuestInputCheck();
+                    CheckForNewPlayerCreationLoad();
+                    CheckForNPCRefresh();
+                    CheckForMapRefresh();
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Warning(ex, ex.Message);
             }
         }
 
