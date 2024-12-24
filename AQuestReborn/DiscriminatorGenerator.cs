@@ -4,8 +4,9 @@ using System;
 
 namespace AQuestReborn
 {
-    public static class DiscriminatorGenerator
+    public static unsafe class DiscriminatorGenerator
     {
+        static HousingManager* housingManager;
         public static unsafe string GetDiscriminator(IClientState clientState)
         {
             string value = "";
@@ -15,16 +16,22 @@ namespace AQuestReborn
                 {
                     if (clientState.LocalPlayer != null)
                     {
-
-                        if (IsResidential())
+                        if (housingManager == null)
                         {
-                            value += clientState.LocalPlayer.CurrentWorld.Value.Name.ExtractText() + "-" + HousingManager.Instance()->GetCurrentDivision() + "-"
-                                + HousingManager.Instance()->GetCurrentWard() + (HousingManager.Instance()->IsInside() ? "-" + HousingManager.Instance()->GetCurrentPlot() + "-" +
-                                HousingManager.Instance()->GetCurrentRoom() + "-" + HousingManager.Instance()->GetCurrentIndoorHouseId() : "");
+                            housingManager = HousingManager.Instance();
                         }
-                        else
+                        if (housingManager != null)
                         {
-                            value += clientState.LocalPlayer.CurrentWorld.Value.Name.ExtractText();
+                            if (IsResidential())
+                            {
+                                value += clientState.LocalPlayer.CurrentWorld.Value.Name.ExtractText() + "-" + housingManager->GetCurrentDivision() + "-"
+                                    + housingManager->GetCurrentWard() + (housingManager->IsInside() ? "-" + housingManager->GetCurrentPlot() + "-" +
+                                    housingManager->GetCurrentRoom() + "-" + housingManager->GetCurrentIndoorHouseId() : "");
+                            }
+                            else
+                            {
+                                value += clientState.LocalPlayer.CurrentWorld.Value.Name.ExtractText();
+                            }
                         }
                     }
 
@@ -38,7 +45,7 @@ namespace AQuestReborn
         }
         private static unsafe bool IsResidential()
         {
-            return HousingManager.Instance()->IsInside() || HousingManager.Instance()->OutdoorTerritory != null;
+            return housingManager->IsInside() || housingManager->OutdoorTerritory != null;
         }
     }
 }
