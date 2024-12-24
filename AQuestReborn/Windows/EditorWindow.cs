@@ -159,7 +159,7 @@ public class EditorWindow : Window, IDisposable
                 }
                 if (ImGui.InputText("Quest Start Title Sound##", ref questStartTitleSound, 255))
                 {
-                    _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound = questStartTitleSound;
+                    _roleplayingQuestCreator.CurrentQuest.QuestStartTitleSound = questStartTitleSound;
                 }
                 if (ImGui.InputText("Quest End Title Sound##", ref questEndTitleSound, 255))
                 {
@@ -553,7 +553,7 @@ public class EditorWindow : Window, IDisposable
                     }
                     switch (item.ChoiceType)
                     {
-                        case BranchingChoiceType.SkipToDialogueNumber:
+                        case BranchingChoiceType.SkipToEventNumber:
                             if (ImGui.InputInt("Event Number To Jump To##", ref eventToJumpTo))
                             {
                                 item.EventToJumpTo = eventToJumpTo;

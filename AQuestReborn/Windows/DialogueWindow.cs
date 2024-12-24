@@ -113,7 +113,7 @@ public class DialogueWindow : Window, IDisposable
             var branchingChoice = questText.BranchingChoices[e];
             switch (branchingChoice.ChoiceType)
             {
-                case BranchingChoice.BranchingChoiceType.SkipToDialogueNumber:
+                case BranchingChoice.BranchingChoiceType.SkipToEventNumber:
                     SetText(branchingChoice.EventToJumpTo);
                     break;
                 case BranchingChoice.BranchingChoiceType.BranchingQuestline:
