@@ -60,6 +60,8 @@ public sealed class Plugin : IDalamudPlugin
     private unsafe Camera* _camera;
     private MediaCameraObject _playerCamera;
     private IDalamudPluginInterface _dalamudPluginInterface;
+    private IGameInteropProvider _gameInteropProvider;
+    private IObjectTable _objectTable;
     private AQuestReborn.AQuestReborn _aQuestReborn;
     private Brio.Brio _brio;
     private MoveController _movement;
@@ -98,6 +100,7 @@ public sealed class Plugin : IDalamudPlugin
     private IGameConfig _gameConfig;
     private IChatGui _chatGui;
     private IGamepadState _gamepadState;
+    private bool _alreadyInitialized;
 
     public Plugin(IClientState clientState, IFramework framework, IToastGui toastGui,
         ITextureProvider textureProvider, IGameGui gameGui, IDalamudPluginInterface dalamudPluginInterface,
@@ -116,6 +119,9 @@ public sealed class Plugin : IDalamudPlugin
         _gameConfig = gameConfig;
         _chatGui = chatGui;
         _gamepadState = gamepadState;
+        _dalamudPluginInterface = dalamudPluginInterface;
+        _gameInteropProvider = gameInteropProvider;
+        _objectTable = objectTable;
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         _mcdfEntryPoint = new EntryPoint(PluginInterface, commandManager, dataManager, framework, objectTable, clientState, condition, chatGui, gameGui, dtrBar, pluginLog,
         targetManager, notificationManager, textureProvider, contextMenu, gameInteropProvider, Path.Combine(Path.GetDirectoryName(Configuration.QuestInstallFolder + ".poop"), "QuestCache\\"));
@@ -158,13 +164,35 @@ public sealed class Plugin : IDalamudPlugin
 
         // Adds another button that is doing the same but for the main ui of the plugin
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
-        _anamcoreManager = new AnamcoreManager(this);
-        _roleplayingQuestManager = new RoleplayingQuestManager(Configuration.QuestChains, Configuration.QuestProgression, Configuration.CompletedObjectives, Configuration.QuestInstallFolder);
-        _emoteReaderHook = new EmoteReaderHooks(gameInteropProvider, _clientState, objectTable);
-        _dalamudPluginInterface = dalamudPluginInterface;
-        _aQuestReborn = new AQuestReborn.AQuestReborn(this);
+        _clientState.Login += _clientState_Login;
+        if (_clientState.IsLoggedIn)
+        {
+            Initialize();
+        }
     }
 
+    private void _clientState_Login()
+    {
+        Initialize();
+    }
+    public void Initialize()
+    {
+        if (!_alreadyInitialized)
+        {
+            try
+            {
+                _anamcoreManager = new AnamcoreManager(this);
+                _roleplayingQuestManager = new RoleplayingQuestManager(Configuration.QuestChains, Configuration.QuestProgression, Configuration.CompletedObjectives, Configuration.QuestInstallFolder);
+                _emoteReaderHook = new EmoteReaderHooks(_gameInteropProvider, _clientState, _objectTable);
+                _aQuestReborn = new AQuestReborn.AQuestReborn(this);
+                _alreadyInitialized = true;
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Warning(ex, ex.Message);
+            }
+        }
+    }
     private void OnCommandChat(string command, string arguments)
     {
         if (!DialogueWindow.IsOpen && !ChoiceWindow.IsOpen)
