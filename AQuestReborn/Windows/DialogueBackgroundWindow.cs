@@ -118,6 +118,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
                 ImageFileDisplay();
                 break;
             case QuestEvent.EventBackgroundType.Image:
+            case QuestEvent.EventBackgroundType.ImageTransparent:
                 ImageFileDisplay();
                 break;
             case QuestEvent.EventBackgroundType.Video:
