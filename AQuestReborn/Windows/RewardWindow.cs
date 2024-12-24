@@ -22,7 +22,7 @@ public class RewardWindow : Window, IDisposable
     private byte[] _lastLoadedFrame;
     private float _globalScale;
 
-    public event EventHandler OnRewardClosed;
+    public event EventHandler<RoleplayingQuest> OnRewardClosed;
     public Plugin Plugin { get; private set; }
 
     // We give this window a constant ID using ###
@@ -116,7 +116,7 @@ public class RewardWindow : Window, IDisposable
         if (ImGui.Button("Accept", buttonSize))
         {
             IsOpen = false;
-            OnRewardClosed?.Invoke(this, EventArgs.Empty);
+            OnRewardClosed?.Invoke(this, _questToDisplay);
         }
         ImGui.PopStyleColor();
         ImGui.PopStyleColor();

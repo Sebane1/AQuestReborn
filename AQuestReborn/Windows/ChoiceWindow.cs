@@ -49,9 +49,9 @@ public class ChoiceWindow : Window, IDisposable
             ImGui.SetNextItemWidth(Size.Value.X);
             if (ImGui.Button(choice.ChoiceText + "##" + i) && IsOpen)
             {
+                OnChoiceMade?.Invoke(this, i);
                 _timeSinceLastChoiceMade.Restart();
                 IsOpen = false;
-                OnChoiceMade?.Invoke(this, i);
                 break;
             }
             i++;

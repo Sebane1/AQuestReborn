@@ -51,7 +51,7 @@ namespace AQuestReborn
         private List<Tuple<int, QuestObjective, RoleplayingQuest>> _activeQuestChainObjectives;
         private bool alreadyProcessingRespawns;
         private bool waitingForMcdfLoad;
-
+        Stopwatch zoneChangeCooldown = new Stopwatch();
         public AQuestReborn(Plugin plugin)
         {
             Plugin = plugin;
@@ -109,10 +109,13 @@ namespace AQuestReborn
             }
         }
 
-        private void RewardWindow_OnRewardClosed(object? sender, EventArgs e)
+        private void RewardWindow_OnRewardClosed(object? sender, RoleplayingQuest e)
         {
             QuestToastOptions questToastOptions = new QuestToastOptions();
-            Plugin.ToastGui.ShowQuest("Quest Completed");
+            string path = Path.Combine(e.FoundPath, e.QuestEndTitleCard);
+            string soundPath = Path.Combine(e.FoundPath, e.QuestEndTitleCard);
+            Plugin.TitleCardWindow.DisplayCard(path, soundPath, true);
+            //Plugin.ToastGui.ShowQuest("Quest Completed");
             Plugin.Configuration.Save();
         }
 
@@ -140,6 +143,7 @@ namespace AQuestReborn
             _mapRefreshTimer.Start();
             _mcdfQueue.Clear();
             _npcActorSpawnQueue.Clear();
+            zoneChangeCooldown.Reset();
             Task.Run(() =>
             {
                 while (Plugin.ClientState.LocalPlayer == null || _actorSpawnService == null)
@@ -211,11 +215,19 @@ namespace AQuestReborn
                 if (!Plugin.ClientState.IsGPosing && !Plugin.ClientState.IsPvPExcludingDen && !Conditions.IsInBetweenAreas && !Conditions.IsWatchingCutscene
                     && !Conditions.IsOccupied && !Conditions.IsInCombat && Plugin.ClientState.IsLoggedIn)
                 {
-                    CheckForNewMCDFLoad();
-                    QuestInputCheck();
-                    CheckForNewPlayerCreationLoad();
-                    CheckForNPCRefresh();
-                    CheckForMapRefresh();
+                    // Hopefully waiting prevents crashing on zone changes?
+                    if (zoneChangeCooldown.ElapsedMilliseconds > 5000)
+                    {
+                        CheckForNewMCDFLoad();
+                        QuestInputCheck();
+                        CheckForNewPlayerCreationLoad();
+                        CheckForNPCRefresh();
+                        CheckForMapRefresh();
+                    }
+                    if (!zoneChangeCooldown.IsRunning)
+                    {
+                        zoneChangeCooldown.Start();
+                    }
                 }
             }
             catch (Exception ex)
@@ -490,9 +502,12 @@ namespace AQuestReborn
             Plugin.RewardWindow.PromptReward(e);
         }
 
-        private void _roleplayingQuestManager_OnQuestStarted(object? sender, EventArgs e)
+        private void _roleplayingQuestManager_OnQuestStarted(object? sender, RoleplayingQuest e)
         {
-            Plugin.ToastGui.ShowQuest("Quest Started");
+            string path = Path.Combine(e.FoundPath, e.QuestStartTitleCard);
+            string soundPath = Path.Combine(e.FoundPath, e.QuestStartTitleSound);
+            Plugin.TitleCardWindow.DisplayCard(path, soundPath, true);
+            // Plugin.ToastGui.ShowQuest("Quest Started");
         }
 
         private void DialogueBackgroundWindow_buttonClicked(object? sender, EventArgs e)

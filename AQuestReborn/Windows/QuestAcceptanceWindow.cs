@@ -165,6 +165,7 @@ public class QuestAcceptanceWindow : Window, IDisposable
         if (ImGui.Button("Decline", buttonSize))
         {
             IsOpen = false;
+            Plugin.Movement.DisableMovementLock();
         }
         ImGui.PopStyleColor();
         ImGui.PopStyleColor();
@@ -194,6 +195,7 @@ public class QuestAcceptanceWindow : Window, IDisposable
         string thumbnailPath = Path.Combine(quest.FoundPath, _questToDisplay.QuestThumbnailPath);
         SetThumbnail(thumbnailPath);
         IsOpen = true;
+        Plugin.Movement.EnableMovementLock();
     }
     public void SetThumbnail(string path)
     {

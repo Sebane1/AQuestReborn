@@ -11,10 +11,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="questEnd.png" />
+    <None Remove="questStart.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="..\Data\goat.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="questEnd.png" />
+    <EmbeddedResource Include="questStart.png" />
   </ItemGroup>
 
   <ItemGroup>

@@ -48,6 +48,7 @@ public class DialogueWindow : Window, IDisposable
     private Bitmap data1;
     private float _globalScale;
     private bool _objectiveSkip;
+    private bool _dontUnblockMovement;
 
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
@@ -64,8 +65,18 @@ public class DialogueWindow : Window, IDisposable
     }
     public override void OnClose()
     {
-        Plugin.DialogueBackgroundWindow.IsOpen = false;
+        if (!_dontUnblockMovement)
+        {
+            _dontUnblockMovement = false;
+            Plugin.Movement.DisableMovementLock();
+            Plugin.DialogueBackgroundWindow.IsOpen = false;
+        }
         base.OnClose();
+    }
+    public override void OnOpen()
+    {
+        Plugin.Movement.EnableMovementLock();
+        base.OnOpen();  
     }
 
     public byte[] ImageToBytes(Bitmap image)
@@ -103,7 +114,7 @@ public class DialogueWindow : Window, IDisposable
             switch (branchingChoice.ChoiceType)
             {
                 case BranchingChoice.BranchingChoiceType.SkipToDialogueNumber:
-                    SetText(branchingChoice.DialogueToJumpTo);
+                    SetText(branchingChoice.EventToJumpTo);
                     break;
                 case BranchingChoice.BranchingChoiceType.BranchingQuestline:
                     Plugin.RoleplayingQuestManager.ReplaceQuest(branchingChoice.RoleplayingQuest);
@@ -162,7 +173,7 @@ public class DialogueWindow : Window, IDisposable
                 ImGui.Image(_dialogueTitleStyleToLoad.ImGuiHandle, new Vector2(data1.Width * _globalScale, data1.Height * _globalScale));
             }
         }
-        if (textTimer.ElapsedMilliseconds > 5)
+        if (textTimer.ElapsedMilliseconds > 1)
         {
             if (_currentCharacter < _targetText.Length)
             {
@@ -228,11 +239,12 @@ public class DialogueWindow : Window, IDisposable
             {
                 if (_choicesAreNext)
                 {
+                    _dontUnblockMovement = true;
+                    IsOpen = false;
+                    Plugin.DialogueBackgroundWindow.IsOpen = false;
                     var values = questDisplayObject.QuestObjective.QuestText[_index].BranchingChoices;
                     Plugin.ChoiceWindow.NewList(values);
                     _choicesAreNext = false;
-                    IsOpen = false;
-                    Plugin.DialogueBackgroundWindow.IsOpen = false;
                 }
                 else
                 {
@@ -252,7 +264,7 @@ public class DialogueWindow : Window, IDisposable
             var item = questDisplayObject.QuestObjective.QuestText[_index];
             switch (item.ConditionForDialogueToOccur)
             {
-                case QuestText.DialogueConditionType.CompletedSpecificObjectiveId:
+                case QuestEvent.EventConditionType.CompletedSpecificObjectiveId:
                     if (!Plugin.RoleplayingQuestManager.CompletedObjectiveExists(item.ObjectiveIdToComplete))
                     {
                         SetText(index + 1);
@@ -271,7 +283,7 @@ public class DialogueWindow : Window, IDisposable
                 _currentDialogueBoxIndex = item.DialogueBoxStyle;
                 _mcdfSwap = item.AppearanceSwap;
                 string customAudioPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueAudio);
-                string customBackgroundPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueBackground);
+                string customBackgroundPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.EventBackground);
                 string customMcdfPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.AppearanceSwap);
                 if (!string.IsNullOrEmpty(_mcdfSwap) && File.Exists(customMcdfPath))
                 {
@@ -313,7 +325,7 @@ public class DialogueWindow : Window, IDisposable
                     }
                     if (File.Exists(customBackgroundPath))
                     {
-                        Plugin.DialogueBackgroundWindow.SetBackground(customBackgroundPath, item.TypeOfDialogueBackground);
+                        Plugin.DialogueBackgroundWindow.SetBackground(customBackgroundPath, item.TypeOfEventBackground);
                     }
                     else
                     {
@@ -327,24 +339,24 @@ public class DialogueWindow : Window, IDisposable
                 }
                 else
                 {
-                    switch (item.DialogueEndBehaviour)
+                    switch (item.EventEndBehaviour)
                     {
-                        case QuestText.DialogueEndBehaviourType.DialogueSkipsToDialogueNumber:
-                            _index = item.DialogueNumberToSkipTo;
+                        case QuestEvent.EventEndBehaviourType.EventSkipsToDialogueNumber:
+                            _index = item.EventNumberToSkipTo;
                             break;
-                        case QuestText.DialogueEndBehaviourType.DialogueEndsEarlyWhenHit:
+                        case QuestEvent.EventEndBehaviourType.EventEndsEarlyWhenHit:
                             _index = questDisplayObject.QuestObjective.QuestText.Count;
                             break;
-                        case QuestText.DialogueEndBehaviourType.DialogueEndsEarlyWhenHitNoProgression:
+                        case QuestEvent.EventEndBehaviourType.EventEndsEarlyWhenHitNoProgression:
                             _index = questDisplayObject.QuestObjective.QuestText.Count;
                             _blockProgression = true;
                             break;
-                        case QuestText.DialogueEndBehaviourType.DialogueEndsEarlyWhenHitAndSkipsToObjective:
+                        case QuestEvent.EventEndBehaviourType.EventEndsEarlyWhenHitAndSkipsToObjective:
                             _index = questDisplayObject.QuestObjective.QuestText.Count;
                             Plugin.RoleplayingQuestManager.SkipToObjective(questDisplayObject.RoleplayingQuest, item.ObjectiveNumberToSkipTo);
                             _objectiveSkip = true;
                             break;
-                        case QuestText.DialogueEndBehaviourType.None:
+                        case QuestEvent.EventEndBehaviourType.None:
                             _index++;
                             break;
                     }
@@ -355,6 +367,7 @@ public class DialogueWindow : Window, IDisposable
         else
         {
 
+            _dontUnblockMovement = false;
             Plugin.DialogueBackgroundWindow.IsOpen = false;
             IsOpen = false;
             _currentCharacter = 0;

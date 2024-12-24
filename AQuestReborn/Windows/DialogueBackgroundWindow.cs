@@ -44,7 +44,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
     private IDalamudTextureWrap _frameToLoad;
     private byte[] _lastLoadedFrame;
     private bool taskAlreadyRunning;
-    private QuestText.DialogueBackgroundType _currentBackgroundType;
+    private QuestEvent.EventBackgroundType _currentBackgroundType;
     private bool _videoWasPlaying;
     private bool _videoNeedsToPlay;
     private bool _wasClosed;
@@ -113,14 +113,14 @@ public class DialogueBackgroundWindow : Window, IDisposable
         Position = new Vector2((displaySize.X / 2) - (Size.Value.X / 2), (displaySize.Y / 2) - (Size.Value.Y / 2));
         switch (_currentBackgroundType)
         {
-            case QuestText.DialogueBackgroundType.None:
+            case QuestEvent.EventBackgroundType.None:
                 _currentBackground = _emptyBackground;
                 ImageFileDisplay();
                 break;
-            case QuestText.DialogueBackgroundType.Image:
+            case QuestEvent.EventBackgroundType.Image:
                 ImageFileDisplay();
                 break;
-            case QuestText.DialogueBackgroundType.Video:
+            case QuestEvent.EventBackgroundType.Video:
                 VideoFilePlayback();
                 break;
         }
@@ -167,7 +167,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
         {
             Vector2 scaledSize = new Vector2(displaySize.Y * _currentBackgroundAspectRatio, displaySize.Y);
 
-            if (_blackBarsFrame != null && _currentBackgroundType == QuestText.DialogueBackgroundType.Image)
+            if (_blackBarsFrame != null && _currentBackgroundType == QuestEvent.EventBackgroundType.Image)
             {
                 ImGui.Image(_blackBarsFrame.ImGuiHandle, displaySize);
             }
@@ -236,7 +236,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
         }
     }
 
-    public void SetBackground(string path, QuestText.DialogueBackgroundType dialogueBackgroundType)
+    public void SetBackground(string path, QuestEvent.EventBackgroundType dialogueBackgroundType)
     {
         if (_wasClosed)
         {
@@ -246,7 +246,8 @@ public class DialogueBackgroundWindow : Window, IDisposable
         _currentBackgroundType = dialogueBackgroundType;
         switch (dialogueBackgroundType)
         {
-            case QuestText.DialogueBackgroundType.Image:
+            case QuestEvent.EventBackgroundType.Image:
+            case QuestEvent.EventBackgroundType.ImageTransparent:
                 MemoryStream background = new MemoryStream();
                 Bitmap newImage = new Bitmap(path);
                 _currentBackgroundAspectRatio = (float)newImage.Width / newImage.Height;
@@ -254,19 +255,19 @@ public class DialogueBackgroundWindow : Window, IDisposable
                 background.Position = 0;
                 _currentBackground = background.ToArray();
                 break;
-            case QuestText.DialogueBackgroundType.Video:
+            case QuestEvent.EventBackgroundType.Video:
                 _videoNeedsToPlay = true;
                 Plugin.MediaManager?.PlayMedia(_dummyObject, path, SoundType.NPC, true);
                 _videoWasPlaying = false;
                 break;
-            case QuestText.DialogueBackgroundType.None:
+            case QuestEvent.EventBackgroundType.None:
                 ClearBackground();
                 break;
         }
     }
     public void ClearBackground()
     {
-        _currentBackgroundType = QuestText.DialogueBackgroundType.None;
+        _currentBackgroundType = QuestEvent.EventBackgroundType.None;
         _currentBackground = _emptyBackground;
         Plugin.MediaManager?.StopAudio(_dummyObject);
     }

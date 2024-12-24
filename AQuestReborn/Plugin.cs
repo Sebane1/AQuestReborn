@@ -62,12 +62,14 @@ public sealed class Plugin : IDalamudPlugin
     private IDalamudPluginInterface _dalamudPluginInterface;
     private AQuestReborn.AQuestReborn _aQuestReborn;
     private Brio.Brio _brio;
+    private MoveController _movement;
 
     private MainWindow MainWindow { get; init; }
     public DialogueBackgroundWindow DialogueBackgroundWindow { get; private set; }
     public ObjectiveWindow ObjectiveWindow { get; private set; }
     public QuestAcceptanceWindow QuestAcceptanceWindow { get; private set; }
     public RewardWindow RewardWindow { get; private set; }
+    public TitleCardWindow TitleCardWindow { get; private set; }
     public EditorWindow EditorWindow { get; init; }
     public ChoiceWindow ChoiceWindow { get; private set; }
     public DialogueWindow DialogueWindow { get; init; }
@@ -89,6 +91,7 @@ public sealed class Plugin : IDalamudPlugin
     public IGamepadState GamepadState { get => _gamepadState; set => _gamepadState = value; }
     public UiAtlasManager UiAtlasManager { get => _uiAtlasManager; set => _uiAtlasManager = value; }
     public EntryPoint McdfEntryPoint { get => _mcdfEntryPoint; set => _mcdfEntryPoint = value; }
+    public MoveController Movement { get => _movement; set => _movement = value; }
 
     private EmoteReaderHooks _emoteReaderHook;
     private IPluginLog _pluginLog;
@@ -117,6 +120,7 @@ public sealed class Plugin : IDalamudPlugin
         _mcdfEntryPoint = new EntryPoint(PluginInterface, commandManager, dataManager, framework, objectTable, clientState, condition, chatGui, gameGui, dtrBar, pluginLog,
         targetManager, notificationManager, textureProvider, contextMenu, gameInteropProvider, Path.Combine(Path.GetDirectoryName(Configuration.QuestInstallFolder + ".poop"), "QuestCache\\"));
         _brio = new Brio.Brio(dalamudPluginInterface);
+        _movement = new MoveController(pluginLog, gameInteropProvider, objectTable);
         // you might normally want to embed resources and load them from the manifest stream
         _uiAtlasManager = new UiAtlasManager(this);
         ChoiceWindow = new ChoiceWindow(this);
@@ -127,7 +131,9 @@ public sealed class Plugin : IDalamudPlugin
         ObjectiveWindow = new ObjectiveWindow(this);
         QuestAcceptanceWindow = new QuestAcceptanceWindow(this);
         RewardWindow = new RewardWindow(this);
+        TitleCardWindow = new TitleCardWindow(this, textureProvider);
 
+        WindowSystem.AddWindow(TitleCardWindow);
         WindowSystem.AddWindow(EditorWindow);
         WindowSystem.AddWindow(DialogueBackgroundWindow);
         WindowSystem.AddWindow(DialogueWindow);
@@ -177,6 +183,7 @@ public sealed class Plugin : IDalamudPlugin
         _mediaManager.Dispose();
         _brio.Dispose();
         _aQuestReborn.Dispose();
+        _movement.Dispose();
     }
 
     private void OnCommand(string command, string args)

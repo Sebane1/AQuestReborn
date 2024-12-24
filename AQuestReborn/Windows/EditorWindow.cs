@@ -16,7 +16,7 @@ using static FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup;
 using static RoleplayingQuestCore.QuestObjective;
 using static RoleplayingQuestCore.RoleplayingQuest;
 using static RoleplayingQuestCore.BranchingChoice;
-using static RoleplayingQuestCore.QuestText;
+using static RoleplayingQuestCore.QuestEvent;
 using AQuestReborn;
 using System.IO;
 using System.Speech.Recognition;
@@ -34,7 +34,7 @@ public class EditorWindow : Window, IDisposable
     private NPCTransformEditorWindow _npcTransformEditorWindow;
     private string[] _nodeNames = new string[] { };
     private string[] _dialogues = new string[] { };
-    private int _selectedDialogue;
+    private int _selectedEvent;
     private int _selectedBranchingChoice;
     private string[] _branchingChoices = new string[] { };
     private string[] _boxStyles = new string[] {
@@ -113,6 +113,17 @@ public class EditorWindow : Window, IDisposable
                 var contentRatingTypes = Enum.GetNames(typeof(QuestContentRating));
                 var questRewardTypes = Enum.GetNames(typeof(QuestRewardType));
 
+                var questStartTitleCard = _roleplayingQuestCreator.CurrentQuest.QuestStartTitleCard;
+                var questEndTitleCard = _roleplayingQuestCreator.CurrentQuest.QuestEndTitleCard;
+                var questStartTitleSound = _roleplayingQuestCreator.CurrentQuest.QuestStartTitleSound;
+                var questEndTitleSound = _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound;
+
+                ImGui.BeginTable("##Info Table", 2);
+                ImGui.TableSetupColumn("Info 1", ImGuiTableColumnFlags.WidthFixed, 400);
+                ImGui.TableSetupColumn("Info 2", ImGuiTableColumnFlags.WidthStretch, 600);
+                ImGui.TableHeadersRow();
+                ImGui.TableNextRow();
+                ImGui.TableSetColumnIndex(0);
                 if (ImGui.InputText("Author##", ref questAuthor, 255))
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestAuthor = questAuthor;
@@ -137,6 +148,24 @@ public class EditorWindow : Window, IDisposable
                 {
                     _roleplayingQuestCreator.CurrentQuest.TypeOfReward = (QuestRewardType)questRewardType;
                 }
+                ImGui.TableSetColumnIndex(1);
+                if (ImGui.InputText("Quest Start Title Card##", ref questStartTitleCard, 255))
+                {
+                    _roleplayingQuestCreator.CurrentQuest.QuestStartTitleCard = questStartTitleCard;
+                }
+                if (ImGui.InputText("Quest End Title Card##", ref questEndTitleCard, 255))
+                {
+                    _roleplayingQuestCreator.CurrentQuest.QuestEndTitleCard = questEndTitleCard;
+                }
+                if (ImGui.InputText("Quest Start Title Sound##", ref questStartTitleSound, 255))
+                {
+                    _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound = questStartTitleSound;
+                }
+                if (ImGui.InputText("Quest End Title Sound##", ref questEndTitleSound, 255))
+                {
+                    _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound = questEndTitleSound;
+                }
+                ImGui.EndTable();
                 switch (_roleplayingQuestCreator.CurrentQuest.TypeOfReward)
                 {
                     case QuestRewardType.SecretMessage:
@@ -333,31 +362,31 @@ public class EditorWindow : Window, IDisposable
                     PersistQuest();
                 }
             }
-            ImGui.BeginTable("##Dialogue Table", 2);
-            ImGui.TableSetupColumn("Dialogue List", ImGuiTableColumnFlags.WidthFixed, 100);
-            ImGui.TableSetupColumn("Dialogue Editor", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.BeginTable("##Event Table", 2);
+            ImGui.TableSetupColumn("Event List", ImGuiTableColumnFlags.WidthFixed, 100);
+            ImGui.TableSetupColumn("Event Editor", ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableHeadersRow();
             ImGui.TableNextRow();
             ImGui.TableSetColumnIndex(0);
-            DrawQuestDialogues();
+            DrawQuestEvents();
             ImGui.TableSetColumnIndex(1);
-            DrawQuestDialogueEditor();
+            DrawQuestEventEditor();
             ImGui.EndTable();
         }
     }
 
-    private void DrawQuestDialogueEditor()
+    private void DrawQuestEventEditor()
     {
         if (_objectiveInFocus != null)
         {
-            var questText = _objectiveInFocus.QuestText;
-            if (questText.Count > 0)
+            var questEvent = _objectiveInFocus.QuestText;
+            if (questEvent.Count > 0)
             {
-                if (_selectedDialogue > questText.Count)
+                if (_selectedEvent > questEvent.Count)
                 {
-                    _selectedDialogue = 0;
+                    _selectedEvent = 0;
                 }
-                var item = questText[_selectedDialogue];
+                var item = questEvent[_selectedEvent];
                 var dialogueCondition = (int)item.ConditionForDialogueToOccur;
                 var objectiveIdToComplete = item.ObjectiveIdToComplete;
                 var faceExpression = item.FaceExpression;
@@ -367,26 +396,26 @@ public class EditorWindow : Window, IDisposable
                 var dialogue = item.Dialogue;
                 var boxStyle = item.DialogueBoxStyle;
                 var dialogueAudio = item.DialogueAudio;
-                var dialogueBackgroundType = (int)item.TypeOfDialogueBackground;
-                var dialogueBackground = item.DialogueBackground;
-                var dialogueEndBehaviour = (int)item.DialogueEndBehaviour;
-                var dialogueNumberToSkipTo = item.DialogueNumberToSkipTo;
+                var eventBackgroundType = (int)item.TypeOfEventBackground;
+                var eventBackground = item.EventBackground;
+                var eventEndBehaviour = (int)item.EventEndBehaviour;
+                var eventNumberToSkipTo = item.EventNumberToSkipTo;
                 var objectiveNumberToSkipTo = item.ObjectiveNumberToSkipTo;
-                var dialogueEndTypes = Enum.GetNames(typeof(QuestText.DialogueEndBehaviourType));
-                var dialogueBackgroundTypes = Enum.GetNames(typeof(QuestText.DialogueBackgroundType));
-                var dialogueConditionTypes = Enum.GetNames(typeof(QuestText.DialogueConditionType));
+                var eventEndTypes = Enum.GetNames(typeof(QuestEvent.EventEndBehaviourType));
+                var eventBackgroundTypes = Enum.GetNames(typeof(QuestEvent.EventBackgroundType));
+                var eventConditionTypes = Enum.GetNames(typeof(QuestEvent.EventConditionType));
                 var appearanceSwap = item.AppearanceSwap;
                 var loopAnimation = item.LoopAnimation;
 
-                if (ImGui.Combo("Condition For Dialogue To Occur##", ref dialogueCondition, dialogueConditionTypes, dialogueConditionTypes.Length))
+                if (ImGui.Combo("Condition For Dialogue To Occur##", ref dialogueCondition, eventConditionTypes, eventConditionTypes.Length))
                 {
-                    item.ConditionForDialogueToOccur = (DialogueConditionType)dialogueCondition;
+                    item.ConditionForDialogueToOccur = (EventConditionType)dialogueCondition;
                 }
                 switch (item.ConditionForDialogueToOccur)
                 {
-                    case DialogueConditionType.None:
+                    case EventConditionType.None:
                         break;
-                    case DialogueConditionType.CompletedSpecificObjectiveId:
+                    case EventConditionType.CompletedSpecificObjectiveId:
                         if (ImGui.InputText("Objective Id To Complete##", ref objectiveIdToComplete, 40))
                         {
                             item.ObjectiveIdToComplete = objectiveIdToComplete;
@@ -432,39 +461,39 @@ public class EditorWindow : Window, IDisposable
                 {
                     item.LoopAnimation = loopAnimation;
                 }
-                if (ImGui.Combo("Dialogue Background Type##", ref dialogueBackgroundType, dialogueBackgroundTypes, dialogueBackgroundTypes.Length))
+                if (ImGui.Combo("Event Background Type##", ref eventBackgroundType, eventBackgroundTypes, eventBackgroundTypes.Length))
                 {
-                    item.TypeOfDialogueBackground = (DialogueBackgroundType)dialogueBackgroundType;
+                    item.TypeOfEventBackground = (EventBackgroundType)eventBackgroundType;
                 }
-                switch (item.TypeOfDialogueBackground)
+                switch (item.TypeOfEventBackground)
                 {
-                    case DialogueBackgroundType.Image:
-                        if (ImGui.InputText("Dialogue Background Image Path##", ref dialogueBackground, 255))
+                    case EventBackgroundType.Image:
+                        if (ImGui.InputText("Event Background Image Path##", ref eventBackground, 255))
                         {
-                            item.DialogueBackground = dialogueBackground;
+                            item.EventBackground = eventBackground;
                         }
                         break;
-                    case DialogueBackgroundType.Video:
-                        if (ImGui.InputText("Dialogue Background Video Path##", ref dialogueBackground, 255))
+                    case EventBackgroundType.Video:
+                        if (ImGui.InputText("Event Background Video Path##", ref eventBackground, 255))
                         {
-                            item.DialogueBackground = dialogueBackground;
+                            item.EventBackground = eventBackground;
                         }
                         break;
                 }
-                if (ImGui.Combo("Dialogue End Behaviour##", ref dialogueEndBehaviour, dialogueEndTypes, dialogueEndTypes.Length))
+                if (ImGui.Combo("Event End Behaviour##", ref eventEndBehaviour, eventEndTypes, eventEndTypes.Length))
                 {
-                    item.DialogueEndBehaviour = (DialogueEndBehaviourType)dialogueEndBehaviour;
+                    item.EventEndBehaviour = (EventEndBehaviourType)eventEndBehaviour;
                 }
 
-                switch (item.DialogueEndBehaviour)
+                switch (item.EventEndBehaviour)
                 {
-                    case DialogueEndBehaviourType.DialogueSkipsToDialogueNumber:
-                        if (ImGui.InputInt("Dialogue Number To Skip To##", ref dialogueNumberToSkipTo))
+                    case EventEndBehaviourType.EventSkipsToDialogueNumber:
+                        if (ImGui.InputInt("Event Number To Skip To##", ref eventNumberToSkipTo))
                         {
-                            item.DialogueNumberToSkipTo = dialogueNumberToSkipTo;
+                            item.EventNumberToSkipTo = eventNumberToSkipTo;
                         }
                         break;
-                    case DialogueEndBehaviourType.DialogueEndsEarlyWhenHitAndSkipsToObjective:
+                    case EventEndBehaviourType.EventEndsEarlyWhenHitAndSkipsToObjective:
                         if (ImGui.InputInt("Objective Number To Skip To##", ref objectiveNumberToSkipTo))
                         {
                             item.ObjectiveNumberToSkipTo = objectiveNumberToSkipTo;
@@ -497,11 +526,11 @@ public class EditorWindow : Window, IDisposable
             var questText = _objectiveInFocus.QuestText;
             if (questText.Count > 0)
             {
-                if (_selectedDialogue > questText.Count)
+                if (_selectedEvent > questText.Count)
                 {
-                    _selectedDialogue = questText.Count - 1;
+                    _selectedEvent = questText.Count - 1;
                 }
-                var branchingChoices = questText[_selectedDialogue].BranchingChoices;
+                var branchingChoices = questText[_selectedEvent].BranchingChoices;
                 if (branchingChoices.Count > 0)
                 {
                     if (_selectedBranchingChoice > branchingChoices.Count)
@@ -512,7 +541,7 @@ public class EditorWindow : Window, IDisposable
                     var choiceText = item.ChoiceText;
                     var choiceType = (int)item.ChoiceType;
                     var roleplayingQuest = item.RoleplayingQuest;
-                    var dialogueToJumpTo = item.DialogueToJumpTo;
+                    var eventToJumpTo = item.EventToJumpTo;
                     var branchingChoiceTypes = Enum.GetNames(typeof(BranchingChoiceType));
                     if (ImGui.InputText("Choice Text##", ref choiceText, 255))
                     {
@@ -525,9 +554,9 @@ public class EditorWindow : Window, IDisposable
                     switch (item.ChoiceType)
                     {
                         case BranchingChoiceType.SkipToDialogueNumber:
-                            if (ImGui.InputInt("Dialogue Number To Jump To##", ref dialogueToJumpTo))
+                            if (ImGui.InputInt("Event Number To Jump To##", ref eventToJumpTo))
                             {
-                                item.DialogueToJumpTo = dialogueToJumpTo;
+                                item.EventToJumpTo = eventToJumpTo;
                             }
                             break;
                         case BranchingChoiceType.BranchingQuestline:
@@ -574,7 +603,7 @@ public class EditorWindow : Window, IDisposable
             var questText = _objectiveInFocus.QuestText;
             if (questText.Count > 0)
             {
-                var branchingChoices = questText[_selectedDialogue].BranchingChoices;
+                var branchingChoices = questText[_selectedEvent].BranchingChoices;
                 ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
                 if (ImGui.ListBox("##branchingChoice", ref _selectedBranchingChoice, _branchingChoices, _branchingChoices.Length, 5))
                 {
@@ -602,30 +631,30 @@ public class EditorWindow : Window, IDisposable
         }
     }
 
-    private void DrawQuestDialogues()
+    private void DrawQuestEvents()
     {
         if (_objectiveInFocus != null)
         {
             var questText = _objectiveInFocus.QuestText;
             ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-            if (ImGui.ListBox("##questDialogue", ref _selectedDialogue, _dialogues, _dialogues.Length, 15))
+            if (ImGui.ListBox("##questEvent", ref _selectedEvent, _dialogues, _dialogues.Length, 15))
             {
                 _selectedBranchingChoice = 0;
                 RefreshMenus();
             }
             if (ImGui.Button("Add"))
             {
-                questText.Add(new QuestText());
-                _dialogues = Utility.FillNewList(questText.Count, "Dialogue");
-                _selectedDialogue = questText.Count - 1;
+                questText.Add(new QuestEvent());
+                _dialogues = Utility.FillNewList(questText.Count, "Event");
+                _selectedEvent = questText.Count - 1;
                 RefreshMenus();
             }
             ImGui.SameLine();
             if (ImGui.Button("Remove"))
             {
-                questText.RemoveAt(_selectedDialogue);
-                _dialogues = Utility.FillNewList(questText.Count, "Dialogue");
-                _selectedDialogue = questText.Count - 1;
+                questText.RemoveAt(_selectedEvent);
+                _dialogues = Utility.FillNewList(questText.Count, "Event");
+                _selectedEvent = questText.Count - 1;
                 RefreshMenus();
             }
         }
@@ -636,11 +665,11 @@ public class EditorWindow : Window, IDisposable
         if (_objectiveInFocus != null)
         {
             var questText = _objectiveInFocus.QuestText;
-            _dialogues = Utility.FillNewList(questText.Count, "Dialogue");
+            _dialogues = Utility.FillNewList(questText.Count, "Event");
             _nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
             if (questText.Count > 0)
             {
-                var choices = questText[_selectedDialogue].BranchingChoices;
+                var choices = questText[_selectedEvent].BranchingChoices;
                 if (_selectedBranchingChoice > choices.Count)
                 {
                     _selectedBranchingChoice = choices.Count - 1;
@@ -662,11 +691,11 @@ public class EditorWindow : Window, IDisposable
             _branchingChoices = new string[] { };
             _nodeNames = new string[] { };
             _dialogues = new string[] { };
-            _dialogues = Utility.FillNewList(0, "Dialogue");
+            _dialogues = Utility.FillNewList(0, "Event");
             _nodeNames = Utility.FillNewList(0, "Objective");
             _branchingChoices = Utility.FillNewList(0, "Choice");
             _selectedBranchingChoice = 0;
-            _selectedDialogue = 0;
+            _selectedEvent = 0;
         }
     }
 
