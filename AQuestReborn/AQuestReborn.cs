@@ -493,7 +493,10 @@ namespace AQuestReborn
                             {
                                 _actorSpawnService.DestroyAllCreated();
                             }
-                            catch { }
+                            catch (Exception e)
+                            {
+                                Plugin.PluginLog.Warning(e, e.Message);
+                            }
                         }
                     }
                     if (!_spawnedNPCsDictionary["DEBUG"].ContainsKey("First Spawn") || _spawnedNPCsDictionary["DEBUG"].Count == 0)

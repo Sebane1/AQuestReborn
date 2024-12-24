@@ -783,16 +783,8 @@ public class EditorWindow : Window, IDisposable
                 TerritoryId = Plugin.ClientState.TerritoryType,
                 TerritoryDiscriminator = DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState)
             });
-            //_nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
             RefreshMenus();
         }
-        //ImGui.SameLine();
-        //if (ImGui.Button("Remove## Objective"))
-        //{
-        //    _roleplayingQuestCreator.CurrentQuest.QuestObjectives.RemoveAt(_selectedObjectiveNode);
-        //    _nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
-        //    RefreshMenus();
-        //}
     }
 
     private void OpenBranchingQuest(RoleplayingQuest roleplayingQuest)

@@ -1,5 +1,6 @@
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using System;
 
 namespace AQuestReborn
 {
@@ -8,21 +9,30 @@ namespace AQuestReborn
         public static unsafe string GetDiscriminator(IClientState clientState)
         {
             string value = "";
-            if (clientState != null)
+            try
             {
-                if (clientState.LocalPlayer != null)
+                if (clientState != null)
                 {
-                    if (IsResidential())
+                    if (clientState.LocalPlayer != null)
                     {
-                        value += clientState.LocalPlayer.CurrentWorld.Value.Name.ExtractText() + "-" + HousingManager.Instance()->GetCurrentDivision() + "-"
-                            + HousingManager.Instance()->GetCurrentWard() + (HousingManager.Instance()->IsInside() ? "-" + HousingManager.Instance()->GetCurrentPlot() + "-" +
-                            HousingManager.Instance()->GetCurrentRoom() + "-" + HousingManager.Instance()->GetCurrentIndoorHouseId() : "");
+
+                        if (IsResidential())
+                        {
+                            value += clientState.LocalPlayer.CurrentWorld.Value.Name.ExtractText() + "-" + HousingManager.Instance()->GetCurrentDivision() + "-"
+                                + HousingManager.Instance()->GetCurrentWard() + (HousingManager.Instance()->IsInside() ? "-" + HousingManager.Instance()->GetCurrentPlot() + "-" +
+                                HousingManager.Instance()->GetCurrentRoom() + "-" + HousingManager.Instance()->GetCurrentIndoorHouseId() : "");
+                        }
+                        else
+                        {
+                            value += clientState.LocalPlayer.CurrentWorld.Value.Name.ExtractText();
+                        }
                     }
-                    else
-                    {
-                        value += clientState.LocalPlayer.CurrentWorld.Value.Name.ExtractText();
-                    }
+
                 }
+            }
+            catch (Exception e)
+            {
+
             }
             return value;
         }
