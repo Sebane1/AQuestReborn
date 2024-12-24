@@ -81,7 +81,7 @@ public class TitleCardWindow : Window, IDisposable
         var questEnd = new MemoryStream();
         questImage.CopyTo(questEnd);
 
-        _questEndImage = questStart.ToArray();
+        _questEndImage = questEnd.ToArray();
     }
 
     public QuestDisplayObject QuestTexts { get => questDisplayObject; set => questDisplayObject = value; }
