@@ -172,13 +172,13 @@ public class TitleCardWindow : Window, IDisposable
         }
         if (!string.IsNullOrEmpty(soundPath) && File.Exists(soundPath))
         {
-            Plugin.MediaManager.PlayMedia(_dummyObject, soundPath, SoundType.MainPlayerVoice, true);
+            Plugin.MediaManager.PlayMedia(_dummyObject, soundPath, SoundType.NPC, true);
         }
         else
         {
             InitializeSound();
-            Plugin.MediaManager.PlayAudioStream(_dummyObject,
-            new Mp3FileReader(!isEnd ? _questStartSound : _questEndSound), SoundType.MainPlayerVoice, false, false, 1, 0, false, null, null, 1, 2f);
+            Plugin.MediaManager.PlayAudioStream(new DummyObject(),
+            new Mp3FileReader(!isEnd ? _questStartSound : _questEndSound), SoundType.NPC, false, false, 1, 0, false, null, null, 1, 2f);
         }
         IsOpen = true;
         titleTimer.Restart();
