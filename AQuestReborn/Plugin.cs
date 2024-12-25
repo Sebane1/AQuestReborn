@@ -212,6 +212,7 @@ public sealed class Plugin : IDalamudPlugin
         _brio?.Dispose();
         _aQuestReborn?.Dispose();
         _movement?.Dispose();
+        _mcdfEntryPoint?.Dispose();
     }
 
     private void OnCommand(string command, string args)
