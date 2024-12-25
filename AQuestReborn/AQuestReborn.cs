@@ -239,7 +239,7 @@ namespace AQuestReborn
                     && !Conditions.IsOccupied && !Conditions.IsInCombat && Plugin.ClientState.IsLoggedIn)
                 {
                     // Hopefully waiting prevents crashing on zone changes?
-                    if (zoneChangeCooldown.ElapsedMilliseconds > 10000)
+                    if (zoneChangeCooldown.ElapsedMilliseconds > 3000)
                     {
                         if (!_isInitialized)
                         {

@@ -15,9 +15,11 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using ImGuiNET;
 using Lumina.Excel.Sheets;
+using NAudio.Wave;
 using RoleplayingMediaCore;
 using RoleplayingQuestCore;
 using RoleplayingVoiceDalamudWrapper;
+using static FFXIVClientStructs.FFXIV.Client.System.Scheduler.Resource.SchedulerResource;
 using static FFXIVClientStructs.FFXIV.Component.GUI.AtkComponentButton.Delegates;
 
 namespace SamplePlugin.Windows;
@@ -48,6 +50,8 @@ public class TitleCardWindow : Window, IDisposable
     private byte[] _questEndImage;
     private bool _alreadyLoadingFrame;
     private bool _wasClosed;
+    private MemoryStream _questStartSound;
+    private MemoryStream _questEndSound;
 
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
@@ -82,6 +86,23 @@ public class TitleCardWindow : Window, IDisposable
         questImage.CopyTo(questEnd);
 
         _questEndImage = questEnd.ToArray();
+    }
+
+    private void InitializeSound()
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+        string resourceName = assembly.GetManifestResourceNames().Single(str => str.EndsWith("QuestStart.mp3"));
+        var questSound = assembly.GetManifestResourceStream(resourceName);
+        _questStartSound = new MemoryStream();
+        questSound.CopyTo(_questStartSound);
+        _questStartSound.Position = 0;
+
+        assembly = Assembly.GetExecutingAssembly();
+        resourceName = assembly.GetManifestResourceNames().Single(str => str.EndsWith("QuestEnd.mp3"));
+        questSound = assembly.GetManifestResourceStream(resourceName);
+        _questEndSound = new MemoryStream();
+        questSound.CopyTo(_questEndSound);
+        _questEndSound.Position = 0;
     }
 
     public QuestDisplayObject QuestTexts { get => questDisplayObject; set => questDisplayObject = value; }
@@ -151,7 +172,13 @@ public class TitleCardWindow : Window, IDisposable
         }
         if (!string.IsNullOrEmpty(soundPath) && File.Exists(soundPath))
         {
-            Plugin.MediaManager.PlayMedia(_dummyObject, soundPath, SoundType.NPC, true);
+            Plugin.MediaManager.PlayMedia(_dummyObject, soundPath, SoundType.MainPlayerVoice, true);
+        }
+        else
+        {
+            InitializeSound();
+            Plugin.MediaManager.PlayAudioStream(_dummyObject,
+            new Mp3FileReader(!isEnd ? _questStartSound : _questEndSound), SoundType.MainPlayerVoice, false, false, 1, 0, false, null, null, 1, 2f);
         }
         IsOpen = true;
         titleTimer.Restart();

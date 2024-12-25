@@ -26,6 +26,7 @@ public class DialogueWindow : Window, IDisposable
     private Plugin Plugin;
     QuestDisplayObject questDisplayObject;
     int _index = 0;
+    private int _objectiveSkipValue;
     private bool _blockProgression;
     private bool _settingNewText;
     int _currentCharacter = 0;
@@ -76,7 +77,7 @@ public class DialogueWindow : Window, IDisposable
     public override void OnOpen()
     {
         Plugin.Movement.EnableMovementLock();
-        base.OnOpen();  
+        base.OnOpen();
     }
 
     public byte[] ImageToBytes(Bitmap image)
@@ -353,7 +354,7 @@ public class DialogueWindow : Window, IDisposable
                             break;
                         case QuestEvent.EventEndBehaviourType.EventEndsEarlyWhenHitAndSkipsToObjective:
                             _index = questDisplayObject.QuestObjective.QuestText.Count;
-                            Plugin.RoleplayingQuestManager.SkipToObjective(questDisplayObject.RoleplayingQuest, item.ObjectiveNumberToSkipTo);
+                            _objectiveSkipValue = item.ObjectiveNumberToSkipTo;
                             _objectiveSkip = true;
                             break;
                         case QuestEvent.EventEndBehaviourType.None:
@@ -378,6 +379,10 @@ public class DialogueWindow : Window, IDisposable
             }
             else
             {
+                if (_objectiveSkip)
+                {
+                    Plugin.RoleplayingQuestManager.SkipToObjective(questDisplayObject.RoleplayingQuest, _objectiveSkipValue);
+                }
                 _blockProgression = false;
                 _objectiveSkip = false;
             }

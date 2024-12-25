@@ -11,7 +11,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="QuestEnd.mp3" />
     <None Remove="questEnd.png" />
+    <None Remove="QuestStart.mp3" />
     <None Remove="questStart.png" />
   </ItemGroup>
 
@@ -24,6 +26,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="questEnd.png" />
+    <EmbeddedResource Include="QuestStart.mp3" />
     <EmbeddedResource Include="questStart.png" />
   </ItemGroup>
 
@@ -37,5 +40,9 @@
     <ProjectReference Include="..\MCDF-Loader\MareSynchronos\McdfDataImporter.csproj" />
     <ProjectReference Include="..\RoleplayingQuestCore\RoleplayingQuestCore.csproj" />
     <ProjectReference Include="..\RoleplayingVoiceCore\RoleplayingVoiceCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="QuestEnd.mp3" />
   </ItemGroup>
 </Project>
