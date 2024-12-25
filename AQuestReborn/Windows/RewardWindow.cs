@@ -117,6 +117,7 @@ public class RewardWindow : Window, IDisposable
         {
             IsOpen = false;
             OnRewardClosed?.Invoke(this, _questToDisplay);
+            Plugin.Movement.DisableMovementLock();
         }
         ImGui.PopStyleColor();
         ImGui.PopStyleColor();

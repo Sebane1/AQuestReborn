@@ -187,6 +187,5 @@ public class TitleCardWindow : Window, IDisposable
     public void ClearBackground()
     {
         _titleCardImage = null;
-        Plugin.MediaManager?.StopAudio(_dummyObject);
     }
 }
