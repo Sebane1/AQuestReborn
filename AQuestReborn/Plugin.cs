@@ -208,10 +208,10 @@ public sealed class Plugin : IDalamudPlugin
         MainWindow.Dispose();
 
         CommandManager.RemoveHandler(CommandName);
-        _mediaManager.Dispose();
-        _brio.Dispose();
-        _aQuestReborn.Dispose();
-        _movement.Dispose();
+        _mediaManager?.Dispose();
+        _brio?.Dispose();
+        _aQuestReborn?.Dispose();
+        _movement?.Dispose();
     }
 
     private void OnCommand(string command, string args)
