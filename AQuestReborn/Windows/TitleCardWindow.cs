@@ -187,5 +187,6 @@ public class TitleCardWindow : Window, IDisposable
     public void ClearBackground()
     {
         _titleCardImage = null;
+        _frameToLoad = null;
     }
 }

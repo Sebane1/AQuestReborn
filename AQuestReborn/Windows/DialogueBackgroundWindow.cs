@@ -270,6 +270,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
     {
         _currentBackgroundType = QuestEvent.EventBackgroundType.None;
         _currentBackground = _emptyBackground;
+        _frameToLoad = null;
         Plugin.MediaManager?.StopAudio(_dummyObject);
     }
 }
