@@ -282,7 +282,7 @@ public class EditorWindow : Window, IDisposable
             {
                 questObjective.Coordinates = Plugin.ClientState.LocalPlayer.Position;
                 questObjective.TerritoryId = Plugin.ClientState.TerritoryType;
-                questObjective.TerritoryDiscriminator = DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState);
+                questObjective.TerritoryDiscriminator = Plugin.AQuestReborn.Discriminator;
             }
             if (ImGui.InputFloat("Maximum Indicator Distance##", ref maximum3dIndicatorDistance))
             {
@@ -781,7 +781,7 @@ public class EditorWindow : Window, IDisposable
                 Coordinates = Plugin.ClientState.LocalPlayer.Position,
                 Rotation = new Vector3(0, Utility.ConvertRadiansToDegrees(Plugin.ClientState.LocalPlayer.Rotation), 0),
                 TerritoryId = Plugin.ClientState.TerritoryType,
-                TerritoryDiscriminator = DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState)
+                TerritoryDiscriminator = Plugin.AQuestReborn.Discriminator
             });
             RefreshMenus();
         }

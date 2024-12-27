@@ -74,7 +74,7 @@ public class NPCTransformEditorWindow : Window, IDisposable
             var defaultAnimationId = item.Value.DefaultAnimationId;
             var position = item.Value.Position;
             var eulerRotation = item.Value.EulerRotation;
-            var scale = item.Value.Scale;
+            var scale = item.Value.TransformScale;
 
             ImGui.SetNextItemWidth(100);
             if (ImGui.InputText("##name", ref name, 40))
@@ -111,7 +111,7 @@ public class NPCTransformEditorWindow : Window, IDisposable
             ImGui.SameLine();
             if (ImGui.InputFloat3("##Scale Entry", ref scale))
             {
-                item.Value.Scale = scale;
+                item.Value.TransformScale = scale;
             }
             if (ImGui.Button("Set Transform Coordinates From Standing Position"))
             {

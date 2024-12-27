@@ -128,7 +128,7 @@ public class ObjectiveWindow : Window, IDisposable
         }
         if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
         {
-            var questChainObjectives = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType, DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState));
+            var questChainObjectives = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType, Plugin.AQuestReborn.Discriminator);
             _mouseDistanceIsCloseToObjective = false;
             foreach (var item in questChainObjectives)
             {

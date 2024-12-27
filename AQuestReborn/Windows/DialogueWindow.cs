@@ -288,7 +288,7 @@ public class DialogueWindow : Window, IDisposable
                 string customMcdfPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.AppearanceSwap);
                 if (!string.IsNullOrEmpty(_mcdfSwap) && File.Exists(customMcdfPath))
                 {
-                    if (Plugin.RoleplayingQuestManager.SwapMCDF(questDisplayObject.RoleplayingQuest, item.NpcName, item.AppearanceSwap))
+                    if (Plugin.RoleplayingQuestManager.SwapAppearanceData(questDisplayObject.RoleplayingQuest, item.NpcName, item.AppearanceSwap))
                     {
                         Plugin.AQuestReborn.UpdateNPCAppearance(Plugin.ClientState.TerritoryType, questDisplayObject.RoleplayingQuest.QuestId, item.NpcName, Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.AppearanceSwap));
                     }
