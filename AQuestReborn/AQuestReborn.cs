@@ -7,6 +7,7 @@ using Dalamud.Game.Config;
 using Dalamud.Game.Gui.Toast;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Common.Lua;
@@ -18,6 +19,7 @@ using RoleplayingVoiceDalamudWrapper;
 using SamplePlugin;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -154,7 +156,7 @@ namespace AQuestReborn
                     }
                     _triggerRefresh = true;
                 });
-                foreach (var file in Directory.EnumerateFiles(CachePath.CacheLocation, "*.tmp"))
+                foreach (var file in Directory.EnumerateFiles(McdfAccessUtils.CacheLocation, "*.tmp"))
                 {
                     File.Delete(file);
                 }
@@ -304,7 +306,6 @@ namespace AQuestReborn
                     {
                         if (!waitingForMcdfLoad)
                         {
-                            waitingForMcdfLoad = true;
                             var value = _npcActorSpawnQueue.Dequeue();
                             ICharacter character = null;
                             _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
@@ -313,25 +314,29 @@ namespace AQuestReborn
                             if (character != null)
                             {
                                 Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)value.Item1.DefaultAnimationId);
-                                Task.Run(() =>
-                                {
-                                    lock (_npcActorSpawnQueue)
-                                    {
-                                        Thread.Sleep(200);
-                                        while (_mcdfQueue.Count > 0)
-                                        {
-                                            Thread.Sleep(200);
-                                        }
-                                        _mcdfQueue.Enqueue(new KeyValuePair<string, ICharacter>(value.Item3, character));
-                                    }
-                                });
+                                LoadMCDF(value.Item3, character);
                             }
                         }
                     }
                 }
             }
         }
-
+        public void LoadMCDF(string mcdf, ICharacter character)
+        {
+            Task.Run(() =>
+            {
+                lock (_npcActorSpawnQueue)
+                {
+                    waitingForMcdfLoad = true;
+                    Thread.Sleep(200);
+                    while (_mcdfQueue.Count > 0)
+                    {
+                        Thread.Sleep(200);
+                    }
+                    _mcdfQueue.Enqueue(new KeyValuePair<string, ICharacter>(mcdf, character));
+                }
+            });
+        }
         private void CheckForMapRefresh()
         {
             if (_mapRefreshTimer.ElapsedMilliseconds > 10000)
@@ -364,20 +369,23 @@ namespace AQuestReborn
                 Plugin.PluginLog?.Warning(e, e.Message);
             }
         }
-        private void CheckForNewMCDFLoad()
+        private async void CheckForNewMCDFLoad()
         {
             if (_mcdfQueue.Count > 0)
             {
-                if (waitingForMcdfLoad && _mcdfRefreshTimer.ElapsedMilliseconds > 500)
+                if (waitingForMcdfLoad && _mcdfRefreshTimer.ElapsedMilliseconds > 500 && !McdfAccessUtils.McdfManager.IsWorking())
                 {
                     var item = _mcdfQueue.Dequeue();
-                    if (!_mcdfService.LoadMcdfAsync(item.Key, item.Value))
+                    if (item.Value != null)
                     {
-                        _mcdfQueue.Enqueue(item);
-                    }
-                    else
-                    {
-                        waitingForMcdfLoad = false;
+                        if (!await McdfAccessUtils.McdfManager?.LoadMcdfAsync(item.Key, item.Value))
+                        {
+                            _mcdfQueue.Enqueue(item);
+                        }
+                        else
+                        {
+                            waitingForMcdfLoad = false;
+                        }
                     }
                     _mcdfRefreshTimer.Restart();
                 }
@@ -394,7 +402,7 @@ namespace AQuestReborn
 
         private void CheckForNPCRefresh()
         {
-            if (_triggerRefresh)
+            if (_triggerRefresh && !McdfAccessUtils.McdfManager.IsWorking())
             {
                 RefreshMapMarkers();
                 RefreshNpcsForQuest(Plugin.ClientState.TerritoryType);
@@ -555,6 +563,24 @@ namespace AQuestReborn
                     Plugin.PluginLog.Warning(e, e.Message);
                 }
                 _refreshingNPCQuests = false;
+            }
+        }
+        public void UpdateNPCAppearance(ushort territoryId, string questId, string npcName, string appearancePath)
+        {
+            try
+            {
+                LoadMCDF(appearancePath, _spawnedNPCsDictionary[questId][npcName]);
+            }
+            catch
+            {
+                try
+                {
+                    RefreshNpcsForQuest(territoryId, questId, true);
+                }
+                catch (Exception e)
+                {
+                    Plugin.PluginLog.Warning(e, e.Message);
+                }
             }
         }
         private void _roleplayingQuestManager_OnQuestAcceptancePopup(object? sender, RoleplayingQuest e)

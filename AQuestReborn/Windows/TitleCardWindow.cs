@@ -131,10 +131,20 @@ public class TitleCardWindow : Window, IDisposable
             Task.Run(async () =>
             {
                 _alreadyLoadingFrame = true;
-                if (_lastLoadedFrame != _titleCardImage)
+                try
                 {
-                    _frameToLoad = await _textureProvider.CreateFromImageAsync(_titleCardImage);
-                    _lastLoadedFrame = _titleCardImage;
+                    if (_titleCardImage != null)
+                    {
+                        if (_lastLoadedFrame != _titleCardImage)
+                        {
+                            _frameToLoad = await _textureProvider.CreateFromImageAsync(_titleCardImage);
+                            _lastLoadedFrame = _titleCardImage;
+                        }
+                    }
+                }
+                catch
+                {
+
                 }
                 _alreadyLoadingFrame = false;
             });

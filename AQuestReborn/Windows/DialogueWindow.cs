@@ -290,7 +290,7 @@ public class DialogueWindow : Window, IDisposable
                 {
                     if (Plugin.RoleplayingQuestManager.SwapMCDF(questDisplayObject.RoleplayingQuest, item.NpcName, item.AppearanceSwap))
                     {
-                        Plugin.AQuestReborn.RefreshNpcsForQuest(Plugin.ClientState.TerritoryType, questDisplayObject.RoleplayingQuest.QuestId);
+                        Plugin.AQuestReborn.UpdateNPCAppearance(Plugin.ClientState.TerritoryType, questDisplayObject.RoleplayingQuest.QuestId, item.NpcName, Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.AppearanceSwap));
                     }
                 }
                 if (_currentName.ToLower() == "system")

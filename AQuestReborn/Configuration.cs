@@ -35,8 +35,8 @@ public class Configuration : IPluginConfiguration
             {
                 try
                 {
-                    CachePath.CacheLocation = Path.Combine(Path.GetDirectoryName(_questInstallFolder + ".poop"), "QuestCache\\");
-                    Directory.CreateDirectory(CachePath.CacheLocation);
+                    McdfAccessUtils.CacheLocation = Path.Combine(Path.GetDirectoryName(_questInstallFolder + ".poop"), "QuestCache\\");
+                    Directory.CreateDirectory(McdfAccessUtils.CacheLocation);
                 }
                 catch
                 {
@@ -50,8 +50,8 @@ public class Configuration : IPluginConfiguration
             _questInstallFolder = value;
             if (!string.IsNullOrEmpty(_questInstallFolder))
             {
-                CachePath.CacheLocation = Path.Combine(Path.GetDirectoryName(value + ".poop"), "QuestCache\\");
-                CachePath.CacheLocation = Path.Combine(Path.GetDirectoryName(_questInstallFolder + ".poop"), "QuestCache\\");
+                McdfAccessUtils.CacheLocation = Path.Combine(Path.GetDirectoryName(value + ".poop"), "QuestCache\\");
+                McdfAccessUtils.CacheLocation = Path.Combine(Path.GetDirectoryName(_questInstallFolder + ".poop"), "QuestCache\\");
             }
         }
     }
