@@ -1,5 +1,7 @@
 using System;
+using System.IO;
 using System.Numerics;
+using System.Threading.Tasks;
 using AQuestReborn;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Internal;
@@ -7,6 +9,7 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using ImGuiNET;
+using McdfDataImporter;
 using RoleplayingQuestCore;
 using static RoleplayingQuestCore.BranchingChoice;
 
@@ -20,6 +23,7 @@ public class NPCEditorWindow : Window, IDisposable
     private RoleplayingQuest _roleplayingQuest;
     private int _selectedNpcCustomization;
     private string[] _npcCustomizations;
+    private bool _isCreatingAppearance;
 
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
@@ -75,6 +79,30 @@ public class NPCEditorWindow : Window, IDisposable
             if (ImGui.InputText("Npc Appearance Data##", ref appearanceData, 255))
             {
                 item.AppearanceData = appearanceData;
+            }
+
+            if (_isCreatingAppearance)
+            {
+                ImGui.BeginDisabled();
+            }
+            if (ImGui.Button(_isCreatingAppearance ? "Creating Appearance Please Wait" : "Create NPC Appearance From Player Appearance##"))
+            {
+                Task.Run(() =>
+                {
+                    _isCreatingAppearance = true;
+                    string mcdfName = npcName + "-" + Guid.NewGuid().ToString() + ".mcdf";
+                    string questPath = Path.Combine(Plugin.Configuration.QuestInstallFolder, _roleplayingQuest.QuestName);
+                    string mcdfPath = Path.Combine(questPath, mcdfName);
+                    Directory.CreateDirectory(questPath);
+                    McdfAccessUtils.McdfManager.CreateMCDF(mcdfPath);
+                    Plugin.EditorWindow.RoleplayingQuestCreator.SaveQuest(questPath);
+                    item.AppearanceData = mcdfName;
+                    _isCreatingAppearance = false;
+                });
+            }
+            if (_isCreatingAppearance)
+            {
+                ImGui.EndDisabled();
             }
         }
     }
