@@ -160,12 +160,16 @@ public class QuestAcceptanceWindow : Window, IDisposable
             _questToDisplay.HasQuestAcceptancePopup = false;
             OnQuestAccepted?.Invoke(this, EventArgs.Empty);
             IsOpen = false;
+            _currentThumbnail = null;
+            _frameToLoad = null;
         }
         ImGui.SameLine();
         if (ImGui.Button("Decline", buttonSize))
         {
             IsOpen = false;
             Plugin.Movement.DisableMovementLock();
+            _currentThumbnail = null;
+            _frameToLoad = null;
         }
         ImGui.PopStyleColor();
         ImGui.PopStyleColor();
