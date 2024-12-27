@@ -8,8 +8,8 @@
       "Questing"
     ],
     "InternalName": "AQuestReborn",
-    "AssemblyVersion": "0.0.7.7",
-    "TestingAssemblyVersion": "0.0.7.7",
+    "AssemblyVersion": "0.0.7.8",
+    "TestingAssemblyVersion": "0.0.7.8",
     "RepoUrl": "https://github.com/Sebane1/AQuestReborn",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 11,
@@ -17,9 +17,9 @@
     "IsTestingExclusive": "False",
     "DownloadCount": 0,
     "LastUpdate": 0,
-    "DownloadLinkInstall": "https://github.com/Sebane1/AQuestReborn/releases/download/0.0.7.7/AQuestReborn.zip",
-    "DownloadLinkTesting": "https://github.com/Sebane1/AQuestReborn/releases/download/0.0.7.7/AQuestReborn.zip",
-    "DownloadLinkUpdate": "https://github.com/Sebane1/AQuestReborn/releases/download/0.0.7.7/AQuestReborn.zip",
+    "DownloadLinkInstall": "https://github.com/Sebane1/AQuestReborn/releases/download/0.0.7.8/AQuestReborn.zip",
+    "DownloadLinkTesting": "https://github.com/Sebane1/AQuestReborn/releases/download/0.0.7.8/AQuestReborn.zip",
+    "DownloadLinkUpdate": "https://github.com/Sebane1/AQuestReborn/releases/download/0.0.7.8/AQuestReborn.zip",
     "IconUrl": "https://raw.githubusercontent.com/Sebane1/AQuestReborn/refs/heads/master/AQuestReborn-C256.png"
   }
 ]
