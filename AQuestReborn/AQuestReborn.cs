@@ -304,7 +304,7 @@ namespace AQuestReborn
                 {
                     if (_npcActorSpawnQueue.Count > 0)
                     {
-                        if (!waitingForMcdfLoad)
+                        if (!waitingForMcdfLoad && !McdfAccessUtils.McdfManager.IsWorking())
                         {
                             var value = _npcActorSpawnQueue.Dequeue();
                             ICharacter character = null;
@@ -378,14 +378,8 @@ namespace AQuestReborn
                     var item = _mcdfQueue.Dequeue();
                     if (item.Value != null)
                     {
-                        if (!await McdfAccessUtils.McdfManager?.LoadMcdfAsync(item.Key, item.Value))
-                        {
-                            _mcdfQueue.Enqueue(item);
-                        }
-                        else
-                        {
-                            waitingForMcdfLoad = false;
-                        }
+                        McdfAccessUtils.McdfManager?.LoadMcdf(item.Key, item.Value);
+                        waitingForMcdfLoad = false;
                     }
                     _mcdfRefreshTimer.Restart();
                 }
