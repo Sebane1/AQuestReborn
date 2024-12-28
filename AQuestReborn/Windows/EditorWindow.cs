@@ -594,6 +594,35 @@ public class EditorWindow : Window, IDisposable
                                 item.MinimumDiceRoll = minimumDiceRoll;
                             }
                             break;
+                        case BranchingChoiceType.SkipToEventNumberRandomized:
+                            for (int i = 0; i < item.RandomizedEventToSkipTo.Count; i++)
+                            {
+                                var randomizedEventToJumpTo = item.RandomizedEventToSkipTo[i];
+                                ImGui.SetNextItemWidth(200);
+                                if (ImGui.InputInt($"Randomized Event Number To Jump To##{i}", ref randomizedEventToJumpTo))
+                                {
+                                    item.RandomizedEventToSkipTo[i] = randomizedEventToJumpTo;
+                                }
+                                ImGui.SameLine();
+                                if (item.RandomizedEventToSkipTo.Count < 2)
+                                {
+                                    ImGui.BeginDisabled();
+                                }
+                                ImGui.SameLine();
+                                if (ImGui.Button($"Delete##{i}"))
+                                {
+                                    item.RandomizedEventToSkipTo.RemoveAt(i);
+                                }
+                                if (item.RandomizedEventToSkipTo.Count < 2)
+                                {
+                                    ImGui.EndDisabled();
+                                }
+                            }
+                            if (ImGui.Button($"Add Randomized Skip##"))
+                            {
+                                item.RandomizedEventToSkipTo.Add(0);
+                            }
+                            break;
                         case BranchingChoiceType.BranchingQuestline:
                             if (ImGui.Button("Configure Branching Questline"))
                             {

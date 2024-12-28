@@ -356,10 +356,7 @@ namespace AQuestReborn
                                 if (character != null)
                                 {
                                     Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)value.Item1.DefaultAnimationId);
-                                    //if (newNPC || Plugin.RoleplayingQuestManager.SwapAppearanceData(value.Item6, value.Item2, Path.GetFileName(value.Item3)))
-                                    //{
-                                        LoadMCDF(value.Item3, character);
-                                    //}
+                                    LoadMCDF(value.Item3, character);
                                 }
                             }
                         }

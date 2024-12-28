@@ -134,6 +134,10 @@ public class DialogueWindow : Window, IDisposable
                         Plugin.ToastGui.ShowNormal("You roll a " + roll + "/" + branchingChoice.MinimumDiceRoll + " and fail.");
                     }
                     break;
+                case BranchingChoice.BranchingChoiceType.SkipToEventNumberRandomized:
+                    roll = new Random().Next(0, branchingChoice.RandomizedEventToSkipTo.Count);
+                    SetText(branchingChoice.RandomizedEventToSkipTo[roll]);
+                    break;
             }
         }
     }

@@ -198,5 +198,6 @@ public class TitleCardWindow : Window, IDisposable
     {
         _titleCardImage = null;
         _frameToLoad = null;
+        _lastLoadedFrame = null;
     }
 }

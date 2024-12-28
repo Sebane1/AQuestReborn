@@ -216,6 +216,7 @@ public class QuestAcceptanceWindow : Window, IDisposable
         {
             _currentThumbnail = null;
             _frameToLoad = null;
+            _lastLoadedFrame = null;
         }
     }
 }
