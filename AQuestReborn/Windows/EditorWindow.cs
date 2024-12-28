@@ -52,7 +52,7 @@ public class EditorWindow : Window, IDisposable
     public EditorWindow(Plugin plugin)
         : base("Quest Creator##" + Guid.NewGuid().ToString(), ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.AlwaysAutoResize)
     {
-        Size = new Vector2(1100, 1100);
+        Size = new Vector2(1200, 1100);
         Plugin = plugin;
         _fileDialogManager = new FileDialogManager();
         if (_npcTransformEditorWindow == null)
@@ -144,10 +144,6 @@ public class EditorWindow : Window, IDisposable
                 {
                     _roleplayingQuestCreator.CurrentQuest.ContentRating = (QuestContentRating)contentRating;
                 }
-                if (ImGui.Combo("Quest Reward Type##", ref questRewardType, questRewardTypes, questRewardTypes.Length))
-                {
-                    _roleplayingQuestCreator.CurrentQuest.TypeOfReward = (QuestRewardType)questRewardType;
-                }
                 ImGui.TableSetColumnIndex(1);
                 if (ImGui.InputText("Quest Start Title Card##", ref questStartTitleCard, 255))
                 {
@@ -165,7 +161,12 @@ public class EditorWindow : Window, IDisposable
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound = questEndTitleSound;
                 }
-                ImGui.EndTable();
+
+
+                if (ImGui.Combo("Quest Reward Type##", ref questRewardType, questRewardTypes, questRewardTypes.Length))
+                {
+                    _roleplayingQuestCreator.CurrentQuest.TypeOfReward = (QuestRewardType)questRewardType;
+                }
                 switch (_roleplayingQuestCreator.CurrentQuest.TypeOfReward)
                 {
                     case QuestRewardType.SecretMessage:
@@ -187,6 +188,7 @@ public class EditorWindow : Window, IDisposable
                         }
                         break;
                 }
+                ImGui.EndTable();
                 if (ImGui.Button("Edit NPC Appearance Data##"))
                 {
                     if (_npcEditorWindow == null)
@@ -202,6 +204,7 @@ public class EditorWindow : Window, IDisposable
                 }
             }
         }
+        ImGui.SameLine();
         if (ImGui.Button("Export for re-use"))
         {
             _fileDialogManager.Reset();
@@ -264,9 +267,16 @@ public class EditorWindow : Window, IDisposable
             ImGui.SetNextItemWidth(400);
             ImGui.LabelText("##objectiveIdLabel", $"Objective Id: " + questObjective.Id);
             ImGui.SameLine();
-            if (ImGui.Button("Copy To Clipboard"))
+            if (ImGui.Button("Copy Id To Clipboard"))
             {
                 ImGui.SetClipboardText(questObjective.Id.Trim());
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Set Quest Objective Coordinates"))
+            {
+                questObjective.Coordinates = Plugin.ClientState.LocalPlayer.Position;
+                questObjective.TerritoryId = Plugin.ClientState.TerritoryType;
+                questObjective.TerritoryDiscriminator = Plugin.AQuestReborn.Discriminator;
             }
             ImGui.SetNextItemWidth(200);
             ImGui.LabelText("##coordinatesLabel", $"Coordinates: X:{Math.Round(questObjective.Coordinates.X)}," +
@@ -275,24 +285,21 @@ public class EditorWindow : Window, IDisposable
             ImGui.SetNextItemWidth(125);
             ImGui.SameLine();
             ImGui.LabelText("##territoryLabel", $"Territory Id: {questObjective.TerritoryId}");
-            ImGui.SetNextItemWidth(500);
-            ImGui.LabelText("##discriminatorLabel", $"Discriminator: " + questObjective.TerritoryDiscriminator);
             ImGui.SameLine();
-            if (ImGui.Button("Set Quest Objective Coordinates"))
-            {
-                questObjective.Coordinates = Plugin.ClientState.LocalPlayer.Position;
-                questObjective.TerritoryId = Plugin.ClientState.TerritoryType;
-                questObjective.TerritoryDiscriminator = Plugin.AQuestReborn.Discriminator;
-            }
+            ImGui.SetNextItemWidth(300);
+            ImGui.LabelText("##discriminatorLabel", $"Discriminator: " + questObjective.TerritoryDiscriminator);
+            ImGui.SetNextItemWidth(110);
             if (ImGui.InputFloat("Maximum Indicator Distance##", ref maximum3dIndicatorDistance))
             {
                 questObjective.Maximum3dIndicatorDistance = maximum3dIndicatorDistance;
             }
+            ImGui.SameLine();
             if (ImGui.Checkbox("Dont Show On Map##", ref dontShowOnMap))
             {
                 questObjective.DontShowOnMap = dontShowOnMap;
             }
-            if (ImGui.Checkbox("Use Territory Discriminator (Locks this objective to server/ward/plot/room)##", ref usesTerritoryDiscriminator))
+            ImGui.SameLine();
+            if (ImGui.Checkbox("Lock to server/ward/plot/room##", ref usesTerritoryDiscriminator))
             {
                 questObjective.UsesTerritoryDiscriminator = usesTerritoryDiscriminator;
             }
@@ -422,10 +429,13 @@ public class EditorWindow : Window, IDisposable
                         }
                         break;
                 }
+                ImGui.SetNextItemWidth(150);
                 if (ImGui.InputText("Npc Alias##", ref npcAlias, 40))
                 {
                     item.NpcAlias = npcAlias;
                 }
+                ImGui.SameLine();
+                ImGui.SetNextItemWidth(150);
                 if (ImGui.InputText("Npc Name##", ref npcName, 40))
                 {
                     item.NpcName = npcName;
@@ -457,6 +467,7 @@ public class EditorWindow : Window, IDisposable
                 {
                     item.BodyExpression = bodyExpression;
                 }
+                ImGui.SameLine();
                 if (ImGui.Checkbox("Loop Animation##", ref loopAnimation))
                 {
                     item.LoopAnimation = loopAnimation;
@@ -542,6 +553,8 @@ public class EditorWindow : Window, IDisposable
                     var choiceType = (int)item.ChoiceType;
                     var roleplayingQuest = item.RoleplayingQuest;
                     var eventToJumpTo = item.EventToJumpTo;
+                    var eventToJumpToFailure = item.EventToJumpToFailure;
+                    var minimumDiceRoll = item.MinimumDiceRoll;
                     var branchingChoiceTypes = Enum.GetNames(typeof(BranchingChoiceType));
                     if (ImGui.InputText("Choice Text##", ref choiceText, 255))
                     {
@@ -557,6 +570,28 @@ public class EditorWindow : Window, IDisposable
                             if (ImGui.InputInt("Event Number To Jump To##", ref eventToJumpTo))
                             {
                                 item.EventToJumpTo = eventToJumpTo;
+                            }
+                            break;
+                        case BranchingChoiceType.RollD20ThenSkipToEventNumber:
+                            if (ImGui.InputInt("Event Number To Jump To Success##", ref eventToJumpTo))
+                            {
+                                item.EventToJumpTo = eventToJumpTo;
+                            }
+                            if (ImGui.InputInt("Event Number To Jump To Failure##", ref eventToJumpToFailure))
+                            {
+                                item.EventToJumpToFailure = eventToJumpToFailure;
+                            }
+                            if (ImGui.InputInt("Minimum Roll For Success", ref minimumDiceRoll))
+                            {
+                                if (minimumDiceRoll > 20)
+                                {
+                                    minimumDiceRoll = 20;
+                                }
+                                else if (minimumDiceRoll < 0)
+                                {
+                                    minimumDiceRoll = 0;
+                                }
+                                item.MinimumDiceRoll = minimumDiceRoll;
                             }
                             break;
                         case BranchingChoiceType.BranchingQuestline:

@@ -17,6 +17,7 @@ using FFXIVLooseTextureCompiler.ImageProcessing;
 using System.Threading.Tasks;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Style;
+using MareSynchronos.Utils;
 
 namespace SamplePlugin.Windows;
 
@@ -119,6 +120,19 @@ public class DialogueWindow : Window, IDisposable
                     break;
                 case BranchingChoice.BranchingChoiceType.BranchingQuestline:
                     Plugin.RoleplayingQuestManager.ReplaceQuest(branchingChoice.RoleplayingQuest);
+                    break;
+                case BranchingChoice.BranchingChoiceType.RollD20ThenSkipToEventNumber:
+                    var roll = new Random().Next(0, 20);
+                    if (roll >= branchingChoice.MinimumDiceRoll)
+                    {
+                        SetText(branchingChoice.EventToJumpTo);
+                        Plugin.ToastGui.ShowNormal("You roll a " + roll + "/" + branchingChoice.MinimumDiceRoll + " and succeed.");
+                    }
+                    else
+                    {
+                        SetText(branchingChoice.EventToJumpToFailure);
+                        Plugin.ToastGui.ShowNormal("You roll a " + roll + "/" + branchingChoice.MinimumDiceRoll + " and fail.");
+                    }
                     break;
             }
         }

@@ -66,6 +66,7 @@ namespace AQuestReborn
         private bool _refreshingNPCQuests;
         private string _discriminator;
 
+
         public AQuestReborn(Plugin plugin)
         {
             Plugin = plugin;
