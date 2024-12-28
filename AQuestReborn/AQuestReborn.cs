@@ -319,42 +319,45 @@ namespace AQuestReborn
                         {
                             var value = _npcActorSpawnQueue.Dequeue();
                             bool newNPC = !value.Item5;
-                            ICharacter character = null;
-                            if (newNPC)
+                            if (File.Exists(value.Item3))
                             {
-                                _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
-                                value.Item1.Position, Utility.ConvertDegreesToRadians(value.Item1.EulerRotation.Y));
-                                value.Item4[value.Item2] = character;
-                            }
-                            else
-                            {
-                                character = value.Item4[value.Item2];
-                                BrioAccessUtils.EntityManager.SetSelectedEntity(character);
-                                BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
-                                if (posing != null)
-                                {
-                                    posing.ModelPosing.ResetTransform();
-                                    posing.ModelPosing.Transform = new Brio.Core.Transform()
-                                    {
-                                        Position = value.Item1.Position,
-                                        Rotation = CoordinateUtility.ToQuaternion(value.Item1.EulerRotation),
-                                        Scale = value.Item1.TransformScale
-                                    };
-                                }
-                                else
+                                ICharacter character = null;
+                                if (newNPC)
                                 {
                                     _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
                                     value.Item1.Position, Utility.ConvertDegreesToRadians(value.Item1.EulerRotation.Y));
                                     value.Item4[value.Item2] = character;
-                                    newNPC = true;
                                 }
-                            }
-                            if (character != null)
-                            {
-                                Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)value.Item1.DefaultAnimationId);
-                                if (newNPC || Plugin.RoleplayingQuestManager.SwapAppearanceData(value.Item6, value.Item2, Path.GetFileName(value.Item3)))
+                                else
                                 {
-                                    LoadMCDF(value.Item3, character);
+                                    character = value.Item4[value.Item2];
+                                    BrioAccessUtils.EntityManager.SetSelectedEntity(character);
+                                    BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
+                                    if (posing != null)
+                                    {
+                                        posing.ModelPosing.ResetTransform();
+                                        posing.ModelPosing.Transform = new Brio.Core.Transform()
+                                        {
+                                            Position = value.Item1.Position,
+                                            Rotation = CoordinateUtility.ToQuaternion(value.Item1.EulerRotation),
+                                            Scale = value.Item1.TransformScale
+                                        };
+                                    }
+                                    else
+                                    {
+                                        _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
+                                        value.Item1.Position, Utility.ConvertDegreesToRadians(value.Item1.EulerRotation.Y));
+                                        value.Item4[value.Item2] = character;
+                                        newNPC = true;
+                                    }
+                                }
+                                if (character != null)
+                                {
+                                    Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)value.Item1.DefaultAnimationId);
+                                    if (newNPC || Plugin.RoleplayingQuestManager.SwapAppearanceData(value.Item6, value.Item2, Path.GetFileName(value.Item3)))
+                                    {
+                                        LoadMCDF(value.Item3, character);
+                                    }
                                 }
                             }
                         }
