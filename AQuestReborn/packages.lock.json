@@ -655,6 +655,11 @@
         "resolved": "13.0.3",
         "contentHash": "HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ=="
       },
+      "NGuid": {
+        "type": "Transitive",
+        "resolved": "1.0.0",
+        "contentHash": "JUNtA/ZmB5FIouVABJxbgkxWHxdEVHJXQ/ixr8TJd3dhbzsKbfZmMMwIKmrZKGX3iRJSbAjeL8OZEFP42vv8zw=="
+      },
       "NReco.Logging.File": {
         "type": "Transitive",
         "resolved": "1.2.1",
@@ -1667,6 +1672,7 @@
           "Microsoft.AspNetCore.SignalR.Client": "[8.0.11, )",
           "Microsoft.AspNetCore.SignalR.Protocols.MessagePack": "[8.0.11, )",
           "Microsoft.Extensions.Hosting": "[8.0.1, )",
+          "NGuid": "[1.0.0, )",
           "NReco.Logging.File": "[1.2.1, )",
           "Penumbra.Api": "[5.3.0, )",
           "Penumbra.String": "[1.0.4, )",
