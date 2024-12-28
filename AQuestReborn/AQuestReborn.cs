@@ -345,6 +345,7 @@ namespace AQuestReborn
                                     }
                                     else
                                     {
+                                        _actorSpawnService.DestroyObject(character);
                                         _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
                                         value.Item1.Position, Utility.ConvertDegreesToRadians(value.Item1.EulerRotation.Y));
                                         value.Item4[value.Item2] = character;
