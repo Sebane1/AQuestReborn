@@ -318,8 +318,9 @@ namespace AQuestReborn
                         if (!waitingForMcdfLoad && !McdfAccessUtils.McdfManager.IsWorking())
                         {
                             var value = _npcActorSpawnQueue.Dequeue();
+                            bool newNPC = !value.Item5;
                             ICharacter character = null;
-                            if (!value.Item5)
+                            if (newNPC)
                             {
                                 _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
                                 value.Item1.Position, Utility.ConvertDegreesToRadians(value.Item1.EulerRotation.Y));
@@ -340,11 +341,18 @@ namespace AQuestReborn
                                         Scale = value.Item1.TransformScale
                                     };
                                 }
+                                else
+                                {
+                                    _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
+                                    value.Item1.Position, Utility.ConvertDegreesToRadians(value.Item1.EulerRotation.Y));
+                                    value.Item4[value.Item2] = character;
+                                    newNPC = true;
+                                }
                             }
                             if (character != null)
                             {
                                 Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)value.Item1.DefaultAnimationId);
-                                if (!value.Item5 || Plugin.RoleplayingQuestManager.SwapAppearanceData(value.Item6, value.Item2, Path.GetFileName(value.Item3)))
+                                if (newNPC || Plugin.RoleplayingQuestManager.SwapAppearanceData(value.Item6, value.Item2, Path.GetFileName(value.Item3)))
                                 {
                                     LoadMCDF(value.Item3, character);
                                 }
