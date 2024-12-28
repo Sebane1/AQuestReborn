@@ -479,6 +479,7 @@ public class EditorWindow : Window, IDisposable
                 switch (item.TypeOfEventBackground)
                 {
                     case EventBackgroundType.Image:
+                    case EventBackgroundType.ImageTransparent:
                         if (ImGui.InputText("Event Background Image Path##", ref eventBackground, 255))
                         {
                             item.EventBackground = eventBackground;
