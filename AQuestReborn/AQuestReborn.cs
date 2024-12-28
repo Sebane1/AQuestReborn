@@ -521,18 +521,18 @@ namespace AQuestReborn
                     _refreshingNPCQuests = true;
                     if (_actorSpawnService != null)
                     {
-                        if (!_spawnedNPCsDictionary.ContainsKey("DEBUG"))
-                        {
-                            _spawnedNPCsDictionary["DEBUG"] = new Dictionary<string, ICharacter>();
-                        }
-                        if (!_spawnedNPCsDictionary["DEBUG"].ContainsKey("First Spawn") || _spawnedNPCsDictionary["DEBUG"].Count == 0
-                            || (_spawnedNPCsDictionary["DEBUG"].ContainsKey("First Spawn") && _spawnedNPCsDictionary["DEBUG"]["First Spawn"] == null))
-                        {
-                            ICharacter firstSpawn = null;
-                            _actorSpawnService.CreateCharacter(out firstSpawn, SpawnFlags.DefinePosition, true,
-                            new System.Numerics.Vector3(float.MaxValue / 2, float.MaxValue / 2, float.MaxValue / 2), 0);
-                            _spawnedNPCsDictionary["DEBUG"]["First Spawn"] = firstSpawn;
-                        }
+                        ////if (!_spawnedNPCsDictionary.ContainsKey("DEBUG"))
+                        ////{
+                        ////    _spawnedNPCsDictionary["DEBUG"] = new Dictionary<string, ICharacter>();
+                        ////}
+                        ////if (!_spawnedNPCsDictionary["DEBUG"].ContainsKey("First Spawn") || _spawnedNPCsDictionary["DEBUG"].Count == 0
+                        ////    || (_spawnedNPCsDictionary["DEBUG"].ContainsKey("First Spawn") && _spawnedNPCsDictionary["DEBUG"]["First Spawn"] == null))
+                        ////{
+                        ////    ICharacter firstSpawn = null;
+                        ////    _actorSpawnService.CreateCharacter(out firstSpawn, SpawnFlags.DefinePosition, true,
+                        ////    new System.Numerics.Vector3(float.MaxValue / 2, float.MaxValue / 2, float.MaxValue / 2), 0);
+                        ////    _spawnedNPCsDictionary["DEBUG"]["First Spawn"] = firstSpawn;
+                        ////}
 
                         var questChains = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(territoryId, _discriminator);
                         foreach (var item in questChains)
