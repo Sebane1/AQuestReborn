@@ -90,7 +90,7 @@ public class QuestAcceptanceWindow : Window, IDisposable
                     _frameToLoad = await Plugin.TextureProvider.CreateFromImageAsync(_currentThumbnail);
                     _lastLoadedFrame = _currentThumbnail;
                 }
-
+                _alreadyLoadingData = false;
             });
             }
             if (_frameToLoad != null)
