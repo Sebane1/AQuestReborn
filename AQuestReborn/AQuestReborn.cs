@@ -157,6 +157,7 @@ namespace AQuestReborn
                 _mcdfQueue.Clear();
                 _npcActorSpawnQueue.Clear();
                 zoneChangeCooldown.Reset();
+                _spawnedNPCsDictionary.Clear();
                 Task.Run(() =>
                 {
                     foreach (var file in Directory.EnumerateFiles(McdfAccessUtils.CacheLocation, "*.tmp"))
