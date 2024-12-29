@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Style;
 using MareSynchronos.Utils;
+using System.Threading;
 
 namespace SamplePlugin.Windows;
 
@@ -192,18 +193,6 @@ public class DialogueWindow : Window, IDisposable
                 ImGui.Image(_dialogueTitleStyleToLoad.ImGuiHandle, new Vector2(data1.Width * _globalScale, data1.Height * _globalScale));
             }
         }
-        if (textTimer.ElapsedMilliseconds > 1)
-        {
-            if (_currentCharacter < _targetText.Length)
-            {
-                _currentText += _targetText[_currentCharacter++];
-                textTimer.Restart();
-            }
-            else
-            {
-                textTimer.Reset();
-            }
-        }
         ImGui.SetCursorPos(new Vector2(0, 0));
         ImGui.BeginTable("##Dialogue Table", 3);
         ImGui.TableSetupColumn("Padding 1", ImGuiTableColumnFlags.WidthFixed, 100 * _globalScale);
@@ -301,6 +290,22 @@ public class DialogueWindow : Window, IDisposable
                 _currentName = string.IsNullOrEmpty(item.NpcAlias) ? item.NpcName : item.NpcAlias;
                 _currentDialogueBoxIndex = item.DialogueBoxStyle;
                 _mcdfSwap = item.AppearanceSwap;
+                Task.Run(() =>
+                {
+                    while (true)
+                    {
+                        if (_currentCharacter < _targetText.Length)
+                        {
+                            _currentText += _targetText[_currentCharacter++];
+                            textTimer.Restart();
+                        }
+                        else
+                        {
+                            break;
+                        }
+                        Thread.Sleep(5);
+                    }
+                });
                 string customAudioPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueAudio);
                 string customBackgroundPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.EventBackground);
                 string customMcdfPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.AppearanceSwap);
