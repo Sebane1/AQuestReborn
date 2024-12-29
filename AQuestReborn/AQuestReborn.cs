@@ -355,6 +355,7 @@ namespace AQuestReborn
                                 }
                                 if (character != null)
                                 {
+                                    Plugin.AnamcoreManager.SetVoice(character, 0);
                                     Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)value.Item1.DefaultAnimationId);
                                     LoadMCDF(value.Item3, character);
                                 }
