@@ -68,41 +68,44 @@ public class NPCEditorWindow : Window, IDisposable
         var npcCustomization = _roleplayingQuest.NpcCustomizations;
         if (npcCustomization.Count > 0)
         {
-            var item = npcCustomization[_selectedNpcCustomization];
-            var npcName = item.NpcName;
-            var appearanceData = item.AppearanceData;
-            var branchingChoiceTypes = Enum.GetNames(typeof(BranchingChoiceType));
-            if (ImGui.InputText("Npc Name##", ref npcName, 40))
+            if (_selectedNpcCustomization < npcCustomization.Count)
             {
-                item.NpcName = npcName;
-            }
-            if (ImGui.InputText("Npc Appearance Data##", ref appearanceData, 255))
-            {
-                item.AppearanceData = appearanceData;
-            }
-
-            if (_isCreatingAppearance)
-            {
-                ImGui.BeginDisabled();
-            }
-            if (ImGui.Button(_isCreatingAppearance ? "Creating Appearance Please Wait" : "Create NPC Appearance From Player Appearance##"))
-            {
-                Task.Run(() =>
+                var item = npcCustomization[_selectedNpcCustomization];
+                var npcName = item.NpcName;
+                var appearanceData = item.AppearanceData;
+                var branchingChoiceTypes = Enum.GetNames(typeof(BranchingChoiceType));
+                if (ImGui.InputText("Npc Name##", ref npcName, 40))
                 {
-                    _isCreatingAppearance = true;
-                    string mcdfName = npcName + "-" + Guid.NewGuid().ToString() + ".mcdf";
-                    string questPath = Path.Combine(Plugin.Configuration.QuestInstallFolder, _roleplayingQuest.QuestName);
-                    string mcdfPath = Path.Combine(questPath, mcdfName);
-                    Directory.CreateDirectory(questPath);
-                    McdfAccessUtils.McdfManager.CreateMCDF(mcdfPath);
-                    Plugin.EditorWindow.RoleplayingQuestCreator.SaveQuest(questPath);
-                    item.AppearanceData = mcdfName;
-                    _isCreatingAppearance = false;
-                });
-            }
-            if (_isCreatingAppearance)
-            {
-                ImGui.EndDisabled();
+                    item.NpcName = npcName;
+                }
+                if (ImGui.InputText("Npc Appearance Data##", ref appearanceData, 255))
+                {
+                    item.AppearanceData = appearanceData;
+                }
+
+                if (_isCreatingAppearance)
+                {
+                    ImGui.BeginDisabled();
+                }
+                if (ImGui.Button(_isCreatingAppearance ? "Creating Appearance Please Wait" : "Create NPC Appearance From Player Appearance##"))
+                {
+                    Task.Run(() =>
+                    {
+                        _isCreatingAppearance = true;
+                        string mcdfName = npcName + "-" + Guid.NewGuid().ToString() + ".mcdf";
+                        string questPath = Path.Combine(Plugin.Configuration.QuestInstallFolder, _roleplayingQuest.QuestName);
+                        string mcdfPath = Path.Combine(questPath, mcdfName);
+                        Directory.CreateDirectory(questPath);
+                        McdfAccessUtils.McdfManager.CreateMCDF(mcdfPath);
+                        Plugin.EditorWindow.RoleplayingQuestCreator.SaveQuest(questPath);
+                        item.AppearanceData = mcdfName;
+                        _isCreatingAppearance = false;
+                    });
+                }
+                if (_isCreatingAppearance)
+                {
+                    ImGui.EndDisabled();
+                }
             }
         }
     }
