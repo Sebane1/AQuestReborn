@@ -158,6 +158,7 @@ namespace AQuestReborn
                 _npcActorSpawnQueue.Clear();
                 zoneChangeCooldown.Reset();
                 _spawnedNPCsDictionary.Clear();
+                _mcdfRefreshTimer.Reset();
                 Task.Run(() =>
                 {
                     foreach (var file in Directory.EnumerateFiles(McdfAccessUtils.CacheLocation, "*.tmp"))
@@ -254,7 +255,7 @@ namespace AQuestReborn
                     && !Conditions.IsOccupied && !Conditions.IsInCombat && Plugin.ClientState.IsLoggedIn)
                 {
                     // Hopefully waiting prevents crashing on zone changes?
-                    if (zoneChangeCooldown.ElapsedMilliseconds > 3000)
+                    if (zoneChangeCooldown.ElapsedMilliseconds > 1000)
                     {
                         if (!_isInitialized)
                         {
