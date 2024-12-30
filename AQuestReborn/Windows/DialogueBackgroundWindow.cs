@@ -72,7 +72,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
         _textureProvider = textureProvider;
         _dummyObject = new DummyObject();
         _rightClick = ImGuiWindowFlags.NoInputs | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar
-    | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground;
+           | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground;
         _defaultFlags = ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar |
             ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground;
     }
@@ -113,18 +113,18 @@ public class DialogueBackgroundWindow : Window, IDisposable
             IsOpen = true;
         }
     }
-    public override void PreDraw()
-    {
-        base.PreDraw();
-        if (_rightClickDown)
-        {
-            Flags = _rightClick;
-        }
-        else
-        {
-            Flags = _defaultFlags;
-        }
-    }
+    //public override void PreDraw()
+    //{
+    //    base.PreDraw();
+    //    if (_rightClickDown)
+    //    {
+    //        Flags = _rightClick;
+    //    }
+    //    else
+    //    {
+    //        Flags = _defaultFlags;
+    //    }
+    //}
     public override void Draw()
     {
         var displaySize = ImGui.GetIO().DisplaySize;
@@ -151,13 +151,13 @@ public class DialogueBackgroundWindow : Window, IDisposable
         if (!Plugin.RewardWindow.IsOpen)
         {
             var values = ImGui.GetIO().MouseDown;
-            if (values[0] || doClick)
+            for (int i = 0; i < values.Count; i++)
             {
-                ButtonClicked?.Invoke(this, EventArgs.Empty);
-            }
-            if (values[1] || doClick)
-            {
-                _rightClickDown = true;
+                if (values[i] || doClick)
+                {
+                    ButtonClicked?.Invoke(this, EventArgs.Empty);
+                    break;
+                }
             }
         }
     }
