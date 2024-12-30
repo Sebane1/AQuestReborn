@@ -734,12 +734,15 @@ public class EditorWindow : Window, IDisposable
             _nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
             if (questText.Count > 0)
             {
-                var choices = questText[_selectedEvent].BranchingChoices;
-                if (_selectedBranchingChoice > choices.Count)
+                if (_selectedEvent < questText.Count)
                 {
-                    _selectedBranchingChoice = choices.Count - 1;
+                    var choices = questText[_selectedEvent].BranchingChoices;
+                    if (_selectedBranchingChoice > choices.Count)
+                    {
+                        _selectedBranchingChoice = choices.Count - 1;
+                    }
+                    _branchingChoices = Utility.FillNewList(choices.Count, "Choice");
                 }
-                _branchingChoices = Utility.FillNewList(choices.Count, "Choice");
             }
             else
             {

@@ -41,6 +41,8 @@ public class DialogueBackgroundWindow : Window, IDisposable
 
     private ITextureProvider _textureProvider;
     private DummyObject _dummyObject;
+    private ImGuiWindowFlags _rightClick;
+    private ImGuiWindowFlags _defaultFlags;
     private IDalamudTextureWrap _frameToLoad;
     private byte[] _lastLoadedFrame;
     private bool taskAlreadyRunning;
@@ -52,6 +54,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
     private bool _isPortrait = false;
     private byte[] _blackBars;
     private IDalamudTextureWrap _blackBarsFrame;
+    private bool _rightClickDown;
 
     public event EventHandler ButtonClicked;
 
@@ -68,6 +71,10 @@ public class DialogueBackgroundWindow : Window, IDisposable
         _currentBackground = _emptyBackground;
         _textureProvider = textureProvider;
         _dummyObject = new DummyObject();
+        _rightClick = ImGuiWindowFlags.NoInputs | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar
+    | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground;
+        _defaultFlags = ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar |
+            ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground;
     }
 
     private void InitializePlaceholders()
@@ -106,6 +113,18 @@ public class DialogueBackgroundWindow : Window, IDisposable
             IsOpen = true;
         }
     }
+    public override void PreDraw()
+    {
+        base.PreDraw();
+        if (_rightClickDown)
+        {
+            Flags = _rightClick;
+        }
+        else
+        {
+            Flags = _defaultFlags;
+        }
+    }
     public override void Draw()
     {
         var displaySize = ImGui.GetIO().DisplaySize;
@@ -132,13 +151,13 @@ public class DialogueBackgroundWindow : Window, IDisposable
         if (!Plugin.RewardWindow.IsOpen)
         {
             var values = ImGui.GetIO().MouseDown;
-            for (int i = 0; i < values.Count; i++)
+            if (values[0] || doClick)
             {
-                if (values[i] || doClick)
-                {
-                    ButtonClicked?.Invoke(this, EventArgs.Empty);
-                    break;
-                }
+                ButtonClicked?.Invoke(this, EventArgs.Empty);
+            }
+            if (values[1] || doClick)
+            {
+                _rightClickDown = true;
             }
         }
     }

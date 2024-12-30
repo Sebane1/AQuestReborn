@@ -258,7 +258,7 @@ namespace AQuestReborn
                     && !Conditions.IsOccupied && !Conditions.IsInCombat && Plugin.ClientState.IsLoggedIn)
                 {
                     // Hopefully waiting prevents crashing on zone changes?
-                    if (zoneChangeCooldown.ElapsedMilliseconds > 1000)
+                    if (zoneChangeCooldown.ElapsedMilliseconds > 3000)
                     {
                         if (!_isInitialized)
                         {
@@ -292,21 +292,28 @@ namespace AQuestReborn
                 _initializationStarted = true;
                 Task.Run(() =>
                 {
-                    while (Brio.Brio._services == null)
+                    try
                     {
-                        Thread.Sleep(100);
+                        while (Brio.Brio._services == null)
+                        {
+                            Thread.Sleep(100);
+                        }
+                        Brio.Brio.TryGetService<ActorSpawnService>(out _actorSpawnService);
+                        Brio.Brio.TryGetService<MareService>(out _mcdfService);
+                        InitializeMediaManager();
+                        while (!Plugin.ClientState.IsLoggedIn)
+                        {
+                            Thread.Sleep(500);
+                        }
+                        if (Plugin.ClientState.IsLoggedIn)
+                        {
+                            _clientState_TerritoryChanged(Plugin.ClientState.TerritoryType);
+                            _isInitialized = true;
+                        }
                     }
-                    Brio.Brio.TryGetService<ActorSpawnService>(out _actorSpawnService);
-                    Brio.Brio.TryGetService<MareService>(out _mcdfService);
-                    InitializeMediaManager();
-                    while (!Plugin.ClientState.IsLoggedIn)
+                    catch (Exception ex)
                     {
-                        Thread.Sleep(500);
-                    }
-                    if (Plugin.ClientState.IsLoggedIn)
-                    {
-                        _clientState_TerritoryChanged(Plugin.ClientState.TerritoryType);
-                        _isInitialized = true;
+                        Plugin.PluginLog.Warning(ex, ex.Message);
                     }
                 });
             }
