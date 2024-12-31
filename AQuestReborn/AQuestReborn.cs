@@ -13,6 +13,8 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
+using FFXIVClientStructs.FFXIV.Client.System.Input;
+using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Common.Lua;
 using Lumina.Excel.Sheets;
@@ -21,6 +23,7 @@ using RoleplayingMediaCore;
 using RoleplayingQuestCore;
 using RoleplayingVoiceDalamudWrapper;
 using SamplePlugin;
+using Swan;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -161,19 +164,26 @@ namespace AQuestReborn
                 _mcdfRefreshTimer.Reset();
                 Task.Run(() =>
                 {
-                    foreach (var file in Directory.EnumerateFiles(McdfAccessUtils.CacheLocation, "*.tmp"))
+                    try
                     {
-                        File.Delete(file);
+                        foreach (var file in Directory.EnumerateFiles(McdfAccessUtils.CacheLocation, "*.tmp"))
+                        {
+                            File.Delete(file);
+                        }
+                        while (Plugin.ClientState.LocalPlayer == null || _actorSpawnService == null)
+                        {
+                            Thread.Sleep(3000);
+                        }
+                        _triggerRefresh = true;
+                        _discriminator = DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState);
+                        ICharacter character = null;
+                        _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
+                        (new Vector3(float.MaxValue, float.MaxValue, float.MaxValue) / 2), Utility.ConvertDegreesToRadians(0));
                     }
-                    while (Plugin.ClientState.LocalPlayer == null || _actorSpawnService == null)
+                    catch (Exception e)
                     {
-                        Thread.Sleep(3000);
+                        Plugin.PluginLog.Warning(e, e.Message);
                     }
-                    _triggerRefresh = true;
-                    _discriminator = DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState);
-                    ICharacter character = null;
-                    _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
-                    (new Vector3(float.MaxValue, float.MaxValue, float.MaxValue) / 2), Utility.ConvertDegreesToRadians(0));
                 });
             }
             catch (Exception e)
@@ -294,19 +304,19 @@ namespace AQuestReborn
                 {
                     try
                     {
-                        while (Brio.Brio._services == null)
-                        {
-                            Thread.Sleep(100);
-                        }
-                        Brio.Brio.TryGetService<ActorSpawnService>(out _actorSpawnService);
-                        Brio.Brio.TryGetService<MareService>(out _mcdfService);
-                        InitializeMediaManager();
                         while (!Plugin.ClientState.IsLoggedIn)
                         {
                             Thread.Sleep(500);
                         }
                         if (Plugin.ClientState.IsLoggedIn)
                         {
+                            while (Brio.Brio._services == null)
+                            {
+                                Thread.Sleep(100);
+                            }
+                            Brio.Brio.TryGetService<ActorSpawnService>(out _actorSpawnService);
+                            Brio.Brio.TryGetService<MareService>(out _mcdfService);
+                            InitializeMediaManager();
                             _clientState_TerritoryChanged(Plugin.ClientState.TerritoryType);
                             _isInitialized = true;
                         }
@@ -460,9 +470,9 @@ namespace AQuestReborn
         }
 
 
-        private void QuestInputCheck()
+        private unsafe void QuestInputCheck()
         {
-            if (_pollingTimer.ElapsedMilliseconds > 100)
+            if (_pollingTimer.ElapsedMilliseconds > 20)
             {
                 Plugin.ObjectiveWindow.IsOpen = true;
                 if (((Plugin.GamepadState.Raw(GamepadButtons.South) == 1) || _screenButtonClicked))
@@ -470,8 +480,8 @@ namespace AQuestReborn
                     _screenButtonClicked = false;
                     if (!_waitingForSelectionRelease)
                     {
-                        if (Plugin.QuestAcceptanceWindow.TimeSinceLastQuestAccepted.ElapsedMilliseconds > 250
-                            && Plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 250)
+                        if (Plugin.QuestAcceptanceWindow.TimeSinceLastQuestAccepted.ElapsedMilliseconds > 500
+                            && Plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 5000)
                         {
                             _inputCooldown.Restart();
                             if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)

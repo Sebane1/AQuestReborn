@@ -42,7 +42,7 @@ public class DialogueWindow : Window, IDisposable
     int _currentDialogueBoxIndex = 0;
     private string _mcdfSwap;
     private bool _alreadyLoadingFrame;
-    private IDalamudTextureWrap _dialogueStyleToLoad;
+    private Dictionary<int, IDalamudTextureWrap> _dialogueStylesToLoad = new Dictionary<int, IDalamudTextureWrap>();
     private IDalamudTextureWrap _dialogueTitleStyleToLoad;
     private byte[] _lastLoadedTitleFrame;
     private byte[] _lastLoadedFrame;
@@ -158,18 +158,19 @@ public class DialogueWindow : Window, IDisposable
         {
             Task.Run(async () =>
             {
-                _alreadyLoadingFrame = true;
-                if (_lastLoadedFrame != _dialogueBoxStyles[_currentDialogueBoxIndex])
+                for (int i = 0; i < _dialogueBoxStyles.Count; i++)
                 {
-                    _dialogueStyleToLoad = await Plugin.TextureProvider.CreateFromImageAsync(_dialogueBoxStyles[_currentDialogueBoxIndex]);
-                    _lastLoadedFrame = _dialogueBoxStyles[_currentDialogueBoxIndex];
+                    if (!_dialogueStylesToLoad.ContainsKey(i) || _dialogueStylesToLoad[i] == null)
+                    {
+                        _dialogueStylesToLoad[i] = await Plugin.TextureProvider.CreateFromImageAsync(_dialogueBoxStyles[i]);
+                    }
                 }
                 _alreadyLoadingFrame = false;
             });
         }
-        if (_dialogueStyleToLoad != null)
+        if (_dialogueStylesToLoad.ContainsKey(_currentDialogueBoxIndex) && _dialogueStylesToLoad[_currentDialogueBoxIndex] != null)
         {
-            ImGui.Image(_dialogueStyleToLoad.ImGuiHandle, new Vector2(Size.Value.X, Size.Value.Y));
+            ImGui.Image(_dialogueStylesToLoad[_currentDialogueBoxIndex].ImGuiHandle, new Vector2(Size.Value.X, Size.Value.Y));
         }
 
         if (_currentName.ToLower() != "system")
@@ -237,6 +238,7 @@ public class DialogueWindow : Window, IDisposable
         textTimer.Restart();
         Plugin.SaveProgress();
         _settingNewText = false;
+        Plugin.DialogueBackgroundWindow.PreCacheImages(newQuestText);
     }
 
     public void NextText(bool bypassBranchingChoice = false)
@@ -292,12 +294,20 @@ public class DialogueWindow : Window, IDisposable
                 _mcdfSwap = item.AppearanceSwap;
                 Task.Run(() =>
                 {
+                    var targetTextValue = _targetText;
                     while (true)
                     {
-                        if (_currentCharacter < _targetText.Length)
+                        if (targetTextValue == _targetText)
                         {
-                            _currentText += _targetText[_currentCharacter++];
-                            textTimer.Restart();
+                            if (_currentCharacter < _targetText.Length)
+                            {
+                                _currentText += _targetText[_currentCharacter++];
+                                textTimer.Restart();
+                            }
+                            else
+                            {
+                                break;
+                            }
                         }
                         else
                         {

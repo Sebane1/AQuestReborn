@@ -30,6 +30,7 @@ using AnamCore;
 using AQuestReborn.UIAtlasing;
 using MareSynchronos;
 using Dalamud.Game.ClientState.Objects;
+using FFXIVClientStructs.FFXIV.Client.UI;
 
 namespace SamplePlugin;
 
@@ -62,6 +63,7 @@ public sealed class Plugin : IDalamudPlugin
     private IDalamudPluginInterface _dalamudPluginInterface;
     private IGameInteropProvider _gameInteropProvider;
     private IObjectTable _objectTable;
+    private InputManager _uiInputModule;
     private AQuestReborn.AQuestReborn _aQuestReborn;
     private Brio.Brio _brio;
     private MoveController _movement;

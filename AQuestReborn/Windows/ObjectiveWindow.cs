@@ -14,6 +14,7 @@ using Dalamud.Interface.Textures.TextureWraps;
 using FFXIVClientStructs.FFXIV.Client.System.Input;
 using FFXIVLooseTextureCompiler.ImageProcessing;
 using AQuestReborn;
+using FFXIVClientStructs.FFXIV.Client.UI;
 
 namespace SamplePlugin.Windows;
 
@@ -26,9 +27,6 @@ public class ObjectiveWindow : Window, IDisposable
     private bool _alreadyLoadingQuestStartIcon;
     private IDalamudTextureWrap _questStartIconTextureWrap;
     private byte[] _lastQuestStartIconData;
-    private ImGuiWindowFlags _hoverFlags;
-    private ImGuiWindowFlags _defaultFlags;
-    private RangeAccessor<bool> mouseDownValues;
     private bool _mouseDistanceIsCloseToObjective;
     private byte[] _questStartIconData;
     private byte[] _questObjectiveIconData;
@@ -47,11 +45,6 @@ public class ObjectiveWindow : Window, IDisposable
     {
         Plugin = plugin;
         AllowClickthrough = true;
-        _defaultFlags = ImGuiWindowFlags.NoInputs | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar
-            | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground;
-        _hoverFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse
-            | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground;
-        Flags = _defaultFlags;
         LoadQuestIcons();
     }
     private void LoadQuestIcons()
@@ -80,18 +73,14 @@ public class ObjectiveWindow : Window, IDisposable
     public override void PreDraw()
     {
         base.PreDraw();
-        if (_mouseDistanceIsCloseToObjective)
-        {
-            Flags = _hoverFlags;
-        }
-        else
-        {
-            Flags = _defaultFlags;
-        }
     }
     public override void Draw()
     {
-        mouseDownValues = ImGui.GetIO().MouseDown;
+        bool mouseDown = false;
+        unsafe
+        {
+            mouseDown = UIInputData.Instance()->CursorInputs.MouseButtonPressedFlags.HasFlag(MouseButtonFlags.LBUTTON);
+        }
         Size = new Vector2(ImGui.GetMainViewport().Size.X, ImGui.GetMainViewport().Size.Y);
         Position = new Vector2(0, 0);
         if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
@@ -162,14 +151,10 @@ public class ObjectiveWindow : Window, IDisposable
                                 && item.Item2.TypeOfObjectiveTrigger == RoleplayingQuestCore.QuestObjective.ObjectiveTriggerType.NormalInteraction)
                             {
                                 _mouseDistanceIsCloseToObjective = true;
-                                for (int i = 0; i < mouseDownValues.Count; i++)
+                                if (mouseDown)
                                 {
-                                    if (mouseDownValues[i])
-                                    {
-                                        OnSelectionAttempt?.Invoke(this, EventArgs.Empty);
-                                        _mouseDistanceIsCloseToObjective = false;
-                                        break;
-                                    }
+                                    OnSelectionAttempt?.Invoke(this, EventArgs.Empty);
+                                    _mouseDistanceIsCloseToObjective = false;
                                 }
                             }
                             if (playerDistance < item.Item2.Maximum3dIndicatorDistance)
