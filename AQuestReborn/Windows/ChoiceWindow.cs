@@ -46,7 +46,7 @@ public class ChoiceWindow : Window, IDisposable
         foreach (var choice in _branchingChoices)
         {
             ImGui.SetWindowFontScale(1.5f);
-            if (ImGui.Button(choice.ChoiceText + "##" + i, new Vector2(Size.Value.X, 10)) && IsOpen)
+            if (ImGui.Button(choice.ChoiceText + "##" + i, new Vector2(Size.Value.X, 40)) && IsOpen)
             {
                 OnChoiceMade?.Invoke(this, i);
                 _timeSinceLastChoiceMade.Restart();
