@@ -28,9 +28,9 @@ public class ChoiceWindow : Window, IDisposable
     // So that the user will see "My Amazing Window" as window title,
     // but for ImGui the ID is "My Amazing Window##With a hidden ID"
     public ChoiceWindow(Plugin plugin)
-        : base("Choice Window##dialoguewindow", ImGuiWindowFlags.NoTitleBar)
+        : base("Choice Window##dialoguewindow", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.AlwaysAutoResize)
     {
-        Size = new Vector2(500, 200);
+        Size = new Vector2(700, 200);
         Plugin = plugin;
         _timeSinceLastChoiceMade.Start();
     }

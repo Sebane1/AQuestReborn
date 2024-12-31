@@ -68,7 +68,7 @@ namespace AQuestReborn
         private bool _initializationStarted;
         private bool _refreshingNPCQuests;
         private string _discriminator;
-
+        private bool _getZoneDiscriminator;
 
         public AQuestReborn(Plugin plugin)
         {
@@ -232,7 +232,7 @@ namespace AQuestReborn
             {
                 InitializeMediaManager();
                 RefreshNpcsForQuest(Plugin.ClientState.TerritoryType);
-                _discriminator = DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState);
+                _getZoneDiscriminator = false;
             }
         }
 
@@ -281,6 +281,18 @@ namespace AQuestReborn
                             CheckForNewPlayerCreationLoad();
                             CheckForNPCRefresh();
                             CheckForMapRefresh();
+                            if (!_getZoneDiscriminator)
+                            {
+                                try
+                                {
+                                    _discriminator = DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState);
+                                    _getZoneDiscriminator = true;
+                                }
+                                catch (Exception e)
+                                {
+                                    Plugin.PluginLog.Warning(e, e.Message);
+                                }
+                            }
                         }
                     }
                     if (!zoneChangeCooldown.IsRunning)
