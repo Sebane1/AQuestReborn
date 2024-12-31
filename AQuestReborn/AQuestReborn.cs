@@ -495,8 +495,8 @@ namespace AQuestReborn
                     _screenButtonClicked = false;
                     if (!_waitingForSelectionRelease)
                     {
-                        if (Plugin.QuestAcceptanceWindow.TimeSinceLastQuestAccepted.ElapsedMilliseconds > 500
-                            && Plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 5000)
+                        if (Plugin.QuestAcceptanceWindow.TimeSinceLastQuestAccepted.ElapsedMilliseconds > 300
+                            && Plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 300)
                         {
                             _inputCooldown.Restart();
                             if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
