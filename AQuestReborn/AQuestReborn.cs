@@ -177,7 +177,7 @@ namespace AQuestReborn
                         _discriminator = DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState);
                         ICharacter character = null;
                         _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
-                        (new Vector3(float.MaxValue, float.MaxValue, float.MaxValue) / 2), Utility.ConvertDegreesToRadians(0));
+                        (new Vector3(0, float.MaxValue, 0) / 10), Utility.ConvertDegreesToRadians(0));
                     }
                     catch (Exception e)
                     {

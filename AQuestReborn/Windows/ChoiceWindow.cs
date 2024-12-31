@@ -30,7 +30,7 @@ public class ChoiceWindow : Window, IDisposable
     public ChoiceWindow(Plugin plugin)
         : base("Choice Window##dialoguewindow", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.AlwaysAutoResize)
     {
-        Size = new Vector2(700, 200);
+        Size = new Vector2(800, 200);
         Plugin = plugin;
         _timeSinceLastChoiceMade.Start();
     }
@@ -46,8 +46,7 @@ public class ChoiceWindow : Window, IDisposable
         foreach (var choice in _branchingChoices)
         {
             ImGui.SetWindowFontScale(1.5f);
-            ImGui.SetNextItemWidth(Size.Value.X);
-            if (ImGui.Button(choice.ChoiceText + "##" + i) && IsOpen)
+            if (ImGui.Button(choice.ChoiceText + "##" + i, new Vector2(Size.Value.X, 10)) && IsOpen)
             {
                 OnChoiceMade?.Invoke(this, i);
                 _timeSinceLastChoiceMade.Restart();

@@ -129,7 +129,6 @@ public sealed class Plugin : IDalamudPlugin
         targetManager, notificationManager, textureProvider, contextMenu, gameInteropProvider, Path.Combine(Path.GetDirectoryName(Configuration.QuestInstallFolder + ".poop"), "QuestCache\\"));
         _brio = new Brio.Brio(dalamudPluginInterface);
         _movement = new MoveController(pluginLog, gameInteropProvider, objectTable);
-        // you might normally want to embed resources and load them from the manifest stream
         _uiAtlasManager = new UiAtlasManager(this);
         ChoiceWindow = new ChoiceWindow(this);
         DialogueWindow = new DialogueWindow(this);
