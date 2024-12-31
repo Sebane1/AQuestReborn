@@ -56,7 +56,6 @@ namespace AQuestReborn
         Queue<KeyValuePair<string, ICharacter>> _mcdfQueue = new Queue<KeyValuePair<string, ICharacter>>();
         Queue<Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest>> _npcActorSpawnQueue = new Queue<Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest>>();
         private ActorSpawnService _actorSpawnService;
-        private MareService _mcdfService;
         private MediaGameObject _playerObject;
         private unsafe Camera* _camera;
         private MediaCameraObject _playerCamera;
@@ -281,18 +280,7 @@ namespace AQuestReborn
                             CheckForNewPlayerCreationLoad();
                             CheckForNPCRefresh();
                             CheckForMapRefresh();
-                            if (!_getZoneDiscriminator)
-                            {
-                                try
-                                {
-                                    _discriminator = DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState);
-                                    _getZoneDiscriminator = true;
-                                }
-                                catch (Exception e)
-                                {
-                                    Plugin.PluginLog.Warning(e, e.Message);
-                                }
-                            }
+                            CheckZoneDiscriminator();
                         }
                     }
                     if (!zoneChangeCooldown.IsRunning)
@@ -304,6 +292,22 @@ namespace AQuestReborn
             catch (Exception ex)
             {
                 Plugin.PluginLog.Warning(ex, ex.Message);
+            }
+        }
+
+        private void CheckZoneDiscriminator()
+        {
+            if (!_getZoneDiscriminator)
+            {
+                try
+                {
+                    _discriminator = DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState);
+                    _getZoneDiscriminator = true;
+                }
+                catch (Exception e)
+                {
+                    Plugin.PluginLog.Warning(e, e.Message);
+                }
             }
         }
 
@@ -327,7 +331,6 @@ namespace AQuestReborn
                                 Thread.Sleep(100);
                             }
                             Brio.Brio.TryGetService<ActorSpawnService>(out _actorSpawnService);
-                            Brio.Brio.TryGetService<MareService>(out _mcdfService);
                             InitializeMediaManager();
                             _clientState_TerritoryChanged(Plugin.ClientState.TerritoryType);
                             _isInitialized = true;
@@ -684,7 +687,6 @@ namespace AQuestReborn
         }
         public void Dispose()
         {
-            _actorSpawnService.TargetService.GPoseTarget = null;
         }
     }
 }
