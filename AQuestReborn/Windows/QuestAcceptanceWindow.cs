@@ -199,7 +199,13 @@ public class QuestAcceptanceWindow : Window, IDisposable
         string thumbnailPath = Path.Combine(quest.FoundPath, _questToDisplay.QuestThumbnailPath);
         SetThumbnail(thumbnailPath);
         IsOpen = true;
-        Plugin.Movement.EnableMovementLock();
+        if (quest.QuestObjectives.Count > 0)
+        {
+            if (quest.QuestObjectives[0].QuestText.Count > 0)
+            {
+                Plugin.Movement.EnableMovementLock();
+            }
+        }
     }
     public void SetThumbnail(string path)
     {
