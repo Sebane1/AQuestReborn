@@ -67,7 +67,7 @@ namespace AQuestReborn
         private bool _initializationStarted;
         private bool _refreshingNPCQuests;
         private string _discriminator;
-        private bool _getZoneDiscriminator;
+        private bool _gotZoneDiscriminator;
 
         public AQuestReborn(Plugin plugin)
         {
@@ -174,7 +174,7 @@ namespace AQuestReborn
                             Thread.Sleep(3000);
                         }
                         _triggerRefresh = true;
-                        _discriminator = DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState);
+                        _gotZoneDiscriminator = false;
                         ICharacter character = null;
                         _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
                         (new Vector3(0, float.MaxValue, 0) / 10), Utility.ConvertDegreesToRadians(0));
@@ -231,7 +231,7 @@ namespace AQuestReborn
             {
                 InitializeMediaManager();
                 RefreshNpcsForQuest(Plugin.ClientState.TerritoryType);
-                _getZoneDiscriminator = false;
+                _gotZoneDiscriminator = false;
             }
         }
 
@@ -297,12 +297,12 @@ namespace AQuestReborn
 
         private void CheckZoneDiscriminator()
         {
-            if (!_getZoneDiscriminator)
+            if (!_gotZoneDiscriminator)
             {
                 try
                 {
                     _discriminator = DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState);
-                    _getZoneDiscriminator = true;
+                    _gotZoneDiscriminator = true;
                 }
                 catch (Exception e)
                 {
