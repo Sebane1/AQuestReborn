@@ -13,6 +13,7 @@ using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
+using FFXIVLooseTextureCompiler.ImageProcessing;
 using ImGuiNET;
 using Lumina.Excel.Sheets;
 using NAudio.Wave;
@@ -166,9 +167,9 @@ public class TitleCardWindow : Window, IDisposable
         if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
         {
             MemoryStream background = new MemoryStream();
-            Bitmap newImage = new Bitmap(imagePath);
+            Bitmap newImage = TexIO.ResolveBitmap(imagePath);
             titleCardRatio = (float)newImage.Width / newImage.Height;
-            newImage.Save(background, ImageFormat.Png);
+            TexIO.SaveBitmap(newImage, background);
             background.Position = 0;
             _titleCardImage = background.ToArray();
         }

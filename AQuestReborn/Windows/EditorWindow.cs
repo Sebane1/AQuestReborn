@@ -619,7 +619,7 @@ public class EditorWindow : Window, IDisposable
                                         {
                                             item.RandomizedEventToSkipTo[i] = randomizedEventToJumpTo;
                                         }
-                                        ImGui.SameLine();
+                                        ImGui.SameLine();   
                                         if (item.RandomizedEventToSkipTo.Count < 2)
                                         {
                                             ImGui.BeginDisabled();
