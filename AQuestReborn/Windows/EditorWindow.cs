@@ -608,25 +608,37 @@ public class EditorWindow : Window, IDisposable
                         case BranchingChoiceType.SkipToEventNumberRandomized:
                             for (int i = 0; i < item.RandomizedEventToSkipTo.Count; i++)
                             {
-                                var randomizedEventToJumpTo = item.RandomizedEventToSkipTo[i];
-                                ImGui.SetNextItemWidth(200);
-                                if (ImGui.InputInt($"Randomized Event Number To Jump To##{i}", ref randomizedEventToJumpTo))
+                                try
                                 {
-                                    item.RandomizedEventToSkipTo[i] = randomizedEventToJumpTo;
+                                    // Apparently the for loop evaluation is not enough
+                                    if (i < item.RandomizedEventToSkipTo.Count)
+                                    {
+                                        var randomizedEventToJumpTo = item.RandomizedEventToSkipTo[i];
+                                        ImGui.SetNextItemWidth(200);
+                                        if (ImGui.InputInt($"Randomized Event Number To Jump To##{i}", ref randomizedEventToJumpTo))
+                                        {
+                                            item.RandomizedEventToSkipTo[i] = randomizedEventToJumpTo;
+                                        }
+                                        ImGui.SameLine();
+                                        if (item.RandomizedEventToSkipTo.Count < 2)
+                                        {
+                                            ImGui.BeginDisabled();
+                                        }
+                                        ImGui.SameLine();
+                                        if (ImGui.Button($"Delete##{i}"))
+                                        {
+                                            item.RandomizedEventToSkipTo.RemoveAt(i);
+                                            break;
+                                        }
+                                        if (item.RandomizedEventToSkipTo.Count < 2)
+                                        {
+                                            ImGui.EndDisabled();
+                                        }
+                                    }
                                 }
-                                ImGui.SameLine();
-                                if (item.RandomizedEventToSkipTo.Count < 2)
+                                catch (Exception e)
                                 {
-                                    ImGui.BeginDisabled();
-                                }
-                                ImGui.SameLine();
-                                if (ImGui.Button($"Delete##{i}"))
-                                {
-                                    item.RandomizedEventToSkipTo.RemoveAt(i);
-                                }
-                                if (item.RandomizedEventToSkipTo.Count < 2)
-                                {
-                                    ImGui.EndDisabled();
+                                    Plugin.PluginLog.Warning(e, e.Message);
                                 }
                             }
                             if (ImGui.Button($"Add Randomized Skip##"))
