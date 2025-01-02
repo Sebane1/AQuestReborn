@@ -21,6 +21,7 @@ using AQuestReborn;
 using System.IO;
 using System.Speech.Recognition;
 using Lumina.Excel.Sheets;
+using System.Diagnostics;
 
 namespace SamplePlugin.Windows;
 
@@ -100,6 +101,15 @@ public class EditorWindow : Window, IDisposable
             {
                 _roleplayingQuestCreator.EditQuest(new RoleplayingQuest());
                 RefreshMenus();
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Tutorial"))
+            {
+                ProcessStartInfo ProcessInfo = new ProcessStartInfo();
+                Process Process = new Process();
+                ProcessInfo = new ProcessStartInfo("https://www.youtube.com/watch?v=JJM9aHRHkDw");
+                ProcessInfo.UseShellExecute = true;
+                Process = Process.Start(ProcessInfo);
             }
             if (_roleplayingQuestCreator != null && _roleplayingQuestCreator.CurrentQuest != null)
             {
