@@ -53,6 +53,8 @@ public class TitleCardWindow : Window, IDisposable
     private bool _wasClosed;
     private MemoryStream _questStartSound;
     private MemoryStream _questEndSound;
+    private string _soundPath;
+    private bool _isEnd;
 
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
@@ -131,23 +133,40 @@ public class TitleCardWindow : Window, IDisposable
         {
             Task.Run(async () =>
             {
-                _alreadyLoadingFrame = true;
-                try
+                if (IsOpen)
                 {
-                    if (_titleCardImage != null)
+                    _alreadyLoadingFrame = true;
+                    try
                     {
-                        if (_lastLoadedFrame != _titleCardImage)
+                        if (_titleCardImage != null)
                         {
-                            _frameToLoad = await _textureProvider.CreateFromImageAsync(_titleCardImage);
-                            _lastLoadedFrame = _titleCardImage;
+                            if (_lastLoadedFrame != _titleCardImage)
+                            {
+                                _frameToLoad = await _textureProvider.CreateFromImageAsync(_titleCardImage);
+                                _lastLoadedFrame = _titleCardImage;
+                                if (!string.IsNullOrEmpty(_soundPath) && File.Exists(_soundPath))
+                                {
+                                    Plugin.MediaManager.PlayMedia(_dummyObject, _soundPath, SoundType.NPC, true);
+                                }
+                                else
+                                {
+                                    InitializeSound();
+                                    Plugin.MediaManager.PlayAudioStream(new DummyObject(),
+                                    new Mp3FileReader(!_isEnd ? _questStartSound : _questEndSound), SoundType.NPC, false, false, 1, 0, false, null, null, 1, 2f);
+                                }
+                                if (!titleTimer.IsRunning)
+                                {
+                                    titleTimer.Restart();
+                                }
+                            }
                         }
                     }
-                }
-                catch
-                {
+                    catch
+                    {
 
+                    }
+                    _alreadyLoadingFrame = false;
                 }
-                _alreadyLoadingFrame = false;
             });
         }
         if (_frameToLoad != null)
@@ -159,40 +178,35 @@ public class TitleCardWindow : Window, IDisposable
         if (titleTimer.ElapsedMilliseconds > 4000)
         {
             IsOpen = false;
+            titleTimer.Reset();
         }
     }
 
     public void DisplayCard(string imagePath = "", string soundPath = "", bool isEnd = false)
     {
-        if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
+        Task.Run(() =>
         {
-            MemoryStream background = new MemoryStream();
-            Bitmap newImage = TexIO.ResolveBitmap(imagePath);
-            titleCardRatio = (float)newImage.Width / newImage.Height;
-            TexIO.SaveBitmap(newImage, background);
-            background.Position = 0;
-            _titleCardImage = background.ToArray();
-        }
-        else if (isEnd)
-        {
-            _titleCardImage = _questEndImage;
-        }
-        else
-        {
-            _titleCardImage = _questStartImage;
-        }
-        if (!string.IsNullOrEmpty(soundPath) && File.Exists(soundPath))
-        {
-            Plugin.MediaManager.PlayMedia(_dummyObject, soundPath, SoundType.NPC, true);
-        }
-        else
-        {
-            InitializeSound();
-            Plugin.MediaManager.PlayAudioStream(new DummyObject(),
-            new Mp3FileReader(!isEnd ? _questStartSound : _questEndSound), SoundType.NPC, false, false, 1, 0, false, null, null, 1, 2f);
-        }
-        IsOpen = true;
-        titleTimer.Restart();
+            if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
+            {
+                MemoryStream background = new MemoryStream();
+                Bitmap newImage = TexIO.ResolveBitmap(imagePath);
+                titleCardRatio = (float)newImage.Width / newImage.Height;
+                TexIO.SaveBitmap(newImage, background);
+                background.Position = 0;
+                _titleCardImage = background.ToArray();
+            }
+            else if (isEnd)
+            {
+                _titleCardImage = _questEndImage;
+            }
+            else
+            {
+                _titleCardImage = _questStartImage;
+            }
+            _soundPath = soundPath;
+            _isEnd = isEnd;
+            IsOpen = true;
+        });
     }
 
     public void ClearBackground()
