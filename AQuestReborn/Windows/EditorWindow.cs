@@ -644,6 +644,7 @@ public class EditorWindow : Window, IDisposable
                             if (ImGui.Button($"Add Randomized Skip##"))
                             {
                                 item.RandomizedEventToSkipTo.Add(0);
+                                break;
                             }
                             break;
                         case BranchingChoiceType.BranchingQuestline:

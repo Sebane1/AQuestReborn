@@ -131,11 +131,11 @@ public class TitleCardWindow : Window, IDisposable
         var displaySize = Size.Value;
         if (!_alreadyLoadingFrame)
         {
+            _alreadyLoadingFrame = true;
             Task.Run(async () =>
             {
                 if (IsOpen)
                 {
-                    _alreadyLoadingFrame = true;
                     try
                     {
                         if (_titleCardImage != null)
@@ -165,8 +165,8 @@ public class TitleCardWindow : Window, IDisposable
                     {
 
                     }
-                    _alreadyLoadingFrame = false;
                 }
+                _alreadyLoadingFrame = false;
             });
         }
         if (_frameToLoad != null)
