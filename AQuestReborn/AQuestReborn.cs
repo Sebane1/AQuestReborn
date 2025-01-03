@@ -662,7 +662,7 @@ namespace AQuestReborn
 
         private void _roleplayingQuestManager_OnQuestStarted(object? sender, RoleplayingQuest e)
         {
-            string foundPath = string.IsNullOrWhiteSpace(e.FoundPath) ? Path.Combine(Plugin.Configuration.QuestInstallFolder, e.QuestName) : "";
+            string foundPath = string.IsNullOrWhiteSpace(e.FoundPath) ? Path.Combine(Plugin.Configuration.QuestInstallFolder, e.QuestName) : e.FoundPath;
             string path = Path.Combine(foundPath, e.QuestStartTitleCard);
             string soundPath = Path.Combine(foundPath, e.QuestStartTitleSound);
             Plugin.TitleCardWindow.DisplayCard(path, soundPath);
