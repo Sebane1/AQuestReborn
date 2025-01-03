@@ -662,8 +662,9 @@ namespace AQuestReborn
 
         private void _roleplayingQuestManager_OnQuestStarted(object? sender, RoleplayingQuest e)
         {
-            string path = Path.Combine(e.FoundPath, e.QuestStartTitleCard);
-            string soundPath = Path.Combine(e.FoundPath, e.QuestStartTitleSound);
+            string foundPath = string.IsNullOrWhiteSpace(e.FoundPath) ? Path.Combine(Plugin.Configuration.QuestInstallFolder, e.QuestName) : "";
+            string path = Path.Combine(foundPath, e.QuestStartTitleCard);
+            string soundPath = Path.Combine(foundPath, e.QuestStartTitleSound);
             Plugin.TitleCardWindow.DisplayCard(path, soundPath);
             // Plugin.ToastGui.ShowQuest("Quest Started");
         }
