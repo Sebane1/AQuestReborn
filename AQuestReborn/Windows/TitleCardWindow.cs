@@ -144,18 +144,18 @@ public class TitleCardWindow : Window, IDisposable
                             {
                                 _frameToLoad = await _textureProvider.CreateFromImageAsync(_titleCardImage);
                                 _lastLoadedFrame = _titleCardImage;
-                                if (!string.IsNullOrEmpty(_soundPath) && File.Exists(_soundPath))
-                                {
-                                    Plugin.MediaManager.PlayMedia(_dummyObject, _soundPath, SoundType.NPC, true);
-                                }
-                                else
-                                {
-                                    InitializeSound();
-                                    Plugin.MediaManager.PlayAudioStream(new DummyObject(),
-                                    new Mp3FileReader(!_isEnd ? _questStartSound : _questEndSound), SoundType.NPC, false, false, 1, 0, false, null, null, 1, 2f);
-                                }
                                 if (!titleTimer.IsRunning)
                                 {
+                                    if (!string.IsNullOrEmpty(_soundPath) && File.Exists(_soundPath))
+                                    {
+                                        Plugin.MediaManager.PlayMedia(_dummyObject, _soundPath, SoundType.NPC, true);
+                                    }
+                                    else
+                                    {
+                                        InitializeSound();
+                                        Plugin.MediaManager.PlayAudioStream(new DummyObject(),
+                                        new Mp3FileReader(!_isEnd ? _questStartSound : _questEndSound), SoundType.NPC, false, false, 1, 0, false, null, null, 1, 2f);
+                                    }
                                     titleTimer.Restart();
                                 }
                             }
