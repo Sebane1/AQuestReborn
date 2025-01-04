@@ -167,9 +167,19 @@ namespace AQuestReborn
                 {
                     try
                     {
-                        foreach (var file in Directory.EnumerateFiles(McdfAccessUtils.CacheLocation, "*.tmp"))
+                        try
                         {
-                            File.Delete(file);
+                            if (Directory.Exists(McdfAccessUtils.CacheLocation))
+                            {
+                                foreach (var file in Directory.EnumerateFiles(McdfAccessUtils.CacheLocation, "*.tmp"))
+                                {
+                                    File.Delete(file);
+                                }
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Plugin.PluginLog.Warning(e, e.Message);
                         }
                         while (Plugin.ClientState.LocalPlayer == null || _actorSpawnService == null)
                         {
