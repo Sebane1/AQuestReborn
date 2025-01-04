@@ -15,6 +15,7 @@ using FFXIVClientStructs.FFXIV.Client.System.Input;
 using FFXIVLooseTextureCompiler.ImageProcessing;
 using AQuestReborn;
 using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.Game;
 
 namespace SamplePlugin.Windows;
 
@@ -83,7 +84,7 @@ public class ObjectiveWindow : Window, IDisposable
         }
         Size = new Vector2(ImGui.GetMainViewport().Size.X, ImGui.GetMainViewport().Size.Y);
         Position = new Vector2(0, 0);
-        if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
+        if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen && Plugin.ClientState.IsLoggedIn && Plugin.ClientState.LocalPlayer != null)
         {
             var questChainObjectives = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType, Plugin.AQuestReborn.Discriminator);
             if (!_alreadyLoadingQuestStartIcon)
@@ -143,28 +144,35 @@ public class ObjectiveWindow : Window, IDisposable
                     {
                         if (_questStartIconTextureWrap != null)
                         {
-                            var value = ImGui.GetIO().MousePos;
-                            var distance = Vector2.Distance(new Vector2(screenPosition.X / Size.Value.X, 0),
-                                new Vector2(value.X / Size.Value.X, 0));
-                            var playerDistance = Vector3.Distance(Plugin.ClientState.LocalPlayer.Position, item.Item2.Coordinates);
-                            if (distance < 0.1f && playerDistance < Plugin.RoleplayingQuestManager.MinimumDistance
-                                && item.Item2.TypeOfObjectiveTrigger == RoleplayingQuestCore.QuestObjective.ObjectiveTriggerType.NormalInteraction)
+                            try
                             {
-                                _mouseDistanceIsCloseToObjective = true;
-                                if (mouseDown)
+                                var value = ImGui.GetIO().MousePos;
+                                var distance = Vector2.Distance(new Vector2(screenPosition.X / Size.Value.X, 0),
+                                    new Vector2(value.X / Size.Value.X, 0));
+                                var playerDistance = Vector3.Distance(Plugin.ClientState.LocalPlayer.Position, item.Item2.Coordinates);
+                                if (distance < 0.1f && playerDistance < Plugin.RoleplayingQuestManager.MinimumDistance
+                                    && item.Item2.TypeOfObjectiveTrigger == RoleplayingQuestCore.QuestObjective.ObjectiveTriggerType.NormalInteraction)
                                 {
-                                    OnSelectionAttempt?.Invoke(this, EventArgs.Empty);
-                                    _mouseDistanceIsCloseToObjective = false;
+                                    _mouseDistanceIsCloseToObjective = true;
+                                    if (mouseDown)
+                                    {
+                                        OnSelectionAttempt?.Invoke(this, EventArgs.Empty);
+                                        _mouseDistanceIsCloseToObjective = false;
+                                    }
+                                }
+                                if (playerDistance < item.Item2.Maximum3dIndicatorDistance)
+                                {
+                                    var iconDimensions = new Vector2(100, 100);
+                                    ImGui.SetCursorPos(new Vector2(screenPosition.X - (iconDimensions.X / 2), screenPosition.Y - (iconDimensions.Y / 2)));
+                                    if (_questStartIconTextureWrap != null && _questObjectiveIconTextureWrap != null)
+                                    {
+                                        ImGui.Image(item.Item1 == 0 ? _questStartIconTextureWrap.ImGuiHandle : _questObjectiveIconTextureWrap.ImGuiHandle, iconDimensions);
+                                    }
                                 }
                             }
-                            if (playerDistance < item.Item2.Maximum3dIndicatorDistance)
+                            catch (Exception e)
                             {
-                                var iconDimensions = new Vector2(100, 100);
-                                ImGui.SetCursorPos(new Vector2(screenPosition.X - (iconDimensions.X / 2), screenPosition.Y - (iconDimensions.Y / 2)));
-                                if (_questStartIconTextureWrap != null && _questObjectiveIconTextureWrap != null)
-                                {
-                                    ImGui.Image(item.Item1 == 0 ? _questStartIconTextureWrap.ImGuiHandle : _questObjectiveIconTextureWrap.ImGuiHandle, iconDimensions);
-                                }
+                                Plugin.PluginLog.Warning(e, e.Message);
                             }
                         }
                     }

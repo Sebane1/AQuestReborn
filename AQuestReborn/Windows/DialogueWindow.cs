@@ -390,6 +390,13 @@ public class DialogueWindow : Window, IDisposable
                             _objectiveSkipValue = item.ObjectiveNumberToSkipTo;
                             _objectiveSkip = true;
                             break;
+                        case QuestEvent.EventEndBehaviourType.EventEndsEarlyWhenHitAndNPCFollowsPlayer:
+                            _index = questDisplayObject.QuestObjective.QuestText.Count;
+                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                            {
+                                Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].FollowPlayer(2);
+                            }
+                            break;
                         case QuestEvent.EventEndBehaviourType.None:
                             _index++;
                             break;

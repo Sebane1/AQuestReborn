@@ -36,6 +36,10 @@ public class Configuration : IPluginConfiguration
                 try
                 {
                     McdfAccessUtils.CacheLocation = Path.Combine(Path.GetDirectoryName(_questInstallFolder + ".poop"), "QuestCache\\");
+                    if (_questInstallFolder.Contains("FINAL FANTASY XIV - A Realm Reborn"))
+                    {
+                        McdfAccessUtils.CacheLocation = "";
+                    }
                     Directory.CreateDirectory(McdfAccessUtils.CacheLocation);
                 }
                 catch
@@ -47,11 +51,14 @@ public class Configuration : IPluginConfiguration
         }
         set
         {
-            _questInstallFolder = value;
-            if (!string.IsNullOrEmpty(_questInstallFolder))
+            if (!string.IsNullOrEmpty(value) && (!value.Contains("Program Files")
+                || !value.Contains("FINAL FANTASY XIV - A Realm Reborn")))
             {
-                McdfAccessUtils.CacheLocation = Path.Combine(Path.GetDirectoryName(value + ".poop"), "QuestCache\\");
-                McdfAccessUtils.CacheLocation = Path.Combine(Path.GetDirectoryName(_questInstallFolder + ".poop"), "QuestCache\\");
+                _questInstallFolder = value;
+                if (!string.IsNullOrEmpty(_questInstallFolder))
+                {
+                    McdfAccessUtils.CacheLocation = Path.Combine(Path.GetDirectoryName(_questInstallFolder + ".poop"), "QuestCache\\");
+                }
             }
         }
     }
