@@ -364,6 +364,22 @@ namespace AQuestReborn
                                     _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
                                     value.Item1.Position, Utility.ConvertDegreesToRadians(value.Item1.EulerRotation.Y));
                                     value.Item4[value.Item2] = character;
+                                    Task.Run(() => {
+                                        Thread.Sleep(1000);
+                                        character = value.Item4[value.Item2];
+                                        BrioAccessUtils.EntityManager.SetSelectedEntity(character);
+                                        BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
+                                        if (posing != null)
+                                        {
+                                            posing.ModelPosing.ResetTransform();
+                                            posing.ModelPosing.Transform = new Brio.Core.Transform()
+                                            {
+                                                Position = value.Item1.Position,
+                                                Rotation = CoordinateUtility.ToQuaternion(value.Item1.EulerRotation),
+                                                Scale = value.Item1.TransformScale
+                                            };
+                                        }
+                                    });
                                 }
                                 else
                                 {
