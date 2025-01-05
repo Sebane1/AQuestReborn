@@ -41,6 +41,7 @@ public class DialogueWindow : Window, IDisposable
     List<byte[]> _dialogueBoxStyles = new List<byte[]>();
     int _currentDialogueBoxIndex = 0;
     private string _mcdfSwap;
+    private string _lastNpcName;
     private bool _alreadyLoadingFrame;
     private Dictionary<int, IDalamudTextureWrap> _dialogueStylesToLoad = new Dictionary<int, IDalamudTextureWrap>();
     private IDalamudTextureWrap _dialogueTitleStyleToLoad;
@@ -52,6 +53,8 @@ public class DialogueWindow : Window, IDisposable
     private float _globalScale;
     private bool _objectiveSkip;
     private bool _dontUnblockMovement;
+    private bool _questFollowing;
+    private bool _questStopFollowing;
 
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
@@ -401,7 +404,8 @@ public class DialogueWindow : Window, IDisposable
                                     QuestId = questDisplayObject.RoleplayingQuest.QuestId,
                                     ZoneWhiteList = new List<int> { Plugin.ClientState.TerritoryType }
                                 });
-                                Plugin.ToastGui.ShowNormal(item.NpcName + " is now following you in zones related to this quest.");
+                                _questFollowing = true;
+                                _lastNpcName = item.NpcName;
                             }
                             break;
                         case QuestEvent.EventEndBehaviourType.EventEndsEarlyWhenHitAndNPCStopsFollowingPlayer:
@@ -411,7 +415,34 @@ public class DialogueWindow : Window, IDisposable
                                 Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].StopFollowingPlayer();
                                 Plugin.RoleplayingQuestManager.RemovePartyMember(
                                 Plugin.RoleplayingQuestManager.GetNpcPartyMember(questDisplayObject.RoleplayingQuest.QuestId, item.NpcName));
-                                Plugin.ToastGui.ShowNormal(item.NpcName + " has stopped following you.");
+                                _questStopFollowing = true;
+                                _lastNpcName = item.NpcName;
+                            }
+                            break;
+                        case QuestEvent.EventEndBehaviourType.NPCFollowsPlayer:
+                            _index++;
+                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                            {
+                                Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].FollowPlayer(2);
+                                Plugin.RoleplayingQuestManager.AddPartyMember(new NpcPartyMember()
+                                {
+                                    NpcName = item.NpcName,
+                                    QuestId = questDisplayObject.RoleplayingQuest.QuestId,
+                                    ZoneWhiteList = new List<int> { Plugin.ClientState.TerritoryType }
+                                });
+                                _questFollowing = true;
+                                _lastNpcName = item.NpcName;
+                            }
+                            break;
+                        case QuestEvent.EventEndBehaviourType.NPCStopsFollowingPlayer:
+                            _index++;
+                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                            {
+                                Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].StopFollowingPlayer();
+                                Plugin.RoleplayingQuestManager.RemovePartyMember(
+                                Plugin.RoleplayingQuestManager.GetNpcPartyMember(questDisplayObject.RoleplayingQuest.QuestId, item.NpcName));
+                                _questStopFollowing = true;
+                                _lastNpcName = item.NpcName;
                             }
                             break;
                         case QuestEvent.EventEndBehaviourType.None:
@@ -430,6 +461,18 @@ public class DialogueWindow : Window, IDisposable
             IsOpen = false;
             _currentCharacter = 0;
             textTimer.Reset();
+            if (_questFollowing)
+            {
+                Plugin.ToastGui.ShowNormal(_lastNpcName + " is now following you in zones related to this quest.");
+                _lastNpcName = "";
+                _questFollowing = false;
+            }
+            if (_questStopFollowing)
+            {
+                Plugin.ToastGui.ShowNormal(_lastNpcName + " has stopped following you.");
+                _lastNpcName = "";
+                _questStopFollowing = false;
+            }
             if (!_blockProgression && !_objectiveSkip)
             {
                 questDisplayObject.QuestEvents?.Invoke(this, EventArgs.Empty);

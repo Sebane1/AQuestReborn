@@ -599,7 +599,7 @@ namespace AQuestReborn
         {
             if (_checkForPartyMembers)
             {
-                RefreshPartyMembers(territoryId);
+                RefreshPartyMembers(territoryId, _discriminator);
             }
             if (!_refreshingNPCQuests && _npcActorSpawnQueue.Count == 0)
             {
@@ -656,9 +656,9 @@ namespace AQuestReborn
                 _refreshingNPCQuests = false;
             }
         }
-        private void RefreshPartyMembers(ushort territoryType)
+        private void RefreshPartyMembers(ushort territoryType, string discriminator)
         {
-            var members = Plugin.RoleplayingQuestManager.GetPartyMembersForZone(territoryType);
+            var members = Plugin.RoleplayingQuestManager.GetPartyMembersForZone(territoryType, discriminator);
             foreach (var member in members)
             {
                 if (Plugin.RoleplayingQuestManager.QuestChains.ContainsKey(member.QuestId))
