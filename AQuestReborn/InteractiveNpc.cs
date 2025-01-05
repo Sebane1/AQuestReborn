@@ -134,18 +134,25 @@ namespace AQuestReborn
         }
         public void SetTransform(Vector3 position, Vector3 rotation, Vector3 scale)
         {
-            if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !McdfAccessUtils.McdfManager.IsWorking() && _plugin.ClientState.LocalPlayer != null)
+            try
             {
-                CheckPosing();
-                if (_posing != null)
+                if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !McdfAccessUtils.McdfManager.IsWorking() && _plugin.ClientState.LocalPlayer != null)
                 {
-                    _posing.ModelPosing.Transform = new Brio.Core.Transform()
+                    CheckPosing();
+                    if (_posing != null)
                     {
-                        Position = position,
-                        Rotation = CoordinateUtility.ToQuaternion(rotation),
-                        Scale = scale
-                    };
+                        _posing.ModelPosing.Transform = new Brio.Core.Transform()
+                        {
+                            Position = position,
+                            Rotation = CoordinateUtility.ToQuaternion(rotation),
+                            Scale = scale
+                        };
+                    }
                 }
+            }
+            catch (Exception e)
+            {
+                _plugin.PluginLog.Warning(e, e.Message);
             }
         }
 
