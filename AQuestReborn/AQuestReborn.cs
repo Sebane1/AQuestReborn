@@ -597,6 +597,10 @@ namespace AQuestReborn
         }
         public void RefreshNpcs(ushort territoryId, string questId = "", bool softRefresh = false)
         {
+            if (_checkForPartyMembers)
+            {
+                RefreshPartyMembers(territoryId);
+            }
             if (!_refreshingNPCQuests && _npcActorSpawnQueue.Count == 0)
             {
                 try
@@ -651,10 +655,6 @@ namespace AQuestReborn
                 }
                 _refreshingNPCQuests = false;
             }
-            if (_checkForPartyMembers)
-            {
-                RefreshPartyMembers(territoryId);
-            }
         }
         private void RefreshPartyMembers(ushort territoryType)
         {
@@ -670,6 +670,7 @@ namespace AQuestReborn
                     }
                     var spawnedNpcList = _spawnedNpcsDictionary[member.QuestId];
                     var foundExistingNpc = _spawnedNpcsDictionary.ContainsKey(member.NpcName);
+                    _spawnedNpcsDictionary[member.QuestId][member.NpcName] = null;
                     var customization = Plugin.RoleplayingQuestManager.GetNpcInformation(member.QuestId, member.NpcName);
                     var quest = Plugin.RoleplayingQuestManager.QuestChains[member.QuestId];
                     var value = new Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest, bool>(
