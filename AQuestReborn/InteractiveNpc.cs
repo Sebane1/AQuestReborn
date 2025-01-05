@@ -64,7 +64,7 @@ namespace AQuestReborn
                             };
                         }
                     }
-                    else if (_followPlayer)
+                    else if (_followPlayer && !_plugin.DialogueWindow.IsOpen && !_plugin.ChoiceWindow.IsOpen)
                     {
                         BrioAccessUtils.EntityManager.SetSelectedEntity(_character);
                         BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
@@ -114,6 +114,9 @@ namespace AQuestReborn
         {
             _followPlayer = true;
             _speed = speed;
+            _currentPosition = _character.Position;
+            var value = _plugin.AnamcoreManager.GetCurrentAnimationId(_plugin.ClientState.LocalPlayer);
+            _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
         }
         public void StopFollowingPlayer()
         {

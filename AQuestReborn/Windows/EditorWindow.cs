@@ -418,7 +418,7 @@ public class EditorWindow : Window, IDisposable
                 var eventEndBehaviour = (int)item.EventEndBehaviour;
                 var eventNumberToSkipTo = item.EventNumberToSkipTo;
                 var objectiveNumberToSkipTo = item.ObjectiveNumberToSkipTo;
-                var eventEndTypes = Enum.GetNames(typeof(QuestEvent.EventEndBehaviourType));
+                var eventEndTypes = Enum.GetNames(typeof(QuestEvent.EventBehaviourType));
                 var eventBackgroundTypes = Enum.GetNames(typeof(QuestEvent.EventBackgroundType));
                 var eventConditionTypes = Enum.GetNames(typeof(QuestEvent.EventConditionType));
                 var appearanceSwap = item.AppearanceSwap;
@@ -504,18 +504,18 @@ public class EditorWindow : Window, IDisposable
                 }
                 if (ImGui.Combo("Event End Behaviour##", ref eventEndBehaviour, eventEndTypes, eventEndTypes.Length))
                 {
-                    item.EventEndBehaviour = (EventEndBehaviourType)eventEndBehaviour;
+                    item.EventEndBehaviour = (EventBehaviourType)eventEndBehaviour;
                 }
 
                 switch (item.EventEndBehaviour)
                 {
-                    case EventEndBehaviourType.EventSkipsToDialogueNumber:
+                    case EventBehaviourType.EventSkipsToDialogueNumber:
                         if (ImGui.InputInt("Event Number To Skip To##", ref eventNumberToSkipTo))
                         {
                             item.EventNumberToSkipTo = eventNumberToSkipTo;
                         }
                         break;
-                    case EventEndBehaviourType.EventEndsEarlyWhenHitAndSkipsToObjective:
+                    case EventBehaviourType.EventEndsEarlyWhenHitAndSkipsToObjective:
                         if (ImGui.InputInt("Objective Number To Skip To##", ref objectiveNumberToSkipTo))
                         {
                             item.ObjectiveNumberToSkipTo = objectiveNumberToSkipTo;

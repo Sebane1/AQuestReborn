@@ -61,7 +61,7 @@ public class DialogueWindow : Window, IDisposable
     // but for ImGui the ID is "My Amazing Window##With a hidden ID"
     public DialogueWindow(Plugin plugin)
         : base("Dialogue Window##dialoguewindow", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar |
-            ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBackground)
+            ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBackground, true)
     {
         Size = new Vector2(1088, 288);
         Plugin = plugin;
@@ -373,27 +373,80 @@ public class DialogueWindow : Window, IDisposable
                 questDisplayObject.QuestObjective.QuestText[_index].BranchingChoices.Count > 0)
                 {
                     _choicesAreNext = true;
+                    switch (item.EventEndBehaviour)
+                    {
+
+                        case QuestEvent.EventBehaviourType.EventEndsEarlyWhenHitAndNPCFollowsPlayer:
+                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                            {
+                                Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].FollowPlayer(2);
+                                Plugin.RoleplayingQuestManager.AddPartyMember(new NpcPartyMember()
+                                {
+                                    NpcName = item.NpcName,
+                                    QuestId = questDisplayObject.RoleplayingQuest.QuestId,
+                                    ZoneWhiteList = new List<int> { Plugin.ClientState.TerritoryType }
+                                });
+                                _questFollowing = true;
+                                _lastNpcName = item.NpcName;
+                            }
+                            break;
+                        case QuestEvent.EventBehaviourType.EventEndsEarlyWhenHitAndNPCStopsFollowingPlayer:
+                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                            {
+                                Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].StopFollowingPlayer();
+                                Plugin.RoleplayingQuestManager.RemovePartyMember(
+                                Plugin.RoleplayingQuestManager.GetNpcPartyMember(questDisplayObject.RoleplayingQuest.QuestId, item.NpcName));
+                                _questStopFollowing = true;
+                                _lastNpcName = item.NpcName;
+                            }
+                            break;
+                        case QuestEvent.EventBehaviourType.NPCFollowsPlayer:
+                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                            {
+                                Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].FollowPlayer(2);
+                                Plugin.RoleplayingQuestManager.AddPartyMember(new NpcPartyMember()
+                                {
+                                    NpcName = item.NpcName,
+                                    QuestId = questDisplayObject.RoleplayingQuest.QuestId,
+                                    ZoneWhiteList = new List<int> { Plugin.ClientState.TerritoryType }
+                                });
+                                _questFollowing = true;
+                                _lastNpcName = item.NpcName;
+                            }
+                            break;
+                        case QuestEvent.EventBehaviourType.NPCStopsFollowingPlayer:
+                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                            {
+                                Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].StopFollowingPlayer();
+                                Plugin.RoleplayingQuestManager.RemovePartyMember(
+                                Plugin.RoleplayingQuestManager.GetNpcPartyMember(questDisplayObject.RoleplayingQuest.QuestId, item.NpcName));
+                                _questStopFollowing = true;
+                                _lastNpcName = item.NpcName;
+                            }
+                            break;
+                    }
+
                 }
                 else
                 {
                     switch (item.EventEndBehaviour)
                     {
-                        case QuestEvent.EventEndBehaviourType.EventSkipsToDialogueNumber:
+                        case QuestEvent.EventBehaviourType.EventSkipsToDialogueNumber:
                             _index = item.EventNumberToSkipTo;
                             break;
-                        case QuestEvent.EventEndBehaviourType.EventEndsEarlyWhenHit:
+                        case QuestEvent.EventBehaviourType.EventEndsEarlyWhenHit:
                             _index = questDisplayObject.QuestObjective.QuestText.Count;
                             break;
-                        case QuestEvent.EventEndBehaviourType.EventEndsEarlyWhenHitNoProgression:
+                        case QuestEvent.EventBehaviourType.EventEndsEarlyWhenHitNoProgression:
                             _index = questDisplayObject.QuestObjective.QuestText.Count;
                             _blockProgression = true;
                             break;
-                        case QuestEvent.EventEndBehaviourType.EventEndsEarlyWhenHitAndSkipsToObjective:
+                        case QuestEvent.EventBehaviourType.EventEndsEarlyWhenHitAndSkipsToObjective:
                             _index = questDisplayObject.QuestObjective.QuestText.Count;
                             _objectiveSkipValue = item.ObjectiveNumberToSkipTo;
                             _objectiveSkip = true;
                             break;
-                        case QuestEvent.EventEndBehaviourType.EventEndsEarlyWhenHitAndNPCFollowsPlayer:
+                        case QuestEvent.EventBehaviourType.EventEndsEarlyWhenHitAndNPCFollowsPlayer:
                             _index = questDisplayObject.QuestObjective.QuestText.Count;
                             if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
                             {
@@ -408,7 +461,7 @@ public class DialogueWindow : Window, IDisposable
                                 _lastNpcName = item.NpcName;
                             }
                             break;
-                        case QuestEvent.EventEndBehaviourType.EventEndsEarlyWhenHitAndNPCStopsFollowingPlayer:
+                        case QuestEvent.EventBehaviourType.EventEndsEarlyWhenHitAndNPCStopsFollowingPlayer:
                             _index = questDisplayObject.QuestObjective.QuestText.Count;
                             if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
                             {
@@ -419,7 +472,7 @@ public class DialogueWindow : Window, IDisposable
                                 _lastNpcName = item.NpcName;
                             }
                             break;
-                        case QuestEvent.EventEndBehaviourType.NPCFollowsPlayer:
+                        case QuestEvent.EventBehaviourType.NPCFollowsPlayer:
                             _index++;
                             if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
                             {
@@ -434,7 +487,7 @@ public class DialogueWindow : Window, IDisposable
                                 _lastNpcName = item.NpcName;
                             }
                             break;
-                        case QuestEvent.EventEndBehaviourType.NPCStopsFollowingPlayer:
+                        case QuestEvent.EventBehaviourType.NPCStopsFollowingPlayer:
                             _index++;
                             if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
                             {
@@ -445,7 +498,7 @@ public class DialogueWindow : Window, IDisposable
                                 _lastNpcName = item.NpcName;
                             }
                             break;
-                        case QuestEvent.EventEndBehaviourType.None:
+                        case QuestEvent.EventBehaviourType.None:
                             _index++;
                             break;
                     }
