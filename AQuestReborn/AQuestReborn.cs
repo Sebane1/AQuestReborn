@@ -396,24 +396,17 @@ namespace AQuestReborn
                                 if (character != null)
                                 {
                                     if (_interactiveNpcDictionary[value.Item2].LastMcdf != value.Item3
-                                        || Plugin.RoleplayingQuestManager.QuestProgression[value.Item6.QuestId] == 0)
+                                    || Plugin.RoleplayingQuestManager.QuestProgression[value.Item6.QuestId] == 0)
                                     {
                                         LoadMCDF(value.Item3, character);
                                         _interactiveNpcDictionary[value.Item2].LastMcdf = value.Item3;
                                     }
                                     Plugin.AnamcoreManager.SetVoice(character, 0);
                                     Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)value.Item1.DefaultAnimationId);
-                                    if (value.Item7)
-                                    {
-                                        Task.Run(() =>
-                                        {
-                                            while (_waitingForMcdfLoad)
-                                            {
-                                                Thread.Sleep(1000);
-                                            }
-                                            _interactiveNpcDictionary[value.Item2].FollowPlayer(2);
-                                        });
-                                    }
+                                }
+                                if (value.Item7)
+                                {
+                                    _interactiveNpcDictionary[value.Item2].FollowPlayer(2, true);
                                 }
                             }
                         }

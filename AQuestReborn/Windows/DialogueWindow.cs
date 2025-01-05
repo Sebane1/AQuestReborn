@@ -55,7 +55,7 @@ public class DialogueWindow : Window, IDisposable
     private bool _dontUnblockMovement;
     private bool _questFollowing;
     private bool _questStopFollowing;
-
+    Stopwatch _timeSinceLastDialogueDisplayed = new Stopwatch();
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
     // but for ImGui the ID is "My Amazing Window##With a hidden ID"
@@ -68,6 +68,7 @@ public class DialogueWindow : Window, IDisposable
         plugin.ChoiceWindow.OnChoiceMade += ChoiceWindow_OnChoiceMade;
         _dummyObject = new DummyObject();
         LoadBubbleBackgrounds();
+        _timeSinceLastDialogueDisplayed.Start();
     }
     public override void OnClose()
     {
@@ -77,6 +78,7 @@ public class DialogueWindow : Window, IDisposable
             Plugin.Movement.DisableMovementLock();
             Plugin.DialogueBackgroundWindow.IsOpen = false;
         }
+        _timeSinceLastDialogueDisplayed.Restart();
         base.OnClose();
     }
     public override void OnOpen()
@@ -148,6 +150,7 @@ public class DialogueWindow : Window, IDisposable
 
     public QuestDisplayObject QuestTexts { get => questDisplayObject; set => questDisplayObject = value; }
     internal DummyObject DummyObject { get => _dummyObject; set => _dummyObject = value; }
+    public Stopwatch TimeSinceLastDialogueDisplayed { get => _timeSinceLastDialogueDisplayed; set => _timeSinceLastDialogueDisplayed = value; }
 
     public void Dispose() { }
 
