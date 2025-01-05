@@ -381,64 +381,28 @@ namespace AQuestReborn
                                     if (!_interactiveNpcDictionary.ContainsKey(value.Item2))
                                     {
                                         _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
-                                    value.Item1.Position, Utility.ConvertDegreesToRadians(value.Item1.EulerRotation.Y));
+                                    value.Item1.Position + new Vector3(0, -20, 0), Utility.ConvertDegreesToRadians(value.Item1.EulerRotation.Y));
                                         value.Item4[value.Item2] = character;
-                                        Task.Run(() =>
-                                        {
-                                            Thread.Sleep(1000);
-                                            character = value.Item4[value.Item2];
-                                            BrioAccessUtils.EntityManager.SetSelectedEntity(character);
-                                            BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
-                                            if (posing != null)
-                                            {
-                                                posing.ModelPosing.ResetTransform();
-                                                posing.ModelPosing.Transform = new Brio.Core.Transform()
-                                                {
-                                                    Position = value.Item1.Position,
-                                                    Rotation = CoordinateUtility.ToQuaternion(value.Item1.EulerRotation),
-                                                    Scale = value.Item1.TransformScale
-                                                };
-                                            }
-                                        });
                                         var npc = new InteractiveNpc(Plugin, character);
-                                        npc.SetPosition(value.Item1.Position);
-
                                         _interactiveNpcDictionary.Add(value.Item2, npc);
                                     }
                                 }
                                 else
                                 {
                                     character = value.Item4[value.Item2];
-                                    BrioAccessUtils.EntityManager.SetSelectedEntity(character);
-                                    BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
-                                    if (posing != null)
-                                    {
-                                        posing.ModelPosing.ResetTransform();
-                                        posing.ModelPosing.Transform = new Brio.Core.Transform()
-                                        {
-                                            Position = value.Item1.Position,
-                                            Rotation = CoordinateUtility.ToQuaternion(value.Item1.EulerRotation),
-                                            Scale = value.Item1.TransformScale
-                                        };
-                                    }
-                                    else
-                                    {
-                                        _actorSpawnService.DestroyObject(character);
-                                        _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
-                                        value.Item1.Position, Utility.ConvertDegreesToRadians(value.Item1.EulerRotation.Y));
-                                        value.Item4[value.Item2] = character;
-                                        newNPC = true;
-                                    }
-                                    if (!_interactiveNpcDictionary.ContainsKey(value.Item2))
-                                    {
-                                        _interactiveNpcDictionary[value.Item2].SetPosition(value.Item1.Position);
-                                    }
                                 }
                                 if (character != null)
                                 {
+                                    if (_interactiveNpcDictionary[value.Item2].LastMcdf != value.Item3
+                                        || Plugin.RoleplayingQuestManager.QuestProgression[value.Item6.QuestId] == 0)
+                                    {
+                                        LoadMCDF(value.Item3, character);
+                                        _interactiveNpcDictionary[value.Item2].LastMcdf = value.Item3;
+                                    }
                                     Plugin.AnamcoreManager.SetVoice(character, 0);
                                     Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)value.Item1.DefaultAnimationId);
-                                    LoadMCDF(value.Item3, character);
+                                    _interactiveNpcDictionary[value.Item2].SetDefaults(value.Item1.Position, value.Item1.EulerRotation);
+                                    _interactiveNpcDictionary[value.Item2].SetScale(value.Item1.TransformScale, 2);
                                     if (value.Item7)
                                     {
                                         Task.Run(() =>
