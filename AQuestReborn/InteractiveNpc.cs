@@ -186,7 +186,10 @@ namespace AQuestReborn
             {
                 _followPlayer = true;
                 _speed = speed;
-                _currentPosition = _plugin.ClientState.LocalPlayer.Position;
+                if (setsCurrentPosition)
+                {
+                    _currentPosition = _plugin.ClientState.LocalPlayer.Position;
+                }
             }
             _lock = false;
         }
