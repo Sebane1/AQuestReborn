@@ -391,6 +391,8 @@ namespace AQuestReborn
                                 {
                                     character = value.Item4[value.Item2];
                                 }
+                                _interactiveNpcDictionary[value.Item2].SetDefaults(value.Item1.Position, value.Item1.EulerRotation);
+                                _interactiveNpcDictionary[value.Item2].SetScale(value.Item1.TransformScale, 2);
                                 if (character != null)
                                 {
                                     if (_interactiveNpcDictionary[value.Item2].LastMcdf != value.Item3
@@ -401,8 +403,6 @@ namespace AQuestReborn
                                     }
                                     Plugin.AnamcoreManager.SetVoice(character, 0);
                                     Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)value.Item1.DefaultAnimationId);
-                                    _interactiveNpcDictionary[value.Item2].SetDefaults(value.Item1.Position, value.Item1.EulerRotation);
-                                    _interactiveNpcDictionary[value.Item2].SetScale(value.Item1.TransformScale, 2);
                                     if (value.Item7)
                                     {
                                         Task.Run(() =>
@@ -642,7 +642,7 @@ namespace AQuestReborn
                     }
                     var spawnedNpcList = _spawnedNpcsDictionary[member.QuestId];
                     var foundExistingNpc = _spawnedNpcsDictionary.ContainsKey(member.NpcName);
-                    _spawnedNpcsDictionary[member.QuestId][member.NpcName] = null;
+                    //_spawnedNpcsDictionary[member.QuestId][member.NpcName] = null;
                     var customization = Plugin.RoleplayingQuestManager.GetNpcInformation(member.QuestId, member.NpcName);
                     var quest = Plugin.RoleplayingQuestManager.QuestChains[member.QuestId];
                     var value = new Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest, bool>(

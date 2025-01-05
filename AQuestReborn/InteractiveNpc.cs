@@ -61,12 +61,12 @@ namespace AQuestReborn
                 if (_character != null)
                 {
                     float delta = ((float)_plugin.Framework.UpdateDelta.Milliseconds / 1000f);
-                    if (_followPlayer && !_plugin.DialogueWindow.IsOpen && !_plugin.ChoiceWindow.IsOpen)
+                    if (_followPlayer && !_plugin.DialogueWindow.IsOpen && _plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 2000)
                     {
                         if (Vector3.Distance(_currentPosition, _plugin.ClientState.LocalPlayer.Position) > 1)
                         {
                             SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _plugin.ClientState.LocalPlayer.Position, _speed * delta),
-                                _currentRotation = Vector3.Lerp(_currentRotation, new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(_plugin.ClientState.LocalPlayer.Rotation), 0), _speed * delta),
+                                _currentRotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(_plugin.ClientState.LocalPlayer.Rotation), 0),
                                 _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
                             var value = _plugin.AnamcoreManager.GetCurrentAnimationId(_plugin.ClientState.LocalPlayer);
                             _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
@@ -74,7 +74,7 @@ namespace AQuestReborn
                         else
                         {
                             SetTransform(_currentPosition = Vector3.Lerp(_currentPosition,
-                            new Vector3(_plugin.ClientState.LocalPlayer.Position.X, _currentPosition.Y, _plugin.ClientState.LocalPlayer.Position.Z), _speed * delta),
+                            new Vector3(_currentPosition.X, _plugin.ClientState.LocalPlayer.Position.Y, _currentPosition.Z), _speed * delta),
                             _currentRotation, _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
                             _plugin.AnamcoreManager.StopEmote(_character.Address);
                         }
@@ -84,7 +84,7 @@ namespace AQuestReborn
                         if (_shouldBeMoving)
                         {
                             SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _target, _speed * delta),
-                                         _currentRotation = Vector3.Lerp(_currentRotation, _defaultRotation, _speed * delta),
+                                         _currentRotation = Vector3.Lerp(_currentRotation, _defaultRotation, 1),
                                          _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
                             if (Vector3.Distance(_currentPosition, _plugin.ClientState.LocalPlayer.Position) > 0.2f)
                             {
@@ -97,8 +97,8 @@ namespace AQuestReborn
                         }
                         else
                         {
-                            SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 10 * delta),
-                                         _currentRotation = Vector3.Lerp(_currentRotation, _defaultRotation, 10 * delta),
+                            SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta),
+                                         _currentRotation = Vector3.Lerp(_currentRotation, _defaultRotation, 1),
                                          _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
                         }
                     }
@@ -111,6 +111,7 @@ namespace AQuestReborn
         }
         public Brio.Core.Transform GetTransform()
         {
+            CheckPosing();
             if (_posing != null)
             {
                 return _posing.ModelPosing.Transform;
@@ -119,21 +120,35 @@ namespace AQuestReborn
         }
         public void SetTransform(Vector3 position, Vector3 rotation, Vector3 scale)
         {
-            if (_posing != null)
+            if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !McdfAccessUtils.McdfManager.IsWorking() && _plugin.ClientState.LocalPlayer != null)
             {
-                _posing.ModelPosing.Transform = new Brio.Core.Transform()
+                CheckPosing();
+                if (_posing != null)
                 {
-                    Position = position,
-                    Rotation = CoordinateUtility.ToQuaternion(rotation),
-                    Scale = scale
-                };
+                    _posing.ModelPosing.Transform = new Brio.Core.Transform()
+                    {
+                        Position = position,
+                        Rotation = CoordinateUtility.ToQuaternion(rotation),
+                        Scale = scale
+                    };
+                }
+            }
+        }
+
+        public void CheckPosing()
+        {
+            if (_posing == null)
+            {
+                BrioAccessUtils.EntityManager.SetSelectedEntity(_character);
+                BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
+                _posing = posing;
             }
         }
         public void SetDefaults(Vector3 position, Vector3 rotation)
         {
             _defaultPosition = position;
             _defaultRotation = rotation;
-            _currentPosition = _defaultPosition + new Vector3(0, -10, 0);
+            _currentPosition = position;
             _currentRotation = rotation;
             _shouldBeMoving = false;
             _plugin.AnamcoreManager.StopEmote(_character.Address);
@@ -153,11 +168,14 @@ namespace AQuestReborn
 
         public void FollowPlayer(float speed)
         {
-            _followPlayer = true;
-            _speed = speed;
-            _currentPosition = _character.Position;
-            var value = _plugin.AnamcoreManager.GetCurrentAnimationId(_plugin.ClientState.LocalPlayer);
-            _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
+            if (_plugin.ClientState.LocalPlayer != null)
+            {
+                _currentPosition = _plugin.ClientState.LocalPlayer.Position;
+                _followPlayer = true;
+                _speed = speed;
+                var value = _plugin.AnamcoreManager.GetCurrentAnimationId(_plugin.ClientState.LocalPlayer);
+                _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
+            }
         }
         public void StopFollowingPlayer()
         {
