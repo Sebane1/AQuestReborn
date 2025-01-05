@@ -58,16 +58,16 @@ namespace AQuestReborn
 
         private void Framework_Update(IFramework framework)
         {
-            if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !McdfAccessUtils.McdfManager.IsWorking() && _plugin.ClientState.LocalPlayer != null && !_lock)
+            try
             {
-                if (_character != null)
+                if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !McdfAccessUtils.McdfManager.IsWorking() && _plugin.ClientState.LocalPlayer != null && !_lock)
                 {
-                    float delta = ((float)_plugin.Framework.UpdateDelta.Milliseconds / 1000f);
-                    if (_followPlayer)
+                    if (_character != null)
                     {
-                        if (!_plugin.DialogueWindow.IsOpen && !_plugin.ChoiceWindow.IsOpen
-                        && _plugin.DialogueWindow.TimeSinceLastDialogueDisplayed.ElapsedMilliseconds > 200
-                        && _plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 200)
+                        float delta = ((float)_plugin.Framework.UpdateDelta.Milliseconds / 1000f);
+                        if (_followPlayer && !_plugin.DialogueWindow.IsOpen && !_plugin.ChoiceWindow.IsOpen
+                            && _plugin.DialogueWindow.TimeSinceLastDialogueDisplayed.ElapsedMilliseconds > 200
+                            && _plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 200)
                         {
                             if (Vector3.Distance(_currentPosition, _plugin.ClientState.LocalPlayer.Position) > 1)
                             {
@@ -85,38 +85,42 @@ namespace AQuestReborn
                                 _plugin.AnamcoreManager.StopEmote(_character.Address);
                             }
                         }
-                    }
-                    else
-                    {
-                        if (!_lock)
+                        else
                         {
-                            if (_shouldBeMoving)
+                            if (!_lock)
                             {
-                                SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _target, _speed * delta),
-                                             _currentRotation = Vector3.Lerp(_currentRotation, _defaultRotation, 1),
-                                             _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
-                                if (Vector3.Distance(_currentPosition, _plugin.ClientState.LocalPlayer.Position) > 0.2f)
+                                if (_shouldBeMoving)
                                 {
-                                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
+                                    SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _target, _speed * delta),
+                                                 _currentRotation = Vector3.Lerp(_currentRotation, _defaultRotation, 1),
+                                                 _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
+                                    if (Vector3.Distance(_currentPosition, _plugin.ClientState.LocalPlayer.Position) > 0.2f)
+                                    {
+                                        _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
+                                    }
+                                    else
+                                    {
+                                        _plugin.AnamcoreManager.StopEmote(_character.Address);
+                                    }
                                 }
                                 else
                                 {
-                                    _plugin.AnamcoreManager.StopEmote(_character.Address);
+                                    SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta),
+                                                 _currentRotation = Vector3.Lerp(_currentRotation, _defaultRotation, 1),
+                                                 _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
                                 }
-                            }
-                            else
-                            {
-                                SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta),
-                                             _currentRotation = Vector3.Lerp(_currentRotation, _defaultRotation, 1),
-                                             _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
                             }
                         }
                     }
+                    else
+                    {
+                        Dispose();
+                    }
                 }
-                else
-                {
-                    Dispose();
-                }
+            }
+            catch (Exception e)
+            {
+                _plugin.PluginLog.Warning(e, e.Message);
             }
         }
         public Brio.Core.Transform GetTransform()
