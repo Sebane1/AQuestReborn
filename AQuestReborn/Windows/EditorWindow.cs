@@ -248,7 +248,7 @@ public class EditorWindow : Window, IDisposable
         string questPath = Path.Combine(Plugin.Configuration.QuestInstallFolder, _roleplayingQuestCreator.CurrentQuest.QuestName);
         _roleplayingQuestCreator.SaveQuest(questPath);
         Plugin.RoleplayingQuestManager.AddQuest(Path.Combine(questPath, "main.quest"), false, true);
-        Plugin.AQuestReborn.RefreshNpcsForQuest(Plugin.ClientState.TerritoryType, _roleplayingQuestCreator.CurrentQuest.QuestId, true);
+        Plugin.AQuestReborn.RefreshNpcs(Plugin.ClientState.TerritoryType, _roleplayingQuestCreator.CurrentQuest.QuestId, true);
         Plugin.AQuestReborn.RefreshMapMarkers();
     }
 

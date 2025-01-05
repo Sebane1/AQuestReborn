@@ -84,7 +84,7 @@ public class MainWindow : Window, IDisposable
 
     private void DrawInitialSetup()
     {
-        if (ImGui.Button("Pick Empty Folder For Custom Quest Installs"))
+        if (ImGui.Button("Pick Empty Folder For Custom Quest Installs (Cannot Require Admin Rights)"))
         {
             _fileDialogManager.Reset();
             ImGui.OpenPopup("OpenPathDialog##editorwindow");
@@ -98,12 +98,12 @@ public class MainWindow : Window, IDisposable
                     if (!folder.Contains("Program Files") && !folder.Contains("FINAL FANTASY XIV - A Realm Reborn"))
                     {
                         Directory.CreateDirectory(folder);
-                        if (Directory.GetFiles(folder).Length == 0)
-                        {
+                        //if (Directory.GetFiles(folder).Length == 0)
+                        //{
                             Plugin.Configuration.QuestInstallFolder = folder;
                             Plugin.RoleplayingQuestManager.QuestInstallFolder = folder;
                             Plugin.Configuration.Save();
-                        }
+                        //}
                     }
                 }
             }, null, true);
@@ -176,7 +176,7 @@ public class MainWindow : Window, IDisposable
                 {
                     Plugin.RoleplayingQuestManager.QuestChains.Remove(roleplayingQuest.QuestId);
                 }
-                Plugin.AQuestReborn.RefreshNpcsForQuest(Plugin.ClientState.TerritoryType, roleplayingQuest.QuestId);
+                Plugin.AQuestReborn.RefreshNpcs(Plugin.ClientState.TerritoryType, roleplayingQuest.QuestId);
                 Plugin.AQuestReborn.RefreshMapMarkers();
                 Plugin.SaveProgress();
             }

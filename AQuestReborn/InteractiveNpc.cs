@@ -28,6 +28,7 @@ namespace AQuestReborn
         private float _scaleSpeed;
         private bool _followPlayer;
         private Vector3 _currentPosition;
+        private bool _disposed;
 
         public InteractiveNpc(Plugin plugin, ICharacter character)
         {
@@ -39,56 +40,59 @@ namespace AQuestReborn
 
         private void ClientState_TerritoryChanged(ushort obj)
         {
-           Dispose();
+            Dispose();
         }
 
         private void Framework_Update(IFramework framework)
         {
-            if (_character != null)
+            if (!_plugin.AQuestReborn.WaitingForMcdfLoad && _plugin.ClientState.LocalPlayer != null)
             {
-                float delta = ((float)_plugin.Framework.UpdateDelta.Milliseconds / 1000f);
-                if (_shouldBeMoving)
+                if (_character != null)
                 {
-                    BrioAccessUtils.EntityManager.SetSelectedEntity(_character);
-                    BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
-                    if (posing != null)
+                    float delta = ((float)_plugin.Framework.UpdateDelta.Milliseconds / 1000f);
+                    if (_shouldBeMoving)
                     {
-                        posing.ModelPosing.Transform = new Brio.Core.Transform()
-                        {
-                            Position = _currentPosition = Vector3.Lerp(_currentPosition, _target, _speed * delta),
-                            Rotation = CoordinateUtility.ToQuaternion(0, CoordinateUtility.ConvertRadiansToDegrees(_plugin.ClientState.LocalPlayer.Rotation), 0),
-                            Scale = Vector3.Lerp(posing.ModelPosing.Transform.Scale, _targetScale, _scaleSpeed * delta)
-                        };
-                    }
-                }
-                else if (_followPlayer)
-                {
-                    BrioAccessUtils.EntityManager.SetSelectedEntity(_character);
-                    BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
-                    if (Vector3.Distance(_currentPosition, _plugin.ClientState.LocalPlayer.Position) > 1)
-                    {
+                        BrioAccessUtils.EntityManager.SetSelectedEntity(_character);
+                        BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
                         if (posing != null)
                         {
                             posing.ModelPosing.Transform = new Brio.Core.Transform()
                             {
-                                Position = _currentPosition = Vector3.Lerp(_currentPosition, _plugin.ClientState.LocalPlayer.Position, _speed * delta),
+                                Position = _currentPosition = Vector3.Lerp(_currentPosition, _target, _speed * delta),
                                 Rotation = CoordinateUtility.ToQuaternion(0, CoordinateUtility.ConvertRadiansToDegrees(_plugin.ClientState.LocalPlayer.Rotation), 0),
-                                Scale = posing.ModelPosing.Transform.Scale
+                                Scale = Vector3.Lerp(posing.ModelPosing.Transform.Scale, _targetScale, _scaleSpeed * delta)
                             };
                         }
-                        var value = _plugin.AnamcoreManager.GetCurrentAnimationId(_plugin.ClientState.LocalPlayer);
-                        _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
                     }
-                    else
+                    else if (_followPlayer)
                     {
-                        _plugin.AnamcoreManager.StopEmote(_character.Address);
-                    }
+                        BrioAccessUtils.EntityManager.SetSelectedEntity(_character);
+                        BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
+                        if (Vector3.Distance(_currentPosition, _plugin.ClientState.LocalPlayer.Position) > 1)
+                        {
+                            if (posing != null)
+                            {
+                                posing.ModelPosing.Transform = new Brio.Core.Transform()
+                                {
+                                    Position = _currentPosition = Vector3.Lerp(_currentPosition, _plugin.ClientState.LocalPlayer.Position, _speed * delta),
+                                    Rotation = CoordinateUtility.ToQuaternion(0, CoordinateUtility.ConvertRadiansToDegrees(_plugin.ClientState.LocalPlayer.Rotation), 0),
+                                    Scale = posing.ModelPosing.Transform.Scale
+                                };
+                            }
+                            var value = _plugin.AnamcoreManager.GetCurrentAnimationId(_plugin.ClientState.LocalPlayer);
+                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
+                        }
+                        else
+                        {
+                            _plugin.AnamcoreManager.StopEmote(_character.Address);
+                        }
 
+                    }
                 }
-            }
-            else
-            {
-                Dispose();
+                else
+                {
+                    Dispose();
+                }
             }
         }
 
@@ -111,7 +115,7 @@ namespace AQuestReborn
             _followPlayer = true;
             _speed = speed;
         }
-        public void StopFollowPlayer()
+        public void StopFollowingPlayer()
         {
             _followPlayer = false;
         }
@@ -124,6 +128,7 @@ namespace AQuestReborn
         }
         public void Dispose()
         {
+            _disposed = true;
             _plugin.Framework.Update -= Framework_Update;
             _plugin.ClientState.TerritoryChanged -= ClientState_TerritoryChanged;
             _character = null;

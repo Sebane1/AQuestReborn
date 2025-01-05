@@ -44,6 +44,7 @@ namespace AQuestReborn
         public Dictionary<string, Dictionary<string, ICharacter>> SpawnedNPCs { get => _spawnedNpcsDictionary; set => _spawnedNpcsDictionary = value; }
         public string Discriminator { get => _discriminator; set => _discriminator = value; }
         public Dictionary<string, InteractiveNpc> InteractiveNpcDictionary { get => _interactiveNpcDictionary; set => _interactiveNpcDictionary = value; }
+        public bool WaitingForMcdfLoad { get => _waitingForMcdfLoad; set => _waitingForMcdfLoad = value; }
 
         private Stopwatch _pollingTimer;
         private Stopwatch _inputCooldown;
@@ -56,20 +57,21 @@ namespace AQuestReborn
         private bool _triggerRefresh;
         private bool _waitingForSelectionRelease;
         Queue<KeyValuePair<string, ICharacter>> _mcdfQueue = new Queue<KeyValuePair<string, ICharacter>>();
-        Queue<Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest>> _npcActorSpawnQueue = new Queue<Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest>>();
+        Queue<Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest, bool>> _npcActorSpawnQueue = new Queue<Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest, bool>>();
         private ActorSpawnService _actorSpawnService;
         private MediaGameObject _playerObject;
         private unsafe Camera* _camera;
         private MediaCameraObject _playerCamera;
         private List<Tuple<int, QuestObjective, RoleplayingQuest>> _activeQuestChainObjectives;
         private bool alreadyProcessingRespawns;
-        private bool waitingForMcdfLoad;
+        private bool _waitingForMcdfLoad;
         Stopwatch zoneChangeCooldown = new Stopwatch();
         private bool _isInitialized;
         private bool _initializationStarted;
         private bool _refreshingNPCQuests;
         private string _discriminator;
         private bool _gotZoneDiscriminator;
+        private bool _checkForPartyMembers;
 
         public AQuestReborn(Plugin plugin)
         {
@@ -187,6 +189,7 @@ namespace AQuestReborn
                         }
                         _triggerRefresh = true;
                         _gotZoneDiscriminator = false;
+                        _checkForPartyMembers = true;
                         ICharacter character = null;
                         _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
                         (new Vector3(0, float.MaxValue, 0) / 10), Utility.ConvertDegreesToRadians(0));
@@ -242,7 +245,8 @@ namespace AQuestReborn
             if (Plugin.ClientState.IsLoggedIn)
             {
                 InitializeMediaManager();
-                RefreshNpcsForQuest(Plugin.ClientState.TerritoryType);
+                _checkForPartyMembers = true;
+                RefreshNpcs(Plugin.ClientState.TerritoryType);
                 _gotZoneDiscriminator = false;
             }
         }
@@ -364,7 +368,7 @@ namespace AQuestReborn
                 {
                     if (_npcActorSpawnQueue.Count > 0)
                     {
-                        if (!waitingForMcdfLoad && !McdfAccessUtils.McdfManager.IsWorking())
+                        if (!_waitingForMcdfLoad && !McdfAccessUtils.McdfManager.IsWorking())
                         {
                             var value = _npcActorSpawnQueue.Dequeue();
                             bool newNPC = !value.Item5;
@@ -427,6 +431,17 @@ namespace AQuestReborn
                                     Plugin.AnamcoreManager.SetVoice(character, 0);
                                     Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)value.Item1.DefaultAnimationId);
                                     LoadMCDF(value.Item3, character);
+                                    if (value.Item7)
+                                    {
+                                        Task.Run(() =>
+                                        {
+                                            while (_waitingForMcdfLoad)
+                                            {
+                                                Thread.Sleep(1000);
+                                            }
+                                            _interactiveNpcDictionary[value.Item2].FollowPlayer(2);
+                                        });
+                                    }
                                 }
                             }
                         }
@@ -436,11 +451,11 @@ namespace AQuestReborn
         }
         public void LoadMCDF(string mcdf, ICharacter character)
         {
+            _waitingForMcdfLoad = true;
             Task.Run(() =>
             {
                 lock (_npcActorSpawnQueue)
                 {
-                    waitingForMcdfLoad = true;
                     Thread.Sleep(200);
                     while (_mcdfQueue.Count > 0)
                     {
@@ -486,13 +501,13 @@ namespace AQuestReborn
         {
             if (_mcdfQueue.Count > 0)
             {
-                if (waitingForMcdfLoad && _mcdfRefreshTimer.ElapsedMilliseconds > 500 && !McdfAccessUtils.McdfManager.IsWorking())
+                if (_waitingForMcdfLoad && _mcdfRefreshTimer.ElapsedMilliseconds > 500 && !McdfAccessUtils.McdfManager.IsWorking())
                 {
                     var item = _mcdfQueue.Dequeue();
                     if (item.Value != null)
                     {
                         McdfAccessUtils.McdfManager?.LoadMcdf(item.Key, item.Value);
-                        waitingForMcdfLoad = false;
+                        _waitingForMcdfLoad = false;
                     }
                     _mcdfRefreshTimer.Restart();
                 }
@@ -512,11 +527,10 @@ namespace AQuestReborn
             if (_triggerRefresh && !McdfAccessUtils.McdfManager.IsWorking())
             {
                 RefreshMapMarkers();
-                RefreshNpcsForQuest(Plugin.ClientState.TerritoryType);
+                RefreshNpcs(Plugin.ClientState.TerritoryType);
                 _triggerRefresh = false;
             }
         }
-
 
         private unsafe void QuestInputCheck()
         {
@@ -581,7 +595,7 @@ namespace AQuestReborn
                 Plugin.PluginLog.Warning(ex, ex.Message);
             }
         }
-        public void RefreshNpcsForQuest(ushort territoryId, string questId = "", bool softRefresh = false)
+        public void RefreshNpcs(ushort territoryId, string questId = "", bool softRefresh = false)
         {
             if (!_refreshingNPCQuests && _npcActorSpawnQueue.Count == 0)
             {
@@ -622,7 +636,8 @@ namespace AQuestReborn
                                                 }
                                             }
                                         }
-                                        var value = new Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest>(startingInfo, npcAppearance.Value.NpcName, Path.Combine(foundPath, npcAppearance.Value.AppearanceData), spawnedNpcsList, foundExistingNPC, item.Item3);
+                                        var value = new Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest, bool>
+                                        (startingInfo, npcAppearance.Value.NpcName, Path.Combine(foundPath, npcAppearance.Value.AppearanceData), spawnedNpcsList, foundExistingNPC, item.Item3, false);
                                         _npcActorSpawnQueue.Enqueue(value);
                                     }
                                 }
@@ -636,6 +651,33 @@ namespace AQuestReborn
                 }
                 _refreshingNPCQuests = false;
             }
+            if (_checkForPartyMembers)
+            {
+                RefreshPartyMembers(territoryId);
+            }
+        }
+        private void RefreshPartyMembers(ushort territoryType)
+        {
+            var members = Plugin.RoleplayingQuestManager.GetPartyMembersForZone(territoryType);
+            foreach (var member in members)
+            {
+                if (Plugin.RoleplayingQuestManager.QuestChains.ContainsKey(member.QuestId))
+                {
+                    var transform = new Transform() { Name = member.NpcName, Position = Plugin.ClientState.LocalPlayer.Position, TransformScale = new Vector3(1, 1, 1) };
+                    if (!_spawnedNpcsDictionary.ContainsKey(member.QuestId))
+                    {
+                        _spawnedNpcsDictionary[member.QuestId] = new Dictionary<string, ICharacter>();
+                    }
+                    var spawnedNpcList = _spawnedNpcsDictionary[member.QuestId];
+                    var foundExistingNpc = _spawnedNpcsDictionary.ContainsKey(member.NpcName);
+                    var customization = Plugin.RoleplayingQuestManager.GetNpcInformation(member.QuestId, member.NpcName);
+                    var quest = Plugin.RoleplayingQuestManager.QuestChains[member.QuestId];
+                    var value = new Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest, bool>(
+                    transform, member.NpcName, Path.Combine(quest.FoundPath, customization.AppearanceData), spawnedNpcList, foundExistingNpc, quest, true);
+                    _npcActorSpawnQueue.Enqueue(value);
+                }
+            }
+            _checkForPartyMembers = false;
         }
         public void UpdateNPCAppearance(ushort territoryId, string questId, string npcName, string appearancePath)
         {
@@ -647,7 +689,7 @@ namespace AQuestReborn
             {
                 try
                 {
-                    RefreshNpcsForQuest(territoryId, questId, true);
+                    RefreshNpcs(territoryId, questId, true);
                 }
                 catch (Exception e)
                 {

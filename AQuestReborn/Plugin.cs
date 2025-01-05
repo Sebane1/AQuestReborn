@@ -183,7 +183,7 @@ public sealed class Plugin : IDalamudPlugin
             try
             {
                 _anamcoreManager = new AnamcoreManager(this);
-                _roleplayingQuestManager = new RoleplayingQuestManager(Configuration.QuestChains, Configuration.QuestProgression, Configuration.CompletedObjectives, Configuration.QuestInstallFolder);
+                _roleplayingQuestManager = new RoleplayingQuestManager(Configuration.QuestChains, Configuration.QuestProgression, Configuration.CompletedObjectives, Configuration.NpcPartyMembers, Configuration.QuestInstallFolder);
                 _emoteReaderHook = new EmoteReaderHooks(_gameInteropProvider, _clientState, _objectTable);
                 _aQuestReborn = new AQuestReborn.AQuestReborn(this);
                 _alreadyInitialized = true;

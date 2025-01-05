@@ -395,6 +395,23 @@ public class DialogueWindow : Window, IDisposable
                             if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
                             {
                                 Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].FollowPlayer(2);
+                                Plugin.RoleplayingQuestManager.AddPartyMember(new NpcPartyMember()
+                                {
+                                    NpcName = item.NpcName,
+                                    QuestId = questDisplayObject.RoleplayingQuest.QuestId,
+                                    ZoneWhiteList = new List<int> { Plugin.ClientState.TerritoryType }
+                                });
+                                Plugin.ToastGui.ShowNormal(item.NpcName + " is now following you in zones related to this quest.");
+                            }
+                            break;
+                        case QuestEvent.EventEndBehaviourType.EventEndsEarlyWhenHitAndNPCStopsFollowingPlayer:
+                            _index = questDisplayObject.QuestObjective.QuestText.Count;
+                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                            {
+                                Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].StopFollowingPlayer();
+                                Plugin.RoleplayingQuestManager.RemovePartyMember(
+                                Plugin.RoleplayingQuestManager.GetNpcPartyMember(questDisplayObject.RoleplayingQuest.QuestId, item.NpcName));
+                                Plugin.ToastGui.ShowNormal(item.NpcName + " has stopped following you.");
                             }
                             break;
                         case QuestEvent.EventEndBehaviourType.None:
@@ -426,7 +443,7 @@ public class DialogueWindow : Window, IDisposable
                 _blockProgression = false;
                 _objectiveSkip = false;
             }
-            Plugin.AQuestReborn.RefreshNpcsForQuest(Plugin.ClientState.TerritoryType, questDisplayObject.RoleplayingQuest.QuestId, true);
+            Plugin.AQuestReborn.RefreshNpcs(Plugin.ClientState.TerritoryType, questDisplayObject.RoleplayingQuest.QuestId, true);
             Plugin.AQuestReborn.RefreshMapMarkers();
             Plugin.SaveProgress();
         }
