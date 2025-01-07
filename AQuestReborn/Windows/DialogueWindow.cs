@@ -19,6 +19,7 @@ using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Style;
 using MareSynchronos.Utils;
 using System.Threading;
+using AQuestReborn;
 
 namespace SamplePlugin.Windows;
 
@@ -41,6 +42,8 @@ public class DialogueWindow : Window, IDisposable
     List<byte[]> _dialogueBoxStyles = new List<byte[]>();
     int _currentDialogueBoxIndex = 0;
     private string _mcdfSwap;
+    private string _playerAppearanceSwap;
+    private bool _playerAppearanceSwapAffectsRacial;
     private string _lastNpcName;
     private bool _alreadyLoadingFrame;
     private Dictionary<int, IDalamudTextureWrap> _dialogueStylesToLoad = new Dictionary<int, IDalamudTextureWrap>();
@@ -298,6 +301,8 @@ public class DialogueWindow : Window, IDisposable
                 _currentName = string.IsNullOrEmpty(item.NpcAlias) ? item.NpcName : item.NpcAlias;
                 _currentDialogueBoxIndex = item.DialogueBoxStyle;
                 _mcdfSwap = item.AppearanceSwap;
+                _playerAppearanceSwap = item.PlayerAppearanceSwap;
+                _playerAppearanceSwapAffectsRacial = false;
                 Task.Run(() =>
                 {
                     var targetTextValue = _targetText;
@@ -325,11 +330,24 @@ public class DialogueWindow : Window, IDisposable
                 string customAudioPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueAudio);
                 string customBackgroundPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.EventBackground);
                 string customMcdfPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.AppearanceSwap);
+                string customPlayerMcdfPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.PlayerAppearanceSwap);
                 if (!string.IsNullOrEmpty(_mcdfSwap) && File.Exists(customMcdfPath))
                 {
                     if (Plugin.RoleplayingQuestManager.SwapAppearanceData(questDisplayObject.RoleplayingQuest, item.NpcName, item.AppearanceSwap))
                     {
-                        Plugin.AQuestReborn.UpdateNPCAppearance(Plugin.ClientState.TerritoryType, questDisplayObject.RoleplayingQuest.QuestId, item.NpcName, Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.AppearanceSwap));
+                        Plugin.AQuestReborn.UpdateNPCAppearance(Plugin.ClientState.TerritoryType, questDisplayObject.RoleplayingQuest.QuestId, item.NpcName, customMcdfPath);
+                    }
+                }
+                if (!string.IsNullOrEmpty(_playerAppearanceSwap) && File.Exists(customPlayerMcdfPath))
+                {
+                    if (customPlayerMcdfPath != Plugin.RoleplayingQuestManager.GetPlayerAppearanceForZone(Plugin.ClientState.TerritoryType, DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState)))
+                    {
+                        Task.Run(() =>
+                        {
+                            Thread.Sleep(1000);
+                            Plugin.AQuestReborn.LoadMCDF(customPlayerMcdfPath, Plugin.ClientState.LocalPlayer);
+                            Plugin.RoleplayingQuestManager.AddAppearance(questDisplayObject.RoleplayingQuest.QuestId, customPlayerMcdfPath, _playerAppearanceSwapAffectsRacial);
+                        });
                     }
                 }
                 if (_currentName.ToLower() == "system")

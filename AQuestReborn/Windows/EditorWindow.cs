@@ -421,7 +421,10 @@ public class EditorWindow : Window, IDisposable
                 var eventEndTypes = Enum.GetNames(typeof(QuestEvent.EventBehaviourType));
                 var eventBackgroundTypes = Enum.GetNames(typeof(QuestEvent.EventBackgroundType));
                 var eventConditionTypes = Enum.GetNames(typeof(QuestEvent.EventConditionType));
+                var eventPlayerAppearanceApplicationTypes = Enum.GetNames(typeof(QuestEvent.AppearanceSwapType));
                 var appearanceSwap = item.AppearanceSwap;
+                var playerAppearanceSwap = item.PlayerAppearanceSwap;
+                var playerAppearanceSwapType = (int)item.PlayerAppearanceSwapType;
                 var loopAnimation = item.LoopAnimation;
 
                 if (ImGui.Combo("Condition For Dialogue To Occur##", ref dialogueCondition, eventConditionTypes, eventConditionTypes.Length))
@@ -458,10 +461,21 @@ public class EditorWindow : Window, IDisposable
                 {
                     item.DialogueAudio = dialogueAudio;
                 }
-                if (ImGui.InputText("Appearance Swap##", ref appearanceSwap, 255))
+                if (ImGui.InputText("Npc Appearance Swap##", ref appearanceSwap, 255))
                 {
                     item.AppearanceSwap = appearanceSwap;
                 }
+
+                if (ImGui.InputText("Player Appearance Swap##", ref playerAppearanceSwap, 255))
+                {
+                    item.PlayerAppearanceSwap = playerAppearanceSwap;
+                }
+
+                if (ImGui.Combo("Player Appearance Swap Type", ref playerAppearanceSwapType, eventPlayerAppearanceApplicationTypes, eventPlayerAppearanceApplicationTypes.Length))
+                {
+                    item.PlayerAppearanceSwapType = (AppearanceSwapType)eventBackgroundType;
+                }
+
                 if (ImGui.Combo("Box Style##", ref boxStyle, _boxStyles, _boxStyles.Length))
                 {
                     item.DialogueBoxStyle = boxStyle;
@@ -619,7 +633,7 @@ public class EditorWindow : Window, IDisposable
                                         {
                                             item.RandomizedEventToSkipTo[i] = randomizedEventToJumpTo;
                                         }
-                                        ImGui.SameLine();   
+                                        ImGui.SameLine();
                                         if (item.RandomizedEventToSkipTo.Count < 2)
                                         {
                                             ImGui.BeginDisabled();

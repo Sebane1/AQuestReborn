@@ -112,6 +112,7 @@ namespace AQuestReborn
                                     SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta),
                                                  _currentRotation = Vector3.Lerp(_currentRotation, _defaultRotation, 1),
                                                  _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
+                                    _plugin.AnamcoreManager.StopEmote(_character.Address);
                                 }
                             }
                         }

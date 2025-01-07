@@ -72,6 +72,7 @@ namespace AQuestReborn
         private string _discriminator;
         private bool _gotZoneDiscriminator;
         private bool _checkForPartyMembers;
+        private bool _hasCheckedForPlayerAppearance;
 
         public AQuestReborn(Plugin plugin)
         {
@@ -166,23 +167,27 @@ namespace AQuestReborn
                 _spawnedNpcsDictionary.Clear();
                 _mcdfRefreshTimer.Reset();
                 _interactiveNpcDictionary.Clear();
+                _hasCheckedForPlayerAppearance = false;
                 Task.Run(() =>
                 {
                     try
                     {
-                        try
+                        if (!McdfAccessUtils.McdfManager.IsWorking())
                         {
-                            if (Directory.Exists(McdfAccessUtils.CacheLocation))
+                            try
                             {
-                                foreach (var file in Directory.EnumerateFiles(McdfAccessUtils.CacheLocation, "*.tmp"))
+                                if (Directory.Exists(McdfAccessUtils.CacheLocation))
                                 {
-                                    File.Delete(file);
+                                    foreach (var file in Directory.EnumerateFiles(McdfAccessUtils.CacheLocation, "*.tmp"))
+                                    {
+                                        File.Delete(file);
+                                    }
                                 }
                             }
-                        }
-                        catch (Exception e)
-                        {
-                            Plugin.PluginLog.Warning(e, e.Message);
+                            catch (Exception e)
+                            {
+                                Plugin.PluginLog.Warning(e, e.Message);
+                            }
                         }
                         while (Plugin.ClientState.LocalPlayer == null || _actorSpawnService == null)
                         {
@@ -298,6 +303,7 @@ namespace AQuestReborn
                             CheckForNPCRefresh();
                             CheckForMapRefresh();
                             CheckZoneDiscriminator();
+                            CheckForPlayerAppearance();
                         }
                     }
                     if (!zoneChangeCooldown.IsRunning)
@@ -309,6 +315,24 @@ namespace AQuestReborn
             catch (Exception ex)
             {
                 Plugin.PluginLog.Warning(ex, ex.Message);
+            }
+        }
+
+        private void CheckForPlayerAppearance()
+        {
+            if (!_waitingForMcdfLoad && !McdfAccessUtils.McdfManager.IsWorking() && !_hasCheckedForPlayerAppearance)
+            {
+                _hasCheckedForPlayerAppearance = true;
+                var appearance = Plugin.RoleplayingQuestManager.GetPlayerAppearanceForZone(Plugin.ClientState.TerritoryType, _discriminator);
+                if (!string.IsNullOrEmpty(appearance))
+                {
+                    LoadMCDF(appearance, Plugin.ClientState.LocalPlayer);
+                    Plugin.ToastGui.ShowNormal("A quest in this zone is affecting your characters appearance.");
+                }
+                else
+                {
+                    McdfAccessUtils.McdfManager.RemoveAllTemporaryCollections();
+                }
             }
         }
 
@@ -635,7 +659,6 @@ namespace AQuestReborn
                     }
                     var spawnedNpcList = _spawnedNpcsDictionary[member.QuestId];
                     var foundExistingNpc = _spawnedNpcsDictionary.ContainsKey(member.NpcName);
-                    //_spawnedNpcsDictionary[member.QuestId][member.NpcName] = null;
                     var customization = Plugin.RoleplayingQuestManager.GetNpcInformation(member.QuestId, member.NpcName);
                     var quest = Plugin.RoleplayingQuestManager.QuestChains[member.QuestId];
                     var value = new Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest, bool>(
@@ -716,6 +739,7 @@ namespace AQuestReborn
         }
         public void Dispose()
         {
+            McdfAccessUtils.McdfManager.RemoveAllTemporaryCollections();
         }
     }
 }
