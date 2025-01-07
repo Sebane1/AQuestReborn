@@ -36,7 +36,11 @@ namespace AQuestReborn
         private bool _disposed;
         private Vector3 _currentScale;
         private PosingCapability? _posing;
-        private bool _lock;
+        private bool _followDataLock;
+        private bool firstPositionSet;
+        private Vector3 _lastDefaultPosition;
+        private Vector3 _lastDefaultRotation;
+        private Vector3 _snapPosition;
 
         public string LastMcdf { get; internal set; }
 
@@ -60,7 +64,7 @@ namespace AQuestReborn
         {
             try
             {
-                if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !McdfAccessUtils.McdfManager.IsWorking() && _plugin.ClientState.LocalPlayer != null && !_lock)
+                if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !McdfAccessUtils.McdfManager.IsWorking() && _plugin.ClientState.LocalPlayer != null)
                 {
                     if (_character != null)
                     {
@@ -87,7 +91,7 @@ namespace AQuestReborn
                         }
                         else
                         {
-                            if (!_lock)
+                            if (!_followPlayer || _plugin.DialogueWindow.IsOpen)
                             {
                                 if (_shouldBeMoving)
                                 {
@@ -167,9 +171,20 @@ namespace AQuestReborn
         }
         public void SetDefaults(Vector3 position, Vector3 rotation)
         {
+            if (!firstPositionSet)
+            {
+                firstPositionSet = true;
+                _lastDefaultPosition = position;
+                _lastDefaultRotation = rotation;
+            }
+            else
+            {
+                _lastDefaultPosition = _defaultPosition;
+                _lastDefaultRotation = _defaultRotation;
+            }
             _defaultPosition = position;
             _defaultRotation = rotation;
-            if (!_followPlayer)
+            if (!_followPlayer && !_followDataLock)
             {
                 _currentPosition = position;
                 _currentRotation = rotation;
@@ -190,19 +205,17 @@ namespace AQuestReborn
             _speed = speed;
         }
 
-        public void FollowPlayer(float speed, bool setsCurrentPosition = false)
+        public void FollowPlayer(float speed, bool usePlayerPos = false)
         {
-            _lock = true;
             if (_plugin.ClientState.LocalPlayer != null)
             {
                 _followPlayer = true;
                 _speed = speed;
-                if (setsCurrentPosition)
+                if (usePlayerPos)
                 {
                     _currentPosition = _plugin.ClientState.LocalPlayer.Position;
                 }
             }
-            _lock = false;
         }
         public void StopFollowingPlayer()
         {
