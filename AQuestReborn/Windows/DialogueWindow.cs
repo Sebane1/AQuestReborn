@@ -340,7 +340,7 @@ public class DialogueWindow : Window, IDisposable
                 }
                 if (!string.IsNullOrEmpty(_playerAppearanceSwap) && File.Exists(customPlayerMcdfPath))
                 {
-                    if (customPlayerMcdfPath != Plugin.RoleplayingQuestManager.GetPlayerAppearanceForZone(Plugin.ClientState.TerritoryType, DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState)))
+                    if (customPlayerMcdfPath != Plugin.RoleplayingQuestManager.GetPlayerAppearanceForZone(Plugin.ClientState.TerritoryType, Plugin.AQuestReborn.Discriminator))
                     {
                         Task.Run(() =>
                         {
