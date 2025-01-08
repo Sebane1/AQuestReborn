@@ -73,13 +73,14 @@ namespace AQuestReborn
         private bool _gotZoneDiscriminator;
         private bool _checkForPartyMembers;
         private bool _hasCheckedForPlayerAppearance;
+        private bool _disposed;
 
         public AQuestReborn(Plugin plugin)
         {
             Plugin = plugin;
+            plugin.RoleplayingQuestManager.LoadMainQuestGameObject(new QuestGameObject(plugin.ClientState));
             Plugin.DialogueBackgroundWindow.ButtonClicked += DialogueBackgroundWindow_buttonClicked;
             Plugin.ObjectiveWindow.OnSelectionAttempt += DialogueBackgroundWindow_buttonClicked;
-            plugin.RoleplayingQuestManager.LoadMainQuestGameObject(new QuestGameObject(plugin.ClientState));
             Plugin.QuestAcceptanceWindow.OnQuestAccepted += QuestAcceptanceWindow_OnQuestAccepted;
             plugin.RoleplayingQuestManager.OnQuestTextTriggered += _roleplayingQuestManager_OnQuestTextTriggered;
             plugin.RoleplayingQuestManager.OnQuestStarted += _roleplayingQuestManager_OnQuestStarted;
@@ -283,38 +284,41 @@ namespace AQuestReborn
 
         private void _framework_Update(IFramework framework)
         {
-            try
+            if (!_disposed)
             {
-                if (!Plugin.ClientState.IsGPosing && !Plugin.ClientState.IsPvPExcludingDen && !Conditions.IsInBetweenAreas && !Conditions.IsWatchingCutscene
-                    && !Conditions.IsOccupied && !Conditions.IsInCombat && Plugin.ClientState.IsLoggedIn)
+                try
                 {
-                    // Hopefully waiting prevents crashing on zone changes?
-                    if (zoneChangeCooldown.ElapsedMilliseconds > 3000)
+                    if (!Plugin.ClientState.IsGPosing && !Plugin.ClientState.IsPvPExcludingDen && !Conditions.IsInBetweenAreas && !Conditions.IsWatchingCutscene
+                        && !Conditions.IsOccupied && !Conditions.IsInCombat && Plugin.ClientState.IsLoggedIn)
                     {
-                        if (!_isInitialized)
+                        // Hopefully waiting prevents crashing on zone changes?
+                        if (zoneChangeCooldown.ElapsedMilliseconds > 3000)
                         {
-                            CheckInitialization();
+                            if (!_isInitialized)
+                            {
+                                CheckInitialization();
+                            }
+                            else
+                            {
+                                CheckForNewMCDFLoad();
+                                QuestInputCheck();
+                                CheckForNewPlayerCreationLoad();
+                                CheckForNPCRefresh();
+                                CheckForMapRefresh();
+                                CheckZoneDiscriminator();
+                                CheckForPlayerAppearance();
+                            }
                         }
-                        else
+                        if (!zoneChangeCooldown.IsRunning)
                         {
-                            CheckForNewMCDFLoad();
-                            QuestInputCheck();
-                            CheckForNewPlayerCreationLoad();
-                            CheckForNPCRefresh();
-                            CheckForMapRefresh();
-                            CheckZoneDiscriminator();
-                            CheckForPlayerAppearance();
+                            zoneChangeCooldown.Start();
                         }
-                    }
-                    if (!zoneChangeCooldown.IsRunning)
-                    {
-                        zoneChangeCooldown.Start();
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                Plugin.PluginLog.Warning(ex, ex.Message);
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Warning(ex, ex.Message);
+                }
             }
         }
 
@@ -739,7 +743,22 @@ namespace AQuestReborn
         }
         public void Dispose()
         {
+            _disposed = true;
             McdfAccessUtils.McdfManager.RemoveAllTemporaryCollections();
+            Plugin.DialogueBackgroundWindow.ButtonClicked -= DialogueBackgroundWindow_buttonClicked;
+            Plugin.ObjectiveWindow.OnSelectionAttempt -= DialogueBackgroundWindow_buttonClicked;
+            Plugin.QuestAcceptanceWindow.OnQuestAccepted -= QuestAcceptanceWindow_OnQuestAccepted;
+            Plugin.RoleplayingQuestManager.OnQuestTextTriggered -= _roleplayingQuestManager_OnQuestTextTriggered;
+            Plugin.RoleplayingQuestManager.OnQuestStarted -= _roleplayingQuestManager_OnQuestStarted;
+            Plugin.RoleplayingQuestManager.OnQuestCompleted -= _roleplayingQuestManager_OnQuestCompleted;
+            Plugin.RoleplayingQuestManager.OnObjectiveCompleted -= _roleplayingQuestManager_OnObjectiveCompleted;
+            Plugin.RoleplayingQuestManager.OnQuestAcceptancePopup -= _roleplayingQuestManager_OnQuestAcceptancePopup;
+            Plugin.RewardWindow.OnRewardClosed -= RewardWindow_OnRewardClosed;
+            Plugin.Framework.Update -= _framework_Update;
+            Plugin.ClientState.Login -= _clientState_Login;
+            Plugin.ClientState.TerritoryChanged -= _clientState_TerritoryChanged;
+            Plugin.ChatGui.ChatMessage -= ChatGui_ChatMessage;
+            Plugin.EmoteReaderHook.OnEmote -= (instigator, emoteId) => OnEmote(instigator as ICharacter, emoteId);
         }
     }
 }

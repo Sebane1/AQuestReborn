@@ -43,7 +43,7 @@ namespace AQuestReborn
         private static unsafe bool IsResidential()
         {
             var housingManager = HousingManager.Instance();
-            return housingManager->IsInside() || housingManager->OutdoorTerritory != null;
+            return housingManager != null && (housingManager->IsInside() || housingManager->OutdoorTerritory != null);
         }
     }
 }
