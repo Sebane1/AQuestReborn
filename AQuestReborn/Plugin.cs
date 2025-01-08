@@ -39,6 +39,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
+    public static Plugin Instance { get; set; }
 
     private const string CommandName = "/questreborn";
     private const string CommandName2 = "/questchat";
@@ -184,7 +185,7 @@ public sealed class Plugin : IDalamudPlugin
             {
                 _anamcoreManager = new AnamcoreManager(this);
                 _roleplayingQuestManager = new RoleplayingQuestManager(
-                    Configuration.QuestChains, Configuration.QuestProgression, Configuration.CompletedObjectives, 
+                    Configuration.QuestChains, Configuration.QuestProgression, Configuration.CompletedObjectives,
                     Configuration.NpcPartyMembers, Configuration.PlayerAppearances, Configuration.QuestInstallFolder);
                 _emoteReaderHook = new EmoteReaderHooks(_gameInteropProvider, _clientState, _objectTable);
                 _aQuestReborn = new AQuestReborn.AQuestReborn(this);

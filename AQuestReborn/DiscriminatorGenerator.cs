@@ -1,5 +1,6 @@
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using SamplePlugin;
 using System;
 
 namespace AQuestReborn
@@ -39,7 +40,7 @@ namespace AQuestReborn
             }
             catch (Exception e)
             {
-
+                Plugin.Instance.PluginLog.Warning(e, e.Message);
             }
             return value;
         }
