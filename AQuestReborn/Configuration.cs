@@ -42,7 +42,6 @@ public class Configuration : IPluginConfiguration
 
     public Dictionary<string, int> QuestProgression { get => _questProgression; set => _questProgression = value; }
     public Dictionary<string, List<string>> CompletedObjectives { get { return _completedObjectives; } set { _completedObjectives = value; } }
-
     public Dictionary<string, RoleplayingQuest> QuestChains { get => _questChains; set => _questChains = value; }
     public Dictionary<string, Dictionary<string, NpcPartyMember>> NpcPartyMembers { get => _npcPartyMembers; set => _npcPartyMembers = value; }
     public Dictionary<string, PlayerAppearanceData> PlayerAppearances { get => _playerAppearances; set => _playerAppearances = value; }

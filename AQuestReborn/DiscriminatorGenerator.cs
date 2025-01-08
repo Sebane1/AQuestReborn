@@ -7,7 +7,6 @@ namespace AQuestReborn
 {
     public static unsafe class DiscriminatorGenerator
     {
-        static HousingManager* housingManager;
         public static unsafe string GetDiscriminator(IClientState clientState)
         {
             string value = "";
@@ -17,10 +16,7 @@ namespace AQuestReborn
                 {
                     if (clientState.LocalPlayer != null)
                     {
-                        if (housingManager == null)
-                        {
-                            housingManager = HousingManager.Instance();
-                        }
+                        var housingManager = HousingManager.Instance();
                         if (housingManager != null)
                         {
                             if (IsResidential())
