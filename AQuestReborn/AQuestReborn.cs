@@ -169,27 +169,27 @@ namespace AQuestReborn
                 _mcdfRefreshTimer.Reset();
                 _interactiveNpcDictionary.Clear();
                 _hasCheckedForPlayerAppearance = false;
+                if (!McdfAccessUtils.McdfManager.IsWorking() && _isInitialized)
+                {
+                    try
+                    {
+                        if (Directory.Exists(McdfAccessUtils.CacheLocation))
+                        {
+                            foreach (var file in Directory.EnumerateFiles(McdfAccessUtils.CacheLocation, "*.tmp"))
+                            {
+                                File.Delete(file);
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Plugin.PluginLog.Warning(e, e.Message);
+                    }
+                }
                 Task.Run(() =>
                 {
                     try
                     {
-                        if (!McdfAccessUtils.McdfManager.IsWorking())
-                        {
-                            try
-                            {
-                                if (Directory.Exists(McdfAccessUtils.CacheLocation))
-                                {
-                                    foreach (var file in Directory.EnumerateFiles(McdfAccessUtils.CacheLocation, "*.tmp"))
-                                    {
-                                        File.Delete(file);
-                                    }
-                                }
-                            }
-                            catch (Exception e)
-                            {
-                                Plugin.PluginLog.Warning(e, e.Message);
-                            }
-                        }
                         while (Plugin.ClientState.LocalPlayer == null || _actorSpawnService == null)
                         {
                             Thread.Sleep(3000);
@@ -721,7 +721,6 @@ namespace AQuestReborn
             string path = Path.Combine(foundPath, e.QuestStartTitleCard);
             string soundPath = Path.Combine(foundPath, e.QuestStartTitleSound);
             Plugin.TitleCardWindow.DisplayCard(path, soundPath);
-            // Plugin.ToastGui.ShowQuest("Quest Started");
         }
 
         private void DialogueBackgroundWindow_buttonClicked(object? sender, EventArgs e)
