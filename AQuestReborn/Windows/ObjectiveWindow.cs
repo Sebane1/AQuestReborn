@@ -150,7 +150,7 @@ public class ObjectiveWindow : Window, IDisposable
                                 var distance = Vector2.Distance(new Vector2(screenPosition.X / Size.Value.X, 0),
                                     new Vector2(value.X / Size.Value.X, 0));
                                 var playerDistance = Vector3.Distance(Plugin.ClientState.LocalPlayer.Position, item.Item2.Coordinates);
-                                if (distance < 0.1f && playerDistance < Plugin.RoleplayingQuestManager.MinimumDistance
+                                if (distance < 0.01f && playerDistance < Plugin.RoleplayingQuestManager.MinimumDistance
                                     && item.Item2.TypeOfObjectiveTrigger == RoleplayingQuestCore.QuestObjective.ObjectiveTriggerType.NormalInteraction)
                                 {
                                     _mouseDistanceIsCloseToObjective = true;
