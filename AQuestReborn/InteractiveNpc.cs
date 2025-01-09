@@ -64,7 +64,7 @@ namespace AQuestReborn
         {
             try
             {
-                if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !McdfAccessUtils.McdfManager.IsWorking() && _plugin.ClientState.LocalPlayer != null)
+                if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking() && _plugin.ClientState.LocalPlayer != null)
                 {
                     if (_character != null)
                     {
@@ -140,7 +140,7 @@ namespace AQuestReborn
         {
             try
             {
-                if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !McdfAccessUtils.McdfManager.IsWorking() && _plugin.ClientState.LocalPlayer != null)
+                if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking() && _plugin.ClientState.LocalPlayer != null)
                 {
                     CheckPosing();
                     if (_posing != null)

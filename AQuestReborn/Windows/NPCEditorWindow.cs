@@ -96,7 +96,7 @@ public class NPCEditorWindow : Window, IDisposable
                         string questPath = Path.Combine(Plugin.Configuration.QuestInstallFolder, _roleplayingQuest.QuestName);
                         string mcdfPath = Path.Combine(questPath, mcdfName);
                         Directory.CreateDirectory(questPath);
-                        McdfAccessUtils.McdfManager.CreateMCDF(mcdfPath);
+                        AppearanceAccessUtils.AppearanceManager.CreateMCDF(mcdfPath);
                         Plugin.EditorWindow.RoleplayingQuestCreator.SaveQuest(questPath);
                         item.AppearanceData = mcdfName;
                         _isCreatingAppearance = false;

@@ -57,7 +57,7 @@ namespace AQuestReborn
         private Dictionary<string, InteractiveNpc> _interactiveNpcDictionary = new Dictionary<string, InteractiveNpc>();
         private bool _triggerRefresh;
         private bool _waitingForSelectionRelease;
-        Queue<Tuple<string, AppearanceSwapType, ICharacter>> _mcdfQueue = new Queue<Tuple<string, AppearanceSwapType, ICharacter>>();
+        Queue<Tuple<string, AppearanceSwapType, ICharacter>> _appearanceApplicationQueue = new Queue<Tuple<string, AppearanceSwapType, ICharacter>>();
         Queue<Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest, bool>> _npcActorSpawnQueue = new Queue<Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest, bool>>();
         private ActorSpawnService _actorSpawnService;
         private MediaGameObject _playerObject;
@@ -163,20 +163,20 @@ namespace AQuestReborn
                 _inputCooldown.Start();
                 _actorSpawnRefreshTimer.Start();
                 _mapRefreshTimer.Start();
-                _mcdfQueue.Clear();
+                _appearanceApplicationQueue.Clear();
                 _npcActorSpawnQueue.Clear();
                 zoneChangeCooldown.Reset();
                 _spawnedNpcsDictionary.Clear();
                 _mcdfRefreshTimer.Reset();
                 _interactiveNpcDictionary.Clear();
                 _hasCheckedForPlayerAppearance = false;
-                if (!McdfAccessUtils.McdfManager.IsWorking() && _isInitialized)
+                if (!AppearanceAccessUtils.AppearanceManager.IsWorking() && _isInitialized)
                 {
                     try
                     {
-                        if (Directory.Exists(McdfAccessUtils.CacheLocation))
+                        if (Directory.Exists(AppearanceAccessUtils.CacheLocation))
                         {
-                            foreach (var file in Directory.EnumerateFiles(McdfAccessUtils.CacheLocation, "*.tmp"))
+                            foreach (var file in Directory.EnumerateFiles(AppearanceAccessUtils.CacheLocation, "*.tmp"))
                             {
                                 File.Delete(file);
                             }
@@ -325,18 +325,18 @@ namespace AQuestReborn
 
         private void CheckForPlayerAppearance()
         {
-            if (!_waitingForMcdfLoad && !McdfAccessUtils.McdfManager.IsWorking() && !_hasCheckedForPlayerAppearance)
+            if (!_waitingForMcdfLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking() && !_hasCheckedForPlayerAppearance)
             {
                 _hasCheckedForPlayerAppearance = true;
                 var appearance = Plugin.RoleplayingQuestManager.GetPlayerAppearanceForZone(Plugin.ClientState.TerritoryType, _discriminator);
                 if (appearance != null)
                 {
-                    LoadMCDF(appearance.AppearanceData, appearance.AppearanceSwapType, Plugin.ClientState.LocalPlayer);
+                    LoadAppearance(appearance.AppearanceData, appearance.AppearanceSwapType, Plugin.ClientState.LocalPlayer);
                     Plugin.ToastGui.ShowNormal("A quest in this zone is affecting your characters appearance.");
                 }
                 else
                 {
-                    McdfAccessUtils.McdfManager.RemoveTemporaryCollection(Plugin.ClientState.LocalPlayer.Name.TextValue);
+                    AppearanceAccessUtils.AppearanceManager.RemoveTemporaryCollection(Plugin.ClientState.LocalPlayer.Name.TextValue);
                 }
             }
         }
@@ -398,7 +398,7 @@ namespace AQuestReborn
                 {
                     if (_npcActorSpawnQueue.Count > 0)
                     {
-                        if (!_waitingForMcdfLoad && !McdfAccessUtils.McdfManager.IsWorking())
+                        if (!_waitingForMcdfLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking())
                         {
                             var value = _npcActorSpawnQueue.Dequeue();
                             bool newNPC = !value.Item5;
@@ -427,7 +427,7 @@ namespace AQuestReborn
                                     if (_interactiveNpcDictionary[value.Item2].LastMcdf != value.Item3
                                     || Plugin.RoleplayingQuestManager.QuestProgression[value.Item6.QuestId] == 0)
                                     {
-                                        LoadMCDF(value.Item3, AppearanceSwapType.EntireAppearance, character);
+                                        LoadAppearance(value.Item3, AppearanceSwapType.EntireAppearance, character);
                                         _interactiveNpcDictionary[value.Item2].LastMcdf = value.Item3;
                                     }
                                     Plugin.AnamcoreManager.SetVoice(character, 0);
@@ -443,7 +443,7 @@ namespace AQuestReborn
                 }
             }
         }
-        public void LoadMCDF(string mcdf, AppearanceSwapType appearanceSwapType, ICharacter character)
+        public void LoadAppearance(string apperanceData, AppearanceSwapType appearanceSwapType, ICharacter character)
         {
             _waitingForMcdfLoad = true;
             Task.Run(() =>
@@ -451,11 +451,11 @@ namespace AQuestReborn
                 lock (_npcActorSpawnQueue)
                 {
                     Thread.Sleep(200);
-                    while (_mcdfQueue.Count > 0)
+                    while (_appearanceApplicationQueue.Count > 0)
                     {
                         Thread.Sleep(200);
                     }
-                    _mcdfQueue.Enqueue(new Tuple<string, AppearanceSwapType, ICharacter>(mcdf, appearanceSwapType, character));
+                    _appearanceApplicationQueue.Enqueue(new Tuple<string, AppearanceSwapType, ICharacter>(apperanceData, appearanceSwapType, character));
                 }
             });
         }
@@ -493,14 +493,14 @@ namespace AQuestReborn
         }
         private async void CheckForNewMCDFLoad()
         {
-            if (_mcdfQueue.Count > 0)
+            if (_appearanceApplicationQueue.Count > 0)
             {
-                if (_waitingForMcdfLoad && _mcdfRefreshTimer.ElapsedMilliseconds > 500 && !McdfAccessUtils.McdfManager.IsWorking())
+                if (_waitingForMcdfLoad && _mcdfRefreshTimer.ElapsedMilliseconds > 500 && !AppearanceAccessUtils.AppearanceManager.IsWorking())
                 {
-                    var item = _mcdfQueue.Dequeue();
+                    var item = _appearanceApplicationQueue.Dequeue();
                     if (item.Item3 != null)
                     {
-                        McdfAccessUtils.McdfManager?.LoadMcdf(item.Item1, item.Item3, (int)item.Item2);
+                        AppearanceAccessUtils.AppearanceManager?.LoadAppearance(item.Item1, item.Item3, (int)item.Item2);
                         _waitingForMcdfLoad = false;
                     }
                     _mcdfRefreshTimer.Restart();
@@ -518,7 +518,7 @@ namespace AQuestReborn
 
         private void CheckForNPCRefresh()
         {
-            if (_triggerRefresh && !McdfAccessUtils.McdfManager.IsWorking())
+            if (_triggerRefresh && !AppearanceAccessUtils.AppearanceManager.IsWorking())
             {
                 RefreshMapMarkers();
                 RefreshNpcs(Plugin.ClientState.TerritoryType);
@@ -677,7 +677,7 @@ namespace AQuestReborn
         {
             try
             {
-                LoadMCDF(appearancePath, AppearanceSwapType.EntireAppearance, _spawnedNpcsDictionary[questId][npcName]);
+                LoadAppearance(appearancePath, AppearanceSwapType.EntireAppearance, _spawnedNpcsDictionary[questId][npcName]);
             }
             catch
             {
@@ -744,7 +744,7 @@ namespace AQuestReborn
         public void Dispose()
         {
             _disposed = true;
-            McdfAccessUtils.McdfManager.RemoveAllTemporaryCollections();
+            AppearanceAccessUtils.AppearanceManager.RemoveAllTemporaryCollections();
             Plugin.DialogueBackgroundWindow.ButtonClicked -= DialogueBackgroundWindow_buttonClicked;
             Plugin.ObjectiveWindow.OnSelectionAttempt -= DialogueBackgroundWindow_buttonClicked;
             Plugin.QuestAcceptanceWindow.OnQuestAccepted -= QuestAcceptanceWindow_OnQuestAccepted;

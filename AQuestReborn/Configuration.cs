@@ -25,9 +25,9 @@ public class Configuration : IPluginConfiguration
                 _questInstallFolder = value;
                 if (!string.IsNullOrEmpty(_questInstallFolder))
                 {
-                    McdfAccessUtils.CacheLocation = Path.Combine(Path.GetDirectoryName(_questInstallFolder + ".poop"), "QuestCache\\");
+                    AppearanceAccessUtils.CacheLocation = Path.Combine(Path.GetDirectoryName(_questInstallFolder + ".poop"), "QuestCache\\");
                     Directory.CreateDirectory(_questInstallFolder);
-                    Directory.CreateDirectory(McdfAccessUtils.CacheLocation);
+                    Directory.CreateDirectory(AppearanceAccessUtils.CacheLocation);
                 }
             }
         }
