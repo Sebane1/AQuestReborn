@@ -473,7 +473,7 @@ public class EditorWindow : Window, IDisposable
 
                 if (ImGui.Combo("Player Appearance Swap Type", ref playerAppearanceSwapType, eventPlayerAppearanceApplicationTypes, eventPlayerAppearanceApplicationTypes.Length))
                 {
-                    item.PlayerAppearanceSwapType = (AppearanceSwapType)eventBackgroundType;
+                    item.PlayerAppearanceSwapType = (AppearanceSwapType)playerAppearanceSwapType;
                 }
 
                 if (ImGui.Combo("Box Style##", ref boxStyle, _boxStyles, _boxStyles.Length))

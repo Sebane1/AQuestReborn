@@ -339,11 +339,12 @@ public class DialogueWindow : Window, IDisposable
                         Plugin.AQuestReborn.UpdateNPCAppearance(Plugin.ClientState.TerritoryType, questDisplayObject.RoleplayingQuest.QuestId, item.NpcName, customMcdfPath);
                     }
                 }
-                if (_playerAppearanceSwapType == QuestEvent.AppearanceSwapType.RevertAppearance)
+                if (_playerAppearanceSwapType != QuestEvent.AppearanceSwapType.RevertAppearance)
                 {
                     if (!string.IsNullOrEmpty(_playerAppearanceSwap) && File.Exists(customPlayerMcdfPath))
                     {
-                        if (customPlayerMcdfPath != Plugin.RoleplayingQuestManager.GetPlayerAppearanceForZone(Plugin.ClientState.TerritoryType, Plugin.AQuestReborn.Discriminator).AppearanceData)
+                        var data = Plugin.RoleplayingQuestManager.GetPlayerAppearanceForZone(Plugin.ClientState.TerritoryType, Plugin.AQuestReborn.Discriminator);
+                        if (data == null || customPlayerMcdfPath != data.AppearanceData)
                         {
                             Task.Run(() =>
                             {
