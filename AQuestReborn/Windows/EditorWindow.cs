@@ -461,12 +461,12 @@ public class EditorWindow : Window, IDisposable
                 {
                     item.DialogueAudio = dialogueAudio;
                 }
-                if (ImGui.InputText("Npc Appearance Swap##", ref appearanceSwap, 1400))
+                if (ImGui.InputText("Npc Appearance Swap##", ref appearanceSwap, 4000))
                 {
                     item.AppearanceSwap = appearanceSwap;
                 }
 
-                if (ImGui.InputText("Player Appearance Swap##", ref playerAppearanceSwap, 1400))
+                if (ImGui.InputText("Player Appearance Swap##", ref playerAppearanceSwap, 4000))
                 {
                     item.PlayerAppearanceSwap = playerAppearanceSwap;
                 }
