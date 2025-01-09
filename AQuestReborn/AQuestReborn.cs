@@ -443,7 +443,7 @@ namespace AQuestReborn
                 }
             }
         }
-        public void LoadAppearance(string apperanceData, AppearanceSwapType appearanceSwapType, ICharacter character)
+        public void LoadAppearance(string appearanceData, AppearanceSwapType appearanceSwapType, ICharacter character)
         {
             _waitingForMcdfLoad = true;
             Task.Run(() =>
@@ -455,7 +455,7 @@ namespace AQuestReborn
                     {
                         Thread.Sleep(200);
                     }
-                    _appearanceApplicationQueue.Enqueue(new Tuple<string, AppearanceSwapType, ICharacter>(apperanceData, appearanceSwapType, character));
+                    _appearanceApplicationQueue.Enqueue(new Tuple<string, AppearanceSwapType, ICharacter>(appearanceData, appearanceSwapType, character));
                 }
             });
         }
