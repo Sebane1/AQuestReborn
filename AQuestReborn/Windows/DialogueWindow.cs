@@ -20,6 +20,7 @@ using Dalamud.Interface.Style;
 using MareSynchronos.Utils;
 using System.Threading;
 using AQuestReborn;
+using McdfDataImporter;
 
 namespace SamplePlugin.Windows;
 
@@ -358,6 +359,7 @@ public class DialogueWindow : Window, IDisposable
                 else
                 {
                     Plugin.RoleplayingQuestManager.RemovePlayerAppearance(questDisplayObject.RoleplayingQuest.QuestId);
+                    McdfAccessUtils.McdfManager.RemoveTemporaryCollection(Plugin.ClientState.LocalPlayer.Name.TextValue);
                 }
                 if (_currentName.ToLower() == "system")
                 {

@@ -336,7 +336,7 @@ namespace AQuestReborn
                 }
                 else
                 {
-                    McdfAccessUtils.McdfManager.RemoveTemporaryCollections(Plugin.ClientState.LocalPlayer.Name.TextValue);
+                    McdfAccessUtils.McdfManager.RemoveTemporaryCollection(Plugin.ClientState.LocalPlayer.Name.TextValue);
                 }
             }
         }
