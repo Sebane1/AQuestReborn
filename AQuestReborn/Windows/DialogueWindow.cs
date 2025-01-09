@@ -332,9 +332,13 @@ public class DialogueWindow : Window, IDisposable
                 string customAudioPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueAudio);
                 string customBackgroundPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.EventBackground);
                 string customNpcAppearancefPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.AppearanceSwap);
-                string customPlayerAppearancefPath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.PlayerAppearanceSwap);
+                string customPlayerAppearancePath = Path.Combine(questDisplayObject.RoleplayingQuest.FoundPath, item.PlayerAppearanceSwap);
                 if (!string.IsNullOrEmpty(_npcAppearanceSwap) && File.Exists(customNpcAppearancefPath) || _npcAppearanceSwap.Length > 255)
                 {
+                    if (_npcAppearanceSwap.Length > 255)
+                    {
+                        customNpcAppearancefPath = _npcAppearanceSwap;
+                    }
                     if (Plugin.RoleplayingQuestManager.SwapAppearanceData(questDisplayObject.RoleplayingQuest, item.NpcName, item.AppearanceSwap))
                     {
                         Plugin.AQuestReborn.UpdateNPCAppearance(Plugin.ClientState.TerritoryType, questDisplayObject.RoleplayingQuest.QuestId, item.NpcName, customNpcAppearancefPath);
@@ -342,16 +346,20 @@ public class DialogueWindow : Window, IDisposable
                 }
                 if (_playerAppearanceSwapType != QuestEvent.AppearanceSwapType.RevertAppearance)
                 {
-                    if (!string.IsNullOrEmpty(_playerAppearanceSwap) && File.Exists(customPlayerAppearancefPath))
+                    if (!string.IsNullOrEmpty(_playerAppearanceSwap) && File.Exists(customPlayerAppearancePath) || item.PlayerAppearanceSwap.Length > 255)
                     {
+                        if (item.PlayerAppearanceSwap.Length > 255)
+                        {
+                            customPlayerAppearancePath = item.PlayerAppearanceSwap;
+                        }
                         var data = Plugin.RoleplayingQuestManager.GetPlayerAppearanceForZone(Plugin.ClientState.TerritoryType, Plugin.AQuestReborn.Discriminator);
-                        if (data == null || customPlayerAppearancefPath != data.AppearanceData)
+                        if (data == null || customPlayerAppearancePath != data.AppearanceData)
                         {
                             Task.Run(() =>
                             {
                                 Thread.Sleep(1000);
-                                Plugin.AQuestReborn.LoadAppearance(customPlayerAppearancefPath, _playerAppearanceSwapType, Plugin.ClientState.LocalPlayer);
-                                Plugin.RoleplayingQuestManager.AddPlayerAppearance(questDisplayObject.RoleplayingQuest.QuestId, customPlayerAppearancefPath, _playerAppearanceSwapType);
+                                Plugin.AQuestReborn.LoadAppearance(customPlayerAppearancePath, _playerAppearanceSwapType, Plugin.ClientState.LocalPlayer);
+                                Plugin.RoleplayingQuestManager.AddPlayerAppearance(questDisplayObject.RoleplayingQuest.QuestId, customPlayerAppearancePath, _playerAppearanceSwapType);
                             });
                         }
                     }
