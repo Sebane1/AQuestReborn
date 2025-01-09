@@ -185,7 +185,7 @@ public class EditorWindow : Window, IDisposable
                             _roleplayingQuestCreator.CurrentQuest.QuestReward = questReward;
                         }
                         break;
-                    case QuestRewardType.DownloadLink:
+                    case QuestRewardType.OnlineLink:
                         if (ImGui.InputText("Quest Reward (Download Link)", ref questReward, 255))
                         {
                             _roleplayingQuestCreator.CurrentQuest.QuestReward = questReward;

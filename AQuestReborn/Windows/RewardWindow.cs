@@ -33,7 +33,7 @@ public class RewardWindow : Window, IDisposable
         Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBackground;
 
-        Size = new Vector2(600, 300);
+        Size = new Vector2(600, 400);
         SizeCondition = ImGuiCond.Always;
         Plugin = plugin;
     }
@@ -93,13 +93,13 @@ public class RewardWindow : Window, IDisposable
                 ImGui.TextWrapped(_questToDisplay.QuestReward);
                 ImGui.PopStyleColor();
                 break;
-            case RoleplayingQuest.QuestRewardType.DownloadLink:
+            case RoleplayingQuest.QuestRewardType.OnlineLink:
                 ImGui.SetWindowFontScale(0.9f);
                 ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
                 ImGui.TextWrapped("Check URL: " + _questToDisplay.QuestReward);
                 ImGui.PopStyleColor();
                 ImGui.SetWindowFontScale(1.2f);
-                if (ImGui.Button("Awarded A Download", buttonSize))
+                if (ImGui.Button("Awarded A Link", buttonSize))
                 {
                     OpenFile(_questToDisplay.QuestReward, _questToDisplay.TypeOfReward);
                 }
@@ -149,7 +149,7 @@ public class RewardWindow : Window, IDisposable
                     Process.Start(processInfo);
                 }
                 break;
-            case RoleplayingQuest.QuestRewardType.DownloadLink:
+            case RoleplayingQuest.QuestRewardType.OnlineLink:
                 ProcessStartInfo processInfo2 = new ProcessStartInfo(relativePath);
                 processInfo2.UseShellExecute = true;
                 Process.Start(processInfo2);

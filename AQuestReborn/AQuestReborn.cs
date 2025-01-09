@@ -92,8 +92,32 @@ namespace AQuestReborn
             Plugin.Framework.Update += _framework_Update;
             Plugin.ClientState.Login += _clientState_Login;
             Plugin.ClientState.TerritoryChanged += _clientState_TerritoryChanged;
+            Plugin.ClientState.Logout += ClientState_Logout;
             Plugin.ChatGui.ChatMessage += ChatGui_ChatMessage;
             Plugin.EmoteReaderHook.OnEmote += (instigator, emoteId) => OnEmote(instigator as ICharacter, emoteId);
+        }
+
+        private void ClientState_Logout(int type, int code)
+        {
+            CleanupCache();
+        }
+
+        private void CleanupCache()
+        {
+            try
+            {
+                if (Directory.Exists(AppearanceAccessUtils.CacheLocation))
+                {
+                    foreach (var file in Directory.EnumerateFiles(AppearanceAccessUtils.CacheLocation, "*.tmp"))
+                    {
+                        File.Delete(file);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Plugin.PluginLog.Warning(e, e.Message);
+            }
         }
 
         private void ChatGui_ChatMessage(Dalamud.Game.Text.XivChatType type, int timestamp, ref Dalamud.Game.Text.SeStringHandling.SeString sender, ref Dalamud.Game.Text.SeStringHandling.SeString message, ref bool isHandled)
@@ -170,23 +194,6 @@ namespace AQuestReborn
                 _mcdfRefreshTimer.Reset();
                 _interactiveNpcDictionary.Clear();
                 _hasCheckedForPlayerAppearance = false;
-                if (!AppearanceAccessUtils.AppearanceManager.IsWorking() && _isInitialized)
-                {
-                    try
-                    {
-                        if (Directory.Exists(AppearanceAccessUtils.CacheLocation))
-                        {
-                            foreach (var file in Directory.EnumerateFiles(AppearanceAccessUtils.CacheLocation, "*.tmp"))
-                            {
-                                File.Delete(file);
-                            }
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        Plugin.PluginLog.Warning(e, e.Message);
-                    }
-                }
                 Task.Run(() =>
                 {
                     try
@@ -759,6 +766,8 @@ namespace AQuestReborn
             Plugin.ClientState.TerritoryChanged -= _clientState_TerritoryChanged;
             Plugin.ChatGui.ChatMessage -= ChatGui_ChatMessage;
             Plugin.EmoteReaderHook.OnEmote -= (instigator, emoteId) => OnEmote(instigator as ICharacter, emoteId);
+            Plugin.ClientState.Logout -= ClientState_Logout;
+            CleanupCache();
         }
     }
 }
