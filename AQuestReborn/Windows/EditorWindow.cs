@@ -437,7 +437,7 @@ public class EditorWindow : Window, IDisposable
                 var timeLimit = item.TimeLimit;
                 var eventHasNoReading = item.EventHasNoReading;
 
-                if (ImGui.Combo("Condition For Dialogue To Occur##", ref dialogueCondition, eventConditionTypes, eventConditionTypes.Length))
+                if (ImGui.Combo("Condition For Event To Occur##", ref dialogueCondition, eventConditionTypes, eventConditionTypes.Length))
                 {
                     item.ConditionForDialogueToOccur = (EventConditionType)dialogueCondition;
                 }
@@ -904,7 +904,7 @@ public class EditorWindow : Window, IDisposable
                         objective.SubObjectives.Add(new QuestObjective()
                         {
                             Coordinates = Plugin.ClientState.LocalPlayer.Position,
-                            Rotation = new Vector3(0, Utility.ConvertRadiansToDegrees(Plugin.ClientState.LocalPlayer.Rotation), 0),
+                            Rotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ClientState.LocalPlayer.Rotation), 0),
                             TerritoryId = Plugin.ClientState.TerritoryType
                         });
                     }
@@ -955,7 +955,7 @@ public class EditorWindow : Window, IDisposable
             _roleplayingQuestCreator.AddQuestObjective(new QuestObjective()
             {
                 Coordinates = Plugin.ClientState.LocalPlayer.Position,
-                Rotation = new Vector3(0, Utility.ConvertRadiansToDegrees(Plugin.ClientState.LocalPlayer.Rotation), 0),
+                Rotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ClientState.LocalPlayer.Rotation), 0),
                 TerritoryId = Plugin.ClientState.TerritoryType,
                 TerritoryDiscriminator = Plugin.AQuestReborn.Discriminator
             });

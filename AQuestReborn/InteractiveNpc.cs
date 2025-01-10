@@ -14,6 +14,10 @@ using System.Text;
 using System.Threading.Tasks;
 using AnamCore;
 using McdfDataImporter;
+using RoleplayingQuestCore;
+using System.Diagnostics;
+using Quaternion = System.Numerics.Quaternion;
+using Brio.Core;
 
 namespace AQuestReborn
 {
@@ -36,12 +40,15 @@ namespace AQuestReborn
         private bool _disposed;
         private Vector3 _currentScale;
         private PosingCapability? _posing;
+        private int _index;
         private bool _followDataLock;
         private bool firstPositionSet;
         private Vector3 _lastDefaultPosition;
         private Vector3 _lastDefaultRotation;
         private Vector3 _snapPosition;
-
+        private PosingCapability? _playerPosing;
+        private float _horizontalOffset;
+        Stopwatch _horizontalRefreshTimer = new Stopwatch();
         public string LastMcdf { get; internal set; }
 
         public InteractiveNpc(Plugin plugin, ICharacter character)
@@ -53,6 +60,8 @@ namespace AQuestReborn
             BrioAccessUtils.EntityManager.SetSelectedEntity(_character);
             BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
             _posing = posing;
+            _index = _plugin.AQuestReborn.InteractiveNpcDictionary.Count;
+            _horizontalRefreshTimer.Start();
         }
 
         private void ClientState_TerritoryChanged(ushort obj)
@@ -73,13 +82,21 @@ namespace AQuestReborn
                             && _plugin.DialogueWindow.TimeSinceLastDialogueDisplayed.ElapsedMilliseconds > 200
                             && _plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 200)
                         {
-                            if (Vector3.Distance(_currentPosition, _plugin.ClientState.LocalPlayer.Position) > 1)
+                            var targetPosition = _plugin.ClientState.LocalPlayer.Position
+                                    + GetVerticalOffsetFromPlayer((_index) - ((float)(_plugin.AQuestReborn.InteractiveNpcDictionary.Count - 1) / 2f))
+                                    + GetHorizontalOffsetFromPlayer(_horizontalOffset);
+                            if (Vector3.Distance(_currentPosition, targetPosition) > 1)
                             {
-                                SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _plugin.ClientState.LocalPlayer.Position, _speed * delta),
-                                    _currentRotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(_plugin.ClientState.LocalPlayer.Rotation), 0),
+                                SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, targetPosition, _speed * delta),
+                                    _currentRotation = CoordinateUtility.LookAt(_currentPosition, targetPosition).QuaternionToEuler(),
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
                                 var value = _plugin.AnamcoreManager.GetCurrentAnimationId(_plugin.ClientState.LocalPlayer);
                                 _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
+                                if (_horizontalRefreshTimer.ElapsedMilliseconds > 5000)
+                                {
+                                    _horizontalOffset = (float)new Random().NextDouble() * -4f;
+                                    _horizontalRefreshTimer.Restart();
+                                }
                             }
                             else
                             {
@@ -136,6 +153,26 @@ namespace AQuestReborn
             }
             return new Brio.Core.Transform { Position = new Vector3(), Rotation = new System.Numerics.Quaternion(), Scale = new Vector3(1, 1, 1) };
         }
+        public Vector3 GetVerticalOffsetFromPlayer(float offset)
+        {
+            CheckPosing();
+            return _playerPosing.ModelPosing.Transform.Rotation.VectorDirection(new Vector3(1, 0, 0)) * offset;
+        }
+        public Vector3 GetHorizontalOffsetFromPlayer(float offset)
+        {
+            CheckPosing();
+            return _playerPosing.ModelPosing.Transform.Rotation.VectorDirection(new Vector3(0, 0, 1)) * offset;
+        }
+        public Vector3 GetVerticalOffset(float offset)
+        {
+            CheckPosing();
+            return _posing.ModelPosing.Transform.Rotation.VectorDirection(new Vector3(1, 0, 0)) * offset;
+        }
+        public Vector3 GetHorizontalOffset(float offset)
+        {
+            CheckPosing();
+            return _posing.ModelPosing.Transform.Rotation.VectorDirection(new Vector3(0, 0, 1)) * offset;
+        }
         public void SetTransform(Vector3 position, Vector3 rotation, Vector3 scale)
         {
             try
@@ -167,6 +204,12 @@ namespace AQuestReborn
                 BrioAccessUtils.EntityManager.SetSelectedEntity(_character);
                 BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
                 _posing = posing;
+            }
+            if (_playerPosing == null)
+            {
+                BrioAccessUtils.EntityManager.SetSelectedEntity(_plugin.ClientState.LocalPlayer);
+                BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
+                _playerPosing = posing;
             }
         }
         public void SetDefaults(Vector3 position, Vector3 rotation)

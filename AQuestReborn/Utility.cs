@@ -14,15 +14,5 @@ namespace AQuestReborn
             }
             return values.ToArray();
         }
-        public static float ConvertRadiansToDegrees(float radians)
-        {
-            double degrees = (180 / Math.PI) * radians;
-            return (float)degrees;
-        }
-        public static float ConvertDegreesToRadians(float degrees)
-        {
-            double radians = degrees * (Math.PI / 180);
-            return (float)radians;
-        }
     }
 }

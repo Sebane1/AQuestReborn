@@ -208,7 +208,7 @@ namespace AQuestReborn
                         _checkForPartyMembers = true;
                         ICharacter character = null;
                         _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
-                        (new Vector3(0, float.MaxValue, 0) / 10), Utility.ConvertDegreesToRadians(0));
+                        (new Vector3(0, float.MaxValue, 0) / 10), CoordinateUtility.ConvertDegreesToRadians(0));
                     }
                     catch (Exception e)
                     {
@@ -418,7 +418,7 @@ namespace AQuestReborn
                                     if (!_interactiveNpcDictionary.ContainsKey(value.Item2))
                                     {
                                         _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
-                                    value.Item1.Position + new Vector3(0, -20, 0), Utility.ConvertDegreesToRadians(value.Item1.EulerRotation.Y));
+                                    value.Item1.Position + new Vector3(0, -20, 0), CoordinateUtility.ConvertDegreesToRadians(value.Item1.EulerRotation.Y));
                                         value.Item4[value.Item2] = character;
                                         var npc = new InteractiveNpc(Plugin, character);
                                         _interactiveNpcDictionary.Add(value.Item2, npc);
