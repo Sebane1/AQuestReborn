@@ -77,7 +77,7 @@ public sealed class Plugin : IDalamudPlugin
     public TitleCardWindow TitleCardWindow { get; private set; }
     public EditorWindow EditorWindow { get; init; }
     public ChoiceWindow ChoiceWindow { get; private set; }
-    public DialogueWindow DialogueWindow { get; init; }
+    public EventWindow DialogueWindow { get; init; }
     public IClientState ClientState { get => _clientState; set => _clientState = value; }
     public RoleplayingQuestManager RoleplayingQuestManager { get => _roleplayingQuestManager; set => _roleplayingQuestManager = value; }
     public IToastGui ToastGui { get => _toastGui; set => _toastGui = value; }
@@ -132,7 +132,7 @@ public sealed class Plugin : IDalamudPlugin
         _movement = new MoveController(pluginLog, gameInteropProvider, objectTable);
         _uiAtlasManager = new UiAtlasManager(this);
         ChoiceWindow = new ChoiceWindow(this);
-        DialogueWindow = new DialogueWindow(this);
+        DialogueWindow = new EventWindow(this);
         EditorWindow = new EditorWindow(this);
         MainWindow = new MainWindow(this);
         DialogueBackgroundWindow = new DialogueBackgroundWindow(this, textureProvider);

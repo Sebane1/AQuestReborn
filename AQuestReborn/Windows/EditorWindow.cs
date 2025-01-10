@@ -127,6 +127,7 @@ public class EditorWindow : Window, IDisposable
                 var questEndTitleCard = _roleplayingQuestCreator.CurrentQuest.QuestEndTitleCard;
                 var questStartTitleSound = _roleplayingQuestCreator.CurrentQuest.QuestStartTitleSound;
                 var questEndTitleSound = _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound;
+                var hasQuestAcceptancePopup = _roleplayingQuestCreator.CurrentQuest.HasQuestAcceptancePopup;
 
                 ImGui.BeginTable("##Info Table", 2);
                 ImGui.TableSetupColumn("Info 1", ImGuiTableColumnFlags.WidthFixed, 400);
@@ -153,6 +154,10 @@ public class EditorWindow : Window, IDisposable
                 if (ImGui.Combo("Content Rating##", ref contentRating, contentRatingTypes, contentRatingTypes.Length))
                 {
                     _roleplayingQuestCreator.CurrentQuest.ContentRating = (QuestContentRating)contentRating;
+                }
+                if (ImGui.Checkbox("Has Quest Acceptance Popup", ref hasQuestAcceptancePopup))
+                {
+                    _roleplayingQuestCreator.CurrentQuest.HasQuestAcceptancePopup = hasQuestAcceptancePopup;
                 }
                 ImGui.TableSetColumnIndex(1);
                 if (ImGui.InputText("Quest Start Title Card##", ref questStartTitleCard, 255))
@@ -408,6 +413,8 @@ public class EditorWindow : Window, IDisposable
                 var objectiveIdToComplete = item.ObjectiveIdToComplete;
                 var faceExpression = item.FaceExpression;
                 var bodyExpression = item.BodyExpression;
+                var faceExpressionPlayer = item.FaceExpressionPlayer;
+                var bodyExpressionPlayer = item.BodyExpressionPlayer;
                 var npcAlias = item.NpcAlias;
                 var npcName = item.NpcName;
                 var dialogue = item.Dialogue;
@@ -426,6 +433,9 @@ public class EditorWindow : Window, IDisposable
                 var playerAppearanceSwap = item.PlayerAppearanceSwap;
                 var playerAppearanceSwapType = (int)item.PlayerAppearanceSwapType;
                 var loopAnimation = item.LoopAnimation;
+                var loopAnimationPlayer = item.LoopAnimationPlayer;
+                var timeLimit = item.TimeLimit;
+                var eventHasNoReading = item.EventHasNoReading;
 
                 if (ImGui.Combo("Condition For Dialogue To Occur##", ref dialogueCondition, eventConditionTypes, eventConditionTypes.Length))
                 {
@@ -440,6 +450,38 @@ public class EditorWindow : Window, IDisposable
                         {
                             item.ObjectiveIdToComplete = objectiveIdToComplete;
                         }
+                        break;
+                    case EventConditionType.PlayerClanId:
+                        if (ImGui.InputText("Clan Id Required##", ref objectiveIdToComplete, 40))
+                        {
+                            item.ObjectiveIdToComplete = objectiveIdToComplete;
+                        }
+                        break;
+                    case EventConditionType.PlayerPhysicalPresentationId:
+                        if (ImGui.InputText("(Masculine: 0, Feminine: 1)##", ref objectiveIdToComplete, 40))
+                        {
+                            item.ObjectiveIdToComplete = objectiveIdToComplete;
+                        }
+                        break;
+                    case EventConditionType.PlayerClassId:
+                        if (ImGui.InputText("Player Class Id (SMN, RPR, WHM, etc)##", ref objectiveIdToComplete, 40))
+                        {
+                            item.ObjectiveIdToComplete = objectiveIdToComplete;
+                        }
+                        break;
+                    case EventConditionType.PlayerOutfitTopId:
+                        if (ImGui.InputText("Player Outfit Top Id##", ref objectiveIdToComplete, 40))
+                        {
+                            item.ObjectiveIdToComplete = objectiveIdToComplete;
+                        }
+                        break;
+                    case EventConditionType.PlayerOutfitBottomId:
+                        if (ImGui.InputText("Player Outfit Bottom Id##", ref objectiveIdToComplete, 40))
+                        {
+                            item.ObjectiveIdToComplete = objectiveIdToComplete;
+                        }
+                        break;
+                    case EventConditionType.TimeLimitFailure:
                         break;
                 }
                 ImGui.SetNextItemWidth(150);
@@ -481,13 +523,13 @@ public class EditorWindow : Window, IDisposable
                     item.DialogueBoxStyle = boxStyle;
                 }
                 ImGui.SetNextItemWidth(100);
-                if (ImGui.InputInt("Face Expression Id##", ref faceExpression))
+                if (ImGui.InputInt("NPC Face Expression Id##", ref faceExpression))
                 {
                     item.FaceExpression = faceExpression;
                 }
                 ImGui.SameLine();
                 ImGui.SetNextItemWidth(100);
-                if (ImGui.InputInt("Body Expression Id##", ref bodyExpression))
+                if (ImGui.InputInt("NPC Body Expression Id##", ref bodyExpression))
                 {
                     item.BodyExpression = bodyExpression;
                 }
@@ -496,6 +538,24 @@ public class EditorWindow : Window, IDisposable
                 {
                     item.LoopAnimation = loopAnimation;
                 }
+
+                ImGui.SetNextItemWidth(100);
+                if (ImGui.InputInt("Player Face Expression Id##", ref faceExpressionPlayer))
+                {
+                    item.FaceExpressionPlayer = faceExpressionPlayer;
+                }
+                ImGui.SameLine();
+                ImGui.SetNextItemWidth(100);
+                if (ImGui.InputInt("Player Body Expression Id##", ref bodyExpressionPlayer))
+                {
+                    item.BodyExpressionPlayer = bodyExpressionPlayer;
+                }
+                ImGui.SameLine();
+                if (ImGui.Checkbox("Loop Player Animation##", ref loopAnimationPlayer))
+                {
+                    item.LoopAnimationPlayer = loopAnimationPlayer;
+                }
+
                 if (ImGui.Combo("Event Background Type##", ref eventBackgroundType, eventBackgroundTypes, eventBackgroundTypes.Length))
                 {
                     item.TypeOfEventBackground = (EventBackgroundType)eventBackgroundType;
@@ -535,6 +595,17 @@ public class EditorWindow : Window, IDisposable
                             item.ObjectiveNumberToSkipTo = objectiveNumberToSkipTo;
                         }
                         break;
+                    case EventBehaviourType.EventEndsEarlyWhenHitAndStartsTimer:
+                    case EventBehaviourType.StartsTimer:
+                        if (ImGui.InputInt("Time Limit (Milliseconds)##", ref timeLimit))
+                        {
+                            item.TimeLimit = timeLimit;
+                        }
+                        break;
+                }
+                if (ImGui.Checkbox("Event Has No Reading##", ref eventHasNoReading))
+                {
+                    item.EventHasNoReading = eventHasNoReading;
                 }
                 DrawBranchingChoicesMenu();
             }

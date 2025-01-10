@@ -21,10 +21,11 @@ using MareSynchronos.Utils;
 using System.Threading;
 using AQuestReborn;
 using McdfDataImporter;
+using RoleplayingVoiceDalamud.Glamourer;
 
 namespace SamplePlugin.Windows;
 
-public class DialogueWindow : Window, IDisposable
+public class EventWindow : Window, IDisposable
 {
     private string GoatImagePath;
     private Plugin Plugin;
@@ -61,10 +62,12 @@ public class DialogueWindow : Window, IDisposable
     private bool _questFollowing;
     private bool _questStopFollowing;
     Stopwatch _timeSinceLastDialogueDisplayed = new Stopwatch();
+    private bool _previousEventHasNoReading;
+
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
     // but for ImGui the ID is "My Amazing Window##With a hidden ID"
-    public DialogueWindow(Plugin plugin)
+    public EventWindow(Plugin plugin)
         : base("Dialogue Window##dialoguewindow", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar |
             ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoBackground, true)
     {
@@ -127,7 +130,7 @@ public class DialogueWindow : Window, IDisposable
             switch (branchingChoice.ChoiceType)
             {
                 case BranchingChoice.BranchingChoiceType.SkipToEventNumber:
-                    SetText(branchingChoice.EventToJumpTo);
+                    SetEvent(branchingChoice.EventToJumpTo);
                     break;
                 case BranchingChoice.BranchingChoiceType.BranchingQuestline:
                     Plugin.RoleplayingQuestManager.ReplaceQuest(branchingChoice.RoleplayingQuest);
@@ -136,18 +139,18 @@ public class DialogueWindow : Window, IDisposable
                     var roll = new Random().Next(0, 20);
                     if (roll >= branchingChoice.MinimumDiceRoll)
                     {
-                        SetText(branchingChoice.EventToJumpTo);
+                        SetEvent(branchingChoice.EventToJumpTo);
                         Plugin.ToastGui.ShowNormal("You roll a " + roll + "/" + branchingChoice.MinimumDiceRoll + " and succeed.");
                     }
                     else
                     {
-                        SetText(branchingChoice.EventToJumpToFailure);
+                        SetEvent(branchingChoice.EventToJumpToFailure);
                         Plugin.ToastGui.ShowNormal("You roll a " + roll + "/" + branchingChoice.MinimumDiceRoll + " and fail.");
                     }
                     break;
                 case BranchingChoice.BranchingChoiceType.SkipToEventNumberRandomized:
                     roll = new Random().Next(0, branchingChoice.RandomizedEventToSkipTo.Count);
-                    SetText(branchingChoice.RandomizedEventToSkipTo[roll]);
+                    SetEvent(branchingChoice.RandomizedEventToSkipTo[roll]);
                     break;
             }
         }
@@ -245,16 +248,16 @@ public class DialogueWindow : Window, IDisposable
         _settingNewText = true;
         _currentCharacter = 0;
         questDisplayObject = newQuestText;
-        SetText(0);
+        SetEvent(0);
         textTimer.Restart();
         Plugin.SaveProgress();
         _settingNewText = false;
         Plugin.DialogueBackgroundWindow.PreCacheImages(newQuestText);
     }
 
-    public void NextText(bool bypassBranchingChoice = false)
+    public void NextEvent(bool bypassBranchingChoice = false)
     {
-        if (!Plugin.ChoiceWindow.IsOpen && !_settingNewText)
+        if ((!Plugin.ChoiceWindow.IsOpen && !_settingNewText) || _previousEventHasNoReading)
         {
             if (questDisplayObject != null)
             {
@@ -269,12 +272,13 @@ public class DialogueWindow : Window, IDisposable
                 }
                 else
                 {
-                    SetText(_index);
+                    SetEvent(_index);
                 }
             }
+            _previousEventHasNoReading = false;
         }
     }
-    public void SetText(int index)
+    public void SetEvent(int index)
     {
         _index = index;
         bool allowedToContinue = true;
@@ -283,14 +287,67 @@ public class DialogueWindow : Window, IDisposable
         if (_index < questDisplayObject.QuestObjective.QuestText.Count)
         {
             var item = questDisplayObject.QuestObjective.QuestText[_index];
+            var customization = AppearanceAccessUtils.AppearanceManager.GetGlamourerCustomization();
             switch (item.ConditionForDialogueToOccur)
             {
                 case QuestEvent.EventConditionType.CompletedSpecificObjectiveId:
                     if (!Plugin.RoleplayingQuestManager.CompletedObjectiveExists(item.ObjectiveIdToComplete))
                     {
-                        SetText(index + 1);
+                        SetEvent(index + 1);
                         allowedToContinue = false;
                     }
+                    break;
+                case QuestEvent.EventConditionType.PlayerClanId:
+                    if (customization.Customize.Clan.ToString() != item.ObjectiveIdToComplete)
+                    {
+                        SetEvent(index + 1);
+                        allowedToContinue = false;
+                    }
+                    break;
+                case QuestEvent.EventConditionType.PlayerPhysicalPresentationId:
+                    if (customization.Customize.Gender.ToString() != item.ObjectiveIdToComplete)
+                    {
+                        SetEvent(index + 1);
+                        allowedToContinue = false;
+                    }
+                    break;
+                case QuestEvent.EventConditionType.PlayerClassId:
+                    if (Plugin.ClientState.LocalPlayer.ClassJob.Value.Abbreviation.Data.ToString() != item.ObjectiveIdToComplete)
+                    {
+                        SetEvent(index + 1);
+                        allowedToContinue = false;
+                    }
+                    break;
+                case QuestEvent.EventConditionType.PlayerOutfitTopId:
+                    if (customization.Equipment.Body.ItemId.ToString() != item.ObjectiveIdToComplete)
+                    {
+                        SetEvent(index + 1);
+                        allowedToContinue = false;
+                    }
+                    break;
+                case QuestEvent.EventConditionType.PlayerOutfitBottomId:
+                    if (customization.Equipment.Legs.ItemId.ToString() != item.ObjectiveIdToComplete)
+                    {
+                        SetEvent(index + 1);
+                        allowedToContinue = false;
+                    }
+                    break;
+                case QuestEvent.EventConditionType.TimeLimitFailure:
+                    bool failedEventCondition = true;
+                    try
+                    {
+                        failedEventCondition = Plugin.AQuestReborn.FailedTimeLimit(questDisplayObject.RoleplayingQuest.QuestId);
+                    }
+                    catch
+                    {
+
+                    }
+                    if (failedEventCondition)
+                    {
+                        SetEvent(index + 1);
+                        allowedToContinue = false;
+                    }
+                    Plugin.AQuestReborn.RemoveTimer(questDisplayObject.RoleplayingQuest.QuestId);
                     break;
             }
             if (allowedToContinue)
@@ -393,6 +450,21 @@ public class DialogueWindow : Window, IDisposable
                             Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.AQuestReborn.SpawnedNPCs[questDisplayObject.RoleplayingQuest.QuestId][item.NpcName], (ushort)5810);
                         }
                     }
+                }
+                if ((ushort)item.BodyExpressionPlayer > 0)
+                {
+                    if (!item.LoopAnimationPlayer)
+                    {
+                        Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.ClientState.LocalPlayer, (ushort)item.BodyExpressionPlayer);
+                    }
+                    else
+                    {
+                        Plugin.AnamcoreManager.TriggerEmote(Plugin.ClientState.LocalPlayer.Address, (ushort)item.BodyExpressionPlayer);
+                    }
+                }
+                else
+                {
+                    Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.ClientState.LocalPlayer, (ushort)0);
                 }
                 if (Plugin.MediaManager != null)
                 {
@@ -537,6 +609,15 @@ public class DialogueWindow : Window, IDisposable
                                 _questStopFollowing = true;
                                 _lastNpcName = item.NpcName;
                             }
+
+                            break;
+                        case QuestEvent.EventBehaviourType.EventEndsEarlyWhenHitAndStartsTimer:
+                            _index = questDisplayObject.QuestObjective.QuestText.Count;
+                            Plugin.AQuestReborn.StartObjectiveTimer(item.TimeLimit, questDisplayObject.RoleplayingQuest.QuestId);
+                            break;
+                        case QuestEvent.EventBehaviourType.StartsTimer:
+                            _index++;
+                            Plugin.AQuestReborn.StartObjectiveTimer(item.TimeLimit, questDisplayObject.RoleplayingQuest.QuestId);
                             break;
                         case QuestEvent.EventBehaviourType.None:
                             _index++;
@@ -544,6 +625,11 @@ public class DialogueWindow : Window, IDisposable
                     }
                 }
                 textTimer.Restart();
+                if (item.EventHasNoReading)
+                {
+                    _previousEventHasNoReading = true;
+                    NextEvent();
+                }
             }
         }
         else

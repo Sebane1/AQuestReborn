@@ -55,6 +55,7 @@ namespace AQuestReborn
         private bool _screenButtonClicked;
         private Dictionary<string, Dictionary<string, ICharacter>> _spawnedNpcsDictionary = new Dictionary<string, Dictionary<string, ICharacter>>();
         private Dictionary<string, InteractiveNpc> _interactiveNpcDictionary = new Dictionary<string, InteractiveNpc>();
+        private Dictionary<string, Tuple<int, Stopwatch>> _objectiveTimers = new Dictionary<string, Tuple<int, Stopwatch>>();
         private bool _triggerRefresh;
         private bool _waitingForSelectionRelease;
         Queue<Tuple<string, AppearanceSwapType, ICharacter>> _appearanceApplicationQueue = new Queue<Tuple<string, AppearanceSwapType, ICharacter>>();
@@ -553,7 +554,7 @@ namespace AQuestReborn
                             }
                             else
                             {
-                                Plugin.DialogueWindow.NextText();
+                                Plugin.DialogueWindow.NextEvent();
                             }
                         }
                         _waitingForSelectionRelease = true;
@@ -768,6 +769,35 @@ namespace AQuestReborn
             Plugin.EmoteReaderHook.OnEmote -= (instigator, emoteId) => OnEmote(instigator as ICharacter, emoteId);
             Plugin.ClientState.Logout -= ClientState_Logout;
             CleanupCache();
+        }
+
+        public void StartObjectiveTimer(int timer, string questId)
+        {
+            if (_objectiveTimers.ContainsKey(questId))
+            {
+                _objectiveTimers[questId].Item2.Reset();
+            }
+            _objectiveTimers[questId] = new Tuple<int, Stopwatch>(timer, Stopwatch.StartNew());
+        }
+
+        public bool FailedTimeLimit(string questId)
+        {
+            if (_objectiveTimers.ContainsKey(questId))
+            {
+                return _objectiveTimers[questId].Item2.ElapsedMilliseconds > _objectiveTimers[questId].Item1;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        public void RemoveTimer(string questId)
+        {
+            if (_objectiveTimers.ContainsKey(questId))
+            {
+                _objectiveTimers[questId].Item2.Stop();
+                _objectiveTimers.Remove(questId);
+            }
         }
     }
 }
