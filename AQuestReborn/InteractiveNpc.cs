@@ -114,8 +114,8 @@ namespace AQuestReborn
                             {
                                 if (Vector3.Distance(new Vector3(_currentPosition.X, 0, _currentPosition.X), new Vector3(_defaultPosition.X, 0, _defaultPosition.X)) > 1)
                                 {
-                                    SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _target, _speed * delta),
-                                                 _currentRotation = CoordinateUtility.LookAt(_currentPosition, _defaultRotation).QuaternionToEuler(),
+                                    SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, _speed * delta),
+                                                 _currentRotation = CoordinateUtility.LookAt(_currentPosition, _defaultPosition).QuaternionToEuler(),
                                                  _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
                                     if (Vector3.Distance(_currentPosition, _plugin.ClientState.LocalPlayer.Position) > 0.2f)
                                     {
@@ -130,9 +130,18 @@ namespace AQuestReborn
                                         _wasMoving = false;
                                         _plugin.AnamcoreManager.StopEmote(_character.Address);
                                     }
-                                    SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta),
-                                                 _currentRotation = Vector3.Lerp(_currentRotation, _defaultRotation, 1),
-                                                 _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
+                                    if (_plugin.DialogueWindow.IsOpen)
+                                    {
+                                        SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta),
+                                                     _currentRotation = CoordinateUtility.LookAt(_currentPosition, _plugin.ClientState.LocalPlayer.Position).QuaternionToEuler(),
+                                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
+                                    }
+                                    else
+                                    {
+                                        SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta),
+                                                     _currentRotation = Vector3.Lerp(_currentRotation, _defaultRotation, 1),
+                                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
+                                    }
                                 }
                             }
                         }
