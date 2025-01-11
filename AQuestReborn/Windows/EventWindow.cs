@@ -24,6 +24,7 @@ using McdfDataImporter;
 using RoleplayingVoiceDalamud.Glamourer;
 using Brio.Capabilities.Actor;
 using Brio;
+using System.Collections.Concurrent;
 
 namespace SamplePlugin.Windows;
 
@@ -51,7 +52,7 @@ public class EventWindow : Window, IDisposable
     private bool _playerAppearanceSwapAffectsRacial;
     private string _lastNpcName;
     private bool _alreadyLoadingFrame;
-    private Dictionary<int, IDalamudTextureWrap> _dialogueStylesToLoad = new Dictionary<int, IDalamudTextureWrap>();
+    private ConcurrentDictionary<int, IDalamudTextureWrap> _dialogueStylesToLoad = new ConcurrentDictionary<int, IDalamudTextureWrap>();
     private IDalamudTextureWrap _dialogueTitleStyleToLoad;
     private byte[] _lastLoadedTitleFrame;
     private byte[] _lastLoadedFrame;

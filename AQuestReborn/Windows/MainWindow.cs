@@ -44,7 +44,10 @@ public class MainWindow : Window, IDisposable
 
     public override void OnOpen()
     {
-        Plugin.RoleplayingQuestManager.ScanDirectory();
+        if (Plugin.RoleplayingQuestManager != null)
+        {
+            Plugin.RoleplayingQuestManager.ScanDirectory();
+        }
         base.OnOpen();
     }
     public override void Draw()
@@ -100,9 +103,9 @@ public class MainWindow : Window, IDisposable
                         Directory.CreateDirectory(folder);
                         //if (Directory.GetFiles(folder).Length == 0)
                         //{
-                            Plugin.Configuration.QuestInstallFolder = folder;
-                            Plugin.RoleplayingQuestManager.QuestInstallFolder = folder;
-                            Plugin.Configuration.Save();
+                        Plugin.Configuration.QuestInstallFolder = folder;
+                        Plugin.RoleplayingQuestManager.QuestInstallFolder = folder;
+                        Plugin.Configuration.Save();
                         //}
                     }
                 }
@@ -250,45 +253,48 @@ public class MainWindow : Window, IDisposable
 
     private void DrawInstalledQuestSelector()
     {
-        var installedQuests = Plugin.RoleplayingQuestManager.QuestChains;
-        var questItems = new List<string>();
-        foreach (var item in installedQuests)
+        if (Plugin.RoleplayingQuestManager != null)
         {
-            if (item.Value != null && !string.IsNullOrEmpty(item.Value.QuestName))
+            var installedQuests = Plugin.RoleplayingQuestManager.QuestChains;
+            var questItems = new List<string>();
+            foreach (var item in installedQuests)
             {
-                questItems.Add(item.Value.QuestName);
-            }
-        }
-        if (_currentSelectedInstalledQuest > questItems.Count)
-        {
-            _currentSelectedInstalledQuest = 0;
-        }
-        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-        ImGui.ListBox("##installedQuestInformation", ref _currentSelectedInstalledQuest, questItems.ToArray(), questItems.Count, 10);
-        if (ImGui.Button("Quest Creator"))
-        {
-            Plugin.EditorWindow.IsOpen = true;
-        }
-        if (ImGui.Button("Install Quest"))
-        {
-            _fileDialogManager.Reset();
-            ImGui.OpenPopup("OpenPathDialog##editorwindow");
-        }
-        if (ImGui.BeginPopup("OpenPathDialog##editorwindow"))
-        {
-            _fileDialogManager.OpenFileDialog("Select quest file", ".qmp", (isOk, file) =>
-            {
-                if (isOk)
+                if (item.Value != null && !string.IsNullOrEmpty(item.Value.QuestName))
                 {
-                    Plugin.RoleplayingQuestManager.OpenQuestPack(file[0]);
-                    Plugin.RoleplayingQuestManager.ScanDirectory();
+                    questItems.Add(item.Value.QuestName);
                 }
-            }, 0, null, true);
-            ImGui.EndPopup();
-        }
-        if (ImGui.Button("Re-scan Quests"))
-        {
-            Plugin.RoleplayingQuestManager.ScanDirectory();
+            }
+            if (_currentSelectedInstalledQuest > questItems.Count)
+            {
+                _currentSelectedInstalledQuest = 0;
+            }
+            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+            ImGui.ListBox("##installedQuestInformation", ref _currentSelectedInstalledQuest, questItems.ToArray(), questItems.Count, 10);
+            if (ImGui.Button("Quest Creator"))
+            {
+                Plugin.EditorWindow.IsOpen = true;
+            }
+            if (ImGui.Button("Install Quest"))
+            {
+                _fileDialogManager.Reset();
+                ImGui.OpenPopup("OpenPathDialog##editorwindow");
+            }
+            if (ImGui.BeginPopup("OpenPathDialog##editorwindow"))
+            {
+                _fileDialogManager.OpenFileDialog("Select quest file", ".qmp", (isOk, file) =>
+                {
+                    if (isOk)
+                    {
+                        Plugin.RoleplayingQuestManager.OpenQuestPack(file[0]);
+                        Plugin.RoleplayingQuestManager.ScanDirectory();
+                    }
+                }, 0, null, true);
+                ImGui.EndPopup();
+            }
+            if (ImGui.Button("Re-scan Quests"))
+            {
+                Plugin.RoleplayingQuestManager.ScanDirectory();
+            }
         }
     }
 }
