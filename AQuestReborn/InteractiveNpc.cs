@@ -18,6 +18,7 @@ using RoleplayingQuestCore;
 using System.Diagnostics;
 using Quaternion = System.Numerics.Quaternion;
 using Brio.Core;
+using Brio.Capabilities.Actor;
 
 namespace AQuestReborn
 {

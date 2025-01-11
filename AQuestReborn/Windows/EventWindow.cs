@@ -22,6 +22,8 @@ using System.Threading;
 using AQuestReborn;
 using McdfDataImporter;
 using RoleplayingVoiceDalamud.Glamourer;
+using Brio.Capabilities.Actor;
+using Brio;
 
 namespace SamplePlugin.Windows;
 

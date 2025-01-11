@@ -1,5 +1,6 @@
 using Anamnesis.GameData;
 using Brio;
+using Brio.Capabilities.Actor;
 using Brio.Capabilities.Posing;
 using Brio.Entities;
 using Brio.Game.Actor;
@@ -13,6 +14,7 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.System.Input;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
@@ -45,7 +47,7 @@ namespace AQuestReborn
         public Dictionary<string, Dictionary<string, ICharacter>> SpawnedNPCs { get => _spawnedNpcsDictionary; set => _spawnedNpcsDictionary = value; }
         public string Discriminator { get => _discriminator; set => _discriminator = value; }
         public Dictionary<string, InteractiveNpc> InteractiveNpcDictionary { get => _interactiveNpcDictionary; set => _interactiveNpcDictionary = value; }
-        public bool WaitingForMcdfLoad { get => _waitingForMcdfLoad; set => _waitingForMcdfLoad = value; }
+        public bool WaitingForMcdfLoad { get => _waitingForAppearanceLoad; set => _waitingForAppearanceLoad = value; }
 
         private Stopwatch _pollingTimer;
         private Stopwatch _inputCooldown;
@@ -66,7 +68,7 @@ namespace AQuestReborn
         private MediaCameraObject _playerCamera;
         private List<Tuple<int, QuestObjective, RoleplayingQuest>> _activeQuestChainObjectives;
         private bool alreadyProcessingRespawns;
-        private bool _waitingForMcdfLoad;
+        private bool _waitingForAppearanceLoad;
         Stopwatch zoneChangeCooldown = new Stopwatch();
         private bool _isInitialized;
         private bool _initializationStarted;
@@ -309,7 +311,7 @@ namespace AQuestReborn
                             }
                             else
                             {
-                                CheckForNewMCDFLoad();
+                                CheckForNewAppearanceLoad();
                                 QuestInputCheck();
                                 CheckForNewPlayerCreationLoad();
                                 CheckForNPCRefresh();
@@ -333,7 +335,7 @@ namespace AQuestReborn
 
         private void CheckForPlayerAppearance()
         {
-            if (!_waitingForMcdfLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking() && !_hasCheckedForPlayerAppearance)
+            if (!_waitingForAppearanceLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking() && !_hasCheckedForPlayerAppearance)
             {
                 _hasCheckedForPlayerAppearance = true;
                 var appearance = Plugin.RoleplayingQuestManager.GetPlayerAppearanceForZone(Plugin.ClientState.TerritoryType, _discriminator);
@@ -406,7 +408,7 @@ namespace AQuestReborn
                 {
                     if (_npcActorSpawnQueue.Count > 0)
                     {
-                        if (!_waitingForMcdfLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking())
+                        if (!_waitingForAppearanceLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking())
                         {
                             var value = _npcActorSpawnQueue.Dequeue();
                             bool newNPC = !value.Item5;
@@ -453,7 +455,7 @@ namespace AQuestReborn
         }
         public void LoadAppearance(string appearanceData, AppearanceSwapType appearanceSwapType, ICharacter character)
         {
-            _waitingForMcdfLoad = true;
+            _waitingForAppearanceLoad = true;
             Task.Run(() =>
             {
                 lock (_npcActorSpawnQueue)
@@ -499,17 +501,26 @@ namespace AQuestReborn
                 Plugin.PluginLog?.Warning(e, e.Message);
             }
         }
-        private async void CheckForNewMCDFLoad()
+        private async void CheckForNewAppearanceLoad()
         {
             if (_appearanceApplicationQueue.Count > 0)
             {
-                if (_waitingForMcdfLoad && _mcdfRefreshTimer.ElapsedMilliseconds > 500 && !AppearanceAccessUtils.AppearanceManager.IsWorking())
+                if (_waitingForAppearanceLoad && _mcdfRefreshTimer.ElapsedMilliseconds > 500 && !AppearanceAccessUtils.AppearanceManager.IsWorking())
                 {
                     var item = _appearanceApplicationQueue.Dequeue();
                     if (item.Item3 != null)
                     {
-                        AppearanceAccessUtils.AppearanceManager?.LoadAppearance(item.Item1, item.Item3, (int)item.Item2);
-                        _waitingForMcdfLoad = false;
+                        if (item.Item1.EndsWith(".chara"))
+                        {
+                            BrioAccessUtils.EntityManager.SetSelectedEntity(item.Item3);
+                            BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<ActorAppearanceCapability>(out var appearance);
+                            appearance.ImportAppearance(item.Item1, Brio.Game.Actor.Appearance.AppearanceImportOptions.All);
+                        }
+                        else
+                        {
+                            AppearanceAccessUtils.AppearanceManager?.LoadAppearance(item.Item1, item.Item3, (int)item.Item2);
+                        }
+                        _waitingForAppearanceLoad = false;
                     }
                     _mcdfRefreshTimer.Restart();
                 }
