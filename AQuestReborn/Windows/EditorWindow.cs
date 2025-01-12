@@ -277,9 +277,9 @@ public class EditorWindow : Window, IDisposable
             var objectiveTriggerTypes = Enum.GetNames(typeof(ObjectiveTriggerType));
             var triggerText = questObjective.TriggerText;
             var objectiveImmediatelySatisfiesParent = questObjective.ObjectiveImmediatelySatisfiesParent;
-
             var maximum3dIndicatorDistance = questObjective.Maximum3dIndicatorDistance;
             var dontShowOnMap = questObjective.DontShowOnMap;
+            var playerPositionIsLockedDuringEvents = questObjective.PlayerPositionIsLockedDuringEvents;
             ImGui.SetNextItemWidth(400);
             ImGui.LabelText("##objectiveIdLabel", $"Objective Id: " + questObjective.Id);
             ImGui.SameLine();
@@ -373,13 +373,13 @@ public class EditorWindow : Window, IDisposable
                     var minimumZ = questObjective.Collider.MinimumZ;
                     var maximumZ = questObjective.Collider.MaximumZ;
                     ImGui.TextWrapped($"Min X: {minimumX}, Max X: {maximumX}, Min Y: {minimumY}, Max Y: {maximumY}, Min Z: {minimumZ}, Max Z: {maximumZ}");
-                    if (ImGui.Button("Min XZ##"))
+                    if (ImGui.Button("Set Min XZ##"))
                     {
                         questObjective.Collider.MinimumX = Plugin.ClientState.LocalPlayer.Position.X;
                         questObjective.Collider.MinimumZ = Plugin.ClientState.LocalPlayer.Position.Z;
                     }
                     ImGui.SameLine();
-                    if (ImGui.Button("Max XZ##"))
+                    if (ImGui.Button("Set Max XZ##"))
                     {
                         if (Plugin.ClientState.LocalPlayer.Position.X < minimumX)
                         {
@@ -401,12 +401,12 @@ public class EditorWindow : Window, IDisposable
                         }
                     }
                     ImGui.SameLine();
-                    if (ImGui.Button("Min Y##"))
+                    if (ImGui.Button("Set Min Y##"))
                     {
                         questObjective.Collider.MinimumY = Plugin.ClientState.LocalPlayer.Position.Y - 5;
                     }
                     ImGui.SameLine();
-                    if (ImGui.Button("Max Y##"))
+                    if (ImGui.Button("Set Max Y##"))
                     {
                         questObjective.Collider.MaximumY = Plugin.ClientState.LocalPlayer.Position.Y;
                     }
@@ -428,6 +428,11 @@ public class EditorWindow : Window, IDisposable
                     Plugin.RoleplayingQuestManager.SkipToObjective(_roleplayingQuestCreator.CurrentQuest, questObjective.Index);
                     PersistQuest();
                 }
+            }
+            ImGui.SameLine();
+            if (ImGui.Checkbox("Player Position Is Locked During Events", ref playerPositionIsLockedDuringEvents))
+            {
+                questObjective.PlayerPositionIsLockedDuringEvents = playerPositionIsLockedDuringEvents;
             }
             ImGui.BeginTable("##Event Table", 2);
             ImGui.TableSetupColumn("Event List", ImGuiTableColumnFlags.WidthFixed, 100);
