@@ -114,7 +114,7 @@ namespace AQuestReborn
                         }
                         else
                         {
-                            if (!_followPlayer || _plugin.EventWindow.IsOpen)
+                            if (!_followPlayer || _plugin.EventWindow.IsOpen || _plugin.ChoiceWindow.IsOpen)
                             {
                                 if (Vector3.Distance(new Vector3(_currentPosition.X, 0, _currentPosition.X), new Vector3(_defaultPosition.X, 0, _defaultPosition.X)) > 1)
                                 {
