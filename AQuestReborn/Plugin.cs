@@ -77,7 +77,7 @@ public sealed class Plugin : IDalamudPlugin
     public TitleCardWindow TitleCardWindow { get; private set; }
     public EditorWindow EditorWindow { get; init; }
     public ChoiceWindow ChoiceWindow { get; private set; }
-    public EventWindow DialogueWindow { get; init; }
+    public EventWindow EventWindow { get; init; }
     public IClientState ClientState { get => _clientState; set => _clientState = value; }
     public RoleplayingQuestManager RoleplayingQuestManager { get => _roleplayingQuestManager; set => _roleplayingQuestManager = value; }
     public IToastGui ToastGui { get => _toastGui; set => _toastGui = value; }
@@ -132,7 +132,7 @@ public sealed class Plugin : IDalamudPlugin
         _movement = new MoveController(pluginLog, gameInteropProvider, objectTable);
         _uiAtlasManager = new UiAtlasManager(this);
         ChoiceWindow = new ChoiceWindow(this);
-        DialogueWindow = new EventWindow(this);
+        EventWindow = new EventWindow(this);
         EditorWindow = new EditorWindow(this);
         MainWindow = new MainWindow(this);
         DialogueBackgroundWindow = new DialogueBackgroundWindow(this, textureProvider);
@@ -144,7 +144,7 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.AddWindow(TitleCardWindow);
         WindowSystem.AddWindow(EditorWindow);
         WindowSystem.AddWindow(DialogueBackgroundWindow);
-        WindowSystem.AddWindow(DialogueWindow);
+        WindowSystem.AddWindow(EventWindow);
         WindowSystem.AddWindow(ChoiceWindow);
         WindowSystem.AddWindow(ObjectiveWindow);
         WindowSystem.AddWindow(QuestAcceptanceWindow);
@@ -199,7 +199,7 @@ public sealed class Plugin : IDalamudPlugin
     }
     private void OnCommandChat(string command, string arguments)
     {
-        if (!DialogueWindow.IsOpen && !ChoiceWindow.IsOpen)
+        if (!EventWindow.IsOpen && !ChoiceWindow.IsOpen)
         {
             _roleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.SayPhrase, arguments);
         }

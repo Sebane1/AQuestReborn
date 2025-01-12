@@ -22,6 +22,7 @@ using System.IO;
 using System.Speech.Recognition;
 using Lumina.Excel.Sheets;
 using System.Diagnostics;
+using System.Drawing;
 
 namespace SamplePlugin.Windows;
 
@@ -364,7 +365,51 @@ public class EditorWindow : Window, IDisposable
                         questObjective.TriggerText = triggerText;
                     }
                     break;
-                case ObjectiveTriggerType.SearchArea:
+                case ObjectiveTriggerType.BoundingTrigger:
+                    var minimumX = questObjective.Collider.MinimumX;
+                    var maximumX = questObjective.Collider.MaximumX;
+                    var minimumY = questObjective.Collider.MinimumY;
+                    var maximumY = questObjective.Collider.MaximumY;
+                    var minimumZ = questObjective.Collider.MinimumZ;
+                    var maximumZ = questObjective.Collider.MaximumZ;
+                    ImGui.TextWrapped($"Min X: {minimumX}, Max X: {maximumX}, Min Y: {minimumY}, Max Y: {maximumY}, Min Z: {minimumZ}, Max Z: {maximumZ}");
+                    if (ImGui.Button("Min XZ##"))
+                    {
+                        questObjective.Collider.MinimumX = Plugin.ClientState.LocalPlayer.Position.X;
+                        questObjective.Collider.MinimumZ = Plugin.ClientState.LocalPlayer.Position.Z;
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button("Max XZ##"))
+                    {
+                        if (Plugin.ClientState.LocalPlayer.Position.X < minimumX)
+                        {
+                            questObjective.Collider.MaximumX = questObjective.Collider.MinimumX;
+                            questObjective.Collider.MinimumX = Plugin.ClientState.LocalPlayer.Position.X;
+                        }
+                        else
+                        {
+                            questObjective.Collider.MaximumX = Plugin.ClientState.LocalPlayer.Position.X;
+                        }
+                        if (Plugin.ClientState.LocalPlayer.Position.Z < minimumZ)
+                        {
+                            questObjective.Collider.MaximumZ = questObjective.Collider.MinimumZ;
+                            questObjective.Collider.MinimumZ = Plugin.ClientState.LocalPlayer.Position.Z;
+                        }
+                        else
+                        {
+                            questObjective.Collider.MaximumZ = Plugin.ClientState.LocalPlayer.Position.Z;
+                        }
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button("Min Y##"))
+                    {
+                        questObjective.Collider.MinimumY = Plugin.ClientState.LocalPlayer.Position.Y - 5;
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button("Max Y##"))
+                    {
+                        questObjective.Collider.MaximumY = Plugin.ClientState.LocalPlayer.Position.Y;
+                    }
                     break;
             }
             if (ImGui.Button("Edit NPC Transform Data##"))
@@ -436,178 +481,221 @@ public class EditorWindow : Window, IDisposable
                 var loopAnimationPlayer = item.LoopAnimationPlayer;
                 var timeLimit = item.TimeLimit;
                 var eventHasNoReading = item.EventHasNoReading;
+                var looksAtPlayerDuringEvent = item.LooksAtPlayerDuringEvent;
+                var eventSetsNewNpcPosition = item.EventSetsNewNpcCoordinates;
+                var npcMovementPosition = item.NpcMovementPosition;
+                var npcMovementRotation = item.NpcMovementRotation;
 
-                if (ImGui.Combo("Condition For Event To Occur##", ref dialogueCondition, eventConditionTypes, eventConditionTypes.Length))
+                if (ImGui.BeginTabBar("Event Editor Tabs"))
                 {
-                    item.ConditionForDialogueToOccur = (EventConditionType)dialogueCondition;
-                }
-                switch (item.ConditionForDialogueToOccur)
-                {
-                    case EventConditionType.None:
-                        break;
-                    case EventConditionType.CompletedSpecificObjectiveId:
-                        if (ImGui.InputText("Objective Id To Complete##", ref objectiveIdToComplete, 40))
+                    if (ImGui.BeginTabItem("Narrative"))
+                    {
+                        if (ImGui.Combo("Condition For Event To Occur##", ref dialogueCondition, eventConditionTypes, eventConditionTypes.Length))
                         {
-                            item.ObjectiveIdToComplete = objectiveIdToComplete;
+                            item.ConditionForDialogueToOccur = (EventConditionType)dialogueCondition;
                         }
-                        break;
-                    case EventConditionType.PlayerClanId:
-                        if (ImGui.InputText("Clan Id Required##", ref objectiveIdToComplete, 40))
+                        switch (item.ConditionForDialogueToOccur)
                         {
-                            item.ObjectiveIdToComplete = objectiveIdToComplete;
+                            case EventConditionType.None:
+                                break;
+                            case EventConditionType.CompletedSpecificObjectiveId:
+                                if (ImGui.InputText("Objective Id To Complete##", ref objectiveIdToComplete, 40))
+                                {
+                                    item.ObjectiveIdToComplete = objectiveIdToComplete;
+                                }
+                                break;
+                            case EventConditionType.PlayerClanId:
+                                if (ImGui.InputText("Clan Id Required##", ref objectiveIdToComplete, 40))
+                                {
+                                    item.ObjectiveIdToComplete = objectiveIdToComplete;
+                                }
+                                break;
+                            case EventConditionType.PlayerPhysicalPresentationId:
+                                if (ImGui.InputText("(Masculine: 0, Feminine: 1)##", ref objectiveIdToComplete, 40))
+                                {
+                                    item.ObjectiveIdToComplete = objectiveIdToComplete;
+                                }
+                                break;
+                            case EventConditionType.PlayerClassId:
+                                if (ImGui.InputText("Player Class Id (SMN, RPR, WHM, etc)##", ref objectiveIdToComplete, 40))
+                                {
+                                    item.ObjectiveIdToComplete = objectiveIdToComplete;
+                                }
+                                break;
+                            case EventConditionType.PlayerOutfitTopId:
+                                if (ImGui.InputText("Player Outfit Top Id##", ref objectiveIdToComplete, 40))
+                                {
+                                    item.ObjectiveIdToComplete = objectiveIdToComplete;
+                                }
+                                break;
+                            case EventConditionType.PlayerOutfitBottomId:
+                                if (ImGui.InputText("Player Outfit Bottom Id##", ref objectiveIdToComplete, 40))
+                                {
+                                    item.ObjectiveIdToComplete = objectiveIdToComplete;
+                                }
+                                break;
+                            case EventConditionType.TimeLimitFailure:
+                                break;
                         }
-                        break;
-                    case EventConditionType.PlayerPhysicalPresentationId:
-                        if (ImGui.InputText("(Masculine: 0, Feminine: 1)##", ref objectiveIdToComplete, 40))
+                        ImGui.SetNextItemWidth(150);
+                        if (ImGui.InputText("Npc Alias##", ref npcAlias, 40))
                         {
-                            item.ObjectiveIdToComplete = objectiveIdToComplete;
+                            item.NpcAlias = npcAlias;
                         }
-                        break;
-                    case EventConditionType.PlayerClassId:
-                        if (ImGui.InputText("Player Class Id (SMN, RPR, WHM, etc)##", ref objectiveIdToComplete, 40))
+                        ImGui.SameLine();
+                        ImGui.SetNextItemWidth(150);
+                        if (ImGui.InputText("Npc Name##", ref npcName, 40))
                         {
-                            item.ObjectiveIdToComplete = objectiveIdToComplete;
+                            item.NpcName = npcName;
                         }
-                        break;
-                    case EventConditionType.PlayerOutfitTopId:
-                        if (ImGui.InputText("Player Outfit Top Id##", ref objectiveIdToComplete, 40))
+                        if (ImGui.InputText("Dialogue##", ref dialogue, 500))
                         {
-                            item.ObjectiveIdToComplete = objectiveIdToComplete;
+                            item.Dialogue = dialogue;
                         }
-                        break;
-                    case EventConditionType.PlayerOutfitBottomId:
-                        if (ImGui.InputText("Player Outfit Bottom Id##", ref objectiveIdToComplete, 40))
+                        if (ImGui.InputText("Dialogue Audio Path##", ref dialogueAudio, 255))
                         {
-                            item.ObjectiveIdToComplete = objectiveIdToComplete;
+                            item.DialogueAudio = dialogueAudio;
                         }
-                        break;
-                    case EventConditionType.TimeLimitFailure:
-                        break;
-                }
-                ImGui.SetNextItemWidth(150);
-                if (ImGui.InputText("Npc Alias##", ref npcAlias, 40))
-                {
-                    item.NpcAlias = npcAlias;
-                }
-                ImGui.SameLine();
-                ImGui.SetNextItemWidth(150);
-                if (ImGui.InputText("Npc Name##", ref npcName, 40))
-                {
-                    item.NpcName = npcName;
-                }
-                if (ImGui.InputText("Dialogue##", ref dialogue, 500))
-                {
-                    item.Dialogue = dialogue;
-                }
-                if (ImGui.InputText("Dialogue Audio Path##", ref dialogueAudio, 255))
-                {
-                    item.DialogueAudio = dialogueAudio;
-                }
-                if (ImGui.InputText("Npc Appearance Swap##", ref appearanceSwap, 4000))
-                {
-                    item.AppearanceSwap = appearanceSwap;
-                }
+                        if (ImGui.InputText("Npc Appearance Swap##", ref appearanceSwap, 4000))
+                        {
+                            item.AppearanceSwap = appearanceSwap;
+                        }
 
-                if (ImGui.InputText("Player Appearance Swap##", ref playerAppearanceSwap, 4000))
-                {
-                    item.PlayerAppearanceSwap = playerAppearanceSwap;
-                }
-
-                if (ImGui.Combo("Player Appearance Swap Type", ref playerAppearanceSwapType, eventPlayerAppearanceApplicationTypes, eventPlayerAppearanceApplicationTypes.Length))
-                {
-                    item.PlayerAppearanceSwapType = (AppearanceSwapType)playerAppearanceSwapType;
-                }
-
-                if (ImGui.Combo("Box Style##", ref boxStyle, _boxStyles, _boxStyles.Length))
-                {
-                    item.DialogueBoxStyle = boxStyle;
-                }
-                ImGui.SetNextItemWidth(100);
-                if (ImGui.InputInt("NPC Face Expression Id##", ref faceExpression))
-                {
-                    item.FaceExpression = faceExpression;
-                }
-                ImGui.SameLine();
-                ImGui.SetNextItemWidth(100);
-                if (ImGui.InputInt("NPC Body Expression Id##", ref bodyExpression))
-                {
-                    item.BodyExpression = bodyExpression;
-                }
-                ImGui.SameLine();
-                if (ImGui.Checkbox("Loop Animation##", ref loopAnimation))
-                {
-                    item.LoopAnimation = loopAnimation;
-                }
-
-                ImGui.SetNextItemWidth(100);
-                if (ImGui.InputInt("Player Face Expression Id##", ref faceExpressionPlayer))
-                {
-                    item.FaceExpressionPlayer = faceExpressionPlayer;
-                }
-                ImGui.SameLine();
-                ImGui.SetNextItemWidth(100);
-                if (ImGui.InputInt("Player Body Expression Id##", ref bodyExpressionPlayer))
-                {
-                    item.BodyExpressionPlayer = bodyExpressionPlayer;
-                }
-                ImGui.SameLine();
-                if (ImGui.Checkbox("Loop Player Animation##", ref loopAnimationPlayer))
-                {
-                    item.LoopAnimationPlayer = loopAnimationPlayer;
-                }
-
-                if (ImGui.Combo("Event Background Type##", ref eventBackgroundType, eventBackgroundTypes, eventBackgroundTypes.Length))
-                {
-                    item.TypeOfEventBackground = (EventBackgroundType)eventBackgroundType;
-                }
-                switch (item.TypeOfEventBackground)
-                {
-                    case EventBackgroundType.Image:
-                    case EventBackgroundType.ImageTransparent:
-                        if (ImGui.InputText("Event Background Image Path##", ref eventBackground, 255))
+                        if (ImGui.InputText("Player Appearance Swap##", ref playerAppearanceSwap, 4000))
                         {
-                            item.EventBackground = eventBackground;
+                            item.PlayerAppearanceSwap = playerAppearanceSwap;
                         }
-                        break;
-                    case EventBackgroundType.Video:
-                        if (ImGui.InputText("Event Background Video Path##", ref eventBackground, 255))
-                        {
-                            item.EventBackground = eventBackground;
-                        }
-                        break;
-                }
-                if (ImGui.Combo("Event End Behaviour##", ref eventEndBehaviour, eventEndTypes, eventEndTypes.Length))
-                {
-                    item.EventEndBehaviour = (EventBehaviourType)eventEndBehaviour;
-                }
 
-                switch (item.EventEndBehaviour)
-                {
-                    case EventBehaviourType.EventSkipsToDialogueNumber:
-                        if (ImGui.InputInt("Event Number To Skip To##", ref eventNumberToSkipTo))
+                        if (ImGui.Combo("Player Appearance Swap Type", ref playerAppearanceSwapType, eventPlayerAppearanceApplicationTypes, eventPlayerAppearanceApplicationTypes.Length))
                         {
-                            item.EventNumberToSkipTo = eventNumberToSkipTo;
+                            item.PlayerAppearanceSwapType = (AppearanceSwapType)playerAppearanceSwapType;
                         }
-                        break;
-                    case EventBehaviourType.EventEndsEarlyWhenHitAndSkipsToObjective:
-                        if (ImGui.InputInt("Objective Number To Skip To##", ref objectiveNumberToSkipTo))
+
+                        if (ImGui.Combo("Box Style##", ref boxStyle, _boxStyles, _boxStyles.Length))
                         {
-                            item.ObjectiveNumberToSkipTo = objectiveNumberToSkipTo;
+                            item.DialogueBoxStyle = boxStyle;
                         }
-                        break;
-                    case EventBehaviourType.EventEndsEarlyWhenHitAndStartsTimer:
-                    case EventBehaviourType.StartsTimer:
-                        if (ImGui.InputInt("Time Limit (Milliseconds)##", ref timeLimit))
+                        ImGui.SetNextItemWidth(100);
+                        if (ImGui.InputInt("NPC Face Expression Id##", ref faceExpression))
                         {
-                            item.TimeLimit = timeLimit;
+                            item.FaceExpression = faceExpression;
                         }
-                        break;
+                        ImGui.SameLine();
+                        ImGui.SetNextItemWidth(100);
+                        if (ImGui.InputInt("NPC Body Expression Id##", ref bodyExpression))
+                        {
+                            item.BodyExpression = bodyExpression;
+                        }
+                        ImGui.SameLine();
+                        if (ImGui.Checkbox("Loop Animation##", ref loopAnimation))
+                        {
+                            item.LoopAnimation = loopAnimation;
+                        }
+
+                        ImGui.SetNextItemWidth(100);
+                        if (ImGui.InputInt("Player Face Expression Id##", ref faceExpressionPlayer))
+                        {
+                            item.FaceExpressionPlayer = faceExpressionPlayer;
+                        }
+                        ImGui.SameLine();
+                        ImGui.SetNextItemWidth(100);
+                        if (ImGui.InputInt("Player Body Expression Id##", ref bodyExpressionPlayer))
+                        {
+                            item.BodyExpressionPlayer = bodyExpressionPlayer;
+                        }
+                        ImGui.SameLine();
+                        if (ImGui.Checkbox("Loop Player Animation##", ref loopAnimationPlayer))
+                        {
+                            item.LoopAnimationPlayer = loopAnimationPlayer;
+                        }
+
+                        if (ImGui.Combo("Event Background Type##", ref eventBackgroundType, eventBackgroundTypes, eventBackgroundTypes.Length))
+                        {
+                            item.TypeOfEventBackground = (EventBackgroundType)eventBackgroundType;
+                        }
+                        switch (item.TypeOfEventBackground)
+                        {
+                            case EventBackgroundType.Image:
+                            case EventBackgroundType.ImageTransparent:
+                                if (ImGui.InputText("Event Background Image Path##", ref eventBackground, 255))
+                                {
+                                    item.EventBackground = eventBackground;
+                                }
+                                break;
+                            case EventBackgroundType.Video:
+                                if (ImGui.InputText("Event Background Video Path##", ref eventBackground, 255))
+                                {
+                                    item.EventBackground = eventBackground;
+                                }
+                                break;
+                        }
+                        if (ImGui.Combo("Event End Behaviour##", ref eventEndBehaviour, eventEndTypes, eventEndTypes.Length))
+                        {
+                            item.EventEndBehaviour = (EventBehaviourType)eventEndBehaviour;
+                        }
+
+                        switch (item.EventEndBehaviour)
+                        {
+                            case EventBehaviourType.EventSkipsToDialogueNumber:
+                                if (ImGui.InputInt("Event Number To Skip To##", ref eventNumberToSkipTo))
+                                {
+                                    item.EventNumberToSkipTo = eventNumberToSkipTo;
+                                }
+                                break;
+                            case EventBehaviourType.EventEndsEarlyWhenHitAndSkipsToObjective:
+                                if (ImGui.InputInt("Objective Number To Skip To##", ref objectiveNumberToSkipTo))
+                                {
+                                    item.ObjectiveNumberToSkipTo = objectiveNumberToSkipTo;
+                                }
+                                break;
+                            case EventBehaviourType.EventEndsEarlyWhenHitAndStartsTimer:
+                            case EventBehaviourType.StartsTimer:
+                                if (ImGui.InputInt("Time Limit (Milliseconds)##", ref timeLimit))
+                                {
+                                    item.TimeLimit = timeLimit;
+                                }
+                                break;
+                        }
+                        if (ImGui.Checkbox("Event Has No Reading##", ref eventHasNoReading))
+                        {
+                            item.EventHasNoReading = eventHasNoReading;
+                        }
+                        ImGui.EndTabItem();
+                    }
+                    if (ImGui.BeginTabItem("Branching Choices## we're unique"))
+                    {
+                        DrawBranchingChoicesMenu();
+                        ImGui.EndTabItem();
+                    }
+                    if (ImGui.BeginTabItem("Positioning## we're unique"))
+                    {
+                        if (ImGui.Checkbox("Looks At Player During Event", ref looksAtPlayerDuringEvent))
+                        {
+                            item.LooksAtPlayerDuringEvent = looksAtPlayerDuringEvent;
+                        }
+                        if (ImGui.Checkbox("Event Sets New NPC Position", ref eventSetsNewNpcPosition))
+                        {
+                            item.EventSetsNewNpcCoordinates = eventSetsNewNpcPosition;
+                        }
+                        if (eventSetsNewNpcPosition)
+                        {
+                            if (ImGui.DragFloat3("Npc Movement Position", ref npcMovementPosition))
+                            {
+                                item.NpcMovementPosition = npcMovementPosition;
+                            }
+                            if (ImGui.DragFloat3("Npc Movement Rotation", ref npcMovementRotation))
+                            {
+                                item.NpcMovementRotation = npcMovementRotation;
+                            }
+                            if (ImGui.Button("Set Coordinates Based On Player Position"))
+                            {
+                                item.NpcMovementPosition = Plugin.ClientState.LocalPlayer.Position;
+                                item.NpcMovementRotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ClientState.LocalPlayer.Rotation), 0);
+                            }
+                        }
+                        ImGui.EndTabItem();
+                    }
                 }
-                if (ImGui.Checkbox("Event Has No Reading##", ref eventHasNoReading))
-                {
-                    item.EventHasNoReading = eventHasNoReading;
-                }
-                DrawBranchingChoicesMenu();
             }
         }
     }
@@ -691,6 +779,12 @@ public class EditorWindow : Window, IDisposable
                             }
                             break;
                         case BranchingChoiceType.SkipToEventNumberRandomized:
+                            var width = ImGui.GetColumnWidth();
+                            ImGui.PushID("Vertical Scroll Branching");
+                            ImGui.BeginGroup();
+                            const ImGuiWindowFlags child_flags = ImGuiWindowFlags.MenuBar;
+                            var child_id = ImGui.GetID("Branching Events");
+                            bool child_is_visible = ImGui.BeginChild(child_id, new Vector2(width, 200), true, child_flags);
                             for (int i = 0; i < item.RandomizedEventToSkipTo.Count; i++)
                             {
                                 try
@@ -726,6 +820,9 @@ public class EditorWindow : Window, IDisposable
                                     Plugin.PluginLog.Warning(e, e.Message);
                                 }
                             }
+                            ImGui.EndChild();
+                            ImGui.EndGroup();
+                            ImGui.PopID();
                             if (ImGui.Button($"Add Randomized Skip##"))
                             {
                                 item.RandomizedEventToSkipTo.Add(0);
@@ -778,7 +875,7 @@ public class EditorWindow : Window, IDisposable
             {
                 var branchingChoices = questText[_selectedEvent].BranchingChoices;
                 ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                if (ImGui.ListBox("##branchingChoice", ref _selectedBranchingChoice, _branchingChoices, _branchingChoices.Length, 5))
+                if (ImGui.ListBox("##branchingChoice", ref _selectedBranchingChoice, _branchingChoices, _branchingChoices.Length, 12))
                 {
                     RefreshMenus();
                 }

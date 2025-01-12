@@ -202,7 +202,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
                 }
             }
         }
-        if (!Plugin.DialogueWindow.IsOpen)
+        if (!Plugin.EventWindow.IsOpen)
         {
             IsOpen = false;
         }

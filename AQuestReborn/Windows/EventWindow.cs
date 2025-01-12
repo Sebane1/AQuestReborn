@@ -484,6 +484,14 @@ public class EventWindow : Window, IDisposable
                         Plugin.DialogueBackgroundWindow.ClearBackground();
                     }
                 }
+                if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                {
+                    Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].LooksAtPlayer = item.LooksAtPlayerDuringEvent;
+                    if (item.EventSetsNewNpcCoordinates)
+                    {
+                        Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].SetDefaults(item.NpcMovementPosition, item.NpcMovementRotation);
+                    }
+                }
                 if (_index < questDisplayObject.QuestObjective.QuestText.Count &&
                 questDisplayObject.QuestObjective.QuestText[_index].BranchingChoices.Count > 0)
                 {

@@ -54,6 +54,7 @@ namespace AQuestReborn
         private Stopwatch _mcdfRefreshTimer = new Stopwatch();
         private Stopwatch _actorSpawnRefreshTimer = new Stopwatch();
         private Stopwatch _mapRefreshTimer = new Stopwatch();
+        private Stopwatch _passiveObjectiveRefreshTimer = new Stopwatch();
         private bool _screenButtonClicked;
         private Dictionary<string, Dictionary<string, ICharacter>> _spawnedNpcsDictionary = new Dictionary<string, Dictionary<string, ICharacter>>();
         private Dictionary<string, InteractiveNpc> _interactiveNpcDictionary = new Dictionary<string, InteractiveNpc>();
@@ -163,7 +164,7 @@ namespace AQuestReborn
         {
             try
             {
-                if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
+                if (!Plugin.EventWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
                 {
                     Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.DoEmote, emoteId.ToString());
                 }
@@ -311,6 +312,7 @@ namespace AQuestReborn
                             }
                             else
                             {
+                                CheckForPassiveQuestProgression();
                                 CheckForNewAppearanceLoad();
                                 QuestInputCheck();
                                 CheckForNewPlayerCreationLoad();
@@ -330,6 +332,20 @@ namespace AQuestReborn
                 {
                     Plugin.PluginLog.Warning(ex, ex.Message);
                 }
+            }
+        }
+
+        private void CheckForPassiveQuestProgression()
+        {
+            if (_passiveObjectiveRefreshTimer.ElapsedMilliseconds > 500 && !Plugin.EventWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
+            {
+                Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.SubObjectivesFinished, "", true);
+                Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.BoundingTrigger);
+                _passiveObjectiveRefreshTimer.Restart();
+            }
+            if (!_passiveObjectiveRefreshTimer.IsRunning)
+            {
+                _passiveObjectiveRefreshTimer.Start();
             }
         }
 
@@ -434,11 +450,11 @@ namespace AQuestReborn
                                 _interactiveNpcDictionary[value.Item2].SetScale(value.Item1.TransformScale, 2);
                                 if (character != null)
                                 {
-                                    if (_interactiveNpcDictionary[value.Item2].LastMcdf != value.Item3
+                                    if (_interactiveNpcDictionary[value.Item2].LastAppearance != value.Item3
                                     || Plugin.RoleplayingQuestManager.QuestProgression[value.Item6.QuestId] == 0)
                                     {
                                         LoadAppearance(value.Item3, AppearanceSwapType.EntireAppearance, character);
-                                        _interactiveNpcDictionary[value.Item2].LastMcdf = value.Item3;
+                                        _interactiveNpcDictionary[value.Item2].LastAppearance = value.Item3;
                                     }
                                     Plugin.AnamcoreManager.SetVoice(character, 0);
                                     Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)value.Item1.DefaultAnimationId);
@@ -559,13 +575,13 @@ namespace AQuestReborn
                             && Plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 300)
                         {
                             _inputCooldown.Restart();
-                            if (!Plugin.DialogueWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
+                            if (!Plugin.EventWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
                             {
                                 Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective();
                             }
                             else
                             {
-                                Plugin.DialogueWindow.NextEvent();
+                                Plugin.EventWindow.NextEvent();
                             }
                         }
                         _waitingForSelectionRelease = true;
@@ -752,8 +768,8 @@ namespace AQuestReborn
         {
             if (e.QuestObjective.QuestText.Count > 0)
             {
-                Plugin.DialogueWindow.IsOpen = true;
-                Plugin.DialogueWindow.NewText(e);
+                Plugin.EventWindow.IsOpen = true;
+                Plugin.EventWindow.NewText(e);
             }
             else
             {

@@ -19,6 +19,8 @@ using System.Diagnostics;
 using Quaternion = System.Numerics.Quaternion;
 using Brio.Core;
 using Brio.Capabilities.Actor;
+using Lumina.Excel.Sheets;
+using FFXIVClientStructs.FFXIV.Client.Game;
 
 namespace AQuestReborn
 {
@@ -52,7 +54,8 @@ namespace AQuestReborn
         Stopwatch _horizontalRefreshTimer = new Stopwatch();
         private bool _wasMoving;
 
-        public string LastMcdf { get; internal set; }
+        public string LastAppearance { get; internal set; }
+        public bool LooksAtPlayer { get; internal set; }
 
         public InteractiveNpc(Plugin plugin, ICharacter character)
         {
@@ -81,9 +84,9 @@ namespace AQuestReborn
                     if (_character != null)
                     {
                         float delta = ((float)_plugin.Framework.UpdateDelta.Milliseconds / 1000f);
-                        if (_followPlayer && !_plugin.DialogueWindow.IsOpen && !_plugin.ChoiceWindow.IsOpen
-                            && _plugin.DialogueWindow.TimeSinceLastDialogueDisplayed.ElapsedMilliseconds > 200
-                            && _plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 200)
+                        if (_followPlayer && !_plugin.EventWindow.IsOpen && !_plugin.ChoiceWindow.IsOpen
+                            && _plugin.EventWindow.TimeSinceLastDialogueDisplayed.ElapsedMilliseconds > 200
+                            && _plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 200 && !Conditions.IsMounted)
                         {
                             var targetPosition = _plugin.ClientState.LocalPlayer.Position
                                     + GetVerticalOffsetFromPlayer((_index) - ((float)(_plugin.AQuestReborn.InteractiveNpcDictionary.Count - 1) / 2f))
@@ -111,7 +114,7 @@ namespace AQuestReborn
                         }
                         else
                         {
-                            if (!_followPlayer || _plugin.DialogueWindow.IsOpen)
+                            if (!_followPlayer || _plugin.EventWindow.IsOpen)
                             {
                                 if (Vector3.Distance(new Vector3(_currentPosition.X, 0, _currentPosition.X), new Vector3(_defaultPosition.X, 0, _defaultPosition.X)) > 1)
                                 {
@@ -131,7 +134,7 @@ namespace AQuestReborn
                                         _wasMoving = false;
                                         _plugin.AnamcoreManager.StopEmote(_character.Address);
                                     }
-                                    if (_plugin.DialogueWindow.IsOpen)
+                                    if (_plugin.EventWindow.IsOpen && LooksAtPlayer)
                                     {
                                         SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta),
                                                      _currentRotation = CoordinateUtility.LookAt(_currentPosition, _plugin.ClientState.LocalPlayer.Position).QuaternionToEuler(),
