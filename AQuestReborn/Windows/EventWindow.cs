@@ -489,6 +489,7 @@ public class EventWindow : Window, IDisposable
                 if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
                 {
                     Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].LooksAtPlayer = item.LooksAtPlayerDuringEvent;
+                    Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].ShouldBeMoving = item.EventSetsNewNpcCoordinates;
                     if (item.EventSetsNewNpcCoordinates)
                     {
                         Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].SetDefaults(item.NpcMovementPosition, item.NpcMovementRotation);
