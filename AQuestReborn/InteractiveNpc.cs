@@ -117,7 +117,7 @@ namespace AQuestReborn
                         {
                             if (!_followPlayer || _plugin.EventWindow.IsOpen || _plugin.ChoiceWindow.IsOpen)
                             {
-                                if (Vector3.Distance(new Vector3(_currentPosition.X, 0, _currentPosition.X), new Vector3(_defaultPosition.X, 0, _defaultPosition.X)) > 1)
+                                if (Vector3.Distance(new Vector3(_currentPosition.X, 0, _currentPosition.X), new Vector3(_defaultPosition.X, 0, _defaultPosition.X)) > 0.2)
                                 {
                                     SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, _speed * delta),
                                                  _currentRotation = CoordinateUtility.LookAt(_currentPosition, _defaultPosition).QuaternionToEuler(),
