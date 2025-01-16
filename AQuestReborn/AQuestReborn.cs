@@ -319,7 +319,10 @@ namespace AQuestReborn
                                 CheckForNPCRefresh();
                                 CheckForMapRefresh();
                                 CheckZoneDiscriminator();
-                                CheckForPlayerAppearance();
+                                if (zoneChangeCooldown.ElapsedMilliseconds > 6000)
+                                {
+                                    CheckForPlayerAppearance();
+                                }
                             }
                         }
                         if (!zoneChangeCooldown.IsRunning)

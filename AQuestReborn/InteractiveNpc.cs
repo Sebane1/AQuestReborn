@@ -119,14 +119,14 @@ namespace AQuestReborn
                             {
                                 if (Vector3.Distance(new Vector3(_currentPosition.X, 0, _currentPosition.X), new Vector3(_defaultPosition.X, 0, _defaultPosition.X)) > 0.2)
                                 {
-                                    SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, _speed * delta),
+                                    SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, (_speed / 2) * delta),
                                                  _currentRotation = CoordinateUtility.LookAt(_currentPosition, _defaultPosition).QuaternionToEuler(),
                                                  _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
                                     if (Vector3.Distance(_currentPosition, _plugin.ClientState.LocalPlayer.Position) > 0.2f)
                                     {
                                         _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
+                                        _wasMoving = true;
                                     }
-                                    _wasMoving = true;
                                 }
                                 else
                                 {
