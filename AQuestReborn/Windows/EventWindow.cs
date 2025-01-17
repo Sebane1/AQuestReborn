@@ -292,7 +292,7 @@ public class EventWindow : Window, IDisposable
         if (_index < _questDisplayObject.QuestObjective.QuestText.Count)
         {
             var item = _questDisplayObject.QuestObjective.QuestText[_index];
-            var customization = AppearanceAccessUtils.AppearanceManager.GetGlamourerCustomization();
+            var customization = AppearanceHelper.GetCustomization(Plugin.ClientState.LocalPlayer);
             switch (item.ConditionForDialogueToOccur)
             {
                 case QuestEvent.EventConditionType.CompletedSpecificObjectiveId:
