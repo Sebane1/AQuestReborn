@@ -340,7 +340,7 @@ namespace AQuestReborn
             if (_passiveObjectiveRefreshTimer.ElapsedMilliseconds > 500 && !Plugin.EventWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
             {
                 Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.SubObjectivesFinished, "", true);
-                Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.BoundingTrigger);
+                Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.BoundingTrigger, "", true);
                 _passiveObjectiveRefreshTimer.Restart();
             }
             if (!_passiveObjectiveRefreshTimer.IsRunning)
