@@ -570,6 +570,10 @@ public class EventWindow : Window, IDisposable
                         case QuestEvent.EventBehaviourType.EventEndsEarlyWhenHitAndSkipsToObjective:
                             _index = _questDisplayObject.QuestObjective.QuestText.Count;
                             _objectiveSkipValue = item.ObjectiveNumberToSkipTo;
+                            if (_objectiveSkipValue < _questDisplayObject.RoleplayingQuest.QuestObjectives.Count)
+                            {
+                                _questDisplayObject.RoleplayingQuest.QuestObjectives[_objectiveSkipValue].ClearProgression();
+                            }
                             _objectiveSkip = true;
                             break;
                         case QuestEvent.EventBehaviourType.EventEndsEarlyWhenHitAndNPCFollowsPlayer:

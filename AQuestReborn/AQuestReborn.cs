@@ -337,7 +337,7 @@ namespace AQuestReborn
 
         private void CheckForPassiveQuestProgression()
         {
-            if (_passiveObjectiveRefreshTimer.ElapsedMilliseconds > 500 && !Plugin.EventWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
+            if (_passiveObjectiveRefreshTimer.ElapsedMilliseconds > 100 && !Plugin.EventWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen)
             {
                 Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.SubObjectivesFinished, "", true);
                 Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.BoundingTrigger, "", true);
