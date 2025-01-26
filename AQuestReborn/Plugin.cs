@@ -31,6 +31,8 @@ using AQuestReborn.UIAtlasing;
 using MareSynchronos;
 using Dalamud.Game.ClientState.Objects;
 using FFXIVClientStructs.FFXIV.Client.UI;
+using ECommons;
+using ECommons.Reflection;
 
 namespace SamplePlugin;
 
@@ -125,6 +127,7 @@ public sealed class Plugin : IDalamudPlugin
         _dalamudPluginInterface = dalamudPluginInterface;
         _gameInteropProvider = gameInteropProvider;
         _objectTable = objectTable;
+        ECommonsMain.Init(dalamudPluginInterface, this, Module.DalamudReflector);
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         _mcdfEntryPoint = new EntryPoint(PluginInterface, commandManager, dataManager, framework, objectTable, clientState, condition, chatGui, gameGui, dtrBar, pluginLog,
         targetManager, notificationManager, textureProvider, contextMenu, gameInteropProvider, Path.Combine(Path.GetDirectoryName(Configuration.QuestInstallFolder + ".poop"), "QuestCache\\"));
@@ -204,6 +207,38 @@ public sealed class Plugin : IDalamudPlugin
             _roleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.SayPhrase, arguments);
         }
     }
+    public bool GetAutomationGlobalState()
+    {
+        try
+        {
+            if (DalamudReflector.TryGetDalamudPlugin("Glamourer", out var plugin, out var context, true, true))
+            {
+                var config = plugin.GetFoP("_services").Call(context.Assemblies, "GetService", ["Glamourer.Configuration"], []);
+                return config.GetFoP<bool>("EnableAutoDesigns");
+            }
+        }
+        catch (Exception ex)
+        {
+            ex.LogWarning();
+        }
+        return false;
+    }
+
+    public void SetAutomationGlobalState(bool state)
+    {
+        try
+        {
+            if (DalamudReflector.TryGetDalamudPlugin("Glamourer", out var plugin, out var context, true, true))
+            {
+                var config = plugin.GetFoP("_services").Call(context.Assemblies, "GetService", ["Glamourer.Configuration"], []);
+                config.SetFoP("EnableAutoDesigns", state);
+            }
+        }
+        catch (Exception ex)
+        {
+            ex.LogWarning();
+        }
+    }
 
     public void Dispose()
     {
@@ -217,6 +252,7 @@ public sealed class Plugin : IDalamudPlugin
         _aQuestReborn?.Dispose();
         _movement?.Dispose();
         _mcdfEntryPoint?.Dispose();
+        ECommonsMain.Dispose();
     }
 
     private void OnCommand(string command, string args)

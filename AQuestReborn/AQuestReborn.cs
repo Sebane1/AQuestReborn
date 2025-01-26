@@ -357,12 +357,14 @@ namespace AQuestReborn
                 var appearance = Plugin.RoleplayingQuestManager.GetPlayerAppearanceForZone(Plugin.ClientState.TerritoryType, _discriminator);
                 if (appearance != null)
                 {
+                    Plugin.SetAutomationGlobalState(false);
                     LoadAppearance(appearance.AppearanceData, appearance.AppearanceSwapType, Plugin.ClientState.LocalPlayer);
                     Plugin.ToastGui.ShowNormal("A quest in this zone is affecting your characters appearance.");
                 }
                 else
                 {
                     AppearanceAccessUtils.AppearanceManager.RemoveTemporaryCollection(Plugin.ClientState.LocalPlayer.Name.TextValue);
+                    Plugin.SetAutomationGlobalState(true);
                 }
             }
         }

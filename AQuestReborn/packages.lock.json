@@ -1646,6 +1646,9 @@
           "Penumbra.Api": "[5.3.0, )"
         }
       },
+      "ecommons": {
+        "type": "Project"
+      },
       "loosetexturecompilercore": {
         "type": "Project",
         "dependencies": {
