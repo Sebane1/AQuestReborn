@@ -33,7 +33,7 @@ public class RewardWindow : Window, IDisposable
         Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBackground;
 
-        Size = new Vector2(600, 400);
+        Size = new Vector2(600, 500);
         SizeCondition = ImGuiCond.Always;
         Plugin = plugin;
     }
