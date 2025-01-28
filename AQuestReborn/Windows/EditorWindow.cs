@@ -561,20 +561,6 @@ public class EditorWindow : Window, IDisposable
                         {
                             item.DialogueAudio = dialogueAudio;
                         }
-                        if (ImGui.InputText("Npc Appearance Swap##", ref appearanceSwap, 4000))
-                        {
-                            item.AppearanceSwap = appearanceSwap;
-                        }
-
-                        if (ImGui.InputText("Player Appearance Swap##", ref playerAppearanceSwap, 4000))
-                        {
-                            item.PlayerAppearanceSwap = playerAppearanceSwap;
-                        }
-
-                        if (ImGui.Combo("Player Appearance Swap Type", ref playerAppearanceSwapType, eventPlayerAppearanceApplicationTypes, eventPlayerAppearanceApplicationTypes.Length))
-                        {
-                            item.PlayerAppearanceSwapType = (AppearanceSwapType)playerAppearanceSwapType;
-                        }
 
                         if (ImGui.Combo("Box Style##", ref boxStyle, _boxStyles, _boxStyles.Length))
                         {
@@ -664,6 +650,24 @@ public class EditorWindow : Window, IDisposable
                         if (ImGui.Checkbox("Event Has No Reading##", ref eventHasNoReading))
                         {
                             item.EventHasNoReading = eventHasNoReading;
+                        }
+                        ImGui.EndTabItem();
+                    }
+                    if (ImGui.BeginTabItem("Appearance Swap##we're unique and such"))
+                    {
+                        if (ImGui.InputText("Npc Appearance Swap##", ref appearanceSwap, 4000))
+                        {
+                            item.AppearanceSwap = appearanceSwap;
+                        }
+
+                        if (ImGui.InputText("Player Appearance Swap##", ref playerAppearanceSwap, 4000))
+                        {
+                            item.PlayerAppearanceSwap = playerAppearanceSwap;
+                        }
+
+                        if (ImGui.Combo("Player Appearance Swap Type", ref playerAppearanceSwapType, eventPlayerAppearanceApplicationTypes, eventPlayerAppearanceApplicationTypes.Length))
+                        {
+                            item.PlayerAppearanceSwapType = (AppearanceSwapType)playerAppearanceSwapType;
                         }
                         ImGui.EndTabItem();
                     }
