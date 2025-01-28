@@ -454,7 +454,7 @@ public class EditorWindow : Window, IDisposable
             var questEvent = _objectiveInFocus.QuestText;
             if (questEvent.Count > 0)
             {
-                if (_selectedEvent > questEvent.Count)
+                if (_selectedEvent > questEvent.Count || _selectedEvent < 0)
                 {
                     _selectedEvent = 0;
                 }
@@ -931,6 +931,15 @@ public class EditorWindow : Window, IDisposable
                 _dialogues = Utility.FillNewList(questText.Count, "Event");
                 _selectedEvent = questText.Count - 1;
                 RefreshMenus();
+            }
+            if (ImGui.Button("Add Clipboard"))
+            {
+                _roleplayingQuestCreator.StoryScriptToObjectiveEvents(ImGui.GetClipboardText(), _objectiveInFocus);
+                RefreshMenus();
+            }
+            if (ImGui.Button("To Clipboard"))
+            {
+                ImGui.SetClipboardText(_roleplayingQuestCreator.ObjectiveToStoryScriptFormat(_objectiveInFocus));
             }
         }
     }
