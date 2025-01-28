@@ -653,6 +653,11 @@ public class EditorWindow : Window, IDisposable
                         }
                         ImGui.EndTabItem();
                     }
+                    if (ImGui.BeginTabItem("Branching Choices## we're unique"))
+                    {
+                        DrawBranchingChoicesMenu();
+                        ImGui.EndTabItem();
+                    }
                     if (ImGui.BeginTabItem("Appearance Swap##we're unique and such"))
                     {
                         if (ImGui.InputText("Npc Appearance Swap##", ref appearanceSwap, 4000))
@@ -669,11 +674,6 @@ public class EditorWindow : Window, IDisposable
                         {
                             item.PlayerAppearanceSwapType = (AppearanceSwapType)playerAppearanceSwapType;
                         }
-                        ImGui.EndTabItem();
-                    }
-                    if (ImGui.BeginTabItem("Branching Choices## we're unique"))
-                    {
-                        DrawBranchingChoicesMenu();
                         ImGui.EndTabItem();
                     }
                     if (ImGui.BeginTabItem("Positioning## we're unique"))
