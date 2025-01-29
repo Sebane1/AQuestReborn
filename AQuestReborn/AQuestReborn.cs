@@ -142,6 +142,20 @@ namespace AQuestReborn
                             Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.KillEnemy, messageAsString, true);
                         });
                         break;
+                    case 4922:
+                        if (Conditions.IsBoundByDuty)
+                        {
+                            Task.Run(() =>
+                            {
+                                while (Conditions.IsInCombat)
+                                {
+                                    Thread.Sleep(1000);
+                                }
+                                Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.KillEnemy, messageAsString, true);
+                            });
+                        }
+                        break;
+
                 }
             }
             catch (Exception e)
