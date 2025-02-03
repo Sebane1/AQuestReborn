@@ -420,6 +420,7 @@ public class EventWindow : Window, IDisposable
                             Task.Run(() =>
                             {
                                 Thread.Sleep(1000);
+                                Plugin.SetAutomationGlobalState(false);
                                 Plugin.AQuestReborn.LoadAppearance(customPlayerAppearancePath, _playerAppearanceSwapType, Plugin.ClientState.LocalPlayer);
                                 Plugin.RoleplayingQuestManager.AddPlayerAppearance(_questDisplayObject.RoleplayingQuest.QuestId, customPlayerAppearancePath, _playerAppearanceSwapType);
                             });
@@ -428,6 +429,7 @@ public class EventWindow : Window, IDisposable
                 }
                 else
                 {
+                    Plugin.SetAutomationGlobalState(true);
                     Plugin.RoleplayingQuestManager.RemovePlayerAppearance(_questDisplayObject.RoleplayingQuest.QuestId);
                     AppearanceAccessUtils.AppearanceManager.RemoveTemporaryCollection(Plugin.ClientState.LocalPlayer.Name.TextValue);
                 }
