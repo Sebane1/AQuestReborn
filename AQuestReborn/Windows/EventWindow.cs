@@ -393,24 +393,44 @@ public class EventWindow : Window, IDisposable
                 });
                 string customAudioPath = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueAudio);
                 string customBackgroundPath = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, item.EventBackground);
-                string customNpcAppearancefPath = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, item.AppearanceSwap);
-                string customPlayerAppearancePath = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, item.PlayerAppearanceSwap);
-                if (!string.IsNullOrEmpty(_npcAppearanceSwap) && File.Exists(customNpcAppearancefPath) || _npcAppearanceSwap.Length > 255)
+                string[] appearanceItems = item.AppearanceSwap.StringToArray();
+                for (int i = 0; i < appearanceItems.Length; i++)
                 {
-                    if (_npcAppearanceSwap.Length > 255)
+                    if (appearanceItems[i].Contains(".chara") || appearanceItems[i].Contains(".mcdf"))
                     {
-                        customNpcAppearancefPath = _npcAppearanceSwap;
+                        appearanceItems[i] = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, appearanceItems[i].Trim());
+                    }
+                }
+                string customNpcAppearancePath = appearanceItems.ArrayToString();
+
+                appearanceItems = item.PlayerAppearanceSwap.StringToArray();
+                for (int i = 0; i < appearanceItems.Length; i++)
+                {
+                    if (appearanceItems[i].Contains(".chara") || appearanceItems[i].Contains(".mcdf"))
+                    {
+                        appearanceItems[i] = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, appearanceItems[i].Trim());
+                    }
+                }
+
+                string customPlayerAppearancePath = appearanceItems.ArrayToString();
+
+                bool isGlamourerString = !_npcAppearanceSwap.Contains(".mcdf") && !_npcAppearanceSwap.Contains(".chara");
+                if (!string.IsNullOrEmpty(_npcAppearanceSwap) && File.Exists(customNpcAppearancePath) || isGlamourerString)
+                {
+                    if (isGlamourerString)
+                    {
+                        customNpcAppearancePath = _npcAppearanceSwap;
                     }
                     if (Plugin.RoleplayingQuestManager.SwapAppearanceData(_questDisplayObject.RoleplayingQuest, item.NpcName, item.AppearanceSwap))
                     {
-                        Plugin.AQuestReborn.UpdateNPCAppearance(Plugin.ClientState.TerritoryType, _questDisplayObject.RoleplayingQuest.QuestId, item.NpcName, customNpcAppearancefPath);
+                        Plugin.AQuestReborn.UpdateNPCAppearance(Plugin.ClientState.TerritoryType, _questDisplayObject.RoleplayingQuest.QuestId, item.NpcName, customNpcAppearancePath);
                     }
                 }
                 if (_playerAppearanceSwapType != QuestEvent.AppearanceSwapType.RevertAppearance)
                 {
                     if (!string.IsNullOrEmpty(_playerAppearanceSwap) && File.Exists(customPlayerAppearancePath) || item.PlayerAppearanceSwap.Length > 255)
                     {
-                        if (item.PlayerAppearanceSwap.Length > 255)
+                        if (!item.PlayerAppearanceSwap.Contains(".mcdf") && !item.PlayerAppearanceSwap.Contains(".chara"))
                         {
                             customPlayerAppearancePath = item.PlayerAppearanceSwap;
                         }

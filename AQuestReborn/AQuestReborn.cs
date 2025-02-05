@@ -444,7 +444,7 @@ namespace AQuestReborn
                         {
                             var value = _npcActorSpawnQueue.Dequeue();
                             bool newNPC = !value.Item5;
-                            if (File.Exists(value.Item3))
+                            if (!string.IsNullOrEmpty(value.Item3) && !value.Item3.Contains("none"))
                             {
                                 ICharacter character = null;
                                 if (newNPC)
@@ -542,16 +542,53 @@ namespace AQuestReborn
                     var item = _appearanceApplicationQueue.Dequeue();
                     if (item.Item3 != null)
                     {
-                        if (item.Item1.EndsWith(".chara"))
+                        var appearanceDataItems = item.Item1.StringToArray();
+                        bool charaAlreadyLoaded = false;
+                        bool mcdfAlreadyLoaded = false;
+                        EventHandler charaLoad = null;
+                        EventHandler mcdfLoad = null;
+                        foreach (var appearanceDataItem in appearanceDataItems)
                         {
-                            BrioAccessUtils.EntityManager.SetSelectedEntity(item.Item3);
-                            BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<ActorAppearanceCapability>(out var appearance);
-                            appearance.ImportAppearance(item.Item1, Brio.Game.Actor.Appearance.AppearanceImportOptions.All);
+                            if (appearanceDataItem.EndsWith(".chara") && !charaAlreadyLoaded)
+                            {
+                                BrioAccessUtils.EntityManager.SetSelectedEntity(item.Item3);
+                                BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<ActorAppearanceCapability>(out var appearance);
+                                charaLoad = delegate
+                                {
+                                    appearance.ImportAppearance(appearanceDataItem, Brio.Game.Actor.Appearance.AppearanceImportOptions.All);
+                                };
+                                charaAlreadyLoaded = true;
+                            }
+                            else if (!mcdfAlreadyLoaded)
+                            {
+                                AppearanceSwapType appearanceSwapType = AppearanceSwapType.EntireAppearance;
+                                if (charaAlreadyLoaded)
+                                {
+                                    appearanceSwapType = AppearanceSwapType.OnlyModData;
+                                }
+                                mcdfLoad = delegate
+                                {
+                                    AppearanceAccessUtils.AppearanceManager?.LoadAppearance(appearanceDataItem, item.Item3, (int)appearanceSwapType);
+                                };
+                                mcdfAlreadyLoaded = true;
+                            }
                         }
-                        else
+                        try
                         {
-                            AppearanceAccessUtils.AppearanceManager?.LoadAppearance(item.Item1, item.Item3, (int)item.Item2);
+                            charaLoad?.Invoke(this, EventArgs.Empty);
                         }
+                        catch
+                        {
+
+                        }
+                        Task.Run(() =>
+                        {
+                            if (charaAlreadyLoaded)
+                            {
+                                Thread.Sleep(100);
+                            }
+                            mcdfLoad?.Invoke(this, EventArgs.Empty);
+                        });
                         _waitingForAppearanceLoad = false;
                     }
                     _mcdfRefreshTimer.Restart();
@@ -685,8 +722,17 @@ namespace AQuestReborn
                                                 }
                                             }
                                         }
+                                        string[] appearanceItems = npcAppearance.Value.AppearanceData.StringToArray();
+                                        for (int i = 0; i < appearanceItems.Length; i++)
+                                        {
+                                            if (appearanceItems[i].Contains(".chara") || appearanceItems[i].Contains(".mcdf"))
+                                            {
+                                                appearanceItems[i] = Path.Combine(foundPath, appearanceItems[i].Trim());
+                                            }
+                                        }
+                                        string customNpcAppearancePath = appearanceItems.ArrayToString();
                                         var value = new Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest, bool>
-                                        (startingInfo, npcAppearance.Value.NpcName, Path.Combine(foundPath, npcAppearance.Value.AppearanceData), spawnedNpcsList, foundExistingNPC, item.Item3, false);
+                                        (startingInfo, npcAppearance.Value.NpcName, Path.Combine(foundPath, customNpcAppearancePath), spawnedNpcsList, foundExistingNPC, item.Item3, false);
                                         _npcActorSpawnQueue.Enqueue(value);
                                     }
                                 }

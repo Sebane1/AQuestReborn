@@ -23,6 +23,8 @@ using System.Speech.Recognition;
 using Lumina.Excel.Sheets;
 using System.Diagnostics;
 using System.Drawing;
+using System.Threading.Tasks;
+using McdfDataImporter;
 
 namespace SamplePlugin.Windows;
 
@@ -45,6 +47,7 @@ public class EditorWindow : Window, IDisposable
     private QuestObjective _objectiveInFocus;
     private float _globalScale;
     private bool _shiftModifierHeld;
+    private bool _isCreatingAppearance;
 
     public RoleplayingQuestCreator RoleplayingQuestCreator { get => _roleplayingQuestCreator; set => _roleplayingQuestCreator = value; }
 
@@ -664,15 +667,59 @@ public class EditorWindow : Window, IDisposable
                         {
                             item.AppearanceSwap = appearanceSwap;
                         }
-
+                        if (_isCreatingAppearance)
+                        {
+                            ImGui.BeginDisabled();
+                        }
+                        if (ImGui.Button(_isCreatingAppearance ? "Creating Appearance Please Wait" : "Create NPC Appearance From Current Player Appearance##"))
+                        {
+                            Task.Run(() =>
+                            {
+                                _isCreatingAppearance = true;
+                                string mcdfName = npcName + "-" + Guid.NewGuid().ToString() + ".mcdf";
+                                string questPath = Path.Combine(Plugin.Configuration.QuestInstallFolder, _roleplayingQuestCreator.CurrentQuest.QuestName);
+                                string mcdfPath = Path.Combine(questPath, mcdfName);
+                                Directory.CreateDirectory(questPath);
+                                AppearanceAccessUtils.AppearanceManager.CreateMCDF(mcdfPath);
+                                Plugin.EditorWindow.RoleplayingQuestCreator.SaveQuest(questPath);
+                                item.AppearanceSwap = mcdfName;
+                                _isCreatingAppearance = false;
+                            });
+                        }
+                        if (_isCreatingAppearance)
+                        {
+                            ImGui.EndDisabled();
+                        }
                         if (ImGui.InputText("Player Appearance Swap##", ref playerAppearanceSwap, 4000))
                         {
                             item.PlayerAppearanceSwap = playerAppearanceSwap;
                         }
-
                         if (ImGui.Combo("Player Appearance Swap Type", ref playerAppearanceSwapType, eventPlayerAppearanceApplicationTypes, eventPlayerAppearanceApplicationTypes.Length))
                         {
                             item.PlayerAppearanceSwapType = (AppearanceSwapType)playerAppearanceSwapType;
+                        }
+                        if (_isCreatingAppearance)
+                        {
+                            ImGui.BeginDisabled();
+                        }
+                        if (ImGui.Button(_isCreatingAppearance ? "Creating Appearance Please Wait" : "Create Player Appearance From Current Player Appearance##"))
+                        {
+                            Task.Run(() =>
+                            {
+                                _isCreatingAppearance = true;
+                                string mcdfName = npcName + "-" + Guid.NewGuid().ToString() + ".mcdf";
+                                string questPath = Path.Combine(Plugin.Configuration.QuestInstallFolder, _roleplayingQuestCreator.CurrentQuest.QuestName);
+                                string mcdfPath = Path.Combine(questPath, mcdfName);
+                                Directory.CreateDirectory(questPath);
+                                AppearanceAccessUtils.AppearanceManager.CreateMCDF(mcdfPath);
+                                Plugin.EditorWindow.RoleplayingQuestCreator.SaveQuest(questPath);
+                                item.PlayerAppearanceSwap = mcdfName;
+                                _isCreatingAppearance = false;
+                            });
+                        }
+                        if (_isCreatingAppearance)
+                        {
+                            ImGui.EndDisabled();
                         }
                         ImGui.EndTabItem();
                     }
@@ -699,7 +746,7 @@ public class EditorWindow : Window, IDisposable
                             if (ImGui.Button("Set Coordinates Based On Player Position"))
                             {
                                 item.NpcMovementPosition = Plugin.ClientState.LocalPlayer.Position;
-                                item.NpcMovementRotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ClientState.LocalPlayer.Rotation), 0);
+                                item.NpcMovementRotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ClientState.LocalPlayer.Rotation) + 180, 0);
                             }
                         }
                         ImGui.EndTabItem();
