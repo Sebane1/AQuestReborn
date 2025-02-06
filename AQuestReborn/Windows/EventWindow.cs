@@ -287,7 +287,7 @@ public class EventWindow : Window, IDisposable
     {
         _index = index;
         bool allowedToContinue = true;
-        Plugin.MediaManager.StopAudio(_dummyObject);
+        Plugin.MediaManager.StopAudio(new MediaGameObject(Plugin.ClientState.LocalPlayer));
         Plugin.DialogueBackgroundWindow.ClearBackground();
         if (_index < _questDisplayObject.QuestObjective.QuestText.Count)
         {
@@ -497,7 +497,7 @@ public class EventWindow : Window, IDisposable
                 {
                     if (File.Exists(customAudioPath))
                     {
-                        Plugin.MediaManager.PlayMedia(_dummyObject, customAudioPath, RoleplayingMediaCore.SoundType.NPC, true);
+                        Plugin.MediaManager.PlayMedia(new MediaGameObject(Plugin.ClientState.LocalPlayer), customAudioPath, RoleplayingMediaCore.SoundType.NPC, true);
                     }
                     if (File.Exists(customBackgroundPath))
                     {

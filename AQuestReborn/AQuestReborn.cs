@@ -298,9 +298,11 @@ namespace AQuestReborn
                     _camera = CameraManager.Instance()->GetActiveCamera();
                     _playerCamera = new MediaCameraObject(_camera);
                 }
+
                 Plugin.MediaManager = new MediaManager(_playerObject, _playerCamera,
                 Path.GetDirectoryName(Plugin.DalamudPluginInterface.AssemblyLocation.FullName));
                 Plugin.DialogueBackgroundWindow.MediaManager = Plugin.MediaManager;
+                Plugin.MediaManager.LowPerformanceMode = true;
             }
             catch (Exception e)
             {
@@ -763,8 +765,18 @@ namespace AQuestReborn
                     var foundExistingNpc = _spawnedNpcsDictionary.ContainsKey(member.NpcName);
                     var customization = Plugin.RoleplayingQuestManager.GetNpcInformation(member.QuestId, member.NpcName);
                     var quest = Plugin.RoleplayingQuestManager.QuestChains[member.QuestId];
+
+                    string[] appearanceItems = customization.AppearanceData.StringToArray();
+                    for (int i = 0; i < appearanceItems.Length; i++)
+                    {
+                        if (appearanceItems[i].Contains(".chara") || appearanceItems[i].Contains(".mcdf"))
+                        {
+                            appearanceItems[i] = Path.Combine(quest.FoundPath, appearanceItems[i].Trim());
+                        }
+                    }
+                    string customNpcAppearancePath = appearanceItems.ArrayToString();
                     var value = new Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest, bool>(
-                    transform, member.NpcName, Path.Combine(quest.FoundPath, customization.AppearanceData), spawnedNpcList, foundExistingNpc, quest, true);
+                    transform, member.NpcName, customNpcAppearancePath, spawnedNpcList, foundExistingNpc, quest, true);
                     _npcActorSpawnQueue.Enqueue(value);
                 }
             }

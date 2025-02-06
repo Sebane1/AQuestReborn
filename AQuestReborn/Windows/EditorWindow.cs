@@ -985,7 +985,7 @@ public class EditorWindow : Window, IDisposable
             }
             if (ImGui.Button("Add Clipboard"))
             {
-                _roleplayingQuestCreator.StoryScriptToObjectiveEvents(ImGui.GetClipboardText(), _objectiveInFocus);
+                _roleplayingQuestCreator.StoryScriptToObjectiveEvents(ImGui.GetClipboardText().Replace("…","..."), _objectiveInFocus);
                 RefreshMenus();
             }
             if (ImGui.Button("To Clipboard"))

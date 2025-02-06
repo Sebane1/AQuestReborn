@@ -20,7 +20,7 @@ namespace AQuestReborn
             string finalString = "";
             foreach (string s in strings)
             {
-                finalString += s + ",";
+                finalString += s.Trim() + ",";
             }
             return finalString.TrimEnd(',');
         }
