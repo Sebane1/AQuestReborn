@@ -320,7 +320,7 @@ namespace AQuestReborn
                         && !Conditions.IsOccupied && !Conditions.IsInCombat && Plugin.ClientState.IsLoggedIn)
                     {
                         // Hopefully waiting prevents crashing on zone changes?
-                        if (zoneChangeCooldown.ElapsedMilliseconds > 3000)
+                        if (zoneChangeCooldown.ElapsedMilliseconds > 500)
                         {
                             if (!_isInitialized)
                             {
@@ -525,7 +525,7 @@ namespace AQuestReborn
                     if (Plugin.GameConfig.TryGet(SystemConfigOption.SoundMaster, out masterVolume))
                     {
                         if (Plugin.GameConfig.TryGet(SystemConfigOption.SoundMicpos, out soundMicPos))
-                            Plugin.MediaManager.NpcVolume = ((float)voiceVolume / 100f) * ((float)masterVolume / 100f);
+                            Plugin.MediaManager.NpcVolume = ((float)voiceVolume / 100f) * ((float)masterVolume / 100f) * 1.15f;
                         Plugin.MediaManager.CameraAndPlayerPositionSlider = (float)soundMicPos / 100f;
                     }
                 }
