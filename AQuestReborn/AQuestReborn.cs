@@ -124,7 +124,7 @@ namespace AQuestReborn
             }
         }
 
-        private void ChatGui_ChatMessage(Dalamud.Game.Text.XivChatType type, int timestamp, ref Dalamud.Game.Text.SeStringHandling.SeString sender, ref Dalamud.Game.Text.SeStringHandling.SeString message, ref bool isHandled)
+        private unsafe void ChatGui_ChatMessage(Dalamud.Game.Text.XivChatType type, int timestamp, ref Dalamud.Game.Text.SeStringHandling.SeString sender, ref Dalamud.Game.Text.SeStringHandling.SeString message, ref bool isHandled)
         {
             try
             {
@@ -135,7 +135,7 @@ namespace AQuestReborn
                     case 2874:
                         Task.Run(() =>
                         {
-                            while (Conditions.IsInCombat)
+                            while (Conditions.Instance()->InCombat)
                             {
                                 Thread.Sleep(1000);
                             }
@@ -143,11 +143,11 @@ namespace AQuestReborn
                         });
                         break;
                     case 4922:
-                        if (Conditions.IsBoundByDuty)
+                        if (Conditions.Instance()->BoundByDuty)
                         {
                             Task.Run(() =>
                             {
-                                while (Conditions.IsInCombat)
+                                while (Conditions.Instance()->InCombat)
                                 {
                                     Thread.Sleep(1000);
                                 }
@@ -238,11 +238,11 @@ namespace AQuestReborn
                 Plugin.PluginLog.Warning(e, e.Message);
             }
         }
-        public void RefreshMapMarkers()
+        public unsafe void RefreshMapMarkers()
         {
             try
             {
-                if (Plugin.ClientState.IsLoggedIn && !Conditions.IsInBetweenAreas)
+                if (Plugin.ClientState.IsLoggedIn && !Conditions.Instance()->BetweenAreas)
                 {
                     _activeQuestChainObjectives = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType, _discriminator);
                     unsafe
@@ -256,11 +256,15 @@ namespace AQuestReborn
                                 {
                                     var map = Plugin.DataManager.GetExcelSheet<TerritoryType>().GetRow(Plugin.ClientState.TerritoryType).Map.Value;
                                     var scaleFactor = map.SizeFactor;
-                                    Utf8String* stringBuffer = Utf8String.CreateEmpty();
-                                    stringBuffer->SetString(item.Item3.QuestName);
+                                    // Cant be bothered to figure out the errors this is spitting out post patch 7.2. no more map labels.
+                                    //Utf8String* stringBuffer = Utf8String.CreateEmpty();
+                                    //stringBuffer->SetString(item.Item3.QuestName);
+
                                     uint icon = (item.Item1 == 0 ? (uint)230604 : (uint)230605);
                                     var offset = new Vector3(map.OffsetX, 0, map.OffsetY);
-                                    AgentMap.Instance()->AddMapMarker(item.Item2.Coordinates + offset, icon, 0, stringBuffer->StringPtr);
+
+                                    //AgentMap.Instance()->AddMapMarker(item.Item2.Coordinates + offset, icon, 0, stringBuffer->StringPtr);
+                                    AgentMap.Instance()->AddMapMarker(item.Item2.Coordinates + offset, icon, 0);
                                     AgentMap.Instance()->AddMiniMapMarker(item.Item2.Coordinates + offset, icon);
                                 }
                             }
@@ -310,14 +314,14 @@ namespace AQuestReborn
             }
         }
 
-        private void _framework_Update(IFramework framework)
+        private unsafe void _framework_Update(IFramework framework)
         {
             if (!_disposed)
             {
                 try
                 {
-                    if (!Plugin.ClientState.IsGPosing && !Plugin.ClientState.IsPvPExcludingDen && !Conditions.IsInBetweenAreas && !Conditions.IsWatchingCutscene
-                        && !Conditions.IsOccupied && !Conditions.IsInCombat && Plugin.ClientState.IsLoggedIn)
+                    if (!Plugin.ClientState.IsGPosing && !Plugin.ClientState.IsPvPExcludingDen && !Conditions.Instance()->BetweenAreas && !Conditions.Instance()->WatchingCutscene
+                        && !Conditions.Instance()->Occupied && !Conditions.Instance()->InCombat && Plugin.ClientState.IsLoggedIn)
                     {
                         // Hopefully waiting prevents crashing on zone changes?
                         if (zoneChangeCooldown.ElapsedMilliseconds > 500)
