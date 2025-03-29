@@ -76,7 +76,7 @@ namespace AQuestReborn
             Dispose();
         }
 
-        private void Framework_Update(IFramework framework)
+        private unsafe void Framework_Update(IFramework framework)
         {
             try
             {
@@ -87,7 +87,7 @@ namespace AQuestReborn
                         float delta = ((float)_plugin.Framework.UpdateDelta.Milliseconds / 1000f);
                         if (_followPlayer && !_plugin.EventWindow.IsOpen && !_plugin.ChoiceWindow.IsOpen
                             && _plugin.EventWindow.TimeSinceLastDialogueDisplayed.ElapsedMilliseconds > 200
-                            && _plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 200 && !Conditions.Instance()->IsMounted)
+                            && _plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 200 && !Conditions.Instance()->Mounted)
                         {
                             var targetPosition = _plugin.ClientState.LocalPlayer.Position
                                     + GetVerticalOffsetFromPlayer((_index) - ((float)(_plugin.AQuestReborn.InteractiveNpcDictionary.Count - 1) / 2f))
