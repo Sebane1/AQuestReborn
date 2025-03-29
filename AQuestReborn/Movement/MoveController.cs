@@ -2,7 +2,6 @@ using Dalamud.Hooking;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Numerics;
 using System.Runtime.InteropServices;
