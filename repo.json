@@ -12,7 +12,7 @@
     "TestingAssemblyVersion": "0.1.6.2",
     "RepoUrl": "https://github.com/Sebane1/AQuestReborn",
     "ApplicableVersion": "any",
-    "DalamudApiLevel": 11,
+    "DalamudApiLevel": 12,
     "IsHide": "False",
     "IsTestingExclusive": "False",
     "DownloadCount": 0,
