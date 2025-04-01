@@ -287,12 +287,12 @@ public class EventWindow : Window, IDisposable
     {
         _index = index;
         bool allowedToContinue = true;
-        Plugin.MediaManager.StopAudio(new MediaGameObject(Plugin.ClientState.LocalPlayer));
+        Plugin.MediaManager.StopAudio(AQuestReborn.AQuestReborn.PlayerObject);
         Plugin.DialogueBackgroundWindow.ClearBackground();
         if (_index < _questDisplayObject.QuestObjective.QuestText.Count)
         {
             var item = _questDisplayObject.QuestObjective.QuestText[_index];
-            var customization = AppearanceHelper.GetCustomization(Plugin.ClientState.LocalPlayer);
+            var customization = AQuestReborn.AQuestReborn.PlayerAppearanceData;
             switch (item.ConditionForDialogueToOccur)
             {
                 case QuestEvent.EventConditionType.CompletedSpecificObjectiveId:
@@ -497,7 +497,7 @@ public class EventWindow : Window, IDisposable
                 {
                     if (File.Exists(customAudioPath))
                     {
-                        Plugin.MediaManager.PlayMedia(new MediaGameObject(Plugin.ClientState.LocalPlayer), customAudioPath, RoleplayingMediaCore.SoundType.NPC, true);
+                        Plugin.MediaManager.PlayMedia(AQuestReborn.AQuestReborn.PlayerObject, customAudioPath, RoleplayingMediaCore.SoundType.NPC, true);
                     }
                     if (File.Exists(customBackgroundPath))
                     {

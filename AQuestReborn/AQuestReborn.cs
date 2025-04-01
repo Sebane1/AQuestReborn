@@ -23,6 +23,7 @@ using Lumina.Excel.Sheets;
 using McdfDataImporter;
 using RoleplayingMediaCore;
 using RoleplayingQuestCore;
+using RoleplayingVoiceDalamud.Glamourer;
 using RoleplayingVoiceDalamudWrapper;
 using SamplePlugin;
 using Swan;
@@ -48,6 +49,9 @@ namespace AQuestReborn
         public string Discriminator { get => _discriminator; set => _discriminator = value; }
         public Dictionary<string, InteractiveNpc> InteractiveNpcDictionary { get => _interactiveNpcDictionary; set => _interactiveNpcDictionary = value; }
         public bool WaitingForMcdfLoad { get => _waitingForAppearanceLoad; set => _waitingForAppearanceLoad = value; }
+        public static MediaGameObject PlayerObject { get => _playerObject; set => _playerObject = value; }
+        public static nint PlayerAddress { get => _playerAddress; set => _playerAddress = value; }
+        public static CharacterCustomization PlayerAppearanceData { get; internal set; }
 
         private Stopwatch _pollingTimer;
         private Stopwatch _inputCooldown;
@@ -64,7 +68,7 @@ namespace AQuestReborn
         Queue<Tuple<string, AppearanceSwapType, ICharacter>> _appearanceApplicationQueue = new Queue<Tuple<string, AppearanceSwapType, ICharacter>>();
         Queue<Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest, bool>> _npcActorSpawnQueue = new Queue<Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest, bool>>();
         private ActorSpawnService _actorSpawnService;
-        private MediaGameObject _playerObject;
+        private static MediaGameObject _playerObject;
         private unsafe Camera* _camera;
         private MediaCameraObject _playerCamera;
         private List<Tuple<int, QuestObjective, RoleplayingQuest>> _activeQuestChainObjectives;
@@ -79,6 +83,7 @@ namespace AQuestReborn
         private bool _checkForPartyMembers;
         private bool _hasCheckedForPlayerAppearance;
         private bool _disposed;
+        private static nint _playerAddress;
 
         public AQuestReborn(Plugin plugin)
         {
@@ -170,7 +175,6 @@ namespace AQuestReborn
             string path = Path.Combine(e.FoundPath, e.QuestEndTitleCard);
             string soundPath = Path.Combine(e.FoundPath, e.QuestEndTitleCard);
             Plugin.TitleCardWindow.DisplayCard(path, soundPath, true);
-            //Plugin.ToastGui.ShowQuest("Quest Completed");
             Plugin.Configuration.Save();
         }
 
@@ -281,6 +285,7 @@ namespace AQuestReborn
         {
             if (Plugin.ClientState.IsLoggedIn)
             {
+                _playerAddress = Plugin.ClientState.LocalPlayer.Address;
                 InitializeMediaManager();
                 _checkForPartyMembers = true;
                 RefreshNpcs(Plugin.ClientState.TerritoryType);
@@ -294,7 +299,7 @@ namespace AQuestReborn
             {
                 if (_playerObject == null)
                 {
-                    _playerObject = new MediaGameObject(Plugin.ClientState.LocalPlayer);
+                    _playerObject = new MediaGameObject(_playerAddress);
                 }
 
                 if (_playerCamera == null)
@@ -371,6 +376,7 @@ namespace AQuestReborn
 
         private void CheckForPlayerAppearance()
         {
+            PlayerAppearanceData = AppearanceHelper.GetCustomization(Plugin.ClientState.LocalPlayer);
             if (!_waitingForAppearanceLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking() && !_hasCheckedForPlayerAppearance)
             {
                 _hasCheckedForPlayerAppearance = true;
