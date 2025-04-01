@@ -52,6 +52,7 @@ namespace AQuestReborn
         public static MediaGameObject PlayerObject { get => _playerObject; set => _playerObject = value; }
         public static nint PlayerAddress { get => _playerAddress; set => _playerAddress = value; }
         public static CharacterCustomization PlayerAppearanceData { get; internal set; }
+        public static string PlayerClassJob { get; set; }
 
         private Stopwatch _pollingTimer;
         private Stopwatch _inputCooldown;
@@ -261,7 +262,6 @@ namespace AQuestReborn
                                     var map = Plugin.DataManager.GetExcelSheet<TerritoryType>().GetRow(Plugin.ClientState.TerritoryType).Map.Value;
                                     var scaleFactor = map.SizeFactor;
 
-                                    // Cant be bothered to figure out the errors this is spitting out post patch 7.2. no more map labels.
                                     Utf8String* stringBuffer = Utf8String.CreateEmpty();
                                     stringBuffer->SetString(item.Item3.QuestName);
 
@@ -376,6 +376,8 @@ namespace AQuestReborn
         private void CheckForPlayerAppearance()
         {
             PlayerAppearanceData = AppearanceHelper.GetCustomization(Plugin.ClientState.LocalPlayer);
+            PlayerClassJob = Plugin.ClientState.LocalPlayer.ClassJob.Value.Abbreviation.Data.ToString();
+            Plugin.ClientState.LocalPlayer.ClassJob.Value.Abbreviation.Data.ToString();
             if (!_waitingForAppearanceLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking() && !_hasCheckedForPlayerAppearance)
             {
                 _hasCheckedForPlayerAppearance = true;

@@ -317,7 +317,7 @@ public class EventWindow : Window, IDisposable
                     }
                     break;
                 case QuestEvent.EventConditionType.PlayerClassId:
-                    if (Plugin.ClientState.LocalPlayer.ClassJob.Value.Abbreviation.Data.ToString() != item.ObjectiveIdToComplete)
+                    if (AQuestReborn.AQuestReborn.PlayerClassJob != item.ObjectiveIdToComplete)
                     {
                         SetEvent(index + 1);
                         allowedToContinue = false;
