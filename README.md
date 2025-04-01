@@ -9,6 +9,13 @@ Dalamud compatible repo link.
 https://raw.githubusercontent.com/Sebane1/AQuestReborn/master/repo.json
 ```
 
+Dalamud CN compatible repo link.
+这个插件还没有翻译，这个存储库链接只是为了兼容性。
+```
+https://raw.githubusercontent.com/Sebane1/AQuestReborn/master/repocn.json
+```
+
+
 Instructions:
 - Copy paste the repo link into the dalamud experimental tab
 - Install the A Quest Reborn Plugin
