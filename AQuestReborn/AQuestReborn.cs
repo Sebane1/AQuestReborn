@@ -260,15 +260,15 @@ namespace AQuestReborn
                                 {
                                     var map = Plugin.DataManager.GetExcelSheet<TerritoryType>().GetRow(Plugin.ClientState.TerritoryType).Map.Value;
                                     var scaleFactor = map.SizeFactor;
+
                                     // Cant be bothered to figure out the errors this is spitting out post patch 7.2. no more map labels.
-                                    //Utf8String* stringBuffer = Utf8String.CreateEmpty();
-                                    //stringBuffer->SetString(item.Item3.QuestName);
+                                    Utf8String* stringBuffer = Utf8String.CreateEmpty();
+                                    stringBuffer->SetString(item.Item3.QuestName);
 
                                     uint icon = (item.Item1 == 0 ? (uint)230604 : (uint)230605);
                                     var offset = new Vector3(map.OffsetX, 0, map.OffsetY);
 
-                                    //AgentMap.Instance()->AddMapMarker(item.Item2.Coordinates + offset, icon, 0, stringBuffer->StringPtr);
-                                    AgentMap.Instance()->AddMapMarker(item.Item2.Coordinates + offset, icon, 0);
+                                    AgentMap.Instance()->AddMapMarker(item.Item2.Coordinates + offset, icon, 0, stringBuffer->StringPtr);
                                     AgentMap.Instance()->AddMiniMapMarker(item.Item2.Coordinates + offset, icon);
                                 }
                             }
@@ -285,7 +285,6 @@ namespace AQuestReborn
         {
             if (Plugin.ClientState.IsLoggedIn)
             {
-                _playerAddress = Plugin.ClientState.LocalPlayer.Address;
                 InitializeMediaManager();
                 _checkForPartyMembers = true;
                 RefreshNpcs(Plugin.ClientState.TerritoryType);
@@ -416,6 +415,7 @@ namespace AQuestReborn
             if (!_initializationStarted)
             {
                 _initializationStarted = true;
+                _playerAddress = Plugin.ClientState.LocalPlayer.Address;
                 Task.Run(() =>
                 {
                     try

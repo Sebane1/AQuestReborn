@@ -1699,7 +1699,7 @@
           "NAudio.Wasapi": "[2.2.1, )",
           "NAudio.WinMM": "[2.2.1, )",
           "Newtonsoft.Json": "[13.0.3, )",
-          "SixLabors.ImageSharp": "[3.1.5, )",
+          "SixLabors.ImageSharp": "[3.1.7, )",
           "System.Speech": "[8.0.0, )",
           "VideoLAN.LibVLC.Windows": "[3.0.18, )",
           "Whisper.net": "[1.5.0, )",
