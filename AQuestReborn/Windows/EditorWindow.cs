@@ -293,7 +293,7 @@ public class EditorWindow : Window, IDisposable
             ImGui.SameLine();
             if (ImGui.Button("Set Quest Objective Coordinates"))
             {
-                questObjective.Coordinates = Plugin.ClientState.LocalPlayer.Position;
+                questObjective.Coordinates = Plugin.ObjectTable.LocalPlayer.Position;
                 questObjective.TerritoryId = Plugin.ClientState.TerritoryType;
                 questObjective.TerritoryDiscriminator = Plugin.AQuestReborn.Discriminator;
             }
@@ -378,40 +378,40 @@ public class EditorWindow : Window, IDisposable
                     ImGui.TextWrapped($"Min X: {minimumX}, Max X: {maximumX}, Min Y: {minimumY}, Max Y: {maximumY}, Min Z: {minimumZ}, Max Z: {maximumZ}");
                     if (ImGui.Button("Set Min XZ##"))
                     {
-                        questObjective.Collider.MinimumX = Plugin.ClientState.LocalPlayer.Position.X;
-                        questObjective.Collider.MinimumZ = Plugin.ClientState.LocalPlayer.Position.Z;
+                        questObjective.Collider.MinimumX = Plugin.ObjectTable.LocalPlayer.Position.X;
+                        questObjective.Collider.MinimumZ = Plugin.ObjectTable.LocalPlayer.Position.Z;
                     }
                     ImGui.SameLine();
                     if (ImGui.Button("Set Max XZ##"))
                     {
-                        if (Plugin.ClientState.LocalPlayer.Position.X < minimumX)
+                        if (Plugin.ObjectTable.LocalPlayer.Position.X < minimumX)
                         {
                             questObjective.Collider.MaximumX = questObjective.Collider.MinimumX;
-                            questObjective.Collider.MinimumX = Plugin.ClientState.LocalPlayer.Position.X;
+                            questObjective.Collider.MinimumX = Plugin.ObjectTable.LocalPlayer.Position.X;
                         }
                         else
                         {
-                            questObjective.Collider.MaximumX = Plugin.ClientState.LocalPlayer.Position.X;
+                            questObjective.Collider.MaximumX = Plugin.ObjectTable.LocalPlayer.Position.X;
                         }
-                        if (Plugin.ClientState.LocalPlayer.Position.Z < minimumZ)
+                        if (Plugin.ObjectTable.LocalPlayer.Position.Z < minimumZ)
                         {
                             questObjective.Collider.MaximumZ = questObjective.Collider.MinimumZ;
-                            questObjective.Collider.MinimumZ = Plugin.ClientState.LocalPlayer.Position.Z;
+                            questObjective.Collider.MinimumZ = Plugin.ObjectTable.LocalPlayer.Position.Z;
                         }
                         else
                         {
-                            questObjective.Collider.MaximumZ = Plugin.ClientState.LocalPlayer.Position.Z;
+                            questObjective.Collider.MaximumZ = Plugin.ObjectTable.LocalPlayer.Position.Z;
                         }
                     }
                     ImGui.SameLine();
                     if (ImGui.Button("Set Min Y##"))
                     {
-                        questObjective.Collider.MinimumY = Plugin.ClientState.LocalPlayer.Position.Y - 5;
+                        questObjective.Collider.MinimumY = Plugin.ObjectTable.LocalPlayer.Position.Y - 5;
                     }
                     ImGui.SameLine();
                     if (ImGui.Button("Set Max Y##"))
                     {
-                        questObjective.Collider.MaximumY = Plugin.ClientState.LocalPlayer.Position.Y;
+                        questObjective.Collider.MaximumY = Plugin.ObjectTable.LocalPlayer.Position.Y;
                     }
                     break;
             }
@@ -745,8 +745,8 @@ public class EditorWindow : Window, IDisposable
                             }
                             if (ImGui.Button("Set Coordinates Based On Player Position"))
                             {
-                                item.NpcMovementPosition = Plugin.ClientState.LocalPlayer.Position;
-                                item.NpcMovementRotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ClientState.LocalPlayer.Rotation) + 180, 0);
+                                item.NpcMovementPosition = Plugin.ObjectTable.LocalPlayer.Position;
+                                item.NpcMovementRotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ObjectTable.LocalPlayer.Rotation) + 180, 0);
                             }
                         }
                         ImGui.EndTabItem();
@@ -1065,8 +1065,8 @@ public class EditorWindow : Window, IDisposable
                     {
                         objective.SubObjectives.Add(new QuestObjective()
                         {
-                            Coordinates = Plugin.ClientState.LocalPlayer.Position,
-                            Rotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ClientState.LocalPlayer.Rotation), 0),
+                            Coordinates = Plugin.ObjectTable.LocalPlayer.Position,
+                            Rotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ObjectTable.LocalPlayer.Rotation), 0),
                             TerritoryId = Plugin.ClientState.TerritoryType
                         });
                     }
@@ -1116,8 +1116,8 @@ public class EditorWindow : Window, IDisposable
             _npcTransformEditorWindow.RefreshMenus();
             _roleplayingQuestCreator.AddQuestObjective(new QuestObjective()
             {
-                Coordinates = Plugin.ClientState.LocalPlayer.Position,
-                Rotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ClientState.LocalPlayer.Rotation), 0),
+                Coordinates = Plugin.ObjectTable.LocalPlayer.Position,
+                Rotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ObjectTable.LocalPlayer.Rotation), 0),
                 TerritoryId = Plugin.ClientState.TerritoryType,
                 TerritoryDiscriminator = Plugin.AQuestReborn.Discriminator
             });

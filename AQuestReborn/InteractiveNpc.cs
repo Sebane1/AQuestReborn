@@ -80,7 +80,7 @@ namespace AQuestReborn
         {
             try
             {
-                if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking() && _plugin.ClientState.LocalPlayer != null)
+                if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking() && _plugin.ObjectTable.LocalPlayer != null)
                 {
                     if (_character != null)
                     {
@@ -89,7 +89,7 @@ namespace AQuestReborn
                             && _plugin.EventWindow.TimeSinceLastDialogueDisplayed.ElapsedMilliseconds > 200
                             && _plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 200 && !Conditions.Instance()->Mounted)
                         {
-                            var targetPosition = _plugin.ClientState.LocalPlayer.Position
+                            var targetPosition = _plugin.ObjectTable.LocalPlayer.Position
                                     + GetVerticalOffsetFromPlayer((_index) - ((float)(_plugin.AQuestReborn.InteractiveNpcDictionary.Count - 1) / 2f))
                                     + GetHorizontalOffsetFromPlayer(_horizontalOffset);
                             if (Vector3.Distance(_currentPosition, targetPosition) > 1)
@@ -97,7 +97,7 @@ namespace AQuestReborn
                                 SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, targetPosition, _speed * delta),
                                     _currentRotation = CoordinateUtility.LookAt(_currentPosition, targetPosition).QuaternionToEuler(),
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
-                                var value = _plugin.AnamcoreManager.GetCurrentAnimationId(_plugin.ClientState.LocalPlayer);
+                                var value = _plugin.AnamcoreManager.GetCurrentAnimationId(_plugin.ObjectTable.LocalPlayer);
                                 _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
                                 if (_horizontalRefreshTimer.ElapsedMilliseconds > 5000)
                                 {
@@ -108,7 +108,7 @@ namespace AQuestReborn
                             else
                             {
                                 SetTransform(_currentPosition = Vector3.Lerp(_currentPosition,
-                                new Vector3(_currentPosition.X, _plugin.ClientState.LocalPlayer.Position.Y, _currentPosition.Z), _speed * delta),
+                                new Vector3(_currentPosition.X, _plugin.ObjectTable.LocalPlayer.Position.Y, _currentPosition.Z), _speed * delta),
                                 _currentRotation, _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
                                 _plugin.AnamcoreManager.StopEmote(_character.Address);
                             }
@@ -122,7 +122,7 @@ namespace AQuestReborn
                                     SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, (_speed / 2) * delta),
                                                  _currentRotation = CoordinateUtility.LookAt(_currentPosition, _defaultPosition).QuaternionToEuler(),
                                                  _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
-                                    if (Vector3.Distance(_currentPosition, _plugin.ClientState.LocalPlayer.Position) > 0.2f)
+                                    if (Vector3.Distance(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position) > 0.2f)
                                     {
                                         _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
                                         _wasMoving = true;
@@ -138,7 +138,7 @@ namespace AQuestReborn
                                     if (_plugin.EventWindow.IsOpen && LooksAtPlayer)
                                     {
                                         SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta),
-                                                     _currentRotation = CoordinateUtility.LookAt(_currentPosition, _plugin.ClientState.LocalPlayer.Position).QuaternionToEuler(),
+                                                     _currentRotation = CoordinateUtility.LookAt(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position).QuaternionToEuler(),
                                                      _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
                                     }
                                     else
@@ -195,7 +195,7 @@ namespace AQuestReborn
         {
             try
             {
-                if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking() && _plugin.ClientState.LocalPlayer != null)
+                if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking() && _plugin.ObjectTable.LocalPlayer != null)
                 {
                     CheckPosing();
                     if (_posing != null)
@@ -225,7 +225,7 @@ namespace AQuestReborn
             }
             if (_playerPosing == null)
             {
-                BrioAccessUtils.EntityManager.SetSelectedEntity(_plugin.ClientState.LocalPlayer);
+                BrioAccessUtils.EntityManager.SetSelectedEntity(_plugin.ObjectTable.LocalPlayer);
                 BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
                 _playerPosing = posing;
             }
@@ -268,13 +268,13 @@ namespace AQuestReborn
 
         public void FollowPlayer(float speed, bool usePlayerPos = false)
         {
-            if (_plugin.ClientState.LocalPlayer != null)
+            if (_plugin.ObjectTable.LocalPlayer != null)
             {
                 _followPlayer = true;
                 _speed = speed;
                 if (usePlayerPos)
                 {
-                    _currentPosition = _plugin.ClientState.LocalPlayer.Position;
+                    _currentPosition = _plugin.ObjectTable.LocalPlayer.Position;
                 }
             }
         }

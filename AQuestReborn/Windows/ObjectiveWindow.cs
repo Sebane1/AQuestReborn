@@ -84,7 +84,7 @@ public class ObjectiveWindow : Window, IDisposable
         }
         Size = new Vector2(ImGui.GetMainViewport().Size.X, ImGui.GetMainViewport().Size.Y);
         Position = new Vector2(0, 0);
-        if (!Plugin.EventWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen && Plugin.ClientState.IsLoggedIn && Plugin.ClientState.LocalPlayer != null)
+        if (!Plugin.EventWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen && Plugin.ClientState.IsLoggedIn && Plugin.ObjectTable.LocalPlayer != null)
         {
             var questChainObjectives = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType, Plugin.AQuestReborn.Discriminator);
             if (!_alreadyLoadingQuestStartIcon)
@@ -149,7 +149,7 @@ public class ObjectiveWindow : Window, IDisposable
                                 var value = ImGui.GetIO().MousePos;
                                 var distance = Vector2.Distance(new Vector2(screenPosition.X / Size.Value.X, 0),
                                     new Vector2(value.X / Size.Value.X, 0));
-                                var playerDistance = Vector3.Distance(Plugin.ClientState.LocalPlayer.Position, item.Item2.Coordinates);
+                                var playerDistance = Vector3.Distance(Plugin.ObjectTable.LocalPlayer.Position, item.Item2.Coordinates);
                                 if (distance < 0.01f && playerDistance < Plugin.RoleplayingQuestManager.MinimumDistance
                                     && item.Item2.TypeOfObjectiveTrigger == RoleplayingQuestCore.QuestObjective.ObjectiveTriggerType.NormalInteraction)
                                 {

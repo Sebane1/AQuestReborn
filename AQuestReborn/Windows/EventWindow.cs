@@ -441,7 +441,7 @@ public class EventWindow : Window, IDisposable
                             {
                                 Thread.Sleep(1000);
                                 Plugin.SetAutomationGlobalState(false);
-                                Plugin.AQuestReborn.LoadAppearance(customPlayerAppearancePath, _playerAppearanceSwapType, Plugin.ClientState.LocalPlayer);
+                                Plugin.AQuestReborn.LoadAppearance(customPlayerAppearancePath, _playerAppearanceSwapType, Plugin.ObjectTable.LocalPlayer);
                                 Plugin.RoleplayingQuestManager.AddPlayerAppearance(_questDisplayObject.RoleplayingQuest.QuestId, customPlayerAppearancePath, _playerAppearanceSwapType);
                             });
                         }
@@ -451,7 +451,7 @@ public class EventWindow : Window, IDisposable
                 {
                     Plugin.SetAutomationGlobalState(true);
                     Plugin.RoleplayingQuestManager.RemovePlayerAppearance(_questDisplayObject.RoleplayingQuest.QuestId);
-                    AppearanceAccessUtils.AppearanceManager.RemoveTemporaryCollection(Plugin.ClientState.LocalPlayer.Name.TextValue);
+                    AppearanceAccessUtils.AppearanceManager.RemoveTemporaryCollection(Plugin.ObjectTable.LocalPlayer.Name.TextValue);
                 }
                 if (_currentName.ToLower() == "system")
                 {
@@ -482,16 +482,16 @@ public class EventWindow : Window, IDisposable
                 {
                     if (!item.LoopAnimationPlayer)
                     {
-                        Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.ClientState.LocalPlayer, (ushort)item.BodyExpressionPlayer);
+                        Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.ObjectTable.LocalPlayer, (ushort)item.BodyExpressionPlayer);
                     }
                     else
                     {
-                        Plugin.AnamcoreManager.TriggerEmote(Plugin.ClientState.LocalPlayer.Address, (ushort)item.BodyExpressionPlayer);
+                        Plugin.AnamcoreManager.TriggerEmote(Plugin.ObjectTable.LocalPlayer.Address, (ushort)item.BodyExpressionPlayer);
                     }
                 }
                 else
                 {
-                    Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.ClientState.LocalPlayer, (ushort)0);
+                    Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.ObjectTable.LocalPlayer, (ushort)0);
                 }
                 if (Plugin.MediaManager != null)
                 {

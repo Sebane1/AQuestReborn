@@ -89,7 +89,7 @@ namespace AQuestReborn
         public AQuestReborn(Plugin plugin)
         {
             Plugin = plugin;
-            plugin.RoleplayingQuestManager.LoadMainQuestGameObject(new QuestGameObject(plugin.ClientState));
+            plugin.RoleplayingQuestManager.LoadMainQuestGameObject(new QuestGameObject(plugin.ObjectTable, plugin.ClientState));
             Plugin.DialogueBackgroundWindow.ButtonClicked += DialogueBackgroundWindow_buttonClicked;
             Plugin.ObjectiveWindow.OnSelectionAttempt += DialogueBackgroundWindow_buttonClicked;
             Plugin.QuestAcceptanceWindow.OnQuestAccepted += QuestAcceptanceWindow_OnQuestAccepted;
@@ -221,7 +221,7 @@ namespace AQuestReborn
                 {
                     try
                     {
-                        while (Plugin.ClientState.LocalPlayer == null || _actorSpawnService == null)
+                        while (Plugin.ObjectTable.LocalPlayer == null || _actorSpawnService == null)
                         {
                             Thread.Sleep(3000);
                         }
@@ -375,9 +375,9 @@ namespace AQuestReborn
 
         private void CheckForPlayerAppearance()
         {
-            PlayerAppearanceData = AppearanceHelper.GetCustomization(Plugin.ClientState.LocalPlayer);
-            PlayerClassJob = Plugin.ClientState.LocalPlayer.ClassJob.Value.Abbreviation.Data.ToString();
-            Plugin.ClientState.LocalPlayer.ClassJob.Value.Abbreviation.Data.ToString();
+            PlayerAppearanceData = AppearanceHelper.GetCustomization(Plugin.ObjectTable.LocalPlayer);
+            PlayerClassJob = Plugin.ObjectTable.LocalPlayer.ClassJob.Value.Abbreviation.Data.ToString();
+            Plugin.ObjectTable.LocalPlayer.ClassJob.Value.Abbreviation.Data.ToString();
             if (!_waitingForAppearanceLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking() && !_hasCheckedForPlayerAppearance)
             {
                 _hasCheckedForPlayerAppearance = true;
@@ -385,12 +385,12 @@ namespace AQuestReborn
                 if (appearance != null)
                 {
                     Plugin.SetAutomationGlobalState(false);
-                    LoadAppearance(appearance.AppearanceData, appearance.AppearanceSwapType, Plugin.ClientState.LocalPlayer);
+                    LoadAppearance(appearance.AppearanceData, appearance.AppearanceSwapType, Plugin.ObjectTable.LocalPlayer);
                     Plugin.ToastGui.ShowNormal("A quest in this zone is affecting your characters appearance.");
                 }
                 else
                 {
-                    AppearanceAccessUtils.AppearanceManager.RemoveTemporaryCollection(Plugin.ClientState.LocalPlayer.Name.TextValue);
+                    AppearanceAccessUtils.AppearanceManager.RemoveTemporaryCollection(Plugin.ObjectTable.LocalPlayer.Name.TextValue);
                     Plugin.SetAutomationGlobalState(true);
                 }
             }
@@ -402,7 +402,7 @@ namespace AQuestReborn
             {
                 try
                 {
-                    _discriminator = DiscriminatorGenerator.GetDiscriminator(Plugin.ClientState);
+                    _discriminator = DiscriminatorGenerator.GetDiscriminator(Plugin.ObjectTable);
                     _gotZoneDiscriminator = true;
                 }
                 catch (Exception e)
@@ -417,7 +417,7 @@ namespace AQuestReborn
             if (!_initializationStarted)
             {
                 _initializationStarted = true;
-                _playerAddress = Plugin.ClientState.LocalPlayer.Address;
+                _playerAddress = Plugin.ObjectTable.LocalPlayer.Address;
                 Task.Run(() =>
                 {
                     try
@@ -768,7 +768,7 @@ namespace AQuestReborn
             {
                 if (Plugin.RoleplayingQuestManager.QuestChains.ContainsKey(member.QuestId))
                 {
-                    var transform = new Transform() { Name = member.NpcName, Position = Plugin.ClientState.LocalPlayer.Position, TransformScale = new Vector3(1, 1, 1) };
+                    var transform = new Transform() { Name = member.NpcName, Position = Plugin.ObjectTable.LocalPlayer.Position, TransformScale = new Vector3(1, 1, 1) };
                     if (!_spawnedNpcsDictionary.ContainsKey(member.QuestId))
                     {
                         _spawnedNpcsDictionary[member.QuestId] = new Dictionary<string, ICharacter>();

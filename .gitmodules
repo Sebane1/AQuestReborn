@@ -28,3 +28,6 @@
 [submodule "ECommons"]
 	path = ECommons
 	url = https://github.com/NightmareXIV/ECommons.git
+[submodule "AQuestReborn/ThreadSafeDalamudObjectTable"]
+	path = AQuestReborn/ThreadSafeDalamudObjectTable
+	url = https://github.com/Sebane1/ThreadSafeDalamudObjectTable

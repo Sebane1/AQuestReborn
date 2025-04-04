@@ -33,6 +33,7 @@ using Dalamud.Game.ClientState.Objects;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using ECommons;
 using ECommons.Reflection;
+using DragAndDropTexturing.ThreadSafeDalamudObjectTable;
 
 namespace SamplePlugin;
 
@@ -65,7 +66,7 @@ public sealed class Plugin : IDalamudPlugin
     private MediaCameraObject _playerCamera;
     private IDalamudPluginInterface _dalamudPluginInterface;
     private IGameInteropProvider _gameInteropProvider;
-    private IObjectTable _objectTable;
+    private ThreadSafeGameObjectManager _objectTable;
     private InputManager _uiInputModule;
     private AQuestReborn.AQuestReborn _aQuestReborn;
     private Brio.Brio _brio;
@@ -99,6 +100,7 @@ public sealed class Plugin : IDalamudPlugin
     public UiAtlasManager UiAtlasManager { get => _uiAtlasManager; set => _uiAtlasManager = value; }
     public EntryPoint McdfEntryPoint { get => _mcdfEntryPoint; set => _mcdfEntryPoint = value; }
     public MoveController Movement { get => _movement; set => _movement = value; }
+    public ThreadSafeGameObjectManager ObjectTable { get => _objectTable; set => _objectTable = value; }
 
     private EmoteReaderHooks _emoteReaderHook;
     private IPluginLog _pluginLog;
@@ -126,7 +128,7 @@ public sealed class Plugin : IDalamudPlugin
         _gamepadState = gamepadState;
         _dalamudPluginInterface = dalamudPluginInterface;
         _gameInteropProvider = gameInteropProvider;
-        _objectTable = objectTable;
+        _objectTable = new ThreadSafeGameObjectManager(clientState, objectTable, framework, pluginLog);
         ECommonsMain.Init(dalamudPluginInterface, this, Module.DalamudReflector);
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         _mcdfEntryPoint = new EntryPoint(PluginInterface, commandManager, dataManager, framework, objectTable, clientState, condition, chatGui, gameGui, dtrBar, pluginLog,

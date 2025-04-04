@@ -1,4 +1,5 @@
 using Dalamud.Plugin.Services;
+using DragAndDropTexturing.ThreadSafeDalamudObjectTable;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using SamplePlugin;
 using System;
@@ -7,27 +8,27 @@ namespace AQuestReborn
 {
     public static unsafe class DiscriminatorGenerator
     {
-        public static unsafe string GetDiscriminator(IClientState clientState)
+        public static unsafe string GetDiscriminator(ThreadSafeGameObjectManager objectTable)
         {
             string value = "";
             try
             {
-                if (clientState != null)
+                if (objectTable != null)
                 {
-                    if (clientState.LocalPlayer != null)
+                    if (objectTable.LocalPlayer != null)
                     {
                         var housingManager = HousingManager.Instance();
                         if (housingManager != null)
                         {
                             if (IsResidential())
                             {
-                                value += clientState.LocalPlayer.CurrentWorld.Value.Name.ExtractText() + "-" + housingManager->GetCurrentDivision() + "-"
+                                value += objectTable.LocalPlayer.CurrentWorld.Value.Name.ExtractText() + "-" + housingManager->GetCurrentDivision() + "-"
                                     + housingManager->GetCurrentWard() + (housingManager->IsInside() ? "-" + housingManager->GetCurrentPlot() + "-" +
                                     housingManager->GetCurrentRoom() + "-" + housingManager->GetCurrentIndoorHouseId() : "");
                             }
                             else
                             {
-                                value += clientState.LocalPlayer.CurrentWorld.Value.Name.ExtractText();
+                                value += objectTable.LocalPlayer.CurrentWorld.Value.Name.ExtractText();
                             }
                         }
                     }
