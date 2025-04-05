@@ -58,7 +58,10 @@ public class ChoiceWindow : Window, IDisposable
     }
     public void NewList(List<BranchingChoice> branchingChoiceList)
     {
-        IsOpen = true;
-        _branchingChoices = branchingChoiceList;
+        if (!IsOpen)
+        {
+            IsOpen = true;
+            _branchingChoices = branchingChoiceList;
+        }
     }
 }

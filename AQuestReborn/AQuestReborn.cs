@@ -82,6 +82,7 @@ namespace AQuestReborn
         private string _discriminator;
         private bool _gotZoneDiscriminator;
         private bool _checkForPartyMembers;
+        private bool _placeHolderNpcSpawned;
         private bool _hasCheckedForPlayerAppearance;
         private bool _disposed;
         private static nint _playerAddress;
@@ -228,9 +229,7 @@ namespace AQuestReborn
                         _triggerRefresh = true;
                         _gotZoneDiscriminator = false;
                         _checkForPartyMembers = true;
-                        ICharacter character = null;
-                        _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
-                        (new Vector3(0, float.MaxValue, 0) / 10), CoordinateUtility.ConvertDegreesToRadians(0));
+                        _placeHolderNpcSpawned = false;
                     }
                     catch (Exception e)
                     {
@@ -298,7 +297,7 @@ namespace AQuestReborn
             {
                 if (_playerObject == null)
                 {
-                    _playerObject = new MediaGameObject(_playerAddress);
+                    _playerObject = new MediaGameObject(Plugin.ObjectTable.LocalPlayer);
                 }
 
                 if (_playerCamera == null)
@@ -336,14 +335,24 @@ namespace AQuestReborn
                             }
                             else
                             {
-                                CheckForPassiveQuestProgression();
-                                CheckForNewAppearanceLoad();
-                                QuestInputCheck();
-                                CheckForNewPlayerCreationLoad();
-                                CheckForNPCRefresh();
-                                CheckForMapRefresh();
-                                CheckZoneDiscriminator();
-                                CheckForPlayerAppearance();
+                                if (!_placeHolderNpcSpawned)
+                                {
+                                    ICharacter character = null;
+                                    _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
+                                    (new Vector3(0, float.MaxValue, 0) / 10), CoordinateUtility.ConvertDegreesToRadians(0));
+                                    _placeHolderNpcSpawned = true;
+                                }
+                                else
+                                {
+                                    CheckForPassiveQuestProgression();
+                                    CheckForNewAppearanceLoad();
+                                    QuestInputCheck();
+                                    CheckForNewPlayerCreationLoad();
+                                    CheckForNPCRefresh();
+                                    CheckForMapRefresh();
+                                    CheckZoneDiscriminator();
+                                    CheckForPlayerAppearance();
+                                }
                             }
                         }
                         if (!zoneChangeCooldown.IsRunning)

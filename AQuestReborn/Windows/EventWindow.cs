@@ -272,8 +272,11 @@ public class EventWindow : Window, IDisposable
                     IsOpen = false;
                     Plugin.DialogueBackgroundWindow.IsOpen = false;
                     var values = _questDisplayObject.QuestObjective.QuestText[_index].BranchingChoices;
-                    Plugin.ChoiceWindow.NewList(values);
-                    _choicesAreNext = false;
+                    if (values.Count > 0)
+                    {
+                        Plugin.ChoiceWindow.NewList(values);
+                        _choicesAreNext = false;
+                    }
                 }
                 else
                 {

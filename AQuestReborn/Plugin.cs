@@ -255,6 +255,7 @@ public sealed class Plugin : IDalamudPlugin
         _movement?.Dispose();
         _mcdfEntryPoint?.Dispose();
         ECommonsMain.Dispose();
+        _objectTable?.Dispose();
     }
 
     private void OnCommand(string command, string args)
