@@ -25,6 +25,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Threading.Tasks;
 using McdfDataImporter;
+using LanguageConversionProxy;
 
 namespace SamplePlugin.Windows;
 
@@ -126,6 +127,7 @@ public class EditorWindow : Window, IDisposable
                 var questThumbnail = _roleplayingQuestCreator.CurrentQuest.QuestThumbnailPath;
                 var contentRatingTypes = Enum.GetNames(typeof(QuestContentRating));
                 var questRewardTypes = Enum.GetNames(typeof(QuestRewardType));
+                var questLanguage = (int)_roleplayingQuestCreator.CurrentQuest.QuestLanguage;
 
                 var questStartTitleCard = _roleplayingQuestCreator.CurrentQuest.QuestStartTitleCard;
                 var questEndTitleCard = _roleplayingQuestCreator.CurrentQuest.QuestEndTitleCard;
@@ -133,12 +135,17 @@ public class EditorWindow : Window, IDisposable
                 var questEndTitleSound = _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound;
                 var hasQuestAcceptancePopup = _roleplayingQuestCreator.CurrentQuest.HasQuestAcceptancePopup;
 
+
                 ImGui.BeginTable("##Info Table", 2);
                 ImGui.TableSetupColumn("Info 1", ImGuiTableColumnFlags.WidthFixed, 400);
                 ImGui.TableSetupColumn("Info 2", ImGuiTableColumnFlags.WidthStretch, 600);
                 ImGui.TableHeadersRow();
                 ImGui.TableNextRow();
                 ImGui.TableSetColumnIndex(0);
+                if (ImGui.Combo("Language", ref questLanguage, Translator.LanguageStrings, Translator.LanguageStrings.Length))
+                {
+                    _roleplayingQuestCreator.CurrentQuest.QuestLanguage = (LanguageEnum)questLanguage;
+                }
                 if (ImGui.InputText("Author##", ref questAuthor, 255))
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestAuthor = questAuthor;
@@ -180,8 +187,6 @@ public class EditorWindow : Window, IDisposable
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound = questEndTitleSound;
                 }
-
-
                 if (ImGui.Combo("Quest Reward Type##", ref questRewardType, questRewardTypes, questRewardTypes.Length))
                 {
                     _roleplayingQuestCreator.CurrentQuest.TypeOfReward = (QuestRewardType)questRewardType;
@@ -283,6 +288,7 @@ public class EditorWindow : Window, IDisposable
             var maximum3dIndicatorDistance = questObjective.Maximum3dIndicatorDistance;
             var dontShowOnMap = questObjective.DontShowOnMap;
             var playerPositionIsLockedDuringEvents = questObjective.PlayerPositionIsLockedDuringEvents;
+
             ImGui.SetNextItemWidth(400);
             ImGui.LabelText("##objectiveIdLabel", $"Objective Id: " + questObjective.Id);
             ImGui.SameLine();
@@ -985,7 +991,7 @@ public class EditorWindow : Window, IDisposable
             }
             if (ImGui.Button("Add Clipboard"))
             {
-                _roleplayingQuestCreator.StoryScriptToObjectiveEvents(ImGui.GetClipboardText().Replace("…","..."), _objectiveInFocus);
+                _roleplayingQuestCreator.StoryScriptToObjectiveEvents(ImGui.GetClipboardText().Replace("…", "..."), _objectiveInFocus);
                 RefreshMenus();
             }
             if (ImGui.Button("To Clipboard"))

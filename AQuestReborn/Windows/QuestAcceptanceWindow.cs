@@ -20,15 +20,20 @@ namespace SamplePlugin.Windows;
 public class QuestAcceptanceWindow : Window, IDisposable
 {
     private RoleplayingQuest _questToDisplay;
-    private bool _alreadyLoadingData;
-    private byte[] _currentThumbnail;
+    private string questName = "";
+    private string questReward = "";
+    private string description = "";
+    private string thumbnailPath = "";
+    private string contentRating = "";
+    private bool _alreadyLoadingData = false;
+    private byte[] _currentThumbnail = null;
     private IDalamudTextureWrap _frameToLoad;
-    private byte[] _lastLoadedFrame;
+    private byte[] _lastLoadedFrame = null;
     public event EventHandler OnQuestAccepted;
     private Stopwatch _timeSinceLastQuestAccepted = new Stopwatch();
-    private float _thumbnailRatio;
-    private float _globalScale;
-    private byte[] _backgroundFill;
+    private float _thumbnailRatio = 0;
+    private float _globalScale = 1;
+    private byte[] _backgroundFill = null;
 
 
     public Stopwatch TimeSinceLastQuestAccepted { get => _timeSinceLastQuestAccepted; set => _timeSinceLastQuestAccepted = value; }
@@ -57,11 +62,7 @@ public class QuestAcceptanceWindow : Window, IDisposable
     public override void Draw()
     {
         _globalScale = ImGuiHelpers.GlobalScale;
-        string questName = _questToDisplay.QuestName;
-        string questReward = AddSpacesToSentence(_questToDisplay.TypeOfReward.ToString(), false);
-        string description = _questToDisplay.QuestDescription;
-        string thumbnailPath = _questToDisplay.QuestThumbnailPath;
-        string contentRating = AddSpacesToSentence(_questToDisplay.ContentRating.ToString(), false);
+
         if (_currentThumbnail != null)
         {
             Size = new Vector2(450, 520) * _globalScale;
@@ -196,16 +197,27 @@ public class QuestAcceptanceWindow : Window, IDisposable
     public void PromptQuest(RoleplayingQuest quest)
     {
         _questToDisplay = quest;
-        string thumbnailPath = Path.Combine(quest.FoundPath, _questToDisplay.QuestThumbnailPath);
-        SetThumbnail(thumbnailPath);
-        IsOpen = true;
-        if (quest.QuestObjectives.Count > 0)
+        Task.Run(async () =>
         {
-            if (quest.QuestObjectives[0].QuestText.Count > 0)
+            questName = await Translator.LocalizeText(_questToDisplay.QuestName, Plugin.Configuration.QuestLanguage, quest.QuestLanguage);
+            questReward = await Translator.LocalizeText(AddSpacesToSentence(_questToDisplay.TypeOfReward.ToString(), false), Plugin.Configuration.QuestLanguage, quest.QuestLanguage);
+            description = await Translator.LocalizeText(_questToDisplay.QuestDescription, Plugin.Configuration.QuestLanguage, quest.QuestLanguage);
+            thumbnailPath = _questToDisplay.QuestThumbnailPath;
+            contentRating = await Translator.LocalizeText(AddSpacesToSentence(_questToDisplay.ContentRating.ToString(), false), Plugin.Configuration.QuestLanguage, quest.QuestLanguage);
+            thumbnailPath = await Translator.LocalizeText(Path.Combine(quest.FoundPath, _questToDisplay.QuestThumbnailPath), Plugin.Configuration.QuestLanguage, quest.QuestLanguage);
+            SetThumbnail(thumbnailPath);
+            Plugin.Framework.RunOnFrameworkThread(() =>
             {
-                Plugin.Movement.EnableMovementLock();
-            }
-        }
+                IsOpen = true;
+                if (quest.QuestObjectives.Count > 0)
+                {
+                    if (quest.QuestObjectives[0].QuestText.Count > 0)
+                    {
+                        Plugin.Movement.EnableMovementLock();
+                    }
+                }
+            });
+        });
     }
     public void SetThumbnail(string path)
     {

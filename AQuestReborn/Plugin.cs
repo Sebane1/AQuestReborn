@@ -244,18 +244,23 @@ public sealed class Plugin : IDalamudPlugin
 
     public void Dispose()
     {
-        WindowSystem.RemoveAllWindows();
+        try
+        {
+            MainWindow?.Dispose();
+            WindowSystem?.RemoveAllWindows();
+            CommandManager.RemoveHandler(CommandName);
+            _mediaManager?.Dispose();
+            _brio?.Dispose();
+            _aQuestReborn?.Dispose();
+            _movement?.Dispose();
+            _mcdfEntryPoint?.Dispose();
+            _objectTable?.Dispose();
+            ECommonsMain.Dispose();
+        }
+        catch
+        {
 
-        MainWindow.Dispose();
-
-        CommandManager.RemoveHandler(CommandName);
-        _mediaManager?.Dispose();
-        _brio?.Dispose();
-        _aQuestReborn?.Dispose();
-        _movement?.Dispose();
-        _mcdfEntryPoint?.Dispose();
-        ECommonsMain.Dispose();
-        _objectTable?.Dispose();
+        }
     }
 
     private void OnCommand(string command, string args)

@@ -831,14 +831,22 @@ namespace AQuestReborn
             Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective();
         }
 
-        private void _roleplayingQuestManager_OnObjectiveCompleted(object? sender, QuestObjective e)
+        private void _roleplayingQuestManager_OnObjectiveCompleted(object? sender, Tuple<QuestObjective, RoleplayingQuest> e)
         {
-            Plugin.ToastGui.ShowQuest(e.Objective,
-            new Dalamud.Game.Gui.Toast.QuestToastOptions()
+            Task.Run(async () =>
             {
-                DisplayCheckmark = e.ObjectiveStatus == QuestObjective.ObjectiveStatusType.Complete,
-                PlaySound = e.ObjectiveStatus == QuestObjective.ObjectiveStatusType.Complete
+                var toast = await Translator.LocalizeText(e.Item1.Objective, Plugin.Configuration.QuestLanguage, e.Item2.QuestLanguage);
+                Plugin.Framework.RunOnFrameworkThread(() =>
+                {
+                    Plugin.ToastGui.ShowQuest(toast,
+    new Dalamud.Game.Gui.Toast.QuestToastOptions()
+    {
+        DisplayCheckmark = e.Item1.ObjectiveStatus == QuestObjective.ObjectiveStatusType.Complete,
+        PlaySound = e.Item1.ObjectiveStatus == QuestObjective.ObjectiveStatusType.Complete
+    });
+                });
             });
+
         }
 
         private void _roleplayingQuestManager_OnQuestCompleted(object? sender, RoleplayingQuest e)

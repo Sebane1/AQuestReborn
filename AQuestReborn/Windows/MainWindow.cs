@@ -10,6 +10,7 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using ImGuiNET;
+using LanguageConversionProxy;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using RoleplayingQuestCore;
@@ -26,6 +27,7 @@ public class MainWindow : Window, IDisposable
     private ExcelSheet<TerritoryType>? _territorySheets;
     private string[] _installedQuestList;
     private int _currentSelectedInstalledQuest;
+
     List<RoleplayingQuest> _roleplayingQuests = new List<RoleplayingQuest>();
 
     // We give this window a hidden ID using ##
@@ -111,6 +113,12 @@ public class MainWindow : Window, IDisposable
                 }
             }, null, true);
             ImGui.EndPopup();
+        }
+        int currentSelection = (int)Plugin.Configuration.QuestLanguage;
+        if (ImGui.Combo("Language", ref currentSelection,Translator.LanguageStrings, Translator.LanguageStrings.Length))
+        {
+            Plugin.Configuration.QuestLanguage = (LanguageEnum)currentSelection;
+            Plugin.Configuration.Save();
         }
     }
 

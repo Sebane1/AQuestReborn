@@ -16,6 +16,8 @@ namespace SamplePlugin.Windows;
 public class RewardWindow : Window, IDisposable
 {
     private RoleplayingQuest _questToDisplay;
+    private string questName;
+    private string questReward;
     private bool _alreadyLoadingFrame;
     private byte[] _currentThumbnail;
     private IDalamudTextureWrap _frameToLoad;
@@ -50,13 +52,8 @@ public class RewardWindow : Window, IDisposable
         _globalScale = ImGuiHelpers.GlobalScale;
         Size = new Vector2(600, 250) * _globalScale;
         Position = new Vector2((screen.X / 2) - (Size.Value.X / 2), (screen.Y / 2) - (Size.Value.Y / 2));
-        string questName = _questToDisplay.QuestName;
-        string questReward = AddSpacesToSentence(_questToDisplay.TypeOfReward.ToString(), false);
-        string description = _questToDisplay.QuestDescription;
-        string thumbnailPath = _questToDisplay.QuestThumbnailPath;
-        string contentRating = AddSpacesToSentence(_questToDisplay.ContentRating.ToString(), false);
         Plugin.UiAtlasManager.CheckImageAssets();
-        Plugin.UiAtlasManager.DrawBackground(Size.Value*0.99f);
+        Plugin.UiAtlasManager.DrawBackground(Size.Value * 0.99f);
         ImGui.SetCursorPos(new Vector2(0, 0));
         ImGui.SetCursorPosY(40 * _globalScale);
         ImGui.SetWindowFontScale(2f);
@@ -176,6 +173,14 @@ public class RewardWindow : Window, IDisposable
     public void PromptReward(RoleplayingQuest quest)
     {
         _questToDisplay = quest;
-        IsOpen = true;
+        Task.Run(async () =>
+        {
+            questName = await Translator.LocalizeText(_questToDisplay.QuestName, Plugin.Configuration.QuestLanguage, quest.QuestLanguage);
+            questReward = await Translator.LocalizeText(AddSpacesToSentence(_questToDisplay.TypeOfReward.ToString(), false), Plugin.Configuration.QuestLanguage, quest.QuestLanguage);
+            Plugin.Framework.RunOnFrameworkThread(() =>
+            {
+                IsOpen = true;
+            });
+        });
     }
 }

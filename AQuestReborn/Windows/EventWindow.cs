@@ -132,32 +132,35 @@ public class EventWindow : Window, IDisposable
         var questText = _questDisplayObject.QuestObjective.QuestText[_index];
         if (questText.BranchingChoices.Count > 0)
         {
-            var branchingChoice = questText.BranchingChoices[e];
-            switch (branchingChoice.ChoiceType)
+            if (e < questText.BranchingChoices.Count)
             {
-                case BranchingChoice.BranchingChoiceType.SkipToEventNumber:
-                    SetEvent(branchingChoice.EventToJumpTo);
-                    break;
-                case BranchingChoice.BranchingChoiceType.BranchingQuestline:
-                    Plugin.RoleplayingQuestManager.ReplaceQuest(branchingChoice.RoleplayingQuest);
-                    break;
-                case BranchingChoice.BranchingChoiceType.RollD20ThenSkipToEventNumber:
-                    var roll = new Random().Next(0, 20);
-                    if (roll >= branchingChoice.MinimumDiceRoll)
-                    {
+                var branchingChoice = questText.BranchingChoices[e];
+                switch (branchingChoice.ChoiceType)
+                {
+                    case BranchingChoice.BranchingChoiceType.SkipToEventNumber:
                         SetEvent(branchingChoice.EventToJumpTo);
-                        Plugin.ToastGui.ShowNormal("You roll a " + roll + "/" + branchingChoice.MinimumDiceRoll + " and succeed.");
-                    }
-                    else
-                    {
-                        SetEvent(branchingChoice.EventToJumpToFailure);
-                        Plugin.ToastGui.ShowNormal("You roll a " + roll + "/" + branchingChoice.MinimumDiceRoll + " and fail.");
-                    }
-                    break;
-                case BranchingChoice.BranchingChoiceType.SkipToEventNumberRandomized:
-                    roll = new Random().Next(0, branchingChoice.RandomizedEventToSkipTo.Count);
-                    SetEvent(branchingChoice.RandomizedEventToSkipTo[roll]);
-                    break;
+                        break;
+                    case BranchingChoice.BranchingChoiceType.BranchingQuestline:
+                        Plugin.RoleplayingQuestManager.ReplaceQuest(branchingChoice.RoleplayingQuest);
+                        break;
+                    case BranchingChoice.BranchingChoiceType.RollD20ThenSkipToEventNumber:
+                        var roll = new Random().Next(0, 20);
+                        if (roll >= branchingChoice.MinimumDiceRoll)
+                        {
+                            SetEvent(branchingChoice.EventToJumpTo);
+                            Plugin.ToastGui.ShowNormal("You roll a " + roll + "/" + branchingChoice.MinimumDiceRoll + " and succeed.");
+                        }
+                        else
+                        {
+                            SetEvent(branchingChoice.EventToJumpToFailure);
+                            Plugin.ToastGui.ShowNormal("You roll a " + roll + "/" + branchingChoice.MinimumDiceRoll + " and fail.");
+                        }
+                        break;
+                    case BranchingChoice.BranchingChoiceType.SkipToEventNumberRandomized:
+                        roll = new Random().Next(0, branchingChoice.RandomizedEventToSkipTo.Count);
+                        SetEvent(branchingChoice.RandomizedEventToSkipTo[roll]);
+                        break;
+                }
             }
         }
     }
@@ -274,7 +277,7 @@ public class EventWindow : Window, IDisposable
                     var values = _questDisplayObject.QuestObjective.QuestText[_index].BranchingChoices;
                     if (values.Count > 0)
                     {
-                        Plugin.ChoiceWindow.NewList(values);
+                        Plugin.ChoiceWindow.NewList(values, _questDisplayObject.RoleplayingQuest.QuestLanguage);
                         _choicesAreNext = false;
                     }
                 }
@@ -370,8 +373,9 @@ public class EventWindow : Window, IDisposable
                 _npcAppearanceSwap = item.AppearanceSwap;
                 _playerAppearanceSwap = item.PlayerAppearanceSwap;
                 _playerAppearanceSwapType = item.PlayerAppearanceSwapType;
-                Task.Run(() =>
+                Task.Run(async () =>
                 {
+                    _targetText = await Translator.LocalizeText(_targetText, Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
                     var targetTextValue = _targetText;
                     while (true)
                     {
