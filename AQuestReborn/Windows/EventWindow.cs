@@ -368,13 +368,13 @@ public class EventWindow : Window, IDisposable
                 _currentCharacter = 0;
                 _currentText = "";
                 _targetText = item.Dialogue;
-                _currentName = string.IsNullOrEmpty(item.NpcAlias) ? item.NpcName : item.NpcAlias;
                 _currentDialogueBoxIndex = item.DialogueBoxStyle;
                 _npcAppearanceSwap = item.AppearanceSwap;
                 _playerAppearanceSwap = item.PlayerAppearanceSwap;
                 _playerAppearanceSwapType = item.PlayerAppearanceSwapType;
                 Task.Run(async () =>
                 {
+                    _currentName = await Translator.LocalizeText(string.IsNullOrEmpty(item.NpcAlias) ? item.NpcName : item.NpcAlias, Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
                     _targetText = await Translator.LocalizeText(_targetText, Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
                     var targetTextValue = _targetText;
                     while (true)

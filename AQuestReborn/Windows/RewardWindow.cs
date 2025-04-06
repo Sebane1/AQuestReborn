@@ -87,7 +87,7 @@ public class RewardWindow : Window, IDisposable
             case RoleplayingQuest.QuestRewardType.SecretMessage:
                 ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
                 ImGui.TextUnformatted("You have been awarded this message:");
-                ImGui.TextWrapped(_questToDisplay.QuestReward);
+                ImGui.TextWrapped(questReward);
                 ImGui.PopStyleColor();
                 break;
             case RoleplayingQuest.QuestRewardType.OnlineLink:
@@ -176,7 +176,10 @@ public class RewardWindow : Window, IDisposable
         Task.Run(async () =>
         {
             questName = await Translator.LocalizeText(_questToDisplay.QuestName, Plugin.Configuration.QuestLanguage, quest.QuestLanguage);
-            questReward = await Translator.LocalizeText(AddSpacesToSentence(_questToDisplay.TypeOfReward.ToString(), false), Plugin.Configuration.QuestLanguage, quest.QuestLanguage);
+            if (quest.TypeOfReward == RoleplayingQuest.QuestRewardType.SecretMessage)
+            {
+                questReward = await Translator.LocalizeText(AddSpacesToSentence(_questToDisplay.TypeOfReward.ToString(), false), Plugin.Configuration.QuestLanguage, quest.QuestLanguage);
+            }
             Plugin.Framework.RunOnFrameworkThread(() =>
             {
                 IsOpen = true;
