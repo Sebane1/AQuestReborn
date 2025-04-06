@@ -53,8 +53,8 @@ public class NPCTransformEditorWindow : Window, IDisposable
     public override void Draw()
     {
         ImGui.BeginTable("##NPC Transform Table", 2);
-        ImGui.TableSetupColumn("NPC Transform List", ImGuiTableColumnFlags.WidthFixed, 150);
-        ImGui.TableSetupColumn("NPC Transform Editor", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn(Translator.LocalizeUI("NPC Transform List"), ImGuiTableColumnFlags.WidthFixed, 150);
+        ImGui.TableSetupColumn(Translator.LocalizeUI("NPC Transform Editor"), ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableHeadersRow();
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
@@ -83,7 +83,7 @@ public class NPCTransformEditorWindow : Window, IDisposable
             }
 
             ImGui.SetNextItemWidth(100);
-            ImGui.LabelText("##defaultAnimationId", "Default Animation Id: ");
+            ImGui.LabelText("##defaultAnimationId", Translator.LocalizeUI("Default Animation Id: "));
             ImGui.SameLine();
             if (ImGui.InputInt("##Default Animation Id", ref defaultAnimationId))
             {
@@ -91,7 +91,7 @@ public class NPCTransformEditorWindow : Window, IDisposable
             }
 
             ImGui.SetNextItemWidth(100);
-            ImGui.LabelText("##positon", "Position: ");
+            ImGui.LabelText("##positon", Translator.LocalizeUI("Position: "));
             ImGui.SameLine();
             if (ImGui.InputFloat3("##Position Entry", ref position))
             {
@@ -99,7 +99,7 @@ public class NPCTransformEditorWindow : Window, IDisposable
             }
 
             ImGui.SetNextItemWidth(100);
-            ImGui.LabelText("##rotation", "Rotation: ");
+            ImGui.LabelText("##rotation", Translator.LocalizeUI("Rotation: "));
             ImGui.SameLine();
             if (ImGui.InputFloat3("##Rotation Entry", ref eulerRotation))
             {
@@ -107,13 +107,13 @@ public class NPCTransformEditorWindow : Window, IDisposable
             }
 
             ImGui.SetNextItemWidth(100);
-            ImGui.LabelText("##scale", "Scale: ");
+            ImGui.LabelText("##scale", Translator.LocalizeUI("Scale: "));
             ImGui.SameLine();
             if (ImGui.InputFloat3("##Scale Entry", ref scale))
             {
                 item.Value.TransformScale = scale;
             }
-            if (ImGui.Button("Set Transform Coordinates From Standing Position"))
+            if (ImGui.Button(Translator.LocalizeUI("Set Transform Coordinates From Standing Position")))
             {
                 _roleplayingQuestCreator.SetStartingTransformDataToPlayer(Plugin.RoleplayingQuestManager.MainPlayer, item.Value);
             }
@@ -133,12 +133,12 @@ public class NPCTransformEditorWindow : Window, IDisposable
         }
     }
 
-    public void RefreshMenus()
+    public async void RefreshMenus()
     {
         if (_questObjective != null)
         {
             _roleplayingQuestCreator.GenerateObjectiveNPCPositions(_questObjective);
-            _npcTransformsSelection = Utility.FillNewList(_questObjective.NpcStartingPositions.Count, "NPC Transform");
+            _npcTransformsSelection = Utility.FillNewList(_questObjective.NpcStartingPositions.Count, await Translator.LocalizeText("NPC Transform", Translator.UiLanguage, LanguageConversionProxy.LanguageEnum.English));
             _selectedNpcTransform = _npcTransformsSelection.Length - 1;
         }
     }

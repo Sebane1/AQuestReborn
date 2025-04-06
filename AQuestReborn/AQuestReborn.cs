@@ -106,6 +106,20 @@ namespace AQuestReborn
             Plugin.ClientState.Logout += ClientState_Logout;
             Plugin.ChatGui.ChatMessage += ChatGui_ChatMessage;
             Plugin.EmoteReaderHook.OnEmote += (instigator, emoteId) => OnEmote(instigator as ICharacter, emoteId);
+            Translator.LoadCache(Path.Combine(Plugin.Configuration.QuestInstallFolder, "languageCache.json"));
+            Translator.UiLanguage = Plugin.Configuration.QuestLanguage;
+            Translator.OnError += Translator_OnError;
+            Translator.OnTranslationEvent += Translator_OnTranslationEvent;
+        }
+
+        private void Translator_OnTranslationEvent(object? sender, string e)
+        {
+            Plugin.PluginLog.Verbose(e);
+        }
+
+        private void Translator_OnError(object? sender, string e)
+        {
+            Plugin.PluginLog.Warning(e);
         }
 
         private void ClientState_Logout(int type, int code)

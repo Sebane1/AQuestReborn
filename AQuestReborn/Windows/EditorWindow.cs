@@ -58,7 +58,7 @@ public class EditorWindow : Window, IDisposable
     public EditorWindow(Plugin plugin)
         : base("Quest Creator##" + Guid.NewGuid().ToString(), ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.AlwaysAutoResize)
     {
-        Size = new Vector2(1200, 1100);
+        Size = new Vector2(1500, 1200);
         Plugin = plugin;
         _fileDialogManager = new FileDialogManager();
         if (_npcTransformEditorWindow == null)
@@ -97,22 +97,22 @@ public class EditorWindow : Window, IDisposable
         _fileDialogManager.Draw();
         if (!_roleplayingQuestCreator.CurrentQuest.IsSubQuest)
         {
-            if (ImGui.Button("Save Quest"))
+            if (ImGui.Button(Translator.LocalizeUI("Save Quest")))
             {
                 PersistQuest();
             }
             ImGui.SameLine();
-            if (ImGui.Button("New Quest"))
+            if (ImGui.Button(Translator.LocalizeUI("New Quest")))
             {
                 _roleplayingQuestCreator.EditQuest(new RoleplayingQuest());
                 RefreshMenus();
             }
             ImGui.SameLine();
-            if (ImGui.Button("Tutorial"))
+            if (ImGui.Button(Translator.LocalizeUI("Tutorial")))
             {
                 ProcessStartInfo ProcessInfo = new ProcessStartInfo();
                 Process Process = new Process();
-                ProcessInfo = new ProcessStartInfo("https://www.youtube.com/watch?v=JJM9aHRHkDw");
+                ProcessInfo = new ProcessStartInfo(Translator.LocalizeUI("https://www.youtube.com/watch?v=JJM9aHRHkDw"));
                 ProcessInfo.UseShellExecute = true;
                 Process = Process.Start(ProcessInfo);
             }
@@ -125,8 +125,8 @@ public class EditorWindow : Window, IDisposable
                 var questReward = _roleplayingQuestCreator.CurrentQuest.QuestReward;
                 var questRewardType = (int)_roleplayingQuestCreator.CurrentQuest.TypeOfReward;
                 var questThumbnail = _roleplayingQuestCreator.CurrentQuest.QuestThumbnailPath;
-                var contentRatingTypes = Enum.GetNames(typeof(QuestContentRating));
-                var questRewardTypes = Enum.GetNames(typeof(QuestRewardType));
+                var contentRatingTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestContentRating)));
+                var questRewardTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestRewardType)));
                 var questLanguage = (int)_roleplayingQuestCreator.CurrentQuest.QuestLanguage;
 
                 var questStartTitleCard = _roleplayingQuestCreator.CurrentQuest.QuestStartTitleCard;
@@ -137,83 +137,83 @@ public class EditorWindow : Window, IDisposable
 
 
                 ImGui.BeginTable("##Info Table", 2);
-                ImGui.TableSetupColumn("Info 1", ImGuiTableColumnFlags.WidthFixed, 400);
-                ImGui.TableSetupColumn("Info 2", ImGuiTableColumnFlags.WidthStretch, 600);
+                ImGui.TableSetupColumn(Translator.LocalizeUI("Info 1"), ImGuiTableColumnFlags.WidthFixed, 400);
+                ImGui.TableSetupColumn(Translator.LocalizeUI("Info 2"), ImGuiTableColumnFlags.WidthStretch, 600);
                 ImGui.TableHeadersRow();
                 ImGui.TableNextRow();
                 ImGui.TableSetColumnIndex(0);
-                if (ImGui.Combo("Language", ref questLanguage, Translator.LanguageStrings, Translator.LanguageStrings.Length))
+                if (ImGui.Combo(Translator.LocalizeUI("Language"), ref questLanguage, Translator.LanguageStrings, Translator.LanguageStrings.Length))
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestLanguage = (LanguageEnum)questLanguage;
                 }
-                if (ImGui.InputText("Author##", ref questAuthor, 255))
+                if (ImGui.InputText(Translator.LocalizeUI("Author##"), ref questAuthor, 255))
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestAuthor = questAuthor;
                 }
-                if (ImGui.InputText("Quest Name##", ref questName, 255))
+                if (ImGui.InputText(Translator.LocalizeUI("Quest Name##"), ref questName, 255))
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestName = questName;
                 }
-                if (ImGui.InputText("Quest Description##", ref questDescription, 56))
+                if (ImGui.InputText(Translator.LocalizeUI("Quest Description##"), ref questDescription, 56))
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestDescription = questDescription;
                 }
-                if (ImGui.InputText("Quest Thumbnail##", ref questThumbnail, 255))
+                if (ImGui.InputText(Translator.LocalizeUI("Quest Thumbnail##"), ref questThumbnail, 255))
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestThumbnailPath = questThumbnail;
                 }
-                if (ImGui.Combo("Content Rating##", ref contentRating, contentRatingTypes, contentRatingTypes.Length))
+                if (ImGui.Combo(Translator.LocalizeUI("Content Rating##"), ref contentRating, contentRatingTypes, contentRatingTypes.Length))
                 {
                     _roleplayingQuestCreator.CurrentQuest.ContentRating = (QuestContentRating)contentRating;
                 }
-                if (ImGui.Checkbox("Has Quest Acceptance Popup", ref hasQuestAcceptancePopup))
+                if (ImGui.Checkbox(Translator.LocalizeUI("Has Quest Acceptance Popup"), ref hasQuestAcceptancePopup))
                 {
                     _roleplayingQuestCreator.CurrentQuest.HasQuestAcceptancePopup = hasQuestAcceptancePopup;
                 }
                 ImGui.TableSetColumnIndex(1);
-                if (ImGui.InputText("Quest Start Title Card##", ref questStartTitleCard, 255))
+                if (ImGui.InputText(Translator.LocalizeUI("Quest Start Title Card##"), ref questStartTitleCard, 255))
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestStartTitleCard = questStartTitleCard;
                 }
-                if (ImGui.InputText("Quest End Title Card##", ref questEndTitleCard, 255))
+                if (ImGui.InputText(Translator.LocalizeUI("Quest End Title Card##"), ref questEndTitleCard, 255))
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestEndTitleCard = questEndTitleCard;
                 }
-                if (ImGui.InputText("Quest Start Title Sound##", ref questStartTitleSound, 255))
+                if (ImGui.InputText(Translator.LocalizeUI("Quest Start Title Sound##"), ref questStartTitleSound, 255))
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestStartTitleSound = questStartTitleSound;
                 }
-                if (ImGui.InputText("Quest End Title Sound##", ref questEndTitleSound, 255))
+                if (ImGui.InputText(Translator.LocalizeUI("Quest End Title Sound##"), ref questEndTitleSound, 255))
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound = questEndTitleSound;
                 }
-                if (ImGui.Combo("Quest Reward Type##", ref questRewardType, questRewardTypes, questRewardTypes.Length))
+                if (ImGui.Combo(Translator.LocalizeUI("Quest Reward Type##"), ref questRewardType, questRewardTypes, questRewardTypes.Length))
                 {
                     _roleplayingQuestCreator.CurrentQuest.TypeOfReward = (QuestRewardType)questRewardType;
                 }
                 switch (_roleplayingQuestCreator.CurrentQuest.TypeOfReward)
                 {
                     case QuestRewardType.SecretMessage:
-                        if (ImGui.InputText("Quest Reward (Secret Message)", ref questReward, 255))
+                        if (ImGui.InputText(Translator.LocalizeUI("Quest Reward (Secret Message)"), ref questReward, 255))
                         {
                             _roleplayingQuestCreator.CurrentQuest.QuestReward = questReward;
                         }
                         break;
                     case QuestRewardType.OnlineLink:
-                        if (ImGui.InputText("Quest Reward (Download Link)", ref questReward, 255))
+                        if (ImGui.InputText(Translator.LocalizeUI("Quest Reward (Download Link)"), ref questReward, 255))
                         {
                             _roleplayingQuestCreator.CurrentQuest.QuestReward = questReward;
                         }
                         break;
                     case QuestRewardType.MediaFile:
-                        if (ImGui.InputText("Quest Reward (Media File Path)", ref questReward, 255))
+                        if (ImGui.InputText(Translator.LocalizeUI("Quest Reward (Media File Path)"), ref questReward, 255))
                         {
                             _roleplayingQuestCreator.CurrentQuest.QuestReward = questReward;
                         }
                         break;
                 }
                 ImGui.EndTable();
-                if (ImGui.Button("Edit NPC Appearance Data##"))
+                if (ImGui.Button(Translator.LocalizeUI("Edit NPC Appearance Data##")))
                 {
                     if (_npcEditorWindow == null)
                     {
@@ -229,14 +229,14 @@ public class EditorWindow : Window, IDisposable
             }
         }
         ImGui.SameLine();
-        if (ImGui.Button("Export for re-use"))
+        if (ImGui.Button(Translator.LocalizeUI("Export for re-use")))
         {
             _fileDialogManager.Reset();
-            ImGui.OpenPopup("OpenPathDialog##editorwindow");
+            ImGui.OpenPopup(Translator.LocalizeUI("OpenPathDialog##editorwindow"));
         }
-        if (ImGui.BeginPopup("OpenPathDialog##editorwindow"))
+        if (ImGui.BeginPopup(Translator.LocalizeUI("OpenPathDialog##editorwindow")))
         {
-            _fileDialogManager.SaveFileDialog("Export quest line data", ".quest", "", ".quest", (isOk, file) =>
+            _fileDialogManager.SaveFileDialog(Translator.LocalizeUI("Export quest line data"), ".quest", "", ".quest", (isOk, file) =>
             {
                 if (isOk)
                 {
@@ -246,8 +246,8 @@ public class EditorWindow : Window, IDisposable
             ImGui.EndPopup();
         }
         ImGui.BeginTable("##Editor Table", 2);
-        ImGui.TableSetupColumn("Objective List", ImGuiTableColumnFlags.WidthFixed, 300);
-        ImGui.TableSetupColumn("Objective Editor", ImGuiTableColumnFlags.WidthStretch, 600);
+        ImGui.TableSetupColumn(Translator.LocalizeUI("Objective List"), ImGuiTableColumnFlags.WidthFixed, 300);
+        ImGui.TableSetupColumn(Translator.LocalizeUI("Objective Editor"), ImGuiTableColumnFlags.WidthStretch, 600);
         ImGui.TableHeadersRow();
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
@@ -280,9 +280,9 @@ public class EditorWindow : Window, IDisposable
             var questPointType = (int)questObjective.TypeOfQuestPoint;
             var objectiveStatusType = (int)questObjective.ObjectiveStatus;
             var objectiveTriggerType = (int)questObjective.TypeOfObjectiveTrigger;
-            var questPointTypes = Enum.GetNames(typeof(QuestPointType));
-            var objectiveStatusTypes = Enum.GetNames(typeof(ObjectiveStatusType));
-            var objectiveTriggerTypes = Enum.GetNames(typeof(ObjectiveTriggerType));
+            var questPointTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestPointType)));
+            var objectiveStatusTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(ObjectiveStatusType)));
+            var objectiveTriggerTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(ObjectiveTriggerType)));
             var triggerText = questObjective.TriggerText;
             var objectiveImmediatelySatisfiesParent = questObjective.ObjectiveImmediatelySatisfiesParent;
             var maximum3dIndicatorDistance = questObjective.Maximum3dIndicatorDistance;
@@ -290,86 +290,86 @@ public class EditorWindow : Window, IDisposable
             var playerPositionIsLockedDuringEvents = questObjective.PlayerPositionIsLockedDuringEvents;
 
             ImGui.SetNextItemWidth(400);
-            ImGui.LabelText("##objectiveIdLabel", $"Objective Id: " + questObjective.Id);
+            ImGui.LabelText("##objectiveIdLabel", Translator.LocalizeUI($"Objective Id: ") + questObjective.Id);
             ImGui.SameLine();
-            if (ImGui.Button("Copy Id To Clipboard"))
+            if (ImGui.Button(Translator.LocalizeUI("Copy Id To Clipboard")))
             {
                 ImGui.SetClipboardText(questObjective.Id.Trim());
             }
             ImGui.SameLine();
-            if (ImGui.Button("Set Quest Objective Coordinates"))
+            if (ImGui.Button(Translator.LocalizeUI("Set Quest Objective Coordinates")))
             {
                 questObjective.Coordinates = Plugin.ObjectTable.LocalPlayer.Position;
                 questObjective.TerritoryId = Plugin.ClientState.TerritoryType;
                 questObjective.TerritoryDiscriminator = Plugin.AQuestReborn.Discriminator;
             }
             ImGui.SetNextItemWidth(200);
-            ImGui.LabelText("##coordinatesLabel", $"Coordinates: X:{Math.Round(questObjective.Coordinates.X)}," +
-                $"Y:{Math.Round(questObjective.Coordinates.Y)}," +
-                $"Z:{Math.Round(questObjective.Coordinates.Z)}");
+            ImGui.LabelText("##coordinatesLabel", Translator.LocalizeUI($"Coordinates:") + $" X:{Math.Round(questObjective.Coordinates.X)}," +
+                $" Y:{Math.Round(questObjective.Coordinates.Y)}," +
+                $" Z:{Math.Round(questObjective.Coordinates.Z)}");
             ImGui.SetNextItemWidth(125);
             ImGui.SameLine();
-            ImGui.LabelText("##territoryLabel", $"Territory Id: {questObjective.TerritoryId}");
+            ImGui.LabelText("##territoryLabel", Translator.LocalizeUI($"Territory Id:") + $" {questObjective.TerritoryId}");
             ImGui.SameLine();
             ImGui.SetNextItemWidth(300);
-            ImGui.LabelText("##discriminatorLabel", $"Discriminator: " + questObjective.TerritoryDiscriminator);
+            ImGui.LabelText("##discriminatorLabel", Translator.LocalizeUI($"Discriminator: ") + questObjective.TerritoryDiscriminator);
             ImGui.SetNextItemWidth(110);
-            if (ImGui.InputFloat("Maximum Indicator Distance##", ref maximum3dIndicatorDistance))
+            if (ImGui.InputFloat(Translator.LocalizeUI("Maximum Indicator Distance##"), ref maximum3dIndicatorDistance))
             {
                 questObjective.Maximum3dIndicatorDistance = maximum3dIndicatorDistance;
             }
             ImGui.SameLine();
-            if (ImGui.Checkbox("Dont Show On Map##", ref dontShowOnMap))
+            if (ImGui.Checkbox(Translator.LocalizeUI("Dont Show On Map##"), ref dontShowOnMap))
             {
                 questObjective.DontShowOnMap = dontShowOnMap;
             }
             ImGui.SameLine();
-            if (ImGui.Checkbox("Lock to server/ward/plot/room##", ref usesTerritoryDiscriminator))
+            if (ImGui.Checkbox(Translator.LocalizeUI("Lock to server/ward/plot/room##"), ref usesTerritoryDiscriminator))
             {
                 questObjective.UsesTerritoryDiscriminator = usesTerritoryDiscriminator;
             }
             if (!questObjective.IsAPrimaryObjective)
             {
-                if (ImGui.Checkbox("Immediately Satisfies Parent Objective##", ref objectiveImmediatelySatisfiesParent))
+                if (ImGui.Checkbox(Translator.LocalizeUI("Immediately Satisfies Parent Objective##"), ref objectiveImmediatelySatisfiesParent))
                 {
                     questObjective.ObjectiveImmediatelySatisfiesParent = objectiveImmediatelySatisfiesParent;
                 }
             }
-            if (ImGui.InputText("Objective Text##", ref objective, 500))
+            if (ImGui.InputText(Translator.LocalizeUI("Objective Text##"), ref objective, 500))
             {
                 questObjective.Objective = objective;
             }
             ImGui.SetNextItemWidth(110);
-            if (ImGui.Combo("Quest Point Type##", ref questPointType, questPointTypes, questPointTypes.Length))
+            if (ImGui.Combo(Translator.LocalizeUI("Quest Point Type##"), ref questPointType, questPointTypes, questPointTypes.Length))
             {
                 questObjective.TypeOfQuestPoint = (QuestPointType)questPointType;
             }
             ImGui.SameLine();
             ImGui.SetNextItemWidth(110);
-            if (ImGui.Combo("Objective Quest Status Type##", ref objectiveStatusType, objectiveStatusTypes, objectiveStatusTypes.Length))
+            if (ImGui.Combo(Translator.LocalizeUI("Objective Quest Status Type##"), ref objectiveStatusType, objectiveStatusTypes, objectiveStatusTypes.Length))
             {
                 questObjective.ObjectiveStatus = (ObjectiveStatusType)objectiveStatusType;
             }
-            if (ImGui.Combo("Objective Trigger Type##", ref objectiveTriggerType, objectiveTriggerTypes, objectiveTriggerTypes.Length))
+            if (ImGui.Combo(Translator.LocalizeUI("Objective Trigger Type##"), ref objectiveTriggerType, objectiveTriggerTypes, objectiveTriggerTypes.Length))
             {
                 questObjective.TypeOfObjectiveTrigger = (ObjectiveTriggerType)objectiveTriggerType;
             }
             switch (questObjective.TypeOfObjectiveTrigger)
             {
                 case ObjectiveTriggerType.DoEmote:
-                    if (ImGui.InputText("Emote Id##", ref triggerText, 500))
+                    if (ImGui.InputText(Translator.LocalizeUI("Emote Id##"), ref triggerText, 500))
                     {
                         questObjective.TriggerText = triggerText;
                     }
                     break;
                 case ObjectiveTriggerType.SayPhrase:
-                    if (ImGui.InputText("Say Phrase##", ref triggerText, 500))
+                    if (ImGui.InputText(Translator.LocalizeUI("Say Phrase##"), ref triggerText, 500))
                     {
                         questObjective.TriggerText = triggerText;
                     }
                     break;
                 case ObjectiveTriggerType.KillEnemy:
-                    if (ImGui.InputText("Enemy Name##", ref triggerText, 500))
+                    if (ImGui.InputText(Translator.LocalizeUI("Enemy Name##"), ref triggerText, 500))
                     {
                         questObjective.TriggerText = triggerText;
                     }
@@ -381,14 +381,25 @@ public class EditorWindow : Window, IDisposable
                     var maximumY = questObjective.Collider.MaximumY;
                     var minimumZ = questObjective.Collider.MinimumZ;
                     var maximumZ = questObjective.Collider.MaximumZ;
-                    ImGui.TextWrapped($"Min X: {minimumX}, Max X: {maximumX}, Min Y: {minimumY}, Max Y: {maximumY}, Min Z: {minimumZ}, Max Z: {maximumZ}");
-                    if (ImGui.Button("Set Min XZ##"))
+                    ImGui.TextWrapped(Translator.LocalizeUI($"Min ") + "X: " +
+                        $"{minimumX}, " +
+                        Translator.LocalizeUI($"Max ") + "X: " +
+                        $"{maximumX}, " +
+                        Translator.LocalizeUI($"Min ") + "Y: " +
+                        $"{minimumY}, " +
+                        Translator.LocalizeUI($"Max ") + "Y: " +
+                        $"{maximumY}, " +
+                        Translator.LocalizeUI($"Min ") + "Z: " +
+                        $"{minimumZ}, " +
+                        Translator.LocalizeUI($"Max ") + "Z: " +
+                        $"{maximumZ}");
+                    if (ImGui.Button(Translator.LocalizeUI("Set Min ") + "XZ##"))
                     {
                         questObjective.Collider.MinimumX = Plugin.ObjectTable.LocalPlayer.Position.X;
                         questObjective.Collider.MinimumZ = Plugin.ObjectTable.LocalPlayer.Position.Z;
                     }
                     ImGui.SameLine();
-                    if (ImGui.Button("Set Max XZ##"))
+                    if (ImGui.Button(Translator.LocalizeUI("Set Max ") + "XZ##"))
                     {
                         if (Plugin.ObjectTable.LocalPlayer.Position.X < minimumX)
                         {
@@ -410,18 +421,18 @@ public class EditorWindow : Window, IDisposable
                         }
                     }
                     ImGui.SameLine();
-                    if (ImGui.Button("Set Min Y##"))
+                    if (ImGui.Button(Translator.LocalizeUI("Set Min") + "Y##"))
                     {
                         questObjective.Collider.MinimumY = Plugin.ObjectTable.LocalPlayer.Position.Y - 5;
                     }
                     ImGui.SameLine();
-                    if (ImGui.Button("Set Max Y##"))
+                    if (ImGui.Button(Translator.LocalizeUI("Set Max") + "Y##"))
                     {
                         questObjective.Collider.MaximumY = Plugin.ObjectTable.LocalPlayer.Position.Y;
                     }
                     break;
             }
-            if (ImGui.Button("Edit NPC Transform Data##"))
+            if (ImGui.Button(Translator.LocalizeUI("Edit NPC Transform Data##")))
             {
                 if (_npcTransformEditorWindow != null)
                 {
@@ -432,20 +443,20 @@ public class EditorWindow : Window, IDisposable
             if (questObjective.IsAPrimaryObjective)
             {
                 ImGui.SameLine();
-                if (ImGui.Button("Preview Quest Objective##"))
+                if (ImGui.Button(Translator.LocalizeUI("Preview Quest Objective##")))
                 {
                     Plugin.RoleplayingQuestManager.SkipToObjective(_roleplayingQuestCreator.CurrentQuest, questObjective.Index);
                     PersistQuest();
                 }
             }
             ImGui.SameLine();
-            if (ImGui.Checkbox("Player Position Is Locked During Events", ref playerPositionIsLockedDuringEvents))
+            if (ImGui.Checkbox(Translator.LocalizeUI("Player Position Is Locked During Events"), ref playerPositionIsLockedDuringEvents))
             {
                 questObjective.PlayerPositionIsLockedDuringEvents = playerPositionIsLockedDuringEvents;
             }
             ImGui.BeginTable("##Event Table", 2);
-            ImGui.TableSetupColumn("Event List", ImGuiTableColumnFlags.WidthFixed, 100);
-            ImGui.TableSetupColumn("Event Editor", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn(Translator.LocalizeUI("Event List"), ImGuiTableColumnFlags.WidthFixed, 200);
+            ImGui.TableSetupColumn(Translator.LocalizeUI("Event Editor"), ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableHeadersRow();
             ImGui.TableNextRow();
             ImGui.TableSetColumnIndex(0);
@@ -484,10 +495,10 @@ public class EditorWindow : Window, IDisposable
                 var eventEndBehaviour = (int)item.EventEndBehaviour;
                 var eventNumberToSkipTo = item.EventNumberToSkipTo;
                 var objectiveNumberToSkipTo = item.ObjectiveNumberToSkipTo;
-                var eventEndTypes = Enum.GetNames(typeof(QuestEvent.EventBehaviourType));
-                var eventBackgroundTypes = Enum.GetNames(typeof(QuestEvent.EventBackgroundType));
-                var eventConditionTypes = Enum.GetNames(typeof(QuestEvent.EventConditionType));
-                var eventPlayerAppearanceApplicationTypes = Enum.GetNames(typeof(QuestEvent.AppearanceSwapType));
+                var eventEndTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestEvent.EventBehaviourType)));
+                var eventBackgroundTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestEvent.EventBackgroundType)));
+                var eventConditionTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestEvent.EventConditionType)));
+                var eventPlayerAppearanceApplicationTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestEvent.AppearanceSwapType)));
                 var appearanceSwap = item.AppearanceSwap;
                 var playerAppearanceSwap = item.PlayerAppearanceSwap;
                 var playerAppearanceSwapType = (int)item.PlayerAppearanceSwapType;
@@ -502,9 +513,9 @@ public class EditorWindow : Window, IDisposable
 
                 if (ImGui.BeginTabBar("Event Editor Tabs"))
                 {
-                    if (ImGui.BeginTabItem("Narrative"))
+                    if (ImGui.BeginTabItem(Translator.LocalizeUI("Narrative")))
                     {
-                        if (ImGui.Combo("Condition For Event To Occur##", ref dialogueCondition, eventConditionTypes, eventConditionTypes.Length))
+                        if (ImGui.Combo(Translator.LocalizeUI("Condition For Event To Occur##"), ref dialogueCondition, eventConditionTypes, eventConditionTypes.Length))
                         {
                             item.ConditionForDialogueToOccur = (EventConditionType)dialogueCondition;
                         }
@@ -513,37 +524,37 @@ public class EditorWindow : Window, IDisposable
                             case EventConditionType.None:
                                 break;
                             case EventConditionType.CompletedSpecificObjectiveId:
-                                if (ImGui.InputText("Objective Id To Complete##", ref objectiveIdToComplete, 40))
+                                if (ImGui.InputText(Translator.LocalizeUI("Objective Id To Complete##"), ref objectiveIdToComplete, 40))
                                 {
                                     item.ObjectiveIdToComplete = objectiveIdToComplete;
                                 }
                                 break;
                             case EventConditionType.PlayerClanId:
-                                if (ImGui.InputText("Clan Id Required##", ref objectiveIdToComplete, 40))
+                                if (ImGui.InputText(Translator.LocalizeUI("Clan Id Required##"), ref objectiveIdToComplete, 40))
                                 {
                                     item.ObjectiveIdToComplete = objectiveIdToComplete;
                                 }
                                 break;
                             case EventConditionType.PlayerPhysicalPresentationId:
-                                if (ImGui.InputText("(Masculine: 0, Feminine: 1)##", ref objectiveIdToComplete, 40))
+                                if (ImGui.InputText(Translator.LocalizeUI("(Masculine: 0, Feminine: 1)##"), ref objectiveIdToComplete, 40))
                                 {
                                     item.ObjectiveIdToComplete = objectiveIdToComplete;
                                 }
                                 break;
                             case EventConditionType.PlayerClassId:
-                                if (ImGui.InputText("Player Class Id (SMN, RPR, WHM, etc)##", ref objectiveIdToComplete, 40))
+                                if (ImGui.InputText(Translator.LocalizeUI("Player Class Id (SMN, RPR, WHM, etc)##"), ref objectiveIdToComplete, 40))
                                 {
                                     item.ObjectiveIdToComplete = objectiveIdToComplete;
                                 }
                                 break;
                             case EventConditionType.PlayerOutfitTopId:
-                                if (ImGui.InputText("Player Outfit Top Id##", ref objectiveIdToComplete, 40))
+                                if (ImGui.InputText(Translator.LocalizeUI("Player Outfit Top Id##"), ref objectiveIdToComplete, 40))
                                 {
                                     item.ObjectiveIdToComplete = objectiveIdToComplete;
                                 }
                                 break;
                             case EventConditionType.PlayerOutfitBottomId:
-                                if (ImGui.InputText("Player Outfit Bottom Id##", ref objectiveIdToComplete, 40))
+                                if (ImGui.InputText(Translator.LocalizeUI("Player Outfit Bottom Id##"), ref objectiveIdToComplete, 40))
                                 {
                                     item.ObjectiveIdToComplete = objectiveIdToComplete;
                                 }
@@ -552,64 +563,64 @@ public class EditorWindow : Window, IDisposable
                                 break;
                         }
                         ImGui.SetNextItemWidth(150);
-                        if (ImGui.InputText("Npc Alias##", ref npcAlias, 40))
+                        if (ImGui.InputText(Translator.LocalizeUI("Npc Alias##"), ref npcAlias, 40))
                         {
                             item.NpcAlias = npcAlias;
                         }
                         ImGui.SameLine();
                         ImGui.SetNextItemWidth(150);
-                        if (ImGui.InputText("Npc Name##", ref npcName, 40))
+                        if (ImGui.InputText(Translator.LocalizeUI("Npc Name##"), ref npcName, 40))
                         {
                             item.NpcName = npcName;
                         }
-                        if (ImGui.InputText("Dialogue##", ref dialogue, 500))
+                        if (ImGui.InputText(Translator.LocalizeUI("Dialogue##"), ref dialogue, 500))
                         {
                             item.Dialogue = dialogue;
                         }
-                        if (ImGui.InputText("Dialogue Audio Path##", ref dialogueAudio, 255))
+                        if (ImGui.InputText(Translator.LocalizeUI("Dialogue Audio Path##"), ref dialogueAudio, 255))
                         {
                             item.DialogueAudio = dialogueAudio;
                         }
-
-                        if (ImGui.Combo("Box Style##", ref boxStyle, _boxStyles, _boxStyles.Length))
+                        var boxStyles = Translator.LocalizeTextArray(_boxStyles);
+                        if (ImGui.Combo(Translator.LocalizeUI("Box Style##"), ref boxStyle, boxStyles, _boxStyles.Length))
                         {
                             item.DialogueBoxStyle = boxStyle;
                         }
                         ImGui.SetNextItemWidth(100);
-                        if (ImGui.InputInt("NPC Face Expression Id##", ref faceExpression))
+                        if (ImGui.InputInt(Translator.LocalizeUI("NPC Face Expression Id##"), ref faceExpression))
                         {
                             item.FaceExpression = faceExpression;
                         }
                         ImGui.SameLine();
                         ImGui.SetNextItemWidth(100);
-                        if (ImGui.InputInt("NPC Body Expression Id##", ref bodyExpression))
+                        if (ImGui.InputInt(Translator.LocalizeUI("NPC Body Expression Id##"), ref bodyExpression))
                         {
                             item.BodyExpression = bodyExpression;
                         }
                         ImGui.SameLine();
-                        if (ImGui.Checkbox("Loop Animation##", ref loopAnimation))
+                        if (ImGui.Checkbox(Translator.LocalizeUI("Loop Animation##"), ref loopAnimation))
                         {
                             item.LoopAnimation = loopAnimation;
                         }
 
                         ImGui.SetNextItemWidth(100);
-                        if (ImGui.InputInt("Player Face Expression Id##", ref faceExpressionPlayer))
+                        if (ImGui.InputInt(Translator.LocalizeUI("Player Face Expression Id##"), ref faceExpressionPlayer))
                         {
                             item.FaceExpressionPlayer = faceExpressionPlayer;
                         }
                         ImGui.SameLine();
                         ImGui.SetNextItemWidth(100);
-                        if (ImGui.InputInt("Player Body Expression Id##", ref bodyExpressionPlayer))
+                        if (ImGui.InputInt(Translator.LocalizeUI("Player Body Expression Id##"), ref bodyExpressionPlayer))
                         {
                             item.BodyExpressionPlayer = bodyExpressionPlayer;
                         }
                         ImGui.SameLine();
-                        if (ImGui.Checkbox("Loop Player Animation##", ref loopAnimationPlayer))
+                        if (ImGui.Checkbox(Translator.LocalizeUI("Loop Player Animation##"), ref loopAnimationPlayer))
                         {
                             item.LoopAnimationPlayer = loopAnimationPlayer;
                         }
 
-                        if (ImGui.Combo("Event Background Type##", ref eventBackgroundType, eventBackgroundTypes, eventBackgroundTypes.Length))
+                        if (ImGui.Combo(Translator.LocalizeUI("Event Background Type##"), ref eventBackgroundType, eventBackgroundTypes, eventBackgroundTypes.Length))
                         {
                             item.TypeOfEventBackground = (EventBackgroundType)eventBackgroundType;
                         }
@@ -617,19 +628,19 @@ public class EditorWindow : Window, IDisposable
                         {
                             case EventBackgroundType.Image:
                             case EventBackgroundType.ImageTransparent:
-                                if (ImGui.InputText("Event Background Image Path##", ref eventBackground, 255))
+                                if (ImGui.InputText(Translator.LocalizeUI("Event Background Image Path##"), ref eventBackground, 255))
                                 {
                                     item.EventBackground = eventBackground;
                                 }
                                 break;
                             case EventBackgroundType.Video:
-                                if (ImGui.InputText("Event Background Video Path##", ref eventBackground, 255))
+                                if (ImGui.InputText(Translator.LocalizeUI("Event Background Video Path##"), ref eventBackground, 255))
                                 {
                                     item.EventBackground = eventBackground;
                                 }
                                 break;
                         }
-                        if (ImGui.Combo("Event End Behaviour##", ref eventEndBehaviour, eventEndTypes, eventEndTypes.Length))
+                        if (ImGui.Combo(Translator.LocalizeUI("Event End Behaviour##"), ref eventEndBehaviour, eventEndTypes, eventEndTypes.Length))
                         {
                             item.EventEndBehaviour = (EventBehaviourType)eventEndBehaviour;
                         }
@@ -637,39 +648,39 @@ public class EditorWindow : Window, IDisposable
                         switch (item.EventEndBehaviour)
                         {
                             case EventBehaviourType.EventSkipsToDialogueNumber:
-                                if (ImGui.InputInt("Event Number To Skip To##", ref eventNumberToSkipTo))
+                                if (ImGui.InputInt(Translator.LocalizeUI("Event Number To Skip To##"), ref eventNumberToSkipTo))
                                 {
                                     item.EventNumberToSkipTo = eventNumberToSkipTo;
                                 }
                                 break;
                             case EventBehaviourType.EventEndsEarlyWhenHitAndSkipsToObjective:
-                                if (ImGui.InputInt("Objective Number To Skip To##", ref objectiveNumberToSkipTo))
+                                if (ImGui.InputInt(Translator.LocalizeUI("Objective Number To Skip To##"), ref objectiveNumberToSkipTo))
                                 {
                                     item.ObjectiveNumberToSkipTo = objectiveNumberToSkipTo;
                                 }
                                 break;
                             case EventBehaviourType.EventEndsEarlyWhenHitAndStartsTimer:
                             case EventBehaviourType.StartsTimer:
-                                if (ImGui.InputInt("Time Limit (Milliseconds)##", ref timeLimit))
+                                if (ImGui.InputInt(Translator.LocalizeUI("Time Limit (Milliseconds)##"), ref timeLimit))
                                 {
                                     item.TimeLimit = timeLimit;
                                 }
                                 break;
                         }
-                        if (ImGui.Checkbox("Event Has No Reading##", ref eventHasNoReading))
+                        if (ImGui.Checkbox(Translator.LocalizeUI("Event Has No Reading##"), ref eventHasNoReading))
                         {
                             item.EventHasNoReading = eventHasNoReading;
                         }
                         ImGui.EndTabItem();
                     }
-                    if (ImGui.BeginTabItem("Branching Choices## we're unique"))
+                    if (ImGui.BeginTabItem(Translator.LocalizeUI("Branching Choices## we're unique")))
                     {
                         DrawBranchingChoicesMenu();
                         ImGui.EndTabItem();
                     }
-                    if (ImGui.BeginTabItem("Appearance Swap##we're unique and such"))
+                    if (ImGui.BeginTabItem(Translator.LocalizeUI("Appearance Swap##we're unique and such")))
                     {
-                        if (ImGui.InputText("Npc Appearance Swap##", ref appearanceSwap, 4000))
+                        if (ImGui.InputText(Translator.LocalizeUI("Npc Appearance Swap##"), ref appearanceSwap, 4000))
                         {
                             item.AppearanceSwap = appearanceSwap;
                         }
@@ -677,7 +688,7 @@ public class EditorWindow : Window, IDisposable
                         {
                             ImGui.BeginDisabled();
                         }
-                        if (ImGui.Button(_isCreatingAppearance ? "Creating Appearance Please Wait" : "Create NPC Appearance From Current Player Appearance##"))
+                        if (ImGui.Button(Translator.LocalizeUI(_isCreatingAppearance ? "Creating Appearance Please Wait" : "Create NPC Appearance From Current Player Appearance##")))
                         {
                             Task.Run(() =>
                             {
@@ -696,11 +707,11 @@ public class EditorWindow : Window, IDisposable
                         {
                             ImGui.EndDisabled();
                         }
-                        if (ImGui.InputText("Player Appearance Swap##", ref playerAppearanceSwap, 4000))
+                        if (ImGui.InputText(Translator.LocalizeUI("Player Appearance Swap##"), ref playerAppearanceSwap, 4000))
                         {
                             item.PlayerAppearanceSwap = playerAppearanceSwap;
                         }
-                        if (ImGui.Combo("Player Appearance Swap Type", ref playerAppearanceSwapType, eventPlayerAppearanceApplicationTypes, eventPlayerAppearanceApplicationTypes.Length))
+                        if (ImGui.Combo(Translator.LocalizeUI("Player Appearance Swap Type"), ref playerAppearanceSwapType, eventPlayerAppearanceApplicationTypes, eventPlayerAppearanceApplicationTypes.Length))
                         {
                             item.PlayerAppearanceSwapType = (AppearanceSwapType)playerAppearanceSwapType;
                         }
@@ -708,7 +719,7 @@ public class EditorWindow : Window, IDisposable
                         {
                             ImGui.BeginDisabled();
                         }
-                        if (ImGui.Button(_isCreatingAppearance ? "Creating Appearance Please Wait" : "Create Player Appearance From Current Player Appearance##"))
+                        if (ImGui.Button(Translator.LocalizeUI(_isCreatingAppearance ? "Creating Appearance Please Wait" : "Create Player Appearance From Current Player Appearance##")))
                         {
                             Task.Run(() =>
                             {
@@ -729,27 +740,27 @@ public class EditorWindow : Window, IDisposable
                         }
                         ImGui.EndTabItem();
                     }
-                    if (ImGui.BeginTabItem("Positioning## we're unique"))
+                    if (ImGui.BeginTabItem(Translator.LocalizeUI("Positioning## we're unique")))
                     {
-                        if (ImGui.Checkbox("Looks At Player During Event", ref looksAtPlayerDuringEvent))
+                        if (ImGui.Checkbox(Translator.LocalizeUI("Looks At Player During Event"), ref looksAtPlayerDuringEvent))
                         {
                             item.LooksAtPlayerDuringEvent = looksAtPlayerDuringEvent;
                         }
-                        if (ImGui.Checkbox("Event Sets New NPC Position", ref eventSetsNewNpcPosition))
+                        if (ImGui.Checkbox(Translator.LocalizeUI("Event Sets New NPC Position"), ref eventSetsNewNpcPosition))
                         {
                             item.EventSetsNewNpcCoordinates = eventSetsNewNpcPosition;
                         }
                         if (eventSetsNewNpcPosition)
                         {
-                            if (ImGui.DragFloat3("Npc Movement Position", ref npcMovementPosition))
+                            if (ImGui.DragFloat3(Translator.LocalizeUI("Npc Movement Position"), ref npcMovementPosition))
                             {
                                 item.NpcMovementPosition = npcMovementPosition;
                             }
-                            if (ImGui.DragFloat3("Npc Movement Rotation", ref npcMovementRotation))
+                            if (ImGui.DragFloat3(Translator.LocalizeUI("Npc Movement Rotation"), ref npcMovementRotation))
                             {
                                 item.NpcMovementRotation = npcMovementRotation;
                             }
-                            if (ImGui.Button("Set Coordinates Based On Player Position"))
+                            if (ImGui.Button(Translator.LocalizeUI("Set Coordinates Based On Player Position")))
                             {
                                 item.NpcMovementPosition = Plugin.ObjectTable.LocalPlayer.Position;
                                 item.NpcMovementRotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ObjectTable.LocalPlayer.Rotation) + 180, 0);
@@ -765,8 +776,8 @@ public class EditorWindow : Window, IDisposable
     private void DrawBranchingChoicesMenu()
     {
         ImGui.BeginTable("##Branching Choices Table", 2);
-        ImGui.TableSetupColumn("Branching Choices List", ImGuiTableColumnFlags.WidthFixed, 150);
-        ImGui.TableSetupColumn("Branching Choices Editor", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn(Translator.LocalizeUI("Branching Choices List"), ImGuiTableColumnFlags.WidthFixed, 150);
+        ImGui.TableSetupColumn(Translator.LocalizeUI("Branching Choices Editor"), ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableHeadersRow();
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
@@ -801,33 +812,33 @@ public class EditorWindow : Window, IDisposable
                     var eventToJumpTo = item.EventToJumpTo;
                     var eventToJumpToFailure = item.EventToJumpToFailure;
                     var minimumDiceRoll = item.MinimumDiceRoll;
-                    var branchingChoiceTypes = Enum.GetNames(typeof(BranchingChoiceType));
-                    if (ImGui.InputText("Choice Text##", ref choiceText, 255))
+                    var branchingChoiceTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(BranchingChoiceType)));
+                    if (ImGui.InputText(Translator.LocalizeUI("Choice Text##"), ref choiceText, 255))
                     {
                         item.ChoiceText = choiceText;
                     }
-                    if (ImGui.Combo("Branching Choice Type##", ref choiceType, branchingChoiceTypes, branchingChoiceTypes.Length))
+                    if (ImGui.Combo(Translator.LocalizeUI("Branching Choice Type##"), ref choiceType, branchingChoiceTypes, branchingChoiceTypes.Length))
                     {
                         item.ChoiceType = (BranchingChoiceType)choiceType;
                     }
                     switch (item.ChoiceType)
                     {
                         case BranchingChoiceType.SkipToEventNumber:
-                            if (ImGui.InputInt("Event Number To Jump To##", ref eventToJumpTo))
+                            if (ImGui.InputInt(Translator.LocalizeUI("Event Number To Jump To##"), ref eventToJumpTo))
                             {
                                 item.EventToJumpTo = eventToJumpTo;
                             }
                             break;
                         case BranchingChoiceType.RollD20ThenSkipToEventNumber:
-                            if (ImGui.InputInt("Event Number To Jump To Success##", ref eventToJumpTo))
+                            if (ImGui.InputInt(Translator.LocalizeUI("Event Number To Jump To Success##"), ref eventToJumpTo))
                             {
                                 item.EventToJumpTo = eventToJumpTo;
                             }
-                            if (ImGui.InputInt("Event Number To Jump To Failure##", ref eventToJumpToFailure))
+                            if (ImGui.InputInt(Translator.LocalizeUI("Event Number To Jump To Failure##"), ref eventToJumpToFailure))
                             {
                                 item.EventToJumpToFailure = eventToJumpToFailure;
                             }
-                            if (ImGui.InputInt("Minimum Roll For Success", ref minimumDiceRoll))
+                            if (ImGui.InputInt(Translator.LocalizeUI("Minimum Roll For Success"), ref minimumDiceRoll))
                             {
                                 if (minimumDiceRoll > 20)
                                 {
@@ -842,10 +853,10 @@ public class EditorWindow : Window, IDisposable
                             break;
                         case BranchingChoiceType.SkipToEventNumberRandomized:
                             var width = ImGui.GetColumnWidth();
-                            ImGui.PushID("Vertical Scroll Branching");
+                            ImGui.PushID(Translator.LocalizeUI("Vertical Scroll Branching"));
                             ImGui.BeginGroup();
                             const ImGuiWindowFlags child_flags = ImGuiWindowFlags.MenuBar;
-                            var child_id = ImGui.GetID("Branching Events");
+                            var child_id = ImGui.GetID(Translator.LocalizeUI("Branching Events"));
                             bool child_is_visible = ImGui.BeginChild(child_id, new Vector2(width, 200), true, child_flags);
                             for (int i = 0; i < item.RandomizedEventToSkipTo.Count; i++)
                             {
@@ -856,7 +867,7 @@ public class EditorWindow : Window, IDisposable
                                     {
                                         var randomizedEventToJumpTo = item.RandomizedEventToSkipTo[i];
                                         ImGui.SetNextItemWidth(200);
-                                        if (ImGui.InputInt($"Randomized Event Number To Jump To##{i}", ref randomizedEventToJumpTo))
+                                        if (ImGui.InputInt(Translator.LocalizeUI($"Randomized Event Number To Jump To##{i}"), ref randomizedEventToJumpTo))
                                         {
                                             item.RandomizedEventToSkipTo[i] = randomizedEventToJumpTo;
                                         }
@@ -892,7 +903,7 @@ public class EditorWindow : Window, IDisposable
                             }
                             break;
                         case BranchingChoiceType.BranchingQuestline:
-                            if (ImGui.Button("Configure Branching Questline"))
+                            if (ImGui.Button(Translator.LocalizeUI("Configure Branching Questline")))
                             {
                                 if (_subEditorWindow == null)
                                 {
@@ -904,14 +915,14 @@ public class EditorWindow : Window, IDisposable
                                 _subEditorWindow.RefreshMenus();
                             }
                             ImGui.SameLine();
-                            if (ImGui.Button("Import Branching Questline"))
+                            if (ImGui.Button(Translator.LocalizeUI("Import Branching Questline")))
                             {
                                 _fileDialogManager.Reset();
-                                ImGui.OpenPopup("OpenPathDialog##editorwindow");
+                                ImGui.OpenPopup(Translator.LocalizeUI("OpenPathDialog##editorwindow"));
                             }
-                            if (ImGui.BeginPopup("OpenPathDialog##editorwindow"))
+                            if (ImGui.BeginPopup(Translator.LocalizeUI("OpenPathDialog##editorwindow")))
                             {
-                                _fileDialogManager.OpenFileDialog("Select quest line data", ".quest", (isOk, file) =>
+                                _fileDialogManager.OpenFileDialog(Translator.LocalizeUI("Select quest line data"), ".quest", (isOk, file) =>
                                 {
                                     if (isOk)
                                     {
@@ -941,23 +952,29 @@ public class EditorWindow : Window, IDisposable
                 {
                     RefreshMenus();
                 }
-                if (ImGui.Button("Add"))
+                if (ImGui.Button(Translator.LocalizeUI("Add")))
                 {
                     var branchingChoice = new BranchingChoice();
                     branchingChoices.Add(branchingChoice);
                     branchingChoice.RoleplayingQuest.ConfigureSubQuest(_roleplayingQuestCreator.CurrentQuest);
                     branchingChoice.RoleplayingQuest.IsSubQuest = true;
-                    _branchingChoices = Utility.FillNewList(branchingChoices.Count, "Choice");
-                    _selectedBranchingChoice = branchingChoices.Count - 1;
-                    RefreshMenus();
+                    Task.Run(async () =>
+                    {
+                        _branchingChoices = Utility.FillNewList(branchingChoices.Count, await Translator.LocalizeText("Choice", Translator.UiLanguage, LanguageEnum.English));
+                        _selectedBranchingChoice = branchingChoices.Count - 1;
+                        RefreshMenus();
+                    });
                 }
                 ImGui.SameLine();
-                if (ImGui.Button("Remove"))
+                if (ImGui.Button(Translator.LocalizeUI("Remove")))
                 {
                     branchingChoices.RemoveAt(_selectedBranchingChoice);
-                    _branchingChoices = Utility.FillNewList(branchingChoices.Count, "Choice");
-                    _selectedBranchingChoice = branchingChoices.Count - 1;
-                    RefreshMenus();
+                    Task.Run(async () =>
+                    {
+                        _branchingChoices = Utility.FillNewList(branchingChoices.Count, await Translator.LocalizeText("Choice", Translator.UiLanguage, LanguageEnum.English));
+                        _selectedBranchingChoice = branchingChoices.Count - 1;
+                        RefreshMenus();
+                    });
                 }
             }
         }
@@ -974,40 +991,46 @@ public class EditorWindow : Window, IDisposable
                 _selectedBranchingChoice = 0;
                 RefreshMenus();
             }
-            if (ImGui.Button("Add"))
+            if (ImGui.Button(Translator.LocalizeUI("Add")))
             {
                 questText.Add(new QuestEvent());
-                _dialogues = Utility.FillNewList(questText.Count, "Event");
-                _selectedEvent = questText.Count - 1;
-                RefreshMenus();
+                Task.Run(async () =>
+                {
+                    _dialogues = Utility.FillNewList(questText.Count, await Translator.LocalizeText("Event", Translator.UiLanguage, LanguageEnum.English));
+                    _selectedEvent = questText.Count - 1;
+                    RefreshMenus();
+                });
             }
             ImGui.SameLine();
-            if (ImGui.Button("Remove"))
+            if (ImGui.Button(Translator.LocalizeUI("Remove")))
             {
                 questText.RemoveAt(_selectedEvent);
-                _dialogues = Utility.FillNewList(questText.Count, "Event");
-                _selectedEvent = questText.Count - 1;
-                RefreshMenus();
+                Task.Run(async () =>
+                {
+                    _dialogues = Utility.FillNewList(questText.Count, await Translator.LocalizeText("Event", Translator.UiLanguage, LanguageEnum.English));
+                    _selectedEvent = questText.Count - 1;
+                    RefreshMenus();
+                });
             }
-            if (ImGui.Button("Add Clipboard"))
+            if (ImGui.Button(Translator.LocalizeUI("Add Clipboard")))
             {
-                _roleplayingQuestCreator.StoryScriptToObjectiveEvents(ImGui.GetClipboardText().Replace("…", "..."), _objectiveInFocus);
+                _roleplayingQuestCreator.StoryScriptToObjectiveEvents(ImGui.GetClipboardText().Replace(Translator.LocalizeUI("…"), "..."), _objectiveInFocus);
                 RefreshMenus();
             }
-            if (ImGui.Button("To Clipboard"))
+            if (ImGui.Button(Translator.LocalizeUI("To Clipboard")))
             {
                 ImGui.SetClipboardText(_roleplayingQuestCreator.ObjectiveToStoryScriptFormat(_objectiveInFocus));
             }
         }
     }
 
-    private void RefreshMenus()
+    private async Task RefreshMenus()
     {
         if (_objectiveInFocus != null)
         {
             var questText = _objectiveInFocus.QuestText;
-            _dialogues = Utility.FillNewList(questText.Count, "Event");
-            _nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, "Objective");
+            _dialogues = Utility.FillNewList(questText.Count, await Translator.LocalizeText("Event", Translator.UiLanguage, LanguageEnum.English));
+            _nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, await Translator.LocalizeText("Objective", Translator.UiLanguage, LanguageEnum.English));
             if (questText.Count > 0)
             {
                 if (_selectedEvent < questText.Count)
@@ -1017,7 +1040,7 @@ public class EditorWindow : Window, IDisposable
                     {
                         _selectedBranchingChoice = choices.Count - 1;
                     }
-                    _branchingChoices = Utility.FillNewList(choices.Count, "Choice");
+                    _branchingChoices = Utility.FillNewList(choices.Count, await Translator.LocalizeText("Choice", Translator.UiLanguage, LanguageEnum.English));
                 }
             }
             else
@@ -1035,9 +1058,9 @@ public class EditorWindow : Window, IDisposable
             _branchingChoices = new string[] { };
             _nodeNames = new string[] { };
             _dialogues = new string[] { };
-            _dialogues = Utility.FillNewList(0, "Event");
-            _nodeNames = Utility.FillNewList(0, "Objective");
-            _branchingChoices = Utility.FillNewList(0, "Choice");
+            _dialogues = Utility.FillNewList(0, await Translator.LocalizeText("Event", Translator.UiLanguage, LanguageEnum.English));
+            _nodeNames = Utility.FillNewList(0, await Translator.LocalizeText("Objective", Translator.UiLanguage, LanguageEnum.English));
+            _branchingChoices = Utility.FillNewList(0, await Translator.LocalizeText("Choice", Translator.UiLanguage, LanguageEnum.English));
             _selectedBranchingChoice = 0;
             _selectedEvent = 0;
         }
@@ -1061,19 +1084,23 @@ public class EditorWindow : Window, IDisposable
                 }
                 if (ImGui.TreeNode((level == 0 ? "(" + i + ") " : "") + "" + objective.Objective + "##" + i))
                 {
-                    if (ImGui.Button("Edit##" + i))
+                    if (ImGui.Button(Translator.LocalizeUI("Edit##" + i)))
                     {
                         _objectiveInFocus = objective;
                         RefreshMenus();
                     }
                     ImGui.SameLine();
-                    if (ImGui.Button("Add Sub Objective##" + i))
+                    if (ImGui.Button(Translator.LocalizeUI("Add Sub Objective##" + i)))
                     {
-                        objective.SubObjectives.Add(new QuestObjective()
+                        Task.Run(async () =>
                         {
-                            Coordinates = Plugin.ObjectTable.LocalPlayer.Position,
-                            Rotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ObjectTable.LocalPlayer.Rotation), 0),
-                            TerritoryId = Plugin.ClientState.TerritoryType
+                            objective.SubObjectives.Add(new QuestObjective()
+                            {
+                                Objective = await Translator.LocalizeText("Objective Name Here", Translator.UiLanguage, LanguageEnum.English),
+                                Coordinates = Plugin.ObjectTable.LocalPlayer.Position,
+                                Rotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ObjectTable.LocalPlayer.Rotation), 0),
+                                TerritoryId = Plugin.ClientState.TerritoryType
+                            });
                         });
                     }
                     if (!_shiftModifierHeld)
@@ -1081,7 +1108,7 @@ public class EditorWindow : Window, IDisposable
                         ImGui.BeginDisabled();
                     }
                     ImGui.SameLine();
-                    if (ImGui.Button("Delete##" + i))
+                    if (ImGui.Button(Translator.LocalizeUI("Delete##" + i)))
                     {
                         objective.Invalidate = true;
                     }
@@ -1110,24 +1137,28 @@ public class EditorWindow : Window, IDisposable
         ImGui.PushID("Vertical Scroll");
         ImGui.BeginGroup();
         const ImGuiWindowFlags child_flags = ImGuiWindowFlags.MenuBar;
-        var child_id = ImGui.GetID("Objective");
+        var child_id = ImGui.GetID(Translator.LocalizeUI("Objective"));
         bool child_is_visible = ImGui.BeginChild(child_id, new Vector2(width, 600), true, child_flags);
         DrawQuestObjectivesRecursive(_roleplayingQuestCreator.CurrentQuest.QuestObjectives, 0);
         ImGui.EndChild();
         ImGui.EndGroup();
         ImGui.PopID();
-        ImGui.TextUnformatted("Hold Shift To Delete Objectives");
-        if (ImGui.Button("Add Dominant Objective"))
+        ImGui.TextUnformatted(Translator.LocalizeUI("Hold Shift To Delete Objectives"));
+        if (ImGui.Button(Translator.LocalizeUI("Add Dominant Objective")))
         {
-            _npcTransformEditorWindow.RefreshMenus();
-            _roleplayingQuestCreator.AddQuestObjective(new QuestObjective()
+            Task.Run(async () =>
             {
-                Coordinates = Plugin.ObjectTable.LocalPlayer.Position,
-                Rotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ObjectTable.LocalPlayer.Rotation), 0),
-                TerritoryId = Plugin.ClientState.TerritoryType,
-                TerritoryDiscriminator = Plugin.AQuestReborn.Discriminator
+                _npcTransformEditorWindow.RefreshMenus();
+                _roleplayingQuestCreator.AddQuestObjective(new QuestObjective()
+                {
+                    Objective = await Translator.LocalizeText("Objective Name Here", Translator.UiLanguage, LanguageEnum.English),
+                    Coordinates = Plugin.ObjectTable.LocalPlayer.Position,
+                    Rotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ObjectTable.LocalPlayer.Rotation), 0),
+                    TerritoryId = Plugin.ClientState.TerritoryType,
+                    TerritoryDiscriminator = Plugin.AQuestReborn.Discriminator
+                });
+                RefreshMenus();
             });
-            RefreshMenus();
         }
     }
 

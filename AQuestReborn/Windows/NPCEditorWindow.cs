@@ -52,8 +52,8 @@ public class NPCEditorWindow : Window, IDisposable
     public override void Draw()
     {
         ImGui.BeginTable("##NPC Creation Table", 2);
-        ImGui.TableSetupColumn("NPC Creation List", ImGuiTableColumnFlags.WidthFixed, 150);
-        ImGui.TableSetupColumn("NPC Creation Editor", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn(Translator.LocalizeUI("NPC Creation List"), ImGuiTableColumnFlags.WidthFixed, 150);
+        ImGui.TableSetupColumn(Translator.LocalizeUI("NPC Creation Editor"), ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableHeadersRow();
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
@@ -74,11 +74,11 @@ public class NPCEditorWindow : Window, IDisposable
                 var npcName = item.NpcName;
                 var appearanceData = item.AppearanceData;
                 var branchingChoiceTypes = Enum.GetNames(typeof(BranchingChoiceType));
-                if (ImGui.InputText("Npc Name##", ref npcName, 40))
+                if (ImGui.InputText(Translator.LocalizeUI("Npc Name##"), ref npcName, 40))
                 {
                     item.NpcName = npcName;
                 }
-                if (ImGui.InputText("Npc Appearance Data##", ref appearanceData, 255))
+                if (ImGui.InputText(Translator.LocalizeUI("Npc Appearance Data##"), ref appearanceData, 255))
                 {
                     item.AppearanceData = appearanceData;
                 }
@@ -87,7 +87,7 @@ public class NPCEditorWindow : Window, IDisposable
                 {
                     ImGui.BeginDisabled();
                 }
-                if (ImGui.Button(_isCreatingAppearance ? "Creating Appearance Please Wait" : "Create NPC Appearance From Player Appearance##"))
+                if (ImGui.Button(Translator.LocalizeUI(_isCreatingAppearance ? "Creating Appearance Please Wait" : "Create NPC Appearance From Player Appearance##")))
                 {
                     Task.Run(() =>
                     {
@@ -120,26 +120,32 @@ public class NPCEditorWindow : Window, IDisposable
             {
                 //RefreshMenus();
             }
-            if (ImGui.Button("Add"))
+            if (ImGui.Button(Translator.LocalizeUI("Add")))
             {
                 var npcCustomization = new NpcInformation();
                 npcCustomizations[npcCustomizations.Count] = npcCustomization;
-                _npcCustomizations = Utility.FillNewList(npcCustomizations.Count, "NPC Appearance");
-                _selectedNpcCustomization = _npcCustomizations.Length - 1;
+                Task.Run(async () =>
+                {
+                    _npcCustomizations = Utility.FillNewList(npcCustomizations.Count, await Translator.LocalizeText("NPC Appearance", Translator.UiLanguage, LanguageConversionProxy.LanguageEnum.English));
+                    _selectedNpcCustomization = _npcCustomizations.Length - 1;
+                });
             }
             ImGui.SameLine();
-            if (ImGui.Button("Remove"))
+            if (ImGui.Button(Translator.LocalizeUI("Remove")))
             {
                 npcCustomizations.Remove(_selectedNpcCustomization);
-                _npcCustomizations = Utility.FillNewList(npcCustomizations.Count, "NPC Appearance");
-                _selectedNpcCustomization = _npcCustomizations.Length - 1;
+                Task.Run(async () =>
+                {
+                    _npcCustomizations = Utility.FillNewList(npcCustomizations.Count, await Translator.LocalizeText("NPC Appearance", Translator.UiLanguage, LanguageConversionProxy.LanguageEnum.English));
+                    _selectedNpcCustomization = _npcCustomizations.Length - 1;
+                });
             }
         }
     }
 
-    private void RefreshMenus()
+    private async void RefreshMenus()
     {
-        _npcCustomizations = Utility.FillNewList(_roleplayingQuest.NpcCustomizations.Count, "NPC Appearance");
+        _npcCustomizations = Utility.FillNewList(_roleplayingQuest.NpcCustomizations.Count, await Translator.LocalizeText("NPC Appearance", Translator.UiLanguage, LanguageConversionProxy.LanguageEnum.English));
         _selectedNpcCustomization = _npcCustomizations.Length - 1;
     }
 }

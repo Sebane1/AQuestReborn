@@ -39,7 +39,7 @@ public class MainWindow : Window, IDisposable
         Plugin = plugin;
         _fileDialogManager = new FileDialogManager();
         _territorySheets = Plugin.DataManager.GameData.GetExcelSheet<TerritoryType>();
-        Size = new Vector2(500, 500);
+        Size = new Vector2(800, 500);
     }
 
     public void Dispose() { }
@@ -59,25 +59,25 @@ public class MainWindow : Window, IDisposable
         {
             if (!string.IsNullOrEmpty(Plugin.Configuration.QuestInstallFolder) && Directory.Exists(Plugin.Configuration.QuestInstallFolder))
             {
-                if (ImGui.BeginTabItem("Installed Quests"))
+                if (ImGui.BeginTabItem(Translator.LocalizeUI("Installed Quests")))
                 {
                     DrawInstalledQuests();
                     ImGui.EndTabItem();
                 }
-                if (ImGui.BeginTabItem("Quest Objectives"))
+                if (ImGui.BeginTabItem(Translator.LocalizeUI("Quest Objectives")))
                 {
                     DrawQuestObjectives();
                     ImGui.EndTabItem();
                 }
             }
-            if (ImGui.BeginTabItem("Settings"))
+            if (ImGui.BeginTabItem(Translator.LocalizeUI("Settings")))
             {
                 DrawInitialSetup();
                 ImGui.EndTabItem();
             }
             ImGui.EndTabBar();
         }
-        if (ImGui.Button("Donate To Futher Development", new Vector2(Size.Value.X, 50)))
+        if (ImGui.Button(Translator.LocalizeUI("Donate To Further Development"), new Vector2(Size.Value.X, 50)))
         {
             ProcessStartInfo ProcessInfo = new ProcessStartInfo();
             Process Process = new Process();
@@ -89,35 +89,34 @@ public class MainWindow : Window, IDisposable
 
     private void DrawInitialSetup()
     {
-        if (ImGui.Button("Pick Empty Folder For Custom Quest Installs (Cannot Require Admin Rights)"))
+        if (ImGui.Button(Translator.LocalizeUI("Pick Empty Folder For Custom Quest Installs (Cannot Require Admin Rights)")))
         {
             _fileDialogManager.Reset();
-            ImGui.OpenPopup("OpenPathDialog##editorwindow");
+            ImGui.OpenPopup(Translator.LocalizeUI("OpenPathDialog##editorwindow"));
         }
-        if (ImGui.BeginPopup("OpenPathDialog##editorwindow"))
+        if (ImGui.BeginPopup(Translator.LocalizeUI("OpenPathDialog##editorwindow")))
         {
-            _fileDialogManager.SaveFolderDialog("Pick location", "QuestReborn", (isOk, folder) =>
+            _fileDialogManager.SaveFolderDialog(Translator.LocalizeUI("Pick location"), "QuestReborn", (isOk, folder) =>
             {
                 if (isOk)
                 {
                     if (!folder.Contains("Program Files") && !folder.Contains("FINAL FANTASY XIV - A Realm Reborn"))
                     {
                         Directory.CreateDirectory(folder);
-                        //if (Directory.GetFiles(folder).Length == 0)
-                        //{
                         Plugin.Configuration.QuestInstallFolder = folder;
                         Plugin.RoleplayingQuestManager.QuestInstallFolder = folder;
+                        Translator.LoadCache(Path.Combine(Plugin.Configuration.QuestInstallFolder, "languageCache.json"));
                         Plugin.Configuration.Save();
-                        //}
                     }
                 }
             }, null, true);
             ImGui.EndPopup();
         }
         int currentSelection = (int)Plugin.Configuration.QuestLanguage;
-        if (ImGui.Combo("Language", ref currentSelection,Translator.LanguageStrings, Translator.LanguageStrings.Length))
+        if (ImGui.Combo(Translator.LocalizeUI("Language"), ref currentSelection, Translator.LanguageStrings, Translator.LanguageStrings.Length))
         {
             Plugin.Configuration.QuestLanguage = (LanguageEnum)currentSelection;
+            Translator.UiLanguage = Plugin.Configuration.QuestLanguage;
             Plugin.Configuration.Save();
         }
     }
@@ -132,11 +131,11 @@ public class MainWindow : Window, IDisposable
             {
                 if (!strings.Contains(item.Item3.QuestName))
                 {
-                    ImGui.TextWrapped(item.Item3.QuestName);
+                    ImGui.TextWrapped(Translator.LocalizeUI(item.Item3.QuestName, item.Item3.QuestLanguage));
                     strings.Add(item.Item3.QuestName);
                 }
                 ImGui.SetCursorPosX(50);
-                ImGui.TextWrapped(item.Item2.Objective + (item.Item2.DontShowOnMap ? " (Hidden Location)" : $" ({_territorySheets.GetRow((uint)item.Item2.TerritoryId).PlaceName.Value.Name.ToString()})"));
+                ImGui.TextWrapped(Translator.LocalizeUI(item.Item2.Objective, item.Item3.QuestLanguage) + (item.Item2.DontShowOnMap ? Translator.LocalizeUI(" (Hidden Location)") : $" ({_territorySheets.GetRow((uint)item.Item2.TerritoryId).PlaceName.Value.Name.ToString()})"));
             }
             index++;
         }
@@ -149,8 +148,8 @@ public class MainWindow : Window, IDisposable
     private void InstalledQuestsTab()
     {
         ImGui.BeginTable("##Installed Quests", 2);
-        ImGui.TableSetupColumn("Installed Quest Selector", ImGuiTableColumnFlags.WidthFixed, 150);
-        ImGui.TableSetupColumn("Installed Quest Information", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn(Translator.LocalizeUI("Installed Quest Selector"), ImGuiTableColumnFlags.WidthFixed, 150);
+        ImGui.TableSetupColumn(Translator.LocalizeUI("Installed Quest Information"), ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableHeadersRow();
         ImGui.TableNextRow();
         ImGui.TableSetColumnIndex(0);
@@ -170,14 +169,14 @@ public class MainWindow : Window, IDisposable
             {
                 startingLocation = _territorySheets.GetRow((uint)roleplayingQuest.QuestObjectives[0].TerritoryId).PlaceName.Value.Name.ToString();
             }
-            ImGui.Text($"Author: {roleplayingQuest.QuestAuthor}");
-            ImGui.Text($"Quest Name: {roleplayingQuest.QuestName}");
-            ImGui.TextWrapped($"Description: {roleplayingQuest.QuestDescription}");
+            ImGui.Text(Translator.LocalizeUI($"Author") + $": {roleplayingQuest.QuestAuthor}");
+            ImGui.Text(Translator.LocalizeUI($"Quest Name") + ":" + Translator.LocalizeUI($"{roleplayingQuest.QuestName}"));
+            ImGui.TextWrapped(Translator.LocalizeUI($"Description") + ":" + Translator.LocalizeUI($"{roleplayingQuest.QuestDescription}"));
             if (!string.IsNullOrEmpty(startingLocation))
             {
-                ImGui.Text($"Starting Location: {startingLocation}");
+                ImGui.Text(Translator.LocalizeUI($"Starting Location") + ":" + Translator.LocalizeUI($"{startingLocation}"));
             }
-            if (ImGui.Button("Reset Quest Progress"))
+            if (ImGui.Button(Translator.LocalizeUI("Reset Quest Progress")))
             {
                 try
                 {
@@ -192,12 +191,12 @@ public class MainWindow : Window, IDisposable
                 Plugin.SaveProgress();
             }
             ImGui.SameLine();
-            if (ImGui.Button("Edit Quest"))
+            if (ImGui.Button(Translator.LocalizeUI("Edit Quest")))
             {
                 Plugin.EditorWindow.RoleplayingQuestCreator.EditQuest(Path.Combine(Plugin.Configuration.QuestInstallFolder, roleplayingQuest.QuestName + @"\main.quest"));
                 Plugin.EditorWindow.IsOpen = true;
             }
-            if (ImGui.Button("Open Directory"))
+            if (ImGui.Button(Translator.LocalizeUI("Open Directory")))
             {
                 string path = Path.Combine(Plugin.Configuration.QuestInstallFolder, roleplayingQuest.QuestName);
                 ProcessStartInfo ProcessInfo;
@@ -214,7 +213,7 @@ public class MainWindow : Window, IDisposable
                 Process = Process.Start(ProcessInfo);
             }
             ImGui.SameLine();
-            if (ImGui.Button("Export Quest"))
+            if (ImGui.Button(Translator.LocalizeUI("Export Quest")))
             {
                 string foundPath = roleplayingQuest.FoundPath;
                 string zipPath = "";
@@ -242,7 +241,7 @@ public class MainWindow : Window, IDisposable
                 Process = Process.Start(ProcessInfo);
             }
             ImGui.SameLine();
-            if (ImGui.Button("Recover Quest"))
+            if (ImGui.Button(Translator.LocalizeUI("Recover Quest")))
             {
                 string foundPath = roleplayingQuest.FoundPath;
                 string recoveryPath = "";
@@ -278,18 +277,18 @@ public class MainWindow : Window, IDisposable
             }
             ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
             ImGui.ListBox("##installedQuestInformation", ref _currentSelectedInstalledQuest, questItems.ToArray(), questItems.Count, 10);
-            if (ImGui.Button("Quest Creator"))
+            if (ImGui.Button(Translator.LocalizeUI("Quest Creator")))
             {
                 Plugin.EditorWindow.IsOpen = true;
             }
-            if (ImGui.Button("Install Quest"))
+            if (ImGui.Button(Translator.LocalizeUI("Install Quest")))
             {
                 _fileDialogManager.Reset();
                 ImGui.OpenPopup("OpenPathDialog##editorwindow");
             }
             if (ImGui.BeginPopup("OpenPathDialog##editorwindow"))
             {
-                _fileDialogManager.OpenFileDialog("Select quest file", ".qmp", (isOk, file) =>
+                _fileDialogManager.OpenFileDialog(Translator.LocalizeUI("Select quest file"), ".qmp", (isOk, file) =>
                 {
                     if (isOk)
                     {
@@ -299,7 +298,7 @@ public class MainWindow : Window, IDisposable
                 }, 0, null, true);
                 ImGui.EndPopup();
             }
-            if (ImGui.Button("Re-scan Quests"))
+            if (ImGui.Button(Translator.LocalizeUI("Re-scan Quests")))
             {
                 Plugin.RoleplayingQuestManager.ScanDirectory();
             }

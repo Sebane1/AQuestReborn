@@ -148,12 +148,32 @@ public class EventWindow : Window, IDisposable
                         if (roll >= branchingChoice.MinimumDiceRoll)
                         {
                             SetEvent(branchingChoice.EventToJumpTo);
-                            Plugin.ToastGui.ShowNormal("You roll a " + roll + "/" + branchingChoice.MinimumDiceRoll + " and succeed.");
+                            Task.Run(async () =>
+                            {
+                                var toast = await Translator.LocalizeText("You roll a " + roll + "/" + branchingChoice.MinimumDiceRoll + " and succeed.", Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
+
+                                Plugin.Framework.RunOnFrameworkThread(() =>
+                                {
+                                    Plugin.ToastGui.ShowNormal(toast);
+                                    _lastNpcName = "";
+                                    _questFollowing = false;
+                                });
+                            });
                         }
                         else
                         {
                             SetEvent(branchingChoice.EventToJumpToFailure);
-                            Plugin.ToastGui.ShowNormal("You roll a " + roll + "/" + branchingChoice.MinimumDiceRoll + " and fail.");
+                            Task.Run(async () =>
+                            {
+                                var toast = await Translator.LocalizeText("You roll a " + roll + "/" + branchingChoice.MinimumDiceRoll + " and fail.", Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
+
+                                Plugin.Framework.RunOnFrameworkThread(() =>
+                                {
+                                    Plugin.ToastGui.ShowNormal(toast);
+                                    _lastNpcName = "";
+                                    _questFollowing = false;
+                                });
+                            });
                         }
                         break;
                     case BranchingChoice.BranchingChoiceType.SkipToEventNumberRandomized:
@@ -374,7 +394,7 @@ public class EventWindow : Window, IDisposable
                 _playerAppearanceSwapType = item.PlayerAppearanceSwapType;
                 Task.Run(async () =>
                 {
-                    _currentName = await Translator.LocalizeText(string.IsNullOrEmpty(item.NpcAlias) ? item.NpcName : item.NpcAlias, Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
+                    _currentName = item.NpcName.ToLower() == "system" ? "system" : await Translator.LocalizeText(string.IsNullOrEmpty(item.NpcAlias) ? item.NpcName : item.NpcAlias, Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
                     _targetText = await Translator.LocalizeText(_targetText, Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
                     var targetTextValue = _targetText;
                     while (true)
@@ -460,7 +480,7 @@ public class EventWindow : Window, IDisposable
                     Plugin.RoleplayingQuestManager.RemovePlayerAppearance(_questDisplayObject.RoleplayingQuest.QuestId);
                     AppearanceAccessUtils.AppearanceManager.RemoveTemporaryCollection(Plugin.ObjectTable.LocalPlayer.Name.TextValue);
                 }
-                if (_currentName.ToLower() == "system")
+                if (item.NpcName.ToLower() == "system")
                 {
                     _currentDialogueBoxIndex = _dialogueBoxStyles.Count - 1;
                 }
@@ -542,7 +562,6 @@ public class EventWindow : Window, IDisposable
                                     ZoneWhiteList = new List<int> { Plugin.ClientState.TerritoryType }
                                 });
                                 _questFollowing = true;
-                                _lastNpcName = item.NpcName;
                             }
                             break;
                         case QuestEvent.EventBehaviourType.EventEndsEarlyWhenHitAndNPCStopsFollowingPlayer:
@@ -552,7 +571,6 @@ public class EventWindow : Window, IDisposable
                                 Plugin.RoleplayingQuestManager.RemovePartyMember(
                                 Plugin.RoleplayingQuestManager.GetNpcPartyMember(_questDisplayObject.RoleplayingQuest.QuestId, item.NpcName));
                                 _questStopFollowing = true;
-                                _lastNpcName = item.NpcName;
                             }
                             break;
                         case QuestEvent.EventBehaviourType.NPCFollowsPlayer:
@@ -566,7 +584,6 @@ public class EventWindow : Window, IDisposable
                                     ZoneWhiteList = new List<int> { Plugin.ClientState.TerritoryType }
                                 });
                                 _questFollowing = true;
-                                _lastNpcName = item.NpcName;
                             }
                             break;
                         case QuestEvent.EventBehaviourType.NPCStopsFollowingPlayer:
@@ -576,11 +593,16 @@ public class EventWindow : Window, IDisposable
                                 Plugin.RoleplayingQuestManager.RemovePartyMember(
                                 Plugin.RoleplayingQuestManager.GetNpcPartyMember(_questDisplayObject.RoleplayingQuest.QuestId, item.NpcName));
                                 _questStopFollowing = true;
-                                _lastNpcName = item.NpcName;
                             }
                             break;
                     }
-
+                    if (_questFollowing || _questStopFollowing)
+                    {
+                        Task.Run(async () =>
+                        {
+                            _lastNpcName = await Translator.LocalizeText(item.NpcName, Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
+                        });
+                    }
                 }
                 else
                 {
@@ -617,7 +639,6 @@ public class EventWindow : Window, IDisposable
                                     ZoneWhiteList = new List<int> { Plugin.ClientState.TerritoryType }
                                 });
                                 _questFollowing = true;
-                                _lastNpcName = item.NpcName;
                             }
                             break;
                         case QuestEvent.EventBehaviourType.EventEndsEarlyWhenHitAndNPCStopsFollowingPlayer:
@@ -628,7 +649,6 @@ public class EventWindow : Window, IDisposable
                                 Plugin.RoleplayingQuestManager.RemovePartyMember(
                                 Plugin.RoleplayingQuestManager.GetNpcPartyMember(_questDisplayObject.RoleplayingQuest.QuestId, item.NpcName));
                                 _questStopFollowing = true;
-                                _lastNpcName = item.NpcName;
                             }
                             break;
                         case QuestEvent.EventBehaviourType.NPCFollowsPlayer:
@@ -643,7 +663,6 @@ public class EventWindow : Window, IDisposable
                                     ZoneWhiteList = new List<int> { Plugin.ClientState.TerritoryType }
                                 });
                                 _questFollowing = true;
-                                _lastNpcName = item.NpcName;
                             }
                             break;
                         case QuestEvent.EventBehaviourType.NPCStopsFollowingPlayer:
@@ -654,7 +673,6 @@ public class EventWindow : Window, IDisposable
                                 Plugin.RoleplayingQuestManager.RemovePartyMember(
                                 Plugin.RoleplayingQuestManager.GetNpcPartyMember(_questDisplayObject.RoleplayingQuest.QuestId, item.NpcName));
                                 _questStopFollowing = true;
-                                _lastNpcName = item.NpcName;
                             }
 
                             break;
@@ -669,6 +687,13 @@ public class EventWindow : Window, IDisposable
                         case QuestEvent.EventBehaviourType.None:
                             _index++;
                             break;
+                    }
+                    if (_questFollowing || _questStopFollowing)
+                    {
+                        Task.Run(async () =>
+                        {
+                            _lastNpcName = await Translator.LocalizeText(item.NpcName, Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
+                        });
                     }
                 }
                 textTimer.Restart();
@@ -689,15 +714,32 @@ public class EventWindow : Window, IDisposable
             textTimer.Reset();
             if (_questFollowing)
             {
-                Plugin.ToastGui.ShowNormal(_lastNpcName + " is now following you in zones related to this quest.");
-                _lastNpcName = "";
-                _questFollowing = false;
+                Task.Run(async () =>
+                {
+                    var toast = await Translator.LocalizeText(_lastNpcName + " is now following you in zones related to this quest.", Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
+
+                    Plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        Plugin.ToastGui.ShowNormal(toast);
+                        _lastNpcName = "";
+                        _questFollowing = false;
+                    });
+                });
             }
             if (_questStopFollowing)
             {
-                Plugin.ToastGui.ShowNormal(_lastNpcName + " has stopped following you.");
-                _lastNpcName = "";
-                _questStopFollowing = false;
+                Task.Run(async () =>
+                {
+                    var toast = await Translator.LocalizeText(_lastNpcName + " has stopped following you.", Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
+
+                    Plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        Plugin.ToastGui.ShowNormal(toast);
+                        _lastNpcName = "";
+                        _questStopFollowing = false;
+                    });
+                });
+
             }
             if (!_blockProgression && !_objectiveSkip)
             {

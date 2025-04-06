@@ -109,20 +109,20 @@ public class QuestAcceptanceWindow : Window, IDisposable
         Plugin.UiAtlasManager.DrawRatingImage(value);
         ImGui.SameLine();
         ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
-        ImGui.LabelText("", "Content Rating: " + contentRating);
+        ImGui.LabelText("", Translator.LocalizeUI("Content Rating: ") + contentRating);
         ImGui.PopStyleColor();
 
         ImGui.SetCursorPosX(offset * _globalScale);
         Plugin.UiAtlasManager.DrawRewardImage(value);
         ImGui.SameLine();
         ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
-        ImGui.LabelText("", "Reward: " + questReward);
+        ImGui.LabelText("", Translator.LocalizeUI("Reward: ") + questReward);
         ImGui.PopStyleColor();
         ImGui.SetCursorPosX(offset * _globalScale);
         Plugin.UiAtlasManager.DrawDescriptionImage(value);
         ImGui.SameLine();
         ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
-        ImGui.LabelText("", "Description: ");
+        ImGui.LabelText("", Translator.LocalizeUI("Description: "));
         ImGui.PopStyleColor();
         //ImGui.SetCursorPosX((offset + 40) * _globalScale);
         var tableOffset = (offset + 40);
@@ -155,7 +155,7 @@ public class QuestAcceptanceWindow : Window, IDisposable
         var buttonSize = new Vector2(150, 25) * _globalScale;
         ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.3137254901960784f, 0.3215686274509804f, 0.3215686274509804f, 255));
         ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 1, 1, 255));
-        if (ImGui.Button("Accept", buttonSize))
+        if (ImGui.Button(Translator.LocalizeUI("Accept"), buttonSize))
         {
             _timeSinceLastQuestAccepted.Restart();
             _questToDisplay.HasQuestAcceptancePopup = false;
@@ -165,7 +165,7 @@ public class QuestAcceptanceWindow : Window, IDisposable
             _frameToLoad = null;
         }
         ImGui.SameLine();
-        if (ImGui.Button("Decline", buttonSize))
+        if (ImGui.Button(Translator.LocalizeUI("Decline"), buttonSize))
         {
             IsOpen = false;
             Plugin.Movement.DisableMovementLock();

@@ -81,36 +81,36 @@ public class RewardWindow : Window, IDisposable
         {
             case RoleplayingQuest.QuestRewardType.None:
                 ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
-                ImGui.TextWrapped("You were rewarded with a journey of finishing this quest!");
+                ImGui.TextWrapped(Translator.LocalizeUI("You were rewarded with a journey of finishing this quest!"));
                 ImGui.PopStyleColor();
                 break;
             case RoleplayingQuest.QuestRewardType.SecretMessage:
                 ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
-                ImGui.TextUnformatted("You have been awarded this message:");
+                ImGui.TextUnformatted(Translator.LocalizeUI("You have been awarded this message:"));
                 ImGui.TextWrapped(questReward);
                 ImGui.PopStyleColor();
                 break;
             case RoleplayingQuest.QuestRewardType.OnlineLink:
                 ImGui.SetWindowFontScale(0.9f);
                 ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
-                ImGui.TextWrapped("Check URL: " + _questToDisplay.QuestReward);
+                ImGui.TextWrapped(Translator.LocalizeUI("Check URL") + ": " + _questToDisplay.QuestReward);
                 ImGui.PopStyleColor();
                 ImGui.SetWindowFontScale(1.2f);
-                if (ImGui.Button("Awarded A Link", buttonSize))
+                if (ImGui.Button(Translator.LocalizeUI("Awarded A Link"), buttonSize))
                 {
                     OpenFile(_questToDisplay.QuestReward, _questToDisplay.TypeOfReward);
                 }
                 break;
             case RoleplayingQuest.QuestRewardType.MediaFile:
                 ImGui.SetWindowFontScale(1.2f);
-                if (ImGui.Button("Awarded A Media File", buttonSize))
+                if (ImGui.Button(Translator.LocalizeUI("Awarded A Media File"), buttonSize))
                 {
                     OpenFile(_questToDisplay.QuestReward, _questToDisplay.TypeOfReward);
                 }
                 break;
         }
         ImGui.SetWindowFontScale(1.2f);
-        if (ImGui.Button("Accept", buttonSize))
+        if (ImGui.Button(Translator.LocalizeUI("Accept"), buttonSize))
         {
             IsOpen = false;
             OnRewardClosed?.Invoke(this, _questToDisplay);
@@ -178,7 +178,7 @@ public class RewardWindow : Window, IDisposable
             questName = await Translator.LocalizeText(_questToDisplay.QuestName, Plugin.Configuration.QuestLanguage, quest.QuestLanguage);
             if (quest.TypeOfReward == RoleplayingQuest.QuestRewardType.SecretMessage)
             {
-                questReward = await Translator.LocalizeText(AddSpacesToSentence(_questToDisplay.TypeOfReward.ToString(), false), Plugin.Configuration.QuestLanguage, quest.QuestLanguage);
+                questReward = await Translator.LocalizeText(AddSpacesToSentence(_questToDisplay.QuestReward, false), Plugin.Configuration.QuestLanguage, quest.QuestLanguage);
             }
             Plugin.Framework.RunOnFrameworkThread(() =>
             {

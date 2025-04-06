@@ -24,7 +24,7 @@ namespace AQuestReborn
                             {
                                 value += objectTable.LocalPlayer.CurrentWorld.Value.Name.ExtractText() + "-" + housingManager->GetCurrentDivision() + "-"
                                     + housingManager->GetCurrentWard() + (housingManager->IsInside() ? "-" + housingManager->GetCurrentPlot() + "-" +
-                                    housingManager->GetCurrentRoom() + "-" + housingManager->GetCurrentIndoorHouseId() : "");
+                                    housingManager->GetCurrentRoom() + "-" + (long)housingManager->GetCurrentIndoorHouseId() : "");
                             }
                             else
                             {
