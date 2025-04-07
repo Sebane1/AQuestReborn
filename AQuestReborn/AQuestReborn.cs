@@ -53,6 +53,7 @@ namespace AQuestReborn
         public static nint PlayerAddress { get => _playerAddress; set => _playerAddress = value; }
         public static CharacterCustomization PlayerAppearanceData { get; internal set; }
         public static string PlayerClassJob { get; set; }
+        public Stopwatch CheckCooldownTimer { get => _checkCooldownTimer; set => _checkCooldownTimer = value; }
 
         private Stopwatch _pollingTimer;
         private Stopwatch _inputCooldown;
@@ -60,6 +61,7 @@ namespace AQuestReborn
         private Stopwatch _actorSpawnRefreshTimer = new Stopwatch();
         private Stopwatch _mapRefreshTimer = new Stopwatch();
         private Stopwatch _passiveObjectiveRefreshTimer = new Stopwatch();
+        private Stopwatch _checkCooldownTimer = new Stopwatch();
         private bool _screenButtonClicked;
         private Dictionary<string, Dictionary<string, ICharacter>> _spawnedNpcsDictionary = new Dictionary<string, Dictionary<string, ICharacter>>();
         private Dictionary<string, InteractiveNpc> _interactiveNpcDictionary = new Dictionary<string, InteractiveNpc>();
@@ -364,8 +366,12 @@ namespace AQuestReborn
                                     CheckForNewPlayerCreationLoad();
                                     CheckForNPCRefresh();
                                     CheckForMapRefresh();
-                                    CheckZoneDiscriminator();
-                                    CheckForPlayerAppearance();
+                                    if (_checkCooldownTimer.ElapsedMilliseconds > 500)
+                                    {
+                                        CheckZoneDiscriminator();
+                                        CheckForPlayerAppearance();
+                                        _checkCooldownTimer.Restart();
+                                    }
                                 }
                             }
                         }
