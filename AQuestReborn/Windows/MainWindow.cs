@@ -170,8 +170,8 @@ public class MainWindow : Window, IDisposable
                 startingLocation = _territorySheets.GetRow((uint)roleplayingQuest.QuestObjectives[0].TerritoryId).PlaceName.Value.Name.ToString();
             }
             ImGui.Text(Translator.LocalizeUI($"Author") + $": {roleplayingQuest.QuestAuthor}");
-            ImGui.Text(Translator.LocalizeUI($"Quest Name") + ":" + Translator.LocalizeUI($"{roleplayingQuest.QuestName}"));
-            ImGui.TextWrapped(Translator.LocalizeUI($"Description") + ":" + Translator.LocalizeUI($"{roleplayingQuest.QuestDescription}"));
+            ImGui.Text(Translator.LocalizeUI($"Quest Name") + ":" + Translator.LocalizeUI($"{roleplayingQuest.QuestName}", roleplayingQuest.QuestLanguage));
+            ImGui.TextWrapped(Translator.LocalizeUI($"Description") + ":" + Translator.LocalizeUI($"{roleplayingQuest.QuestDescription}", roleplayingQuest.QuestLanguage));
             if (!string.IsNullOrEmpty(startingLocation))
             {
                 ImGui.Text(Translator.LocalizeUI($"Starting Location") + ":" + Translator.LocalizeUI($"{startingLocation}"));
