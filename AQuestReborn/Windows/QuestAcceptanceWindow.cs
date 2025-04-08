@@ -109,20 +109,20 @@ public class QuestAcceptanceWindow : Window, IDisposable
         Plugin.UiAtlasManager.DrawRatingImage(value);
         ImGui.SameLine();
         ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
-        ImGui.LabelText("", Translator.LocalizeUI("Content Rating: ") + contentRating);
+        ImGui.LabelText("", Translator.LocalizeUI("Content Rating:") + " " + contentRating);
         ImGui.PopStyleColor();
 
         ImGui.SetCursorPosX(offset * _globalScale);
         Plugin.UiAtlasManager.DrawRewardImage(value);
         ImGui.SameLine();
         ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
-        ImGui.LabelText("", Translator.LocalizeUI("Reward: ") + questReward);
+        ImGui.LabelText("", Translator.LocalizeUI("Reward:") + " " + questReward);
         ImGui.PopStyleColor();
         ImGui.SetCursorPosX(offset * _globalScale);
         Plugin.UiAtlasManager.DrawDescriptionImage(value);
         ImGui.SameLine();
         ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
-        ImGui.LabelText("", Translator.LocalizeUI("Description: "));
+        ImGui.LabelText("", Translator.LocalizeUI("Description:"));
         ImGui.PopStyleColor();
         //ImGui.SetCursorPosX((offset + 40) * _globalScale);
         var tableOffset = (offset + 40);
