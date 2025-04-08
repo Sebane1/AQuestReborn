@@ -204,7 +204,7 @@ public class QuestAcceptanceWindow : Window, IDisposable
             description = await Translator.LocalizeText(_questToDisplay.QuestDescription, Plugin.Configuration.QuestLanguage, quest.QuestLanguage);
             thumbnailPath = _questToDisplay.QuestThumbnailPath;
             contentRating = await Translator.LocalizeText(AddSpacesToSentence(_questToDisplay.ContentRating.ToString(), false), Plugin.Configuration.QuestLanguage, quest.QuestLanguage);
-            thumbnailPath = await Translator.LocalizeText(Path.Combine(quest.FoundPath, _questToDisplay.QuestThumbnailPath), Plugin.Configuration.QuestLanguage, quest.QuestLanguage);
+            thumbnailPath = Path.Combine(quest.FoundPath, _questToDisplay.QuestThumbnailPath);
             SetThumbnail(thumbnailPath);
             Plugin.Framework.RunOnFrameworkThread(() =>
             {
