@@ -33,7 +33,7 @@ using Dalamud.Game.ClientState.Objects;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using ECommons;
 using ECommons.Reflection;
-using DragAndDropTexturing.ThreadSafeDalamudObjectTable;
+using GameObjectHelper.ThreadSafeDalamudObjectTable;
 
 namespace SamplePlugin;
 

@@ -1,5 +1,5 @@
 using Dalamud.Plugin.Services;
-using DragAndDropTexturing.ThreadSafeDalamudObjectTable;
+using GameObjectHelper.ThreadSafeDalamudObjectTable;
 using RoleplayingQuestCore;
 using System.Numerics;
 
