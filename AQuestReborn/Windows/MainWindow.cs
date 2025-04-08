@@ -136,6 +136,11 @@ public class MainWindow : Window, IDisposable
                 }
                 ImGui.SetCursorPosX(50);
                 ImGui.TextWrapped(Translator.LocalizeUI(item.Item2.Objective, item.Item3.QuestLanguage) + (item.Item2.DontShowOnMap ? Translator.LocalizeUI(" (Hidden Location)") : $" ({_territorySheets.GetRow((uint)item.Item2.TerritoryId).PlaceName.Value.Name.ToString()})"));
+                if (item.Item2.TypeOfObjectiveTrigger == QuestObjective.ObjectiveTriggerType.SayPhrase)
+                {
+                    ImGui.SetCursorPosX(50);
+                    ImGui.TextWrapped("/questchat" + " " + Translator.LocalizeUI(item.Item2.TriggerText, item.Item3.QuestLanguage));
+                }
             }
             index++;
         }
@@ -148,7 +153,7 @@ public class MainWindow : Window, IDisposable
     private void InstalledQuestsTab()
     {
         ImGui.BeginTable("##Installed Quests", 2);
-        ImGui.TableSetupColumn(Translator.LocalizeUI("Installed Quest Selector"), ImGuiTableColumnFlags.WidthFixed, 150);
+        ImGui.TableSetupColumn(Translator.LocalizeUI("Installed Quest Selector"), ImGuiTableColumnFlags.WidthFixed, 200);
         ImGui.TableSetupColumn(Translator.LocalizeUI("Installed Quest Information"), ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableHeadersRow();
         ImGui.TableNextRow();
