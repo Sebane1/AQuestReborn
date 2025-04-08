@@ -158,13 +158,14 @@ public class ObjectiveWindow : Window, IDisposable
                                     {
                                         OnSelectionAttempt?.Invoke(this, EventArgs.Empty);
                                         _mouseDistanceIsCloseToObjective = false;
+                                        break;
                                     }
                                 }
                                 if (playerDistance < item.Item2.Maximum3dIndicatorDistance)
                                 {
                                     var iconDimensions = new Vector2(100, 100);
                                     ImGui.SetCursorPos(new Vector2(screenPosition.X - (iconDimensions.X / 2), screenPosition.Y - (iconDimensions.Y / 2)));
-                                    if (_questStartIconTextureWrap != null && _questObjectiveIconTextureWrap != null 
+                                    if (_questStartIconTextureWrap != null && _questObjectiveIconTextureWrap != null
                                         && item.Item2.TypeOfObjectiveTrigger != RoleplayingQuestCore.QuestObjective.ObjectiveTriggerType.BoundingTrigger)
                                     {
                                         ImGui.Image(item.Item1 == 0 ? _questStartIconTextureWrap.ImGuiHandle : _questObjectiveIconTextureWrap.ImGuiHandle, iconDimensions);

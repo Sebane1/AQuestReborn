@@ -268,7 +268,7 @@ public class MainWindow : Window, IDisposable
             {
                 if (item.Value != null && !string.IsNullOrEmpty(item.Value.QuestName))
                 {
-                    questItems.Add(item.Value.QuestName);
+                    questItems.Add(Translator.LocalizeUI(item.Value.QuestName, item.Value.QuestLanguage));
                 }
             }
             if (_currentSelectedInstalledQuest > questItems.Count)
@@ -276,7 +276,7 @@ public class MainWindow : Window, IDisposable
                 _currentSelectedInstalledQuest = 0;
             }
             ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-            ImGui.ListBox("##installedQuestInformation", ref _currentSelectedInstalledQuest, questItems.ToArray(), questItems.Count, 10);
+            ImGui.ListBox("##installedQuestInformation", ref _currentSelectedInstalledQuest,  questItems.ToArray(), questItems.Count, 10);
             if (ImGui.Button(Translator.LocalizeUI("Quest Creator")))
             {
                 Plugin.EditorWindow.IsOpen = true;
