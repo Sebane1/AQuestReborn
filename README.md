@@ -27,6 +27,13 @@ Dalamud compatible repo link.
 https://raw.githubusercontent.com/Sebane1/AQuestReborn/master/repo.json
 ```
 
+Basic quest creation tutorial:
+https://www.youtube.com/watch?v=JJM9aHRHkDw
+
+Support Discord: https://discord.gg/rtGXwMn7pX
+
+If you wish to donate you can do so here: https://ko-fi.com/sebastina
+
 玩社区制作的自定义任务，或者自己制作！
 
 任务会自动本地化为所有支持的 FFXIV 语言：
@@ -55,10 +62,3 @@ Dalamud CN 兼容 repo 链接。
 ```
 https://raw.githubusercontent.com/Sebane1/AQuestReborn/master/repocn.json
 ```
-
-Basic quest creation tutorial:
-https://www.youtube.com/watch?v=JJM9aHRHkDw
-
-Support Discord: https://discord.gg/rtGXwMn7pX
-
-If you wish to donate you can do so here: https://ko-fi.com/sebastina
