@@ -162,7 +162,7 @@ namespace AQuestReborn
                             {
                                 Thread.Sleep(1000);
                             }
-                            Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.KillEnemy, messageAsString, true);
+                            Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.KillEnemy, messageAsString, true, GetMonsterIndex(messageAsString));
                         });
                         break;
                     case 4922:
@@ -174,7 +174,7 @@ namespace AQuestReborn
                                 {
                                     Thread.Sleep(1000);
                                 }
-                                Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.KillEnemy, messageAsString, true);
+                                Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.KillEnemy, messageAsString, true, GetMonsterIndex(messageAsString));
                             });
                         }
                         break;
@@ -186,7 +186,40 @@ namespace AQuestReborn
                 Plugin.PluginLog.Warning(e, e.Message);
             }
         }
-
+        public uint GetMonsterIndex(string value)
+        {
+            var loweredText = value.ToLower();
+            foreach (var item in Plugin.DataManager.GetExcelSheet<BNpcName>())
+            {
+                try
+                {
+                    var monster = item.Singular.ExtractText().ToLower();
+                    if (!string.IsNullOrWhiteSpace(monster))
+                    {
+                        if (loweredText.Contains(monster))
+                        {
+                            Plugin.PluginLog.Debug(loweredText + " compared to " + monster);
+                            return item.RowId;
+                        }
+                    }
+                }
+                catch { }
+                try
+                {
+                    var monster = item.Plural.ExtractText().ToLower();
+                    if (!string.IsNullOrWhiteSpace(monster))
+                    {
+                        if (loweredText.Contains(monster))
+                        {
+                            Plugin.PluginLog.Debug(loweredText + " compared to " + monster);
+                            return item.RowId;
+                        }
+                    }
+                }
+                catch { }
+            }
+            return 0;
+        }
         private void RewardWindow_OnRewardClosed(object? sender, RoleplayingQuest e)
         {
             QuestToastOptions questToastOptions = new QuestToastOptions();

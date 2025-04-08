@@ -26,6 +26,7 @@ using System.Drawing;
 using System.Threading.Tasks;
 using McdfDataImporter;
 using LanguageConversionProxy;
+using FFXIVClientStructs.FFXIV.Client.Game.Character;
 
 namespace SamplePlugin.Windows;
 
@@ -288,6 +289,7 @@ public class EditorWindow : Window, IDisposable
             var maximum3dIndicatorDistance = questObjective.Maximum3dIndicatorDistance;
             var dontShowOnMap = questObjective.DontShowOnMap;
             var playerPositionIsLockedDuringEvents = questObjective.PlayerPositionIsLockedDuringEvents;
+            var triggerMonsterId = questObjective.TriggerMonsterIndex;
 
             ImGui.SetNextItemWidth(400);
             ImGui.LabelText("##objectiveIdLabel", Translator.LocalizeUI($"Objective Id: ") + questObjective.Id);
@@ -372,7 +374,9 @@ public class EditorWindow : Window, IDisposable
                     if (ImGui.InputText(Translator.LocalizeUI("Enemy Name##"), ref triggerText, 500))
                     {
                         questObjective.TriggerText = triggerText;
+                        questObjective.TriggerMonsterIndex = Plugin.AQuestReborn.GetMonsterIndex(triggerText);
                     }
+                    ImGui.Text(Translator.LocalizeUI("Enemy Id:") + " " + questObjective.TriggerMonsterIndex);
                     break;
                 case ObjectiveTriggerType.BoundingTrigger:
                     var minimumX = questObjective.Collider.MinimumX;
@@ -381,25 +385,25 @@ public class EditorWindow : Window, IDisposable
                     var maximumY = questObjective.Collider.MaximumY;
                     var minimumZ = questObjective.Collider.MinimumZ;
                     var maximumZ = questObjective.Collider.MaximumZ;
-                    ImGui.TextWrapped(Translator.LocalizeUI($"Min ") + "X: " +
+                    ImGui.TextWrapped(Translator.LocalizeUI($"Min ") + " X: " +
                         $"{minimumX}, " +
-                        Translator.LocalizeUI($"Max ") + "X: " +
+                        Translator.LocalizeUI($"Max") + " X: " +
                         $"{maximumX}, " +
-                        Translator.LocalizeUI($"Min ") + "Y: " +
+                        Translator.LocalizeUI($"Min") + " Y: " +
                         $"{minimumY}, " +
-                        Translator.LocalizeUI($"Max ") + "Y: " +
+                        Translator.LocalizeUI($"Max") + " Y: " +
                         $"{maximumY}, " +
-                        Translator.LocalizeUI($"Min ") + "Z: " +
+                        Translator.LocalizeUI($"Min") + " Z: " +
                         $"{minimumZ}, " +
-                        Translator.LocalizeUI($"Max ") + "Z: " +
+                        Translator.LocalizeUI($"Max") + " Z: " +
                         $"{maximumZ}");
-                    if (ImGui.Button(Translator.LocalizeUI("Set Min ") + "XZ##"))
+                    if (ImGui.Button(Translator.LocalizeUI("Set Min") + " XZ##"))
                     {
                         questObjective.Collider.MinimumX = Plugin.ObjectTable.LocalPlayer.Position.X;
                         questObjective.Collider.MinimumZ = Plugin.ObjectTable.LocalPlayer.Position.Z;
                     }
                     ImGui.SameLine();
-                    if (ImGui.Button(Translator.LocalizeUI("Set Max ") + "XZ##"))
+                    if (ImGui.Button(Translator.LocalizeUI("Set Max") + " XZ##"))
                     {
                         if (Plugin.ObjectTable.LocalPlayer.Position.X < minimumX)
                         {
@@ -421,12 +425,12 @@ public class EditorWindow : Window, IDisposable
                         }
                     }
                     ImGui.SameLine();
-                    if (ImGui.Button(Translator.LocalizeUI("Set Min") + "Y##"))
+                    if (ImGui.Button(Translator.LocalizeUI("Set Min") + " Y##"))
                     {
                         questObjective.Collider.MinimumY = Plugin.ObjectTable.LocalPlayer.Position.Y - 5;
                     }
                     ImGui.SameLine();
-                    if (ImGui.Button(Translator.LocalizeUI("Set Max") + "Y##"))
+                    if (ImGui.Button(Translator.LocalizeUI("Set Max") + " Y##"))
                     {
                         questObjective.Collider.MaximumY = Plugin.ObjectTable.LocalPlayer.Position.Y;
                     }
