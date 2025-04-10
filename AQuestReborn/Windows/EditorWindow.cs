@@ -527,7 +527,7 @@ public class EditorWindow : Window, IDisposable
                 var cameraEndPosition = item.CameraEndPosition;
                 var cameraEndRotation = item.CameraEndRotation;
                 var cameraIsNotAffectedDuringEvent = item.CameraIsNotAffectedDuringEvent;
-                var cameraDollySpeed = item.CameraDollySpeed;
+                var cameraDollySpeed = (int)item.CameraDollySpeed;
                 var cameraStartingZoom = item.CameraStartingZoom;
                 var cameraEndZoom = item.CameraEndingZoom;
                 var cameraStartFov = item.CameraStartingFov;
@@ -800,15 +800,22 @@ public class EditorWindow : Window, IDisposable
                             }
                             if (!cameraIsNotAffectedDuringEvent)
                             {
-                                if (ImGui.Checkbox(Translator.LocalizeUI("Camera Looks At Talking NPC"), ref cameraLooksAtTalkingNpc))
-                                {
-                                    item.CameraLooksAtTalkingNpc = cameraLooksAtTalkingNpc;
-                                }
-                                if (!cameraLooksAtTalkingNpc)
-                                {
+                                //if (ImGui.Checkbox(Translator.LocalizeUI("Camera Looks At Talking NPC"), ref cameraLooksAtTalkingNpc))
+                                //{
+                                //    item.CameraLooksAtTalkingNpc = cameraLooksAtTalkingNpc;
+                                //}
+                                //if (!cameraLooksAtTalkingNpc)
+                                //{
                                     if (ImGui.Checkbox(Translator.LocalizeUI("Camera Uses Dolly"), ref cameraUsesDolly))
                                     {
                                         item.CameraUsesDolly = cameraUsesDolly;
+                                    }
+                                    if (ImGui.Button(Translator.LocalizeUI("Set Camera Position From Current Camera##1")))
+                                    {
+                                        item.CameraStartPosition = CutsceneCamera.Position;
+                                        item.CameraStartRotation = CutsceneCamera.Rotation;
+                                        item.CameraStartingFov = CutsceneCamera.CameraFov;
+                                        item.CameraStartingZoom = CutsceneCamera.CameraZoom;
                                     }
                                     if (ImGui.InputFloat3(Translator.LocalizeUI("Camera Start Position"), ref cameraStartPosition))
                                     {
@@ -826,15 +833,15 @@ public class EditorWindow : Window, IDisposable
                                     {
                                         item.CameraStartingZoom = cameraStartingZoom;
                                     }
-                                    if (ImGui.Button(Translator.LocalizeUI("Set Camera Position From Current Camera##1")))
-                                    {
-                                        item.CameraStartPosition = CutsceneCamera.Position;
-                                        item.CameraStartRotation = CutsceneCamera.Rotation;
-                                        item.CameraStartingFov = CutsceneCamera.CameraFov;
-                                        item.CameraStartingZoom = CutsceneCamera.CameraZoom;
-                                    }
                                     if (cameraUsesDolly)
                                     {
+                                        if (ImGui.Button(Translator.LocalizeUI("Set Camera Position From Current Camera##2")))
+                                        {
+                                            item.CameraEndPosition = CutsceneCamera.Position;
+                                            item.CameraEndRotation = CutsceneCamera.Rotation;
+                                            item.CameraEndingFov = CutsceneCamera.CameraFov;
+                                            item.CameraEndingZoom = CutsceneCamera.CameraZoom;
+                                        }
                                         if (ImGui.InputFloat3(Translator.LocalizeUI("Camera End Position"), ref cameraEndPosition))
                                         {
                                             item.CameraEndPosition = cameraEndPosition;
@@ -851,20 +858,13 @@ public class EditorWindow : Window, IDisposable
                                         {
                                             item.CameraEndingZoom = cameraEndZoom;
                                         }
-                                        if (ImGui.Button(Translator.LocalizeUI("Set Camera Position From Current Camera##2")))
-                                        {
-                                            item.CameraEndPosition = CutsceneCamera.Position;
-                                            item.CameraEndRotation = CutsceneCamera.Rotation;
-                                            item.CameraEndingFov = CutsceneCamera.CameraFov;
-                                            item.CameraEndingZoom = CutsceneCamera.CameraZoom;
-                                        }
-                                        if (ImGui.InputFloat(Translator.LocalizeUI("Camera Movement Speed (In Milliseconds)"), ref cameraDollySpeed))
+                                        if (ImGui.InputInt(Translator.LocalizeUI("Camera Movement Speed (In Milliseconds)"), ref cameraDollySpeed))
                                         {
                                             item.CameraDollySpeed = cameraDollySpeed;
                                         }
                                     }
 
-                                }
+                                //}
                                 ImGui.EndTabItem();
                             }
                         }
