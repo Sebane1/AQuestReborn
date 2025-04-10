@@ -35,6 +35,7 @@ using ECommons;
 using ECommons.Reflection;
 using GameObjectHelper.ThreadSafeDalamudObjectTable;
 using EntryPoint = MareSynchronos.EntryPoint;
+using AQuestReborn.UiHide;
 
 namespace SamplePlugin;
 
@@ -261,6 +262,7 @@ public sealed class Plugin : IDalamudPlugin
             _objectTable?.Dispose();
             ECommonsMain.Dispose();
             DalamudApi.Dispose();
+            UIManager.HideUI(false);
         }
         catch
         {
