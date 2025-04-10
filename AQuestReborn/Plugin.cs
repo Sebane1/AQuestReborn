@@ -34,6 +34,7 @@ using FFXIVClientStructs.FFXIV.Client.UI;
 using ECommons;
 using ECommons.Reflection;
 using GameObjectHelper.ThreadSafeDalamudObjectTable;
+using EntryPoint = MareSynchronos.EntryPoint;
 
 namespace SamplePlugin;
 
@@ -116,6 +117,9 @@ public sealed class Plugin : IDalamudPlugin
         ICommandManager commandManager, ICondition condition, IDtrBar dtrBar, ITargetManager targetManager,
         INotificationManager notificationManager, IContextMenu contextMenu)
     {
+
+        Instance = this;
+        DalamudApi.Initialize(dalamudPluginInterface);
         _clientState = clientState;
         _framework = framework;
         _toastGui = toastGui;
@@ -256,6 +260,7 @@ public sealed class Plugin : IDalamudPlugin
             _mcdfEntryPoint?.Dispose();
             _objectTable?.Dispose();
             ECommonsMain.Dispose();
+            DalamudApi.Dispose();
         }
         catch
         {

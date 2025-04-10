@@ -31,3 +31,6 @@
 [submodule "AQuestReborn/ThreadSafeDalamudObjectTable"]
 	path = AQuestReborn/ThreadSafeDalamudObjectTable
 	url = https://github.com/Sebane1/ThreadSafeDalamudObjectTable
+[submodule "AQuestReborn/Hypostasis"]
+	path = AQuestReborn/Hypostasis
+	url = https://github.com/UnknownX7/Hypostasis.git

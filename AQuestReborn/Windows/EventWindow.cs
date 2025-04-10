@@ -25,6 +25,7 @@ using RoleplayingVoiceDalamud.Glamourer;
 using Brio.Capabilities.Actor;
 using Brio;
 using System.Collections.Concurrent;
+using AQuestReborn.UiHide;
 
 namespace SamplePlugin.Windows;
 
@@ -318,6 +319,7 @@ public class EventWindow : Window, IDisposable
         if (_index < _questDisplayObject.QuestObjective.QuestText.Count)
         {
             var item = _questDisplayObject.QuestObjective.QuestText[_index];
+
             var customization = AQuestReborn.AQuestReborn.PlayerAppearanceData;
             switch (item.ConditionForDialogueToOccur)
             {
@@ -392,6 +394,35 @@ public class EventWindow : Window, IDisposable
                 _npcAppearanceSwap = item.AppearanceSwap;
                 _playerAppearanceSwap = item.PlayerAppearanceSwap;
                 _playerAppearanceSwapType = item.PlayerAppearanceSwapType;
+                if (_questDisplayObject.QuestObjective.ObjectiveTriggersCutscene)
+                {
+                    if (!AQuestReborn.CutsceneCamera.IsDoingCutScene)
+                    {
+                        AQuestReborn.CutsceneCamera.IsDoingCutScene = true;
+                    }
+                    UIManager.HideUI(true);
+                    if (!item.CameraIsNotAffectedDuringEvent)
+                    {
+                        if (!item.CameraLooksAtTalkingNpc)
+                        {
+                            if (item.CameraUsesDolly)
+                            {
+                                AQuestReborn.CutsceneCamera.SetCameraPosition(item.CameraStartPosition, item.CameraEndPosition, item.CameraDollySpeed);
+                                AQuestReborn.CutsceneCamera.SetCameraRotation(item.CameraStartRotation, item.CameraEndRotation);
+                                AQuestReborn.CutsceneCamera.SetFov(item.CameraStartingFov);
+                                AQuestReborn.CutsceneCamera.SetZoom(item.CameraStartingFov);
+
+                            }
+                            else
+                            {
+                                AQuestReborn.CutsceneCamera.SetCameraPosition(item.CameraStartPosition);
+                                AQuestReborn.CutsceneCamera.SetCameraRotation(item.CameraStartRotation);
+                                AQuestReborn.CutsceneCamera.SetFov(item.CameraStartingFov, item.CameraEndingFov);
+                                AQuestReborn.CutsceneCamera.SetZoom(item.CameraStartingZoom, item.CameraEndingZoom);
+                            }
+                        }
+                    }
+                }
                 Task.Run(async () =>
                 {
                     _currentName = item.NpcName.ToLower() == "system" ? "system" : await Translator.LocalizeText(string.IsNullOrEmpty(item.NpcAlias) ? item.NpcName : item.NpcAlias, Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
@@ -710,6 +741,11 @@ public class EventWindow : Window, IDisposable
             _dontUnblockMovement = false;
             Plugin.DialogueBackgroundWindow.IsOpen = false;
             IsOpen = false;
+            if (_questDisplayObject.QuestObjective.ObjectiveTriggersCutscene)
+            {
+                UIManager.HideUI(false);
+                AQuestReborn.CutsceneCamera.ResetCamera();
+            }
             _currentCharacter = 0;
             textTimer.Reset();
             if (_questFollowing)

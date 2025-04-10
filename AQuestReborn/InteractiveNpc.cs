@@ -135,7 +135,7 @@ namespace AQuestReborn
                                         _wasMoving = false;
                                         _plugin.AnamcoreManager.StopEmote(_character.Address);
                                     }
-                                    if (_plugin.EventWindow.IsOpen && LooksAtPlayer)
+                                    if ((_plugin.EventWindow.IsOpen || _plugin.ChoiceWindow.IsOpen) && LooksAtPlayer)
                                     {
                                         SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta),
                                                      _currentRotation = CoordinateUtility.LookAt(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position).QuaternionToEuler(),

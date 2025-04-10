@@ -54,6 +54,7 @@ namespace AQuestReborn
         public static CharacterCustomization PlayerAppearanceData { get; internal set; }
         public static string PlayerClassJob { get; set; }
         public Stopwatch CheckCooldownTimer { get => _checkCooldownTimer; set => _checkCooldownTimer = value; }
+        internal CutsceneCamera CutsceneCamera { get => _cutsceneCamera; set => _cutsceneCamera = value; }
 
         private Stopwatch _pollingTimer;
         private Stopwatch _inputCooldown;
@@ -88,6 +89,7 @@ namespace AQuestReborn
         private bool _hasCheckedForPlayerAppearance;
         private bool _disposed;
         private static nint _playerAddress;
+        private CutsceneCamera _cutsceneCamera;
 
         public AQuestReborn(Plugin plugin)
         {
@@ -112,6 +114,7 @@ namespace AQuestReborn
             Translator.UiLanguage = Plugin.Configuration.QuestLanguage;
             Translator.OnError += Translator_OnError;
             Translator.OnTranslationEvent += Translator_OnTranslationEvent;
+            _cutsceneCamera = new CutsceneCamera(plugin);
         }
 
         private void Translator_OnTranslationEvent(object? sender, string e)
@@ -372,6 +375,14 @@ namespace AQuestReborn
             {
                 try
                 {
+                    //if (Plugin.GameGui.GameUiHidden)
+                    //{
+                    //    Plugin.EventWindow.RespectCloseHotkey = !CutsceneCamera.IsDoingCutScene;
+                    //    if (CutsceneCamera.IsDoingCutScene)
+                    //    {
+                    //        Plugin.EventWindow.IsOpen = true;
+                    //    }
+                    //}
                     if (!Plugin.ClientState.IsGPosing && !Plugin.ClientState.IsPvPExcludingDen && !Conditions.Instance()->BetweenAreas && !Conditions.Instance()->WatchingCutscene
                         && !Conditions.Instance()->Occupied && !Conditions.Instance()->InCombat && Plugin.ClientState.IsLoggedIn)
                     {
@@ -936,6 +947,7 @@ namespace AQuestReborn
         {
             _disposed = true;
             AppearanceAccessUtils.AppearanceManager.RemoveAllTemporaryCollections();
+            CutsceneCamera.Dispose();
             Plugin.DialogueBackgroundWindow.ButtonClicked -= DialogueBackgroundWindow_buttonClicked;
             Plugin.ObjectiveWindow.OnSelectionAttempt -= DialogueBackgroundWindow_buttonClicked;
             Plugin.QuestAcceptanceWindow.OnQuestAccepted -= QuestAcceptanceWindow_OnQuestAccepted;

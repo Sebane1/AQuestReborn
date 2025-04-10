@@ -290,6 +290,7 @@ public class EditorWindow : Window, IDisposable
             var dontShowOnMap = questObjective.DontShowOnMap;
             var playerPositionIsLockedDuringEvents = questObjective.PlayerPositionIsLockedDuringEvents;
             var triggerMonsterId = questObjective.TriggerMonsterIndex;
+            var objectiveTriggersCutscene = questObjective.ObjectiveTriggersCutscene;
 
             ImGui.SetNextItemWidth(400);
             ImGui.LabelText("##objectiveIdLabel", Translator.LocalizeUI($"Objective Id: ") + questObjective.Id);
@@ -458,6 +459,11 @@ public class EditorWindow : Window, IDisposable
             {
                 questObjective.PlayerPositionIsLockedDuringEvents = playerPositionIsLockedDuringEvents;
             }
+            ImGui.SameLine();
+            if (ImGui.Checkbox(Translator.LocalizeUI("Objective Triggers Cutscene"), ref objectiveTriggersCutscene))
+            {
+                questObjective.ObjectiveTriggersCutscene = objectiveTriggersCutscene;
+            }
             ImGui.BeginTable("##Event Table", 2);
             ImGui.TableSetupColumn(Translator.LocalizeUI("Event List"), ImGuiTableColumnFlags.WidthFixed, 200);
             ImGui.TableSetupColumn(Translator.LocalizeUI("Event Editor"), ImGuiTableColumnFlags.WidthStretch);
@@ -514,6 +520,18 @@ public class EditorWindow : Window, IDisposable
                 var eventSetsNewNpcPosition = item.EventSetsNewNpcCoordinates;
                 var npcMovementPosition = item.NpcMovementPosition;
                 var npcMovementRotation = item.NpcMovementRotation;
+                var cameraLooksAtTalkingNpc = item.CameraLooksAtTalkingNpc;
+                var cameraUsesDolly = item.CameraUsesDolly;
+                var cameraStartPosition = item.CameraStartPosition;
+                var cameraStartRotation = item.CameraStartRotation;
+                var cameraEndPosition = item.CameraEndPosition;
+                var cameraEndRotation = item.CameraEndRotation;
+                var cameraIsNotAffectedDuringEvent = item.CameraIsNotAffectedDuringEvent;
+                var cameraDollySpeed = item.CameraDollySpeed;
+                var cameraStartingZoom = item.CameraStartingZoom;
+                var cameraEndZoom = item.CameraEndingZoom;
+                var cameraStartFov = item.CameraStartingFov;
+                var cameraEndFov = item.CameraEndingFov;
 
                 if (ImGui.BeginTabBar("Event Editor Tabs"))
                 {
@@ -772,11 +790,89 @@ public class EditorWindow : Window, IDisposable
                         }
                         ImGui.EndTabItem();
                     }
+                    if (_objectiveInFocus.ObjectiveTriggersCutscene)
+                    {
+                        if (ImGui.BeginTabItem(Translator.LocalizeUI("Camera## we're unique")))
+                        {
+                            if (ImGui.Checkbox(Translator.LocalizeUI("Camera Is Not Affected During Event"), ref cameraIsNotAffectedDuringEvent))
+                            {
+                                item.CameraIsNotAffectedDuringEvent = cameraIsNotAffectedDuringEvent;
+                            }
+                            if (!cameraIsNotAffectedDuringEvent)
+                            {
+                                if (ImGui.Checkbox(Translator.LocalizeUI("Camera Looks At Talking NPC"), ref cameraLooksAtTalkingNpc))
+                                {
+                                    item.CameraLooksAtTalkingNpc = cameraLooksAtTalkingNpc;
+                                }
+                                if (!cameraLooksAtTalkingNpc)
+                                {
+                                    if (ImGui.Checkbox(Translator.LocalizeUI("Camera Uses Dolly"), ref cameraUsesDolly))
+                                    {
+                                        item.CameraUsesDolly = cameraUsesDolly;
+                                    }
+                                    if (ImGui.InputFloat3(Translator.LocalizeUI("Camera Start Position"), ref cameraStartPosition))
+                                    {
+                                        item.CameraStartPosition = cameraStartPosition;
+                                    }
+                                    if (ImGui.InputFloat3(Translator.LocalizeUI("Camera Start Rotation"), ref cameraStartRotation))
+                                    {
+                                        item.CameraStartRotation = cameraStartRotation;
+                                    }
+                                    if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Field Of View"), ref cameraStartFov))
+                                    {
+                                        item.CameraStartingFov = cameraStartFov;
+                                    }
+                                    if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Zoom"), ref cameraStartingZoom))
+                                    {
+                                        item.CameraStartingZoom = cameraStartingZoom;
+                                    }
+                                    if (ImGui.Button(Translator.LocalizeUI("Set Camera Position From Current Camera##1")))
+                                    {
+                                        item.CameraStartPosition = CutsceneCamera.Position;
+                                        item.CameraStartRotation = CutsceneCamera.Rotation;
+                                        item.CameraStartingFov = CutsceneCamera.CameraFov;
+                                        item.CameraStartingZoom = CutsceneCamera.CameraZoom;
+                                    }
+                                    if (cameraUsesDolly)
+                                    {
+                                        if (ImGui.InputFloat3(Translator.LocalizeUI("Camera End Position"), ref cameraEndPosition))
+                                        {
+                                            item.CameraEndPosition = cameraEndPosition;
+                                        }
+                                        if (ImGui.InputFloat3(Translator.LocalizeUI("Camera End Rotation"), ref cameraEndRotation))
+                                        {
+                                            item.CameraEndRotation = cameraEndRotation;
+                                        }
+                                        if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Field Of View"), ref cameraEndFov))
+                                        {
+                                            item.CameraEndingFov = cameraEndFov;
+                                        }
+                                        if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Zoom"), ref cameraEndZoom))
+                                        {
+                                            item.CameraEndingZoom = cameraEndZoom;
+                                        }
+                                        if (ImGui.Button(Translator.LocalizeUI("Set Camera Position From Current Camera##2")))
+                                        {
+                                            item.CameraEndPosition = CutsceneCamera.Position;
+                                            item.CameraEndRotation = CutsceneCamera.Rotation;
+                                            item.CameraEndingFov = CutsceneCamera.CameraFov;
+                                            item.CameraEndingZoom = CutsceneCamera.CameraZoom;
+                                        }
+                                        if (ImGui.InputFloat(Translator.LocalizeUI("Camera Movement Speed (In Milliseconds)"), ref cameraDollySpeed))
+                                        {
+                                            item.CameraDollySpeed = cameraDollySpeed;
+                                        }
+                                    }
+
+                                }
+                                ImGui.EndTabItem();
+                            }
+                        }
+                    }
                 }
             }
         }
     }
-
     private void DrawBranchingChoicesMenu()
     {
         ImGui.BeginTable("##Branching Choices Table", 2);
