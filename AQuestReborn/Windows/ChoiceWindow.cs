@@ -50,7 +50,7 @@ public class ChoiceWindow : Window, IDisposable
         ImGui.SetWindowFontScale(1.5f);
         foreach (var choice in _choiceText)
         {
-            var size = ImGui.CalcTextSize(choice).X * 1.1f;
+            var size = ImGui.CalcTextSize(choice).X * 1.2f;
             if (size > textSize)
             {
                 textSize = size;
