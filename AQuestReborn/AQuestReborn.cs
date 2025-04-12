@@ -55,6 +55,7 @@ namespace AQuestReborn
         public static string PlayerClassJob { get; set; }
         public Stopwatch CheckCooldownTimer { get => _checkCooldownTimer; set => _checkCooldownTimer = value; }
         internal CutsceneCamera CutsceneCamera { get => _cutsceneCamera; set => _cutsceneCamera = value; }
+        public InteractiveNpc CutscenePlayer { get => _cutscenePlayer; set => _cutscenePlayer = value; }
 
         private Stopwatch _pollingTimer;
         private Stopwatch _inputCooldown;
@@ -85,7 +86,8 @@ namespace AQuestReborn
         private string _discriminator;
         private bool _gotZoneDiscriminator;
         private bool _checkForPartyMembers;
-        private bool _placeHolderNpcSpawned;
+        private InteractiveNpc _cutscenePlayer;
+        private bool _cutsceneNpcSpawned;
         private bool _hasCheckedForPlayerAppearance;
         private bool _disposed;
         private static nint _playerAddress;
@@ -281,7 +283,7 @@ namespace AQuestReborn
                         _triggerRefresh = true;
                         _gotZoneDiscriminator = false;
                         _checkForPartyMembers = true;
-                        _placeHolderNpcSpawned = false;
+                        _cutsceneNpcSpawned = false;
                     }
                     catch (Exception e)
                     {
@@ -375,14 +377,6 @@ namespace AQuestReborn
             {
                 try
                 {
-                    //if (Plugin.GameGui.GameUiHidden)
-                    //{
-                    //    Plugin.EventWindow.RespectCloseHotkey = !CutsceneCamera.IsDoingCutScene;
-                    //    if (CutsceneCamera.IsDoingCutScene)
-                    //    {
-                    //        Plugin.EventWindow.IsOpen = true;
-                    //    }
-                    //}
                     if (!Plugin.ClientState.IsGPosing && !Plugin.ClientState.IsPvPExcludingDen && !Conditions.Instance()->BetweenAreas && !Conditions.Instance()->WatchingCutscene
                         && !Conditions.Instance()->Occupied && !Conditions.Instance()->InCombat && Plugin.ClientState.IsLoggedIn)
                     {
@@ -395,12 +389,13 @@ namespace AQuestReborn
                             }
                             else
                             {
-                                if (!_placeHolderNpcSpawned)
+                                if (!_cutsceneNpcSpawned)
                                 {
                                     ICharacter character = null;
                                     _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
                                     (new Vector3(0, float.MaxValue, 0) / 10), CoordinateUtility.ConvertDegreesToRadians(0));
-                                    _placeHolderNpcSpawned = true;
+                                    _cutscenePlayer = new InteractiveNpc(Plugin, character);
+                                    _cutsceneNpcSpawned = true;
                                 }
                                 else
                                 {

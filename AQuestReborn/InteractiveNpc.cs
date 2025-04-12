@@ -31,6 +31,7 @@ namespace AQuestReborn
         private bool _shouldBeMoving;
         private Vector3 _target;
         private float _speed = 10;
+        private QuestEvent.EventMovementType _eventMovementType;
         private bool _shouldBeScaling;
         private Vector3 _targetScale = new Vector3(1, 1, 1);
         private float _scaleSpeed = 10;
@@ -52,6 +53,7 @@ namespace AQuestReborn
         private PosingCapability? _playerPosing;
         private float _horizontalOffset;
         Stopwatch _horizontalRefreshTimer = new Stopwatch();
+        Stopwatch _fixedMovementTimer = new Stopwatch();
         private bool _wasMoving;
 
         public string LastAppearance { get; internal set; }
@@ -94,9 +96,9 @@ namespace AQuestReborn
                                     + GetHorizontalOffsetFromPlayer(_horizontalOffset);
                             if (Vector3.Distance(_currentPosition, targetPosition) > 1)
                             {
-                                SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, targetPosition, _speed * delta),
-                                    _currentRotation = CoordinateUtility.LookAt(_currentPosition, targetPosition).QuaternionToEuler(),
-                                    _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
+                                _currentPosition = Vector3.Lerp(_currentPosition, targetPosition, _speed * delta);
+                                _currentRotation = CoordinateUtility.LookAt(_currentPosition, targetPosition).QuaternionToEuler();
+                                _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
                                 var value = _plugin.AnamcoreManager.GetCurrentAnimationId(_plugin.ObjectTable.LocalPlayer);
                                 _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
                                 if (_horizontalRefreshTimer.ElapsedMilliseconds > 5000)
@@ -107,11 +109,11 @@ namespace AQuestReborn
                             }
                             else
                             {
-                                SetTransform(_currentPosition = Vector3.Lerp(_currentPosition,
-                                new Vector3(_currentPosition.X, _plugin.ObjectTable.LocalPlayer.Position.Y, _currentPosition.Z), _speed * delta),
-                                _currentRotation, _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
+                                _currentPosition = Vector3.Lerp(_currentPosition, new Vector3(_currentPosition.X, _plugin.ObjectTable.LocalPlayer.Position.Y, _currentPosition.Z), _speed * delta);
+                                _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
                                 _plugin.AnamcoreManager.StopEmote(_character.Address);
                             }
+                            SetTransform(_currentPosition, _currentRotation, _currentScale);
                         }
                         else
                         {
@@ -119,9 +121,23 @@ namespace AQuestReborn
                             {
                                 if (Vector3.Distance(new Vector3(_currentPosition.X, 0, _currentPosition.X), new Vector3(_defaultPosition.X, 0, _defaultPosition.X)) > 0.2)
                                 {
-                                    SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, (_speed / 2) * delta),
-                                                 _currentRotation = CoordinateUtility.LookAt(_currentPosition, _defaultPosition).QuaternionToEuler(),
-                                                 _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
+                                    switch (_eventMovementType)
+                                    {
+                                        case QuestEvent.EventMovementType.Lerp:
+                                            _currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, (_speed / 2) * delta);
+                                            break;
+                                        case QuestEvent.EventMovementType.FixedTime:
+                                            if (!_fixedMovementTimer.IsRunning)
+                                            {
+                                                _fixedMovementTimer.Start();
+                                            }
+                                            _currentPosition = Vector3.Lerp(_lastDefaultPosition, _defaultPosition, Math.Clamp(_fixedMovementTimer.ElapsedMilliseconds / _speed, 0, 1));
+                                            break;
+                                    }
+                                    _currentRotation = _currentRotation = CoordinateUtility.LookAt(_currentPosition, _defaultPosition).QuaternionToEuler();
+                                    _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
+
+                                    SetTransform(_currentPosition, _currentRotation, _currentScale);
                                     if (Vector3.Distance(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position) > 0.2f)
                                     {
                                         _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
@@ -137,16 +153,17 @@ namespace AQuestReborn
                                     }
                                     if ((_plugin.EventWindow.IsOpen || _plugin.ChoiceWindow.IsOpen) && LooksAtPlayer)
                                     {
-                                        SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta),
-                                                     _currentRotation = CoordinateUtility.LookAt(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position).QuaternionToEuler(),
-                                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
+                                        _currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta);
+                                        _currentRotation = CoordinateUtility.LookAt(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position).QuaternionToEuler();
+                                        _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
                                     }
                                     else
                                     {
-                                        SetTransform(_currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta),
-                                                     _currentRotation = Vector3.Lerp(_currentRotation, _defaultRotation, 1),
-                                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta));
+                                        _currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta);
+                                        _currentRotation = Vector3.Lerp(_currentRotation, _defaultRotation, 1);
+                                        _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
                                     }
+                                    SetTransform(_currentPosition, _currentRotation, _currentScale);
                                 }
                             }
                         }
@@ -230,7 +247,7 @@ namespace AQuestReborn
                 _playerPosing = posing;
             }
         }
-        public void SetDefaults(Vector3 position, Vector3 rotation)
+        public void SetDefaults(Vector3 position, Vector3 rotation, float speed = 10, QuestEvent.EventMovementType eventMovementType = QuestEvent.EventMovementType.Lerp)
         {
             if (!firstPositionSet)
             {
@@ -243,8 +260,12 @@ namespace AQuestReborn
                 _lastDefaultPosition = _defaultPosition;
                 _lastDefaultRotation = _defaultRotation;
             }
+
             _defaultPosition = position;
             _defaultRotation = rotation;
+            _speed = speed;
+            _eventMovementType = eventMovementType;
+            _fixedMovementTimer.Reset();
             if (!_followPlayer && !_shouldBeMoving)
             {
                 _currentPosition = position;
@@ -254,7 +275,7 @@ namespace AQuestReborn
             _plugin.AnamcoreManager.StopEmote(_character.Address);
         }
 
-        public void SetDefaultRotation(Vector3 vector3, Vector3 rotation)
+        public void SetDefaultRotation(Vector3 rotation)
         {
             _defaultRotation = rotation;
         }

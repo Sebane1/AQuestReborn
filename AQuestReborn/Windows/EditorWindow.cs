@@ -509,6 +509,7 @@ public class EditorWindow : Window, IDisposable
                 var eventBackgroundTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestEvent.EventBackgroundType)));
                 var eventConditionTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestEvent.EventConditionType)));
                 var eventPlayerAppearanceApplicationTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestEvent.AppearanceSwapType)));
+                var eventPlayerMovementTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestEvent.EventMovementType)));
                 var appearanceSwap = item.AppearanceSwap;
                 var playerAppearanceSwap = item.PlayerAppearanceSwap;
                 var playerAppearanceSwapType = (int)item.PlayerAppearanceSwapType;
@@ -518,8 +519,17 @@ public class EditorWindow : Window, IDisposable
                 var eventHasNoReading = item.EventHasNoReading;
                 var looksAtPlayerDuringEvent = item.LooksAtPlayerDuringEvent;
                 var eventSetsNewNpcPosition = item.EventSetsNewNpcCoordinates;
+                var eventSetsNewCutscenePlayerPosition = item.EventSetsNewCutscenePlayerCoordinates;
                 var npcMovementPosition = item.NpcMovementPosition;
                 var npcMovementRotation = item.NpcMovementRotation;
+                var npcMovementType = (int)item.NpcEventMovementType;
+                var npcMovementTime = item.NpcMovementTime;
+
+                var cutscenePlayerMovementPosition = item.CutscenePlayerMovementPosition;
+                var cutscenePlayerMovementRotation = item.CutscenePlayerMovementRotation;
+                var cutscenePlayerMovementType = (int)item.CutscenePlayerMovementType;
+                var cutscenePlayerMovementTime = item.CutscenePlayerMovementTime;
+
                 var cameraLooksAtTalkingNpc = item.CameraLooksAtTalkingNpc;
                 var cameraUsesDolly = item.CameraUsesDolly;
                 var cameraStartPosition = item.CameraStartPosition;
@@ -532,6 +542,9 @@ public class EditorWindow : Window, IDisposable
                 var cameraEndZoom = item.CameraEndingZoom;
                 var cameraStartFov = item.CameraStartingFov;
                 var cameraEndFov = item.CameraEndingFov;
+
+                var dialogueWindowIsHidden = item.DialogueWindowIsHidden;
+
 
                 if (ImGui.BeginTabBar("Event Editor Tabs"))
                 {
@@ -693,6 +706,10 @@ public class EditorWindow : Window, IDisposable
                         {
                             item.EventHasNoReading = eventHasNoReading;
                         }
+                        if (ImGui.Checkbox(Translator.LocalizeUI("Dialogue Window Is Hidden##"), ref dialogueWindowIsHidden))
+                        {
+                            item.DialogueWindowIsHidden = dialogueWindowIsHidden;
+                        }
                         ImGui.EndTabItem();
                     }
                     if (ImGui.BeginTabItem(Translator.LocalizeUI("Branching Choices## we're unique")))
@@ -782,12 +799,67 @@ public class EditorWindow : Window, IDisposable
                             {
                                 item.NpcMovementRotation = npcMovementRotation;
                             }
-                            if (ImGui.Button(Translator.LocalizeUI("Set Coordinates Based On Player Position")))
+                            if (ImGui.Combo(Translator.LocalizeUI("Npc Movement Type##npc"), ref npcMovementType, eventPlayerMovementTypes, eventPlayerMovementTypes.Length))
+                            {
+                                item.NpcEventMovementType = (QuestEvent.EventMovementType)npcMovementType;
+                            }
+                            switch (item.NpcEventMovementType)
+                            {
+                                case EventMovementType.Lerp:
+
+                                    break;
+                                case EventMovementType.FixedTime:
+                                    if (ImGui.InputInt(Translator.LocalizeUI("Time To Complete Travel (In Milliseconds)##npc"), ref npcMovementTime))
+                                    {
+                                        item.NpcMovementTime = npcMovementTime;
+                                    }
+                                    break;
+                            }
+                            if (ImGui.Button(Translator.LocalizeUI("Set Coordinates Based On Player Position##npc")))
                             {
                                 item.NpcMovementPosition = Plugin.ObjectTable.LocalPlayer.Position;
                                 item.NpcMovementRotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ObjectTable.LocalPlayer.Rotation) + 180, 0);
                             }
                         }
+                        //if (_objectiveInFocus.ObjectiveTriggersCutscene)
+                        //{
+                        if (ImGui.Checkbox(Translator.LocalizeUI("Event Sets New Cutscene Player Position"), ref eventSetsNewCutscenePlayerPosition))
+                        {
+                            item.EventSetsNewCutscenePlayerCoordinates = eventSetsNewCutscenePlayerPosition;
+                        }
+                        if (eventSetsNewCutscenePlayerPosition)
+                        {
+                            if (ImGui.DragFloat3(Translator.LocalizeUI("Cutscene Player Movement Position"), ref cutscenePlayerMovementPosition))
+                            {
+                                item.CutscenePlayerMovementPosition = cutscenePlayerMovementPosition;
+                            }
+                            if (ImGui.DragFloat3(Translator.LocalizeUI("Cutscene Player Movement Rotation"), ref cutscenePlayerMovementRotation))
+                            {
+                                item.CutscenePlayerMovementRotation = cutscenePlayerMovementRotation;
+                            }
+                            if (ImGui.Combo(Translator.LocalizeUI("Cutscene Player Movement Type##cutsceneplayer"), ref cutscenePlayerMovementType, eventPlayerMovementTypes, eventPlayerMovementTypes.Length))
+                            {
+                                item.CutscenePlayerMovementType = (QuestEvent.EventMovementType)cutscenePlayerMovementType;
+                            }
+                            switch (item.CutscenePlayerMovementType)
+                            {
+                                case EventMovementType.Lerp:
+
+                                    break;
+                                case EventMovementType.FixedTime:
+                                    if (ImGui.InputInt(Translator.LocalizeUI("Time To Complete Travel (In Milliseconds)##cutsceneplayer"), ref cutscenePlayerMovementTime))
+                                    {
+                                        item.CutscenePlayerMovementTime = cutscenePlayerMovementTime;
+                                    }
+                                    break;
+                            }
+                            if (ImGui.Button(Translator.LocalizeUI("Set Coordinates Based On Player Position##cutsceneplayer")))
+                            {
+                                item.CutscenePlayerMovementPosition = Plugin.ObjectTable.LocalPlayer.Position;
+                                item.CutscenePlayerMovementRotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ObjectTable.LocalPlayer.Rotation) + 180, 0);
+                            }
+                        }
+                        // }
                         ImGui.EndTabItem();
                     }
                     if (_objectiveInFocus.ObjectiveTriggersCutscene)
@@ -800,71 +872,64 @@ public class EditorWindow : Window, IDisposable
                             }
                             if (!cameraIsNotAffectedDuringEvent)
                             {
-                                //if (ImGui.Checkbox(Translator.LocalizeUI("Camera Looks At Talking NPC"), ref cameraLooksAtTalkingNpc))
-                                //{
-                                //    item.CameraLooksAtTalkingNpc = cameraLooksAtTalkingNpc;
-                                //}
-                                //if (!cameraLooksAtTalkingNpc)
-                                //{
-                                    if (ImGui.Checkbox(Translator.LocalizeUI("Camera Uses Dolly"), ref cameraUsesDolly))
+                                if (ImGui.Checkbox(Translator.LocalizeUI("Camera Uses Dolly"), ref cameraUsesDolly))
+                                {
+                                    item.CameraUsesDolly = cameraUsesDolly;
+                                }
+                                if (ImGui.Button(Translator.LocalizeUI("Set Camera Position From Current Camera##1")))
+                                {
+                                    item.CameraStartPosition = CutsceneCamera.Position;
+                                    item.CameraStartRotation = CutsceneCamera.Rotation;
+                                    item.CameraStartingFov = CutsceneCamera.CameraFov;
+                                    item.CameraStartingZoom = CutsceneCamera.CameraZoom;
+                                }
+                                if (ImGui.InputFloat3(Translator.LocalizeUI("Camera Start Position"), ref cameraStartPosition))
+                                {
+                                    item.CameraStartPosition = cameraStartPosition;
+                                }
+                                if (ImGui.InputFloat3(Translator.LocalizeUI("Camera Start Rotation"), ref cameraStartRotation))
+                                {
+                                    item.CameraStartRotation = cameraStartRotation;
+                                }
+                                if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Field Of View"), ref cameraStartFov))
+                                {
+                                    item.CameraStartingFov = cameraStartFov;
+                                }
+                                if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Zoom"), ref cameraStartingZoom))
+                                {
+                                    item.CameraStartingZoom = cameraStartingZoom;
+                                }
+                                if (cameraUsesDolly)
+                                {
+                                    if (ImGui.Button(Translator.LocalizeUI("Set Camera Position From Current Camera##2")))
                                     {
-                                        item.CameraUsesDolly = cameraUsesDolly;
+                                        item.CameraEndPosition = CutsceneCamera.Position;
+                                        item.CameraEndRotation = CutsceneCamera.Rotation;
+                                        item.CameraEndingFov = CutsceneCamera.CameraFov;
+                                        item.CameraEndingZoom = CutsceneCamera.CameraZoom;
                                     }
-                                    if (ImGui.Button(Translator.LocalizeUI("Set Camera Position From Current Camera##1")))
+                                    if (ImGui.InputFloat3(Translator.LocalizeUI("Camera End Position"), ref cameraEndPosition))
                                     {
-                                        item.CameraStartPosition = CutsceneCamera.Position;
-                                        item.CameraStartRotation = CutsceneCamera.Rotation;
-                                        item.CameraStartingFov = CutsceneCamera.CameraFov;
-                                        item.CameraStartingZoom = CutsceneCamera.CameraZoom;
+                                        item.CameraEndPosition = cameraEndPosition;
                                     }
-                                    if (ImGui.InputFloat3(Translator.LocalizeUI("Camera Start Position"), ref cameraStartPosition))
+                                    if (ImGui.InputFloat3(Translator.LocalizeUI("Camera End Rotation"), ref cameraEndRotation))
                                     {
-                                        item.CameraStartPosition = cameraStartPosition;
+                                        item.CameraEndRotation = cameraEndRotation;
                                     }
-                                    if (ImGui.InputFloat3(Translator.LocalizeUI("Camera Start Rotation"), ref cameraStartRotation))
+                                    if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Field Of View"), ref cameraEndFov))
                                     {
-                                        item.CameraStartRotation = cameraStartRotation;
+                                        item.CameraEndingFov = cameraEndFov;
                                     }
-                                    if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Field Of View"), ref cameraStartFov))
+                                    if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Zoom"), ref cameraEndZoom))
                                     {
-                                        item.CameraStartingFov = cameraStartFov;
+                                        item.CameraEndingZoom = cameraEndZoom;
                                     }
-                                    if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Zoom"), ref cameraStartingZoom))
+                                    if (ImGui.InputInt(Translator.LocalizeUI("Camera Movement Speed (In Milliseconds)"), ref cameraDollySpeed))
                                     {
-                                        item.CameraStartingZoom = cameraStartingZoom;
-                                    }
-                                    if (cameraUsesDolly)
-                                    {
-                                        if (ImGui.Button(Translator.LocalizeUI("Set Camera Position From Current Camera##2")))
-                                        {
-                                            item.CameraEndPosition = CutsceneCamera.Position;
-                                            item.CameraEndRotation = CutsceneCamera.Rotation;
-                                            item.CameraEndingFov = CutsceneCamera.CameraFov;
-                                            item.CameraEndingZoom = CutsceneCamera.CameraZoom;
-                                        }
-                                        if (ImGui.InputFloat3(Translator.LocalizeUI("Camera End Position"), ref cameraEndPosition))
-                                        {
-                                            item.CameraEndPosition = cameraEndPosition;
-                                        }
-                                        if (ImGui.InputFloat3(Translator.LocalizeUI("Camera End Rotation"), ref cameraEndRotation))
-                                        {
-                                            item.CameraEndRotation = cameraEndRotation;
-                                        }
-                                        if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Field Of View"), ref cameraEndFov))
-                                        {
-                                            item.CameraEndingFov = cameraEndFov;
-                                        }
-                                        if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Zoom"), ref cameraEndZoom))
-                                        {
-                                            item.CameraEndingZoom = cameraEndZoom;
-                                        }
-                                        if (ImGui.InputInt(Translator.LocalizeUI("Camera Movement Speed (In Milliseconds)"), ref cameraDollySpeed))
-                                        {
-                                            item.CameraDollySpeed = cameraDollySpeed;
-                                        }
+                                        item.CameraDollySpeed = cameraDollySpeed;
                                     }
 
-                                //}
+                                }
                                 ImGui.EndTabItem();
                             }
                         }

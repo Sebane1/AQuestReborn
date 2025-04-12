@@ -67,6 +67,7 @@ public class EventWindow : Window, IDisposable
     private bool _questStopFollowing;
     Stopwatch _timeSinceLastDialogueDisplayed = new Stopwatch();
     private bool _previousEventHasNoReading;
+    private bool _dialogueWindowIsHidden;
 
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
@@ -194,63 +195,66 @@ public class EventWindow : Window, IDisposable
 
     public override void Draw()
     {
-        _globalScale = ImGuiHelpers.GlobalScale * 0.95f;
-        var values = ImGui.GetIO().DisplaySize;
-        Size = new Vector2(1088 * _globalScale, 288 * _globalScale);
-        Position = new Vector2((values.X / 2) - (Size.Value.X / 2), values.Y - Size.Value.Y);
-        if (!_alreadyLoadingFrame)
+        if (!_dialogueWindowIsHidden)
         {
-            Task.Run(async () =>
-            {
-                for (int i = 0; i < _dialogueBoxStyles.Count; i++)
-                {
-                    if (!_dialogueStylesToLoad.ContainsKey(i) || _dialogueStylesToLoad[i] == null)
-                    {
-                        _dialogueStylesToLoad[i] = await Plugin.TextureProvider.CreateFromImageAsync(_dialogueBoxStyles[i]);
-                    }
-                }
-                _alreadyLoadingFrame = false;
-            });
-        }
-        if (_dialogueStylesToLoad.ContainsKey(_currentDialogueBoxIndex) && _dialogueStylesToLoad[_currentDialogueBoxIndex] != null)
-        {
-            ImGui.Image(_dialogueStylesToLoad[_currentDialogueBoxIndex].ImGuiHandle, new Vector2(Size.Value.X, Size.Value.Y));
-        }
-
-        if (_currentName.ToLower() != "system")
-        {
-            if (!_alreadyLoadingTitleFrame)
+            _globalScale = ImGuiHelpers.GlobalScale * 0.95f;
+            var values = ImGui.GetIO().DisplaySize;
+            Size = new Vector2(1088 * _globalScale, 288 * _globalScale);
+            Position = new Vector2((values.X / 2) - (Size.Value.X / 2), values.Y - Size.Value.Y);
+            if (!_alreadyLoadingFrame)
             {
                 Task.Run(async () =>
                 {
-                    _alreadyLoadingTitleFrame = true;
-                    if (_lastLoadedFrame != _nameTitleStyle)
+                    for (int i = 0; i < _dialogueBoxStyles.Count; i++)
                     {
-                        _dialogueTitleStyleToLoad = await Plugin.TextureProvider.CreateFromImageAsync(_nameTitleStyle);
-                        _lastLoadedTitleFrame = _nameTitleStyle;
+                        if (!_dialogueStylesToLoad.ContainsKey(i) || _dialogueStylesToLoad[i] == null)
+                        {
+                            _dialogueStylesToLoad[i] = await Plugin.TextureProvider.CreateFromImageAsync(_dialogueBoxStyles[i]);
+                        }
                     }
-                    _alreadyLoadingTitleFrame = false;
+                    _alreadyLoadingFrame = false;
                 });
             }
-            if (_dialogueTitleStyleToLoad != null)
+            if (_dialogueStylesToLoad.ContainsKey(_currentDialogueBoxIndex) && _dialogueStylesToLoad[_currentDialogueBoxIndex] != null)
             {
-                ImGui.SetCursorPos(new Vector2(50 * _globalScale, 8 * _globalScale));
-                ImGui.Image(_dialogueTitleStyleToLoad.ImGuiHandle, new Vector2(data1.Width * _globalScale, data1.Height * _globalScale));
+                ImGui.Image(_dialogueStylesToLoad[_currentDialogueBoxIndex].ImGuiHandle, new Vector2(Size.Value.X, Size.Value.Y));
             }
+
+            if (_currentName.ToLower() != "system")
+            {
+                if (!_alreadyLoadingTitleFrame)
+                {
+                    Task.Run(async () =>
+                    {
+                        _alreadyLoadingTitleFrame = true;
+                        if (_lastLoadedFrame != _nameTitleStyle)
+                        {
+                            _dialogueTitleStyleToLoad = await Plugin.TextureProvider.CreateFromImageAsync(_nameTitleStyle);
+                            _lastLoadedTitleFrame = _nameTitleStyle;
+                        }
+                        _alreadyLoadingTitleFrame = false;
+                    });
+                }
+                if (_dialogueTitleStyleToLoad != null)
+                {
+                    ImGui.SetCursorPos(new Vector2(50 * _globalScale, 8 * _globalScale));
+                    ImGui.Image(_dialogueTitleStyleToLoad.ImGuiHandle, new Vector2(data1.Width * _globalScale, data1.Height * _globalScale));
+                }
+            }
+            ImGui.SetCursorPos(new Vector2(0, 0));
+            ImGui.BeginTable("##Dialogue Table", 3);
+            ImGui.TableSetupColumn("Padding 1", ImGuiTableColumnFlags.WidthFixed, 100 * _globalScale);
+            ImGui.TableSetupColumn("Center", ImGuiTableColumnFlags.WidthFixed, 888 * _globalScale);
+            ImGui.TableSetupColumn("Padding 2", ImGuiTableColumnFlags.WidthFixed, 100 * _globalScale);
+            ImGui.TableNextRow();
+            ImGui.TableSetColumnIndex(0);
+
+            ImGui.TableSetColumnIndex(1);
+            DialogueDrawing();
+            ImGui.TableSetColumnIndex(2);
+
+            ImGui.EndTable();
         }
-        ImGui.SetCursorPos(new Vector2(0, 0));
-        ImGui.BeginTable("##Dialogue Table", 3);
-        ImGui.TableSetupColumn("Padding 1", ImGuiTableColumnFlags.WidthFixed, 100 * _globalScale);
-        ImGui.TableSetupColumn("Center", ImGuiTableColumnFlags.WidthFixed, 888 * _globalScale);
-        ImGui.TableSetupColumn("Padding 2", ImGuiTableColumnFlags.WidthFixed, 100 * _globalScale);
-        ImGui.TableNextRow();
-        ImGui.TableSetColumnIndex(0);
-
-        ImGui.TableSetColumnIndex(1);
-        DialogueDrawing();
-        ImGui.TableSetColumnIndex(2);
-
-        ImGui.EndTable();
     }
 
     private void DialogueDrawing()
@@ -498,9 +502,12 @@ public class EventWindow : Window, IDisposable
                             Task.Run(() =>
                             {
                                 Thread.Sleep(1000);
-                                Plugin.SetAutomationGlobalState(false);
-                                Plugin.AQuestReborn.LoadAppearance(customPlayerAppearancePath, _playerAppearanceSwapType, Plugin.ObjectTable.LocalPlayer);
-                                Plugin.RoleplayingQuestManager.AddPlayerAppearance(_questDisplayObject.RoleplayingQuest.QuestId, customPlayerAppearancePath, _playerAppearanceSwapType);
+                                Plugin.Framework.RunOnFrameworkThread(() =>
+                                {
+                                    Plugin.SetAutomationGlobalState(false);
+                                    Plugin.AQuestReborn.LoadAppearance(customPlayerAppearancePath, _playerAppearanceSwapType, Plugin.ObjectTable.LocalPlayer);
+                                    Plugin.RoleplayingQuestManager.AddPlayerAppearance(_questDisplayObject.RoleplayingQuest.QuestId, customPlayerAppearancePath, _playerAppearanceSwapType);
+                                });
                             });
                         }
                     }
@@ -572,8 +579,14 @@ public class EventWindow : Window, IDisposable
                     Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].ShouldBeMoving = item.EventSetsNewNpcCoordinates;
                     if (item.EventSetsNewNpcCoordinates)
                     {
-                        Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].SetDefaults(item.NpcMovementPosition, item.NpcMovementRotation);
+                        Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].SetDefaults(item.NpcMovementPosition, item.NpcMovementRotation,
+                        item.NpcEventMovementType == QuestEvent.EventMovementType.Lerp ? 10 : item.NpcMovementTime, item.NpcEventMovementType);
                     }
+                }
+                if (item.EventSetsNewCutscenePlayerCoordinates)
+                {
+                    Plugin.AQuestReborn.CutscenePlayer.SetDefaults(item.CutscenePlayerMovementPosition, item.CutscenePlayerMovementRotation,
+                    item.CutscenePlayerMovementType == QuestEvent.EventMovementType.Lerp ? 10 : item.CutscenePlayerMovementTime, item.CutscenePlayerMovementType);
                 }
                 if (_index < _questDisplayObject.QuestObjective.QuestText.Count &&
                 _questDisplayObject.QuestObjective.QuestText[_index].BranchingChoices.Count > 0)
@@ -728,6 +741,7 @@ public class EventWindow : Window, IDisposable
                     }
                 }
                 textTimer.Restart();
+                _dialogueWindowIsHidden = item.DialogueWindowIsHidden;
                 if (item.EventHasNoReading)
                 {
                     _previousEventHasNoReading = true;
@@ -745,6 +759,7 @@ public class EventWindow : Window, IDisposable
             {
                 UIManager.HideUI(false);
                 AQuestReborn.CutsceneCamera.ResetCamera();
+                Plugin.AQuestReborn.CutscenePlayer.SetDefaults((new Vector3(0, float.MaxValue, 0) / 10), Quaternion.Identity.QuaternionToEuler());
             }
             _currentCharacter = 0;
             textTimer.Reset();

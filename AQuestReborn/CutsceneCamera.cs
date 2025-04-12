@@ -94,7 +94,7 @@ namespace AQuestReborn
             {
                 unsafe
                 {
-                    return new Vector3(_camera.Camera->Angle.Y.RadToDeg(), _camera.Camera->Angle.X.RadToDeg(), _camera.Camera->Rotation.RadToDeg());
+                    return new Vector3(-_camera.Camera->Angle.Y.RadToDeg(), _camera.Camera->Angle.X.RadToDeg(), _camera.Camera->Rotation.RadToDeg());
                 }
             }
         }
@@ -272,7 +272,6 @@ namespace AQuestReborn
         }
         static public unsafe void SetCameraPosition(Vector3 startPosition, Vector3 endPosition, float speed)
         {
-            RefreshCamera();
             _startPosition = startPosition;
             _endPosition = endPosition;
             _speed = speed;
@@ -280,34 +279,29 @@ namespace AQuestReborn
         }
         static public unsafe void SetCameraRotation(Vector3 rotation)
         {
-            RefreshCamera();
             _startRotation = rotation;
             _endRotation = rotation;
         }
 
         static public unsafe void SetFov(float fov)
         {
-            RefreshCamera();
             _startFov = fov;
             _endFov = fov;
         }
         static public void SetFov(float startFov, float endFov)
         {
-            RefreshCamera();
             _startFov = startFov;
             _endFov = endFov;
         }
 
         static public void SetZoom(float zoom)
         {
-            RefreshCamera();
             _startZoom = zoom;
             _endZoom = zoom;
         }
 
         static public void SetZoom(float startZoom, float endZoom)
         {
-            RefreshCamera();
             _startZoom = startZoom;
             _endZoom = endZoom;
         }
