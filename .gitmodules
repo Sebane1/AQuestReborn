@@ -34,3 +34,6 @@
 [submodule "AQuestReborn/Hypostasis"]
 	path = AQuestReborn/Hypostasis
 	url = https://github.com/UnknownX7/Hypostasis.git
+[submodule "AQuestReborn/PenumbraAndGlamourerHelpers"]
+	path = AQuestReborn/PenumbraAndGlamourerHelpers
+	url = https://github.com/Sebane1/PenumbraAndGlamourerHelpers.git

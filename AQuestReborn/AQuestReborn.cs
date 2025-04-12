@@ -259,6 +259,7 @@ namespace AQuestReborn
         {
             try
             {
+                PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke((int)201, Guid.Empty);
                 _pollingTimer = new Stopwatch();
                 _pollingTimer.Start();
                 _inputCooldown = new Stopwatch();
@@ -371,6 +372,17 @@ namespace AQuestReborn
             }
         }
 
+        public void RefreshPlaceHolderCutscenePlayer()
+        {
+            Plugin.Framework.RunOnFrameworkThread(() =>
+            {
+                var collection = PenumbraAndGlamourerIpcWrapper.Instance.GetCollectionForObject.Invoke((int)Plugin.ObjectTable.LocalPlayer.ObjectIndex);
+                PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke((int)_cutscenePlayer.Character.ObjectIndex, collection.EffectiveCollection.Id);
+                PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke((int)_cutscenePlayer.Character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                var design = PenumbraAndGlamourerIpcWrapper.Instance.GetStateBase64.Invoke(Plugin.ObjectTable.LocalPlayer.ObjectIndex);
+                AppearanceAccessUtils.AppearanceManager.LoadAppearance(design.Item2, _cutscenePlayer.Character, 0);
+            });
+        }
         private unsafe void _framework_Update(IFramework framework)
         {
             if (!_disposed)
@@ -391,10 +403,21 @@ namespace AQuestReborn
                             {
                                 if (!_cutsceneNpcSpawned)
                                 {
+                                    // This NPC has to be sacrificed for object id 200. Object id 200 is hated by everything and wont do appearance changes.
                                     ICharacter character = null;
                                     _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
                                     (new Vector3(0, float.MaxValue, 0) / 10), CoordinateUtility.ConvertDegreesToRadians(0));
-                                    _cutscenePlayer = new InteractiveNpc(Plugin, character);
+
+                                    Task.Run(() =>
+                                    {
+                                        Thread.Sleep(1000);
+                                        Plugin.Framework.RunOnFrameworkThread(() =>
+                                        {
+                                            _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
+                                            (new Vector3(0, float.MaxValue, 0) / 10), CoordinateUtility.ConvertDegreesToRadians(0));
+                                            _cutscenePlayer = new InteractiveNpc(Plugin, character);
+                                        });
+                                    });
                                     _cutsceneNpcSpawned = true;
                                 }
                                 else
@@ -941,6 +964,7 @@ namespace AQuestReborn
         public void Dispose()
         {
             _disposed = true;
+            PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke((int)201, Guid.Empty);
             AppearanceAccessUtils.AppearanceManager.RemoveAllTemporaryCollections();
             CutsceneCamera.Dispose();
             Plugin.DialogueBackgroundWindow.ButtonClicked -= DialogueBackgroundWindow_buttonClicked;

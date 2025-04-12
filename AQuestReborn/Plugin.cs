@@ -202,6 +202,7 @@ public sealed class Plugin : IDalamudPlugin
                 _emoteReaderHook = new EmoteReaderHooks(_gameInteropProvider, _clientState, _objectTable);
                 _aQuestReborn = new AQuestReborn.AQuestReborn(this);
                 _alreadyInitialized = true;
+                new PenumbraAndGlamourerIpcWrapper(PluginInterface);
             }
             catch (Exception ex)
             {

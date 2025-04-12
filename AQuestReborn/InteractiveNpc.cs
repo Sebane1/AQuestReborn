@@ -59,6 +59,7 @@ namespace AQuestReborn
         public string LastAppearance { get; internal set; }
         public bool LooksAtPlayer { get; internal set; }
         public bool ShouldBeMoving { get => _shouldBeMoving; set => _shouldBeMoving = value; }
+        public ICharacter Character { get => _character; set => _character = value; }
 
         public InteractiveNpc(Plugin plugin, ICharacter character)
         {

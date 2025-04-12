@@ -99,6 +99,7 @@ public class EventWindow : Window, IDisposable
         if (_questDisplayObject.QuestObjective.PlayerPositionIsLockedDuringEvents)
         {
             Plugin.Movement.EnableMovementLock();
+            Plugin.AQuestReborn.RefreshPlaceHolderCutscenePlayer();
         }
         base.OnOpen();
     }
