@@ -416,6 +416,7 @@ namespace AQuestReborn
                                             _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
                                             (new Vector3(0, float.MaxValue, 0) / 10), CoordinateUtility.ConvertDegreesToRadians(0));
                                             _cutscenePlayer = new InteractiveNpc(Plugin, character);
+                                            _cutscenePlayer.HideNPC();
                                         });
                                     });
                                     _cutsceneNpcSpawned = true;

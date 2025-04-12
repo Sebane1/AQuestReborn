@@ -79,7 +79,15 @@ namespace AQuestReborn
             Dispose();
         }
 
-        private unsafe void Framework_Update(IFramework framework)
+        public void HideNPC()
+        {
+            _currentScale = new Vector3(0.0001f, 0.0001f, 0.0001f);
+        }
+        public void ShowNPC()
+        {
+            _currentScale = new Vector3(1f, 1f, 1f);
+        }
+        public unsafe void Framework_Update(IFramework framework)
         {
             try
             {

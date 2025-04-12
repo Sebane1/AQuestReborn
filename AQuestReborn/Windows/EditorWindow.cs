@@ -74,7 +74,13 @@ public class EditorWindow : Window, IDisposable
         {
             WindowName = (!_roleplayingQuestCreator.CurrentQuest.IsSubQuest ? "Quest Creator##" : "Branching Quest Creator##") + Guid.NewGuid().ToString();
         }
+        _objectiveInFocus = null;
         RefreshMenus();
+    }
+
+    public void Reset()
+    {
+        _objectiveInFocus = null;
     }
     public void Dispose()
     {

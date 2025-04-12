@@ -200,6 +200,7 @@ public class MainWindow : Window, IDisposable
             {
                 Plugin.EditorWindow.RoleplayingQuestCreator.EditQuest(Path.Combine(Plugin.Configuration.QuestInstallFolder, roleplayingQuest.QuestName + @"\main.quest"));
                 Plugin.EditorWindow.IsOpen = true;
+                Plugin.EditorWindow.Reset();
             }
             if (ImGui.Button(Translator.LocalizeUI("Open Directory")))
             {
@@ -285,6 +286,7 @@ public class MainWindow : Window, IDisposable
             if (ImGui.Button(Translator.LocalizeUI("Quest Creator")))
             {
                 Plugin.EditorWindow.IsOpen = true;
+                Plugin.EditorWindow.Reset();
             }
             if (ImGui.Button(Translator.LocalizeUI("Install Quest")))
             {
