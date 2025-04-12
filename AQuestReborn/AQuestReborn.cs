@@ -406,7 +406,7 @@ namespace AQuestReborn
                                     // This NPC has to be sacrificed for object id 200. Object id 200 is hated by everything and wont do appearance changes.
                                     ICharacter character = null;
                                     _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
-                                    (new Vector3(0, float.MaxValue, 0) / 10), CoordinateUtility.ConvertDegreesToRadians(0));
+                                    (new Vector3(0, float.MaxValue, 0) / 8), CoordinateUtility.ConvertDegreesToRadians(0));
 
                                     Task.Run(() =>
                                     {
@@ -414,7 +414,7 @@ namespace AQuestReborn
                                         Plugin.Framework.RunOnFrameworkThread(() =>
                                         {
                                             _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
-                                            (new Vector3(0, float.MaxValue, 0) / 10), CoordinateUtility.ConvertDegreesToRadians(0));
+                                            (new Vector3(0, float.MaxValue, 0) / 8), CoordinateUtility.ConvertDegreesToRadians(0));
                                             _cutscenePlayer = new InteractiveNpc(Plugin, character);
                                             _cutscenePlayer.HideNPC();
                                         });
