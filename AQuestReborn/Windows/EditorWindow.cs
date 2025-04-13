@@ -506,6 +506,9 @@ public class EditorWindow : Window, IDisposable
                 var dialogue = item.Dialogue;
                 var boxStyle = item.DialogueBoxStyle;
                 var dialogueAudio = item.DialogueAudio;
+
+                var dialogueBackgroundMusic = item.DialogueBackgroundMusic;
+
                 var eventBackgroundType = (int)item.TypeOfEventBackground;
                 var eventBackground = item.EventBackground;
                 var eventEndBehaviour = (int)item.EventEndBehaviour;
@@ -726,6 +729,28 @@ public class EditorWindow : Window, IDisposable
                         DrawBranchingChoicesMenu();
                         ImGui.EndTabItem();
                     }
+                    if (ImGui.BeginTabItem(Translator.LocalizeUI("Music And Sounds")))
+                    {
+                        if (ImGui.InputText(Translator.LocalizeUI("Dialogue Background Music##"), ref dialogueBackgroundMusic, 255))
+                        {
+                            item.DialogueBackgroundMusic = dialogueBackgroundMusic;
+                        }
+                        int index = 0;
+                        foreach (var soundEffect in item.SoundEffects)
+                        {
+                            var soundEffectItem = soundEffect;
+                            if (ImGui.InputText(Translator.LocalizeUI($"Sound Effect {index}##"), ref soundEffectItem, 255))
+                            {
+                                item.SoundEffects[index] = soundEffectItem;
+                            }
+                            index++;
+                        }
+                        if (ImGui.Button(Translator.LocalizeUI("Add Sound Effect Slot")))
+                        {
+                            item.SoundEffects.Add("");
+                        }
+                        ImGui.EndTabItem();
+                    }
                     if (ImGui.BeginTabItem(Translator.LocalizeUI("Appearance Swap##we're unique and such")))
                     {
                         if (ImGui.InputText(Translator.LocalizeUI("Npc Appearance Swap##"), ref appearanceSwap, 4000))
@@ -800,6 +825,11 @@ public class EditorWindow : Window, IDisposable
                         }
                         if (eventSetsNewNpcPosition)
                         {
+                            if (ImGui.Button(Translator.LocalizeUI("Set Coordinates Based On Player Position##npc")))
+                            {
+                                item.NpcMovementPosition = Plugin.ObjectTable.LocalPlayer.Position;
+                                item.NpcMovementRotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ObjectTable.LocalPlayer.Rotation) + 180, 0);
+                            }
                             if (ImGui.DragFloat3(Translator.LocalizeUI("Npc Movement Position"), ref npcMovementPosition))
                             {
                                 item.NpcMovementPosition = npcMovementPosition;
@@ -818,20 +848,15 @@ public class EditorWindow : Window, IDisposable
 
                                     break;
                                 case EventMovementType.FixedTime:
-                                    if (ImGui.InputInt(Translator.LocalizeUI("Time To Complete Travel (In Milliseconds)##npc"), ref npcMovementTime))
-                                    {
-                                        item.NpcMovementTime = npcMovementTime;
-                                    }
                                     if (ImGui.Combo(Translator.LocalizeUI("Npc Movement Animation##npc"), ref npcMovementAnimation, eventPlayerMovementAnimationTypes, eventPlayerMovementAnimationTypes.Length))
                                     {
                                         item.NpcEventMovementAnimation = (QuestEvent.EventMovementAnimation)npcMovementAnimation;
                                     }
+                                    if (ImGui.InputInt(Translator.LocalizeUI("Time To Complete Travel (In Milliseconds)##npc"), ref npcMovementTime))
+                                    {
+                                        item.NpcMovementTime = npcMovementTime;
+                                    }
                                     break;
-                            }
-                            if (ImGui.Button(Translator.LocalizeUI("Set Coordinates Based On Player Position##npc")))
-                            {
-                                item.NpcMovementPosition = Plugin.ObjectTable.LocalPlayer.Position;
-                                item.NpcMovementRotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ObjectTable.LocalPlayer.Rotation) + 180, 0);
                             }
                         }
                         //if (_objectiveInFocus.ObjectiveTriggersCutscene)
@@ -842,6 +867,11 @@ public class EditorWindow : Window, IDisposable
                         }
                         if (eventSetsNewCutscenePlayerPosition)
                         {
+                            if (ImGui.Button(Translator.LocalizeUI("Set Coordinates Based On Player Position##cutsceneplayer")))
+                            {
+                                item.CutscenePlayerMovementPosition = Plugin.ObjectTable.LocalPlayer.Position;
+                                item.CutscenePlayerMovementRotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ObjectTable.LocalPlayer.Rotation) + 180, 0);
+                            }
                             if (ImGui.DragFloat3(Translator.LocalizeUI("Cutscene Player Movement Position"), ref cutscenePlayerMovementPosition))
                             {
                                 item.CutscenePlayerMovementPosition = cutscenePlayerMovementPosition;
@@ -860,20 +890,15 @@ public class EditorWindow : Window, IDisposable
 
                                     break;
                                 case EventMovementType.FixedTime:
-                                    if (ImGui.InputInt(Translator.LocalizeUI("Time To Complete Travel (In Milliseconds)##cutsceneplayer"), ref cutscenePlayerMovementTime))
-                                    {
-                                        item.CutscenePlayerMovementTime = cutscenePlayerMovementTime;
-                                    }
                                     if (ImGui.Combo(Translator.LocalizeUI("Cutscene Player Movement Animation##npc"), ref cutscenePlayerMovementAnimation, eventPlayerMovementAnimationTypes, eventPlayerMovementAnimationTypes.Length))
                                     {
                                         item.CutscenePlayerEventMovementAnimation = (QuestEvent.EventMovementAnimation)cutscenePlayerMovementAnimation;
                                     }
+                                    if (ImGui.InputInt(Translator.LocalizeUI("Time To Complete Travel (In Milliseconds)##cutsceneplayer"), ref cutscenePlayerMovementTime))
+                                    {
+                                        item.CutscenePlayerMovementTime = cutscenePlayerMovementTime;
+                                    }
                                     break;
-                            }
-                            if (ImGui.Button(Translator.LocalizeUI("Set Coordinates Based On Player Position##cutsceneplayer")))
-                            {
-                                item.CutscenePlayerMovementPosition = Plugin.ObjectTable.LocalPlayer.Position;
-                                item.CutscenePlayerMovementRotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ObjectTable.LocalPlayer.Rotation) + 180, 0);
                             }
                         }
                         // }

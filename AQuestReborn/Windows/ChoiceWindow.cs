@@ -56,7 +56,7 @@ public class ChoiceWindow : Window, IDisposable
                 textSize = size;
             }
         }
-        Size = new Vector2(textSize, 200);
+        Size = new Vector2(Math.Clamp(textSize, 400, 4096), 200);
         foreach (var choice in _choiceText)
         {
             if (ImGui.Button(choice + "##" + i, new Vector2(Size.Value.X, 40)) && IsOpen)

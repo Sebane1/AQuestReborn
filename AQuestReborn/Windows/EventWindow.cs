@@ -1,31 +1,23 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Drawing.Imaging;
-using System.Drawing;
-using System.IO;
-using System.Numerics;
-using Dalamud.Interface.Internal;
+using AQuestReborn;
+using AQuestReborn.UiHide;
+using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
-using Dalamud.Plugin.Services;
+using FFXIVLooseTextureCompiler.ImageProcessing;
 using ImGuiNET;
+using McdfDataImporter;
 using RoleplayingQuestCore;
 using RoleplayingVoiceDalamudWrapper;
-using static FFXIVClientStructs.FFXIV.Component.GUI.AtkComponentButton.Delegates;
-using FFXIVLooseTextureCompiler.ImageProcessing;
-using System.Threading.Tasks;
-using Dalamud.Interface.Textures.TextureWraps;
-using Dalamud.Interface.Style;
-using MareSynchronos.Utils;
-using System.Threading;
-using AQuestReborn;
-using McdfDataImporter;
-using RoleplayingVoiceDalamud.Glamourer;
-using Brio.Capabilities.Actor;
-using Brio;
+using System;
 using System.Collections.Concurrent;
-using AQuestReborn.UiHide;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Numerics;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace SamplePlugin.Windows;
 
@@ -454,7 +446,8 @@ public class EventWindow : Window, IDisposable
                         Thread.Sleep(5);
                     }
                 });
-                string customAudioPath = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueAudio);
+                string customDialoguePath = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueAudio);
+                string customBGMPath = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueAudio);
                 string customBackgroundPath = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, item.EventBackground);
                 string[] appearanceItems = item.AppearanceSwap.StringToArray();
                 for (int i = 0; i < appearanceItems.Length; i++)
@@ -561,9 +554,22 @@ public class EventWindow : Window, IDisposable
                 }
                 if (Plugin.MediaManager != null)
                 {
-                    if (File.Exists(customAudioPath))
+                    if (File.Exists(customDialoguePath))
                     {
-                        Plugin.MediaManager.PlayMedia(AQuestReborn.AQuestReborn.PlayerObject, customAudioPath, RoleplayingMediaCore.SoundType.NPC, true);
+                        Plugin.MediaManager.PlayMedia(AQuestReborn.AQuestReborn.PlayerObject, customDialoguePath, RoleplayingMediaCore.SoundType.NPC, true);
+                    }
+                    if (File.Exists(customBGMPath))
+                    {
+                        Plugin.MediaManager.PlayMedia(new DummyObject(), customBGMPath, RoleplayingMediaCore.SoundType.Loop, true);
+                    }
+                    foreach (var soundEffect in item.SoundEffects)
+                    {
+                        if (File.Exists(soundEffect))
+                        {
+                            var combinedPath = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, soundEffect);
+                            Plugin.MediaManager.PlayMedia(new DummyObject(), combinedPath, RoleplayingMediaCore.SoundType.ChatSound, true);
+                        }
+                        index++;
                     }
                     if (File.Exists(customBackgroundPath))
                     {
