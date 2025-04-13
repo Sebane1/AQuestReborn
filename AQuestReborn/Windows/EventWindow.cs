@@ -450,7 +450,7 @@ public class EventWindow : Window, IDisposable
                     }
                 });
                 string customDialoguePath = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueAudio);
-                string customBGMPath = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueAudio);
+                string customBGMPath = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueBackgroundMusic);
                 string customBackgroundPath = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, item.EventBackground);
                 string[] appearanceItems = item.AppearanceSwap.StringToArray();
                 for (int i = 0; i < appearanceItems.Length; i++)
@@ -598,7 +598,7 @@ public class EventWindow : Window, IDisposable
                     if (item.EventSetsNewNpcCoordinates)
                     {
                         Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].SetDefaults(item.NpcMovementPosition, item.NpcMovementRotation,
-                        item.NpcEventMovementType == QuestEvent.EventMovementType.Lerp ? 10 : item.NpcMovementTime, item.NpcEventMovementType);
+                        item.NpcEventMovementType == QuestEvent.EventMovementType.Lerp ? 5 : item.NpcMovementTime, item.NpcEventMovementType);
                         Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].EventMovementAnimationType = item.NpcEventMovementAnimation;
                     }
                 }

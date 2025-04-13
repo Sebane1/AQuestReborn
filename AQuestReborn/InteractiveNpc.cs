@@ -282,7 +282,7 @@ namespace AQuestReborn
                 _playerPosing = posing;
             }
         }
-        public void SetDefaults(Vector3 position, Vector3 rotation, float speed = 10, QuestEvent.EventMovementType eventMovementType = QuestEvent.EventMovementType.Lerp)
+        public void SetDefaults(Vector3 position, Vector3 rotation, float speed = 5, QuestEvent.EventMovementType eventMovementType = QuestEvent.EventMovementType.Lerp)
         {
             if (!firstPositionSet)
             {
