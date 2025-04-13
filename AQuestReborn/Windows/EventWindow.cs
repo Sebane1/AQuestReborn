@@ -1,5 +1,6 @@
 using AQuestReborn;
 using AQuestReborn.UiHide;
+using Dalamud.Game.Config;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
@@ -60,6 +61,7 @@ public class EventWindow : Window, IDisposable
     Stopwatch _timeSinceLastDialogueDisplayed = new Stopwatch();
     private bool _previousEventHasNoReading;
     private bool _dialogueWindowIsHidden;
+    private DummyObject _backgroundMusic;
 
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
@@ -74,6 +76,7 @@ public class EventWindow : Window, IDisposable
         _dummyObject = new DummyObject();
         LoadBubbleBackgrounds();
         _timeSinceLastDialogueDisplayed.Start();
+        _backgroundMusic = new DummyObject() { Name = "BackgroundMusic" };
     }
     public override void OnClose()
     {
@@ -560,7 +563,15 @@ public class EventWindow : Window, IDisposable
                     }
                     if (File.Exists(customBGMPath))
                     {
-                        Plugin.MediaManager.PlayMedia(new DummyObject(), customBGMPath, RoleplayingMediaCore.SoundType.Loop, true);
+                        Plugin.MediaManager.PlayMedia(_backgroundMusic, customBGMPath, RoleplayingMediaCore.SoundType.Loop, true);
+                        try
+                        {
+                            Plugin.GameConfig.Set(SystemConfigOption.IsSndBgm, true);
+                        }
+                        catch (Exception e)
+                        {
+                            Plugin.PluginLog?.Warning(e, e.Message);
+                        }
                     }
                     foreach (var soundEffect in item.SoundEffects)
                     {
@@ -765,6 +776,15 @@ public class EventWindow : Window, IDisposable
             _dontUnblockMovement = false;
             Plugin.DialogueBackgroundWindow.IsOpen = false;
             IsOpen = false;
+            Plugin.MediaManager.StopAudio(_backgroundMusic);
+            try
+            {
+                Plugin.GameConfig.Set(SystemConfigOption.IsSndBgm, false);
+            }
+            catch (Exception e)
+            {
+                Plugin.PluginLog?.Warning(e, e.Message);
+            }
             if (_questDisplayObject.QuestObjective.ObjectiveTriggersCutscene)
             {
                 UIManager.HideUI(false);
