@@ -516,6 +516,7 @@ public class EditorWindow : Window, IDisposable
                 var eventConditionTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestEvent.EventConditionType)));
                 var eventPlayerAppearanceApplicationTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestEvent.AppearanceSwapType)));
                 var eventPlayerMovementTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestEvent.EventMovementType)));
+                var eventPlayerMovementAnimationTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestEvent.EventMovementAnimation)));
                 var appearanceSwap = item.AppearanceSwap;
                 var playerAppearanceSwap = item.PlayerAppearanceSwap;
                 var playerAppearanceSwapType = (int)item.PlayerAppearanceSwapType;
@@ -530,11 +531,13 @@ public class EditorWindow : Window, IDisposable
                 var npcMovementRotation = item.NpcMovementRotation;
                 var npcMovementType = (int)item.NpcEventMovementType;
                 var npcMovementTime = item.NpcMovementTime;
+                var npcMovementAnimation = (int)item.NpcEventMovementAnimation;
 
                 var cutscenePlayerMovementPosition = item.CutscenePlayerMovementPosition;
                 var cutscenePlayerMovementRotation = item.CutscenePlayerMovementRotation;
                 var cutscenePlayerMovementType = (int)item.CutscenePlayerMovementType;
                 var cutscenePlayerMovementTime = item.CutscenePlayerMovementTime;
+                var cutscenePlayerMovementAnimation = (int)item.CutscenePlayerEventMovementAnimation;
 
                 var cameraLooksAtTalkingNpc = item.CameraLooksAtTalkingNpc;
                 var cameraUsesDolly = item.CameraUsesDolly;
@@ -819,6 +822,10 @@ public class EditorWindow : Window, IDisposable
                                     {
                                         item.NpcMovementTime = npcMovementTime;
                                     }
+                                    if (ImGui.Combo(Translator.LocalizeUI("Npc Movement Animation##npc"), ref npcMovementAnimation, eventPlayerMovementAnimationTypes, eventPlayerMovementAnimationTypes.Length))
+                                    {
+                                        item.NpcEventMovementAnimation = (QuestEvent.EventMovementAnimation)npcMovementAnimation;
+                                    }
                                     break;
                             }
                             if (ImGui.Button(Translator.LocalizeUI("Set Coordinates Based On Player Position##npc")))
@@ -856,6 +863,10 @@ public class EditorWindow : Window, IDisposable
                                     if (ImGui.InputInt(Translator.LocalizeUI("Time To Complete Travel (In Milliseconds)##cutsceneplayer"), ref cutscenePlayerMovementTime))
                                     {
                                         item.CutscenePlayerMovementTime = cutscenePlayerMovementTime;
+                                    }
+                                    if (ImGui.Combo(Translator.LocalizeUI("Cutscene Player Movement Animation##npc"), ref cutscenePlayerMovementAnimation, eventPlayerMovementAnimationTypes, eventPlayerMovementAnimationTypes.Length))
+                                    {
+                                        item.CutscenePlayerEventMovementAnimation = (QuestEvent.EventMovementAnimation)cutscenePlayerMovementAnimation;
                                     }
                                     break;
                             }

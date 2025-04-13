@@ -21,6 +21,7 @@ using Brio.Core;
 using Brio.Capabilities.Actor;
 using Lumina.Excel.Sheets;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using static RoleplayingQuestCore.QuestEvent;
 
 namespace AQuestReborn
 {
@@ -55,11 +56,12 @@ namespace AQuestReborn
         Stopwatch _horizontalRefreshTimer = new Stopwatch();
         Stopwatch _fixedMovementTimer = new Stopwatch();
         private bool _wasMoving;
-
+        EventMovementAnimation _eventMovementAnimationType = EventMovementAnimation.Run;
         public string LastAppearance { get; internal set; }
         public bool LooksAtPlayer { get; internal set; }
         public bool ShouldBeMoving { get => _shouldBeMoving; set => _shouldBeMoving = value; }
         public ICharacter Character { get => _character; set => _character = value; }
+        public EventMovementAnimation EventMovementAnimationType { get => _eventMovementAnimationType; set => _eventMovementAnimationType = value; }
 
         public InteractiveNpc(Plugin plugin, ICharacter character)
         {
@@ -81,11 +83,23 @@ namespace AQuestReborn
 
         public void HideNPC()
         {
-            _currentScale = new Vector3(0.0001f, 0.0001f, 0.0001f);
+            _targetScale = new Vector3(0.0001f, 0.0001f, 0.0001f);
         }
         public void ShowNPC()
         {
-            _currentScale = new Vector3(1f, 1f, 1f);
+            _targetScale = new Vector3(1f, 1f, 1f);
+        }
+
+        public unsafe uint ContextBasedMovementId(bool isMoving)
+        {
+            if (Conditions.Instance()->Swimming || Conditions.Instance()->Diving)
+            {
+                return isMoving ? 4954u : 4947u;
+            }
+            else
+            {
+                return isMoving ? 22u : 0u;
+            }
         }
         public unsafe void Framework_Update(IFramework framework)
         {
@@ -109,7 +123,7 @@ namespace AQuestReborn
                                 _currentRotation = CoordinateUtility.LookAt(_currentPosition, targetPosition).QuaternionToEuler();
                                 _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
                                 var value = _plugin.AnamcoreManager.GetCurrentAnimationId(_plugin.ObjectTable.LocalPlayer);
-                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
+                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(true));
                                 if (_horizontalRefreshTimer.ElapsedMilliseconds > 5000)
                                 {
                                     _horizontalOffset = (float)new Random().NextDouble() * -4f;
@@ -120,7 +134,7 @@ namespace AQuestReborn
                             {
                                 _currentPosition = Vector3.Lerp(_currentPosition, new Vector3(_currentPosition.X, _plugin.ObjectTable.LocalPlayer.Position.Y, _currentPosition.Z), _speed * delta);
                                 _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
-                                _plugin.AnamcoreManager.StopEmote(_character.Address);
+                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
                             }
                             SetTransform(_currentPosition, _currentRotation, _currentScale);
                         }
@@ -145,11 +159,23 @@ namespace AQuestReborn
                                     }
                                     _currentRotation = _currentRotation = CoordinateUtility.LookAt(_currentPosition, _defaultPosition).QuaternionToEuler();
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
-
-                                    SetTransform(_currentPosition, _currentRotation, _currentScale);
                                     if (Vector3.Distance(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position) > 0.2f)
                                     {
-                                        _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
+                                        switch (_eventMovementAnimationType)
+                                        {
+                                            case EventMovementAnimation.Automatic:
+                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(true));
+                                                break;
+                                            case EventMovementAnimation.Run:
+                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
+                                                break;
+                                            case EventMovementAnimation.Walk:
+                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, 13);
+                                                break;
+                                            case EventMovementAnimation.Swim:
+                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, 4954);
+                                                break;
+                                        }
                                         _wasMoving = true;
                                     }
                                 }
@@ -158,7 +184,7 @@ namespace AQuestReborn
                                     if (_wasMoving)
                                     {
                                         _wasMoving = false;
-                                        _plugin.AnamcoreManager.StopEmote(_character.Address);
+                                        _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
                                     }
                                     if ((_plugin.EventWindow.IsOpen || _plugin.ChoiceWindow.IsOpen) && LooksAtPlayer)
                                     {
@@ -172,8 +198,8 @@ namespace AQuestReborn
                                         _currentRotation = Vector3.Lerp(_currentRotation, _defaultRotation, 1);
                                         _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
                                     }
-                                    SetTransform(_currentPosition, _currentRotation, _currentScale);
                                 }
+                                SetTransform(_currentPosition, _currentRotation, _currentScale);
                             }
                         }
                     }

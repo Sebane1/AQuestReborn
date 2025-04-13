@@ -582,6 +582,7 @@ public class EventWindow : Window, IDisposable
                     {
                         Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].SetDefaults(item.NpcMovementPosition, item.NpcMovementRotation,
                         item.NpcEventMovementType == QuestEvent.EventMovementType.Lerp ? 10 : item.NpcMovementTime, item.NpcEventMovementType);
+                        Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].EventMovementAnimationType = item.NpcEventMovementAnimation;
                     }
                 }
                 if (item.EventSetsNewCutscenePlayerCoordinates)
@@ -589,6 +590,7 @@ public class EventWindow : Window, IDisposable
                     Plugin.AQuestReborn.CutscenePlayer.ShowNPC();
                     Plugin.AQuestReborn.CutscenePlayer.SetDefaults(item.CutscenePlayerMovementPosition, item.CutscenePlayerMovementRotation,
                     item.CutscenePlayerMovementType == QuestEvent.EventMovementType.Lerp ? 10 : item.CutscenePlayerMovementTime, item.CutscenePlayerMovementType);
+                    Plugin.AQuestReborn.CutscenePlayer.EventMovementAnimationType = item.CutscenePlayerEventMovementAnimation;
                 }
                 if (_index < _questDisplayObject.QuestObjective.QuestText.Count &&
                 _questDisplayObject.QuestObjective.QuestText[_index].BranchingChoices.Count > 0)
