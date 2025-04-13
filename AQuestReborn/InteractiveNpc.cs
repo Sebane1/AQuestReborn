@@ -56,7 +56,7 @@ namespace AQuestReborn
         Stopwatch _horizontalRefreshTimer = new Stopwatch();
         Stopwatch _fixedMovementTimer = new Stopwatch();
         private bool _wasMoving;
-        EventMovementAnimation _eventMovementAnimationType = EventMovementAnimation.Run;
+        EventMovementAnimation _eventMovementAnimationType = EventMovementAnimation.Automatic;
         public string LastAppearance { get; internal set; }
         public bool LooksAtPlayer { get; internal set; }
         public bool ShouldBeMoving { get => _shouldBeMoving; set => _shouldBeMoving = value; }

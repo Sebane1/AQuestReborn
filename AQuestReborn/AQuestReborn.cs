@@ -92,6 +92,7 @@ namespace AQuestReborn
         private bool _disposed;
         private static nint _playerAddress;
         private CutsceneCamera _cutsceneCamera;
+        private bool _dummyNpcSpawned;
 
         public AQuestReborn(Plugin plugin)
         {
@@ -285,6 +286,7 @@ namespace AQuestReborn
                         _gotZoneDiscriminator = false;
                         _checkForPartyMembers = true;
                         _cutsceneNpcSpawned = false;
+                        _dummyNpcSpawned = false;
                     }
                     catch (Exception e)
                     {
@@ -374,14 +376,24 @@ namespace AQuestReborn
 
         public void RefreshPlaceHolderCutscenePlayer()
         {
-            Plugin.Framework.RunOnFrameworkThread(() =>
+            try
             {
-                var collection = PenumbraAndGlamourerIpcWrapper.Instance.GetCollectionForObject.Invoke((int)Plugin.ObjectTable.LocalPlayer.ObjectIndex);
-                PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke((int)_cutscenePlayer.Character.ObjectIndex, collection.EffectiveCollection.Id);
-                PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke((int)_cutscenePlayer.Character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
-                var design = PenumbraAndGlamourerIpcWrapper.Instance.GetStateBase64.Invoke(Plugin.ObjectTable.LocalPlayer.ObjectIndex);
-                AppearanceAccessUtils.AppearanceManager.LoadAppearance(design.Item2, _cutscenePlayer.Character, 0);
-            });
+                Plugin.Framework.RunOnFrameworkThread(() =>
+                {
+                    if (_cutscenePlayer != null && _cutscenePlayer.Character.Name.TextValue == "Cutscene Player")
+                    {
+                        var collection = PenumbraAndGlamourerIpcWrapper.Instance.GetCollectionForObject.Invoke((int)Plugin.ObjectTable.LocalPlayer.ObjectIndex);
+                        PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke((int)_cutscenePlayer.Character.ObjectIndex, collection.EffectiveCollection.Id);
+                        PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke((int)_cutscenePlayer.Character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                        var design = PenumbraAndGlamourerIpcWrapper.Instance.GetStateBase64.Invoke(Plugin.ObjectTable.LocalPlayer.ObjectIndex);
+                        AppearanceAccessUtils.AppearanceManager.LoadAppearance(design.Item2, _cutscenePlayer.Character, 0);
+                    }
+                });
+            }
+            catch (Exception e)
+            {
+                Plugin.PluginLog.Warning(e, e.Message);
+            }
         }
         private unsafe void _framework_Update(IFramework framework)
         {
@@ -401,28 +413,35 @@ namespace AQuestReborn
                             }
                             else
                             {
-                                if (!_cutsceneNpcSpawned)
+                                if (!_cutsceneNpcSpawned && !_dummyNpcSpawned)
                                 {
+                                    _dummyNpcSpawned = true;
                                     // This NPC has to be sacrificed for object id 200. Object id 200 is hated by everything and wont do appearance changes.
                                     ICharacter character = null;
                                     _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
                                     (new Vector3(0, float.MaxValue, 0) / 8), CoordinateUtility.ConvertDegreesToRadians(0));
-
                                     Task.Run(() =>
                                     {
                                         Thread.Sleep(1000);
-                                        Plugin.Framework.RunOnFrameworkThread(() =>
+                                        try
                                         {
-                                            _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
-                                            (new Vector3(0, float.MaxValue, 0) / 8), CoordinateUtility.ConvertDegreesToRadians(0));
-                                            _cutscenePlayer = new InteractiveNpc(Plugin, character);
-                                            _cutscenePlayer.SetDefaults((new Vector3(0, float.MaxValue, 0) / 8), Quaternion.Identity.QuaternionToEuler());
-                                            _cutscenePlayer.HideNPC();
-                                        });
+                                            Plugin.Framework.RunOnFrameworkThread(() =>
+                                            {
+                                                _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
+                                                (new Vector3(0, float.MaxValue, 0) / 8), CoordinateUtility.ConvertDegreesToRadians(0));
+                                                _cutscenePlayer = new InteractiveNpc(Plugin, character);
+                                                _cutscenePlayer.SetDefaults((new Vector3(0, float.MaxValue, 0) / 8), Quaternion.Identity.QuaternionToEuler());
+                                                _cutscenePlayer.HideNPC();
+                                                _cutsceneNpcSpawned = true;
+                                            });
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            Plugin.PluginLog.Warning(e, e.Message);
+                                        }
                                     });
-                                    _cutsceneNpcSpawned = true;
                                 }
-                                else
+                                else if (_cutsceneNpcSpawned)
                                 {
                                     CheckForPassiveQuestProgression();
                                     CheckForNewAppearanceLoad();
