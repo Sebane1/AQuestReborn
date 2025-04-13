@@ -31,7 +31,7 @@ namespace AQuestReborn
         private Plugin _plugin;
         private bool _shouldBeMoving;
         private Vector3 _target;
-        private float _speed = 10;
+        private float _speed = 5;
         private QuestEvent.EventMovementType _eventMovementType;
         private bool _shouldBeScaling;
         private Vector3 _targetScale = new Vector3(1, 1, 1);
