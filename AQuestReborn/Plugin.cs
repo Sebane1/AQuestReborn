@@ -135,7 +135,7 @@ public sealed class Plugin : IDalamudPlugin
         _gameInteropProvider = gameInteropProvider;
         var threadSafeObjectTable = new ThreadSafeGameObjectManager(clientState, objectTable, framework, pluginLog);
         _objectTable = threadSafeObjectTable;
-        threadSafeObjectTable.PauseTrackingForNonLocalPlayerObjects = true;
+        threadSafeObjectTable.PauseTrackingForNonLocalPlayerObjects = false;
         ECommonsMain.Init(dalamudPluginInterface, this, Module.DalamudReflector);
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         _mcdfEntryPoint = new EntryPoint(PluginInterface, commandManager, dataManager, framework, objectTable, clientState, condition, chatGui, gameGui, dtrBar, pluginLog,
