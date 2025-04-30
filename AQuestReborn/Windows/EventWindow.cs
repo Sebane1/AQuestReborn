@@ -605,8 +605,9 @@ public class EventWindow : Window, IDisposable
                 if (item.EventSetsNewCutscenePlayerCoordinates)
                 {
                     Plugin.AQuestReborn.CutscenePlayer.ShowNPC();
+                    Plugin.AQuestReborn.CutscenePlayer.ShouldBeMoving = item.EventSetsNewCutscenePlayerCoordinates;
                     Plugin.AQuestReborn.CutscenePlayer.SetDefaults(item.CutscenePlayerMovementPosition, item.CutscenePlayerMovementRotation,
-                    item.CutscenePlayerMovementType == QuestEvent.EventMovementType.Lerp ? 10 : item.CutscenePlayerMovementTime, item.CutscenePlayerMovementType);
+                    item.CutscenePlayerMovementType == QuestEvent.EventMovementType.Lerp ? 5 : item.CutscenePlayerMovementTime, item.CutscenePlayerMovementType);
                     Plugin.AQuestReborn.CutscenePlayer.EventMovementAnimationType = item.CutscenePlayerEventMovementAnimation;
                 }
                 if (_index < _questDisplayObject.QuestObjective.QuestText.Count &&
