@@ -416,27 +416,24 @@ namespace AQuestReborn
                                 if (!_cutsceneNpcSpawned && Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType, _discriminator).Count > 0)
                                 {
                                     ICharacter character = null;
-                                    Task.Run(() =>
+                                    Thread.Sleep(1000);
+                                    try
                                     {
-                                        Thread.Sleep(1000);
-                                        try
+                                        Plugin.Framework.RunOnFrameworkThread(() =>
                                         {
-                                            Plugin.Framework.RunOnFrameworkThread(() =>
-                                            {
-                                                // Here we spawn an NPC for the purposes of acting as the player character in simulated cutscenes.
-                                                _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
-                                                (new Vector3(0, float.MaxValue, 0) / 8), CoordinateUtility.ConvertDegreesToRadians(0));
-                                                _cutscenePlayer = new InteractiveNpc(Plugin, character);
-                                                _cutscenePlayer.SetDefaults((new Vector3(0, float.MaxValue, 0) / 8), Quaternion.Identity.QuaternionToEuler());
-                                                _cutscenePlayer.HideNPC();
-                                                _cutsceneNpcSpawned = true;
-                                            });
-                                        }
-                                        catch (Exception e)
-                                        {
-                                            Plugin.PluginLog.Warning(e, e.Message);
-                                        }
-                                    });
+                                            // Here we spawn an NPC for the purposes of acting as the player character in simulated cutscenes.
+                                            _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
+                                            (new Vector3(0, float.MaxValue, 0) / 8), CoordinateUtility.ConvertDegreesToRadians(0));
+                                            _cutscenePlayer = new InteractiveNpc(Plugin, character);
+                                            _cutscenePlayer.SetDefaults((new Vector3(0, float.MaxValue, 0) / 8), Quaternion.Identity.QuaternionToEuler());
+                                            _cutscenePlayer.HideNPC();
+                                            _cutsceneNpcSpawned = true;
+                                        });
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        Plugin.PluginLog.Warning(e, e.Message);
+                                    }
                                 }
                                 else if (_cutsceneNpcSpawned)
                                 {
