@@ -413,13 +413,9 @@ namespace AQuestReborn
                             }
                             else
                             {
-                                if (!_cutsceneNpcSpawned && !_dummyNpcSpawned && Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType, _discriminator).Count > 0)
+                                if (!_cutsceneNpcSpawned && Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType, _discriminator).Count > 0)
                                 {
-                                    _dummyNpcSpawned = true;
-                                    // This NPC has to be sacrificed for object id 200. Object id 200 is hated by everything and wont do appearance changes.
                                     ICharacter character = null;
-                                    _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
-                                    (new Vector3(0, float.MaxValue, 0) / 8), CoordinateUtility.ConvertDegreesToRadians(0));
                                     Task.Run(() =>
                                     {
                                         Thread.Sleep(1000);
