@@ -950,23 +950,23 @@ public class EditorWindow : Window, IDisposable
                                         item.CameraEndingFov = CutsceneCamera.CameraFov;
                                         item.CameraEndingZoom = CutsceneCamera.CameraZoom;
                                     }
-                                    if (ImGui.InputFloat3(Translator.LocalizeUI("Camera End Position"), ref cameraEndPosition))
+                                    if (ImGui.InputFloat3(Translator.LocalizeUI("Camera End Position") + "#2", ref cameraEndPosition))
                                     {
                                         item.CameraEndPosition = cameraEndPosition;
                                     }
-                                    if (ImGui.InputFloat3(Translator.LocalizeUI("Camera End Rotation"), ref cameraEndRotation))
+                                    if (ImGui.InputFloat3(Translator.LocalizeUI("Camera End Rotation" + "#2"), ref cameraEndRotation))
                                     {
                                         item.CameraEndRotation = cameraEndRotation;
                                     }
-                                    if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Field Of View"), ref cameraEndFov))
+                                    if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Field Of View" + "#2"), ref cameraEndFov))
                                     {
                                         item.CameraEndingFov = cameraEndFov;
                                     }
-                                    if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Zoom"), ref cameraEndZoom))
+                                    if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Zoom" + "#2"), ref cameraEndZoom))
                                     {
                                         item.CameraEndingZoom = cameraEndZoom;
                                     }
-                                    if (ImGui.InputInt(Translator.LocalizeUI("Camera Movement Speed (In Milliseconds)"), ref cameraDollySpeed))
+                                    if (ImGui.InputInt(Translator.LocalizeUI("Camera Movement Speed (In Milliseconds)" + "#2"), ref cameraDollySpeed))
                                     {
                                         item.CameraDollySpeed = cameraDollySpeed;
                                     }
