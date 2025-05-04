@@ -958,11 +958,11 @@ public class EditorWindow : Window, IDisposable
                                     {
                                         item.CameraEndRotation = cameraEndRotation;
                                     }
-                                    if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Field Of View" + "#2"), ref cameraEndFov))
+                                    if (ImGui.InputFloat(Translator.LocalizeUI("Camera Ending Field Of View" + "#2"), ref cameraEndFov))
                                     {
                                         item.CameraEndingFov = cameraEndFov;
                                     }
-                                    if (ImGui.InputFloat(Translator.LocalizeUI("Camera Starting Zoom" + "#2"), ref cameraEndZoom))
+                                    if (ImGui.InputFloat(Translator.LocalizeUI("Camera Ending Zoom" + "#2"), ref cameraEndZoom))
                                     {
                                         item.CameraEndingZoom = cameraEndZoom;
                                     }
