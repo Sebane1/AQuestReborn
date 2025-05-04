@@ -943,14 +943,14 @@ public class EditorWindow : Window, IDisposable
                                 }
                                 if (cameraUsesDolly)
                                 {
-                                    if (ImGui.Button(Translator.LocalizeUI("Set Camera Position From Current Camera##2")))
+                                    if (ImGui.Button(Translator.LocalizeUI("Set Camera Position From Current Camera") + "##2"))
                                     {
                                         item.CameraEndPosition = CutsceneCamera.Position;
                                         item.CameraEndRotation = CutsceneCamera.Rotation;
                                         item.CameraEndingFov = CutsceneCamera.CameraFov;
                                         item.CameraEndingZoom = CutsceneCamera.CameraZoom;
                                     }
-                                    if (ImGui.InputFloat3(Translator.LocalizeUI("Camera End Position") + "#2", ref cameraEndPosition))
+                                    if (ImGui.InputFloat3(Translator.LocalizeUI("Camera End Position") + "##2", ref cameraEndPosition))
                                     {
                                         item.CameraEndPosition = cameraEndPosition;
                                     }
