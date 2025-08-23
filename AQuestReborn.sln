@@ -13,7 +13,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Brio", "Brio\Brio\Brio.cspr
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LooseTextureCompilerCore", "LooseTextureCompilerCore\LooseTextureCompilerCore.csproj", "{AB36F520-A0D6-4E2A-B562-746C20457800}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MareSynchronos.API", "api\MareSynchronosAPI\MareSynchronos.API.csproj", "{F2FD022A-AC73-4A1E-9F10-0B1D71578529}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dependancies.API", "Dependancies\DependanciesAPI\Dependancies.API.csproj", "{F2FD022A-AC73-4A1E-9F10-0B1D71578529}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ECommons", "ECommons\ECommons\ECommons.csproj", "{0EE9E449-67E2-4BCE-83AF-F1E20A5F95EB}"
 EndProject
