@@ -14,7 +14,7 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using FFXIVLooseTextureCompiler.ImageProcessing;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Lumina.Excel.Sheets;
 using NAudio.Wave;
 using RoleplayingMediaCore;
@@ -173,7 +173,7 @@ public class TitleCardWindow : Window, IDisposable
         {
             Vector2 scaledSize = new Vector2(displaySize.Y * titleCardRatio, displaySize.Y);
             ImGui.SetCursorPos(new Vector2((displaySize.X / 2) - (scaledSize.X / 2), (displaySize.Y / 2) - (scaledSize.Y / 2)));
-            ImGui.Image(_frameToLoad.ImGuiHandle, scaledSize);
+            ImGui.Image(_frameToLoad.Handle, scaledSize);
         }
         if (titleTimer.ElapsedMilliseconds > 4000)
         {

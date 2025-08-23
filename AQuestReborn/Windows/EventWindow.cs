@@ -5,7 +5,7 @@ using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using FFXIVLooseTextureCompiler.ImageProcessing;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using McdfDataImporter;
 using RoleplayingQuestCore;
 using RoleplayingVoiceDalamudWrapper;
@@ -213,7 +213,7 @@ public class EventWindow : Window, IDisposable
             }
             if (_dialogueStylesToLoad.ContainsKey(_currentDialogueBoxIndex) && _dialogueStylesToLoad[_currentDialogueBoxIndex] != null)
             {
-                ImGui.Image(_dialogueStylesToLoad[_currentDialogueBoxIndex].ImGuiHandle, new Vector2(Size.Value.X, Size.Value.Y));
+                ImGui.Image(_dialogueStylesToLoad[_currentDialogueBoxIndex].Handle, new Vector2(Size.Value.X, Size.Value.Y));
             }
 
             if (_currentName.ToLower() != "system")
@@ -234,7 +234,7 @@ public class EventWindow : Window, IDisposable
                 if (_dialogueTitleStyleToLoad != null)
                 {
                     ImGui.SetCursorPos(new Vector2(50 * _globalScale, 8 * _globalScale));
-                    ImGui.Image(_dialogueTitleStyleToLoad.ImGuiHandle, new Vector2(data1.Width * _globalScale, data1.Height * _globalScale));
+                    ImGui.Image(_dialogueTitleStyleToLoad.Handle, new Vector2(data1.Width * _globalScale, data1.Height * _globalScale));
                 }
             }
             ImGui.SetCursorPos(new Vector2(0, 0));

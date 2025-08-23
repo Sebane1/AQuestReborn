@@ -2,7 +2,7 @@ using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
 using FFXIVClientStructs.FFXIV.Common.Lua;
 using FFXIVLooseTextureCompiler.ImageProcessing;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using SamplePlugin;
 using SixLabors.ImageSharp;
 using System;
@@ -175,35 +175,35 @@ namespace AQuestReborn.UIAtlasing
             {
                 var relativeSize = size * 0.98f;
                 ImGui.SetCursorPos(new Vector2((size.X / 2) - (relativeSize.X / 2), 0));
-                ImGui.Image(_backgroundImage.ImGuiHandle, relativeSize);
+                ImGui.Image(_backgroundImage.Handle, relativeSize);
             }
         }
         public void DrawSeperator(float width)
         {
             if (_seperatorSection != null)
             {
-                ImGui.Image(_seperatorSection.ImGuiHandle, new Vector2(width, _seperatorSection.Height));
+                ImGui.Image(_seperatorSection.Handle, new Vector2(width, _seperatorSection.Height));
             }
         }
         public void DrawRewardImage(Vector2 size)
         {
             if (_reward != null)
             {
-                ImGui.Image(_reward.ImGuiHandle, size);
+                ImGui.Image(_reward.Handle, size);
             }
         }
         public void DrawDescriptionImage(Vector2 size)
         {
             if (_description != null)
             {
-                ImGui.Image(_description.ImGuiHandle, size);
+                ImGui.Image(_description.Handle, size);
             }
         }
         public void DrawRatingImage(Vector2 size)
         {
             if (_rating != null)
             {
-                ImGui.Image(_rating.ImGuiHandle, size);
+                ImGui.Image(_rating.Handle, size);
             }
         }
         public void CheckImageAssets()
@@ -292,52 +292,52 @@ namespace AQuestReborn.UIAtlasing
                 {
                     var relativeScaling = _topCenterPiece.Size * _globalScale;
                     ImGui.SetCursorPos(new Vector2((size.X / 2) - (relativeScaling.X / 2), 0));
-                    ImGui.Image(_topCenterPiece.ImGuiHandle, relativeScaling);
+                    ImGui.Image(_topCenterPiece.Handle, relativeScaling);
                 }
                 if (_topPiece != null)
                 {
                     var relativeScaling = _topPiece.Size * _globalScale;
                     var pieceSize = new Vector2(size.X - (relativeTopCornerScaling.X * 2), relativeScaling.Y);
                     ImGui.SetCursorPos(new Vector2((size.X / 2) - (pieceSize.X / 2), 0));
-                    ImGui.Image(_topPiece.ImGuiHandle, pieceSize);
+                    ImGui.Image(_topPiece.Handle, pieceSize);
                 }
                 if (_sidePieceRepeated != null)
                 {
                     var relativeScaling = _sidePieceRepeated.Size * _globalScale;
                     ImGui.SetCursorPos(new Vector2(0, 0));
-                    ImGui.Image(_sidePieceRepeated.ImGuiHandle, new Vector2(relativeScaling.X, size.Y - (20 * _globalScale)));
+                    ImGui.Image(_sidePieceRepeated.Handle, new Vector2(relativeScaling.X, size.Y - (20 * _globalScale)));
 
                     ImGui.SetCursorPos(new Vector2(size.X - relativeScaling.X, 0));
-                    ImGui.Image(_sidePieceRepeated.ImGuiHandle, new Vector2(relativeScaling.X, size.Y - (20 * _globalScale)), new Vector2(1, 0), new Vector2(0, 1));
+                    ImGui.Image(_sidePieceRepeated.Handle, new Vector2(relativeScaling.X, size.Y - (20 * _globalScale)), new Vector2(1, 0), new Vector2(0, 1));
                 }
                 if (_sidePiece != null)
                 {
                     var relativeScaling = _sidePiece.Size * _globalScale;
                     ImGui.SetCursorPos(new Vector2(0, 83 * _globalScale));
-                    ImGui.Image(_sidePiece.ImGuiHandle, relativeScaling);
+                    ImGui.Image(_sidePiece.Handle, relativeScaling);
 
                     ImGui.SetCursorPos(new Vector2(size.X - relativeScaling.X, 83 * _globalScale));
-                    ImGui.Image(_sidePiece.ImGuiHandle, relativeScaling, new Vector2(1, 0), new Vector2(0, 1));
+                    ImGui.Image(_sidePiece.Handle, relativeScaling, new Vector2(1, 0), new Vector2(0, 1));
                 }
                 if (_bottomPiece != null)
                 {
                     var relativeScaling = _bottomPiece.Size * _globalScale;
                     var pieceSize = new Vector2(size.X - (relativeBottomCornerScaling.X * 2), relativeScaling.Y);
                     ImGui.SetCursorPos(new Vector2((size.X / 2) - (pieceSize.X / 2), size.Y - relativeScaling.Y));
-                    ImGui.Image(_bottomPiece.ImGuiHandle, pieceSize);
+                    ImGui.Image(_bottomPiece.Handle, pieceSize);
                 }
 
                 ImGui.SetCursorPos(new Vector2(0, 0));
-                ImGui.Image(_topCornerPiece.ImGuiHandle, relativeTopCornerScaling);
+                ImGui.Image(_topCornerPiece.Handle, relativeTopCornerScaling);
 
                 ImGui.SetCursorPos(new Vector2(size.X - relativeTopCornerScaling.X, 0));
-                ImGui.Image(_topCornerPiece.ImGuiHandle, relativeTopCornerScaling, new Vector2(1, 0), new Vector2(0, 1));
+                ImGui.Image(_topCornerPiece.Handle, relativeTopCornerScaling, new Vector2(1, 0), new Vector2(0, 1));
 
                 ImGui.SetCursorPos(new Vector2(0, size.Y - relativeBottomCornerScaling.Y));
-                ImGui.Image(_bottomCornerPiece.ImGuiHandle, relativeBottomCornerScaling);
+                ImGui.Image(_bottomCornerPiece.Handle, relativeBottomCornerScaling);
 
                 ImGui.SetCursorPos(new Vector2(size.X - relativeBottomCornerScaling.X, size.Y - relativeBottomCornerScaling.Y));
-                ImGui.Image(_bottomCornerPiece.ImGuiHandle, relativeBottomCornerScaling, new Vector2(1, 0), new Vector2(0, 1));
+                ImGui.Image(_bottomCornerPiece.Handle, relativeBottomCornerScaling, new Vector2(1, 0), new Vector2(0, 1));
             }
         }
     }

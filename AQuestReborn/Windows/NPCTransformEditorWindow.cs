@@ -4,7 +4,7 @@ using System.Numerics;
 using AQuestReborn;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Windowing;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using RoleplayingQuestCore;
 using static RoleplayingQuestCore.BranchingChoice;
 
@@ -126,7 +126,7 @@ public class NPCTransformEditorWindow : Window, IDisposable
         {
             var npcStartingPositions = _questObjective.NpcStartingPositions;
             ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-            if (ImGui.ListBox("##npcCustomization", ref _selectedNpcTransform, _npcTransformsSelection, _npcTransformsSelection.Length, 13))
+            if (ImGui.ListBox("##npcCustomization", ref _selectedNpcTransform, _npcTransformsSelection, 13))
             {
                 //RefreshMenus();
             }

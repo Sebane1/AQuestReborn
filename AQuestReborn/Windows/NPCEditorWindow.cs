@@ -8,7 +8,7 @@ using Dalamud.Interface.Internal;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using McdfDataImporter;
 using RoleplayingQuestCore;
 using static RoleplayingQuestCore.BranchingChoice;
@@ -116,7 +116,7 @@ public class NPCEditorWindow : Window, IDisposable
         {
             var npcCustomizations = _roleplayingQuest.NpcCustomizations;
             ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-            if (ImGui.ListBox("##npcCustomization", ref _selectedNpcCustomization, _npcCustomizations, _npcCustomizations.Length, 13))
+            if (ImGui.ListBox("##npcCustomization", ref _selectedNpcCustomization, _npcCustomizations, 13))
             {
                 //RefreshMenus();
             }

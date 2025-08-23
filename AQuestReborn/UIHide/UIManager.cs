@@ -65,28 +65,6 @@ public static unsafe class UIManager
                || IsAddonFocused("ChatLogPanel_3");
     }
 
-    public static bool AreHotbarsLocked()
-    {
-        var hotbar = Plugin.Instance.GameGui.GetAddonByName("_ActionBar", 1);
-        var crossbar = Plugin.Instance.GameGui.GetAddonByName("_ActionCross", 1);
-
-        if (hotbar == nint.Zero || crossbar == nint.Zero)
-            return true;
-
-        var hotbarAddon = (AddonActionBar*)hotbar;
-        var crossbarAddon = (AddonActionCross*)hotbar;
-
-        try
-        {
-            // Check whether Mouse Mode or Gamepad Mode is enabled.
-            var mouseModeEnabled = hotbarAddon->ShowHideFlags == 0;
-            return mouseModeEnabled ? hotbarAddon->IsLocked : crossbarAddon->IsLocked;
-        }
-        catch (AccessViolationException)
-        {
-            return true;
-        }
-    }
     public static void HideUI(bool hideUi)
     {
         foreach (Element element in Enum.GetValues(typeof(Element)))

@@ -11,7 +11,7 @@ using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using EmbedIO.Authentication;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Lumina.Excel.Sheets;
 using RoleplayingQuestCore;
 
@@ -98,7 +98,7 @@ public class QuestAcceptanceWindow : Window, IDisposable
             {
                 var thumbnailSize = new Vector2(_thumbnailRatio * 200, 200) * _globalScale;
                 ImGui.SetCursorPosX((Size.Value.X / 2) - (thumbnailSize.X / 2));
-                ImGui.Image(_frameToLoad.ImGuiHandle, thumbnailSize);
+                ImGui.Image(_frameToLoad.Handle, thumbnailSize);
             }
         }
         var value = new Vector2(30, 30) * _globalScale;

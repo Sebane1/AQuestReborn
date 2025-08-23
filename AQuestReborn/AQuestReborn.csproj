@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
- <Project Sdk="Dalamud.NET.Sdk/12.0.2">
+<Project Sdk="Dalamud.NET.SDK/13.0.0">
   <PropertyGroup>
     <Version>0.0.0.1</Version>
     <Description>A Quest Reborn</Description>
@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Drawing.Common" Version="9.0.3" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.8" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,5 +35,9 @@
 
   <ItemGroup>
     <EmbeddedResource Include="QuestEnd.mp3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="DalamudPackager" Version="13.0.0" />
   </ItemGroup>
 </Project>

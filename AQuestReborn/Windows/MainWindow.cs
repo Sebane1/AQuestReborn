@@ -9,7 +9,7 @@ using Dalamud.Interface.Internal;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using LanguageConversionProxy;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
@@ -282,7 +282,7 @@ public class MainWindow : Window, IDisposable
                 _currentSelectedInstalledQuest = 0;
             }
             ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-            ImGui.ListBox("##installedQuestInformation", ref _currentSelectedInstalledQuest,  questItems.ToArray(), questItems.Count, 10);
+            ImGui.ListBox("##installedQuestInformation", ref _currentSelectedInstalledQuest,  questItems.ToArray(), 10);
             if (ImGui.Button(Translator.LocalizeUI("Quest Creator")))
             {
                 Plugin.EditorWindow.IsOpen = true;

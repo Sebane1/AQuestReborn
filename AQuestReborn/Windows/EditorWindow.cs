@@ -10,7 +10,7 @@ using Dalamud.Interface.Internal;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using RoleplayingQuestCore;
 using static FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentLookingForGroup;
 using static RoleplayingQuestCore.QuestObjective;
@@ -1155,7 +1155,7 @@ public class EditorWindow : Window, IDisposable
             {
                 var branchingChoices = questText[_selectedEvent].BranchingChoices;
                 ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                if (ImGui.ListBox("##branchingChoice", ref _selectedBranchingChoice, _branchingChoices, _branchingChoices.Length, 12))
+                if (ImGui.ListBox("##branchingChoice", ref _selectedBranchingChoice, _branchingChoices, 12))
                 {
                     RefreshMenus();
                 }
@@ -1193,7 +1193,7 @@ public class EditorWindow : Window, IDisposable
         {
             var questText = _objectiveInFocus.QuestText;
             ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-            if (ImGui.ListBox("##questEvent", ref _selectedEvent, _dialogues, _dialogues.Length, 15))
+            if (ImGui.ListBox("##questEvent", ref _selectedEvent, _dialogues, 15))
             {
                 _selectedBranchingChoice = 0;
                 RefreshMenus();

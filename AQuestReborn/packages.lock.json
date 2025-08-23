@@ -4,9 +4,9 @@
     "net9.0-windows7.0": {
       "DalamudPackager": {
         "type": "Direct",
-        "requested": "[12.0.0, )",
-        "resolved": "12.0.0",
-        "contentHash": "J5TJLV3f16T/E2H2P17ClWjtfEBPpq3yxvqW46eN36JCm6wR+EaoaYkqG9Rm5sHqs3/nK/vKjWWyvEs/jhKoXw=="
+        "requested": "[13.0.0, )",
+        "resolved": "13.0.0",
+        "contentHash": "Mb3cUDSK/vDPQ8gQIeuCw03EMYrej1B4J44a1AvIJ9C759p9XeqdU9Hg4WgOmlnlPe0G7ILTD32PKSUpkQNa8w=="
       },
       "DotNet.ReproducibleBuilds": {
         "type": "Direct",
@@ -16,11 +16,11 @@
       },
       "System.Drawing.Common": {
         "type": "Direct",
-        "requested": "[9.0.3, )",
-        "resolved": "9.0.3",
-        "contentHash": "yDxzWfZGvOtk8zk5apWXP/tmro1Nghn7/4bWS5np5CtwIfiVCC74qCc1qvIsnywvXKzVqIbKXRk09wts+xGfeg==",
+        "requested": "[9.0.8, )",
+        "resolved": "9.0.8",
+        "contentHash": "ineIJmF+yuBEHGft9R153J9kmBFaeEfFL5Put5nzENneRcGGPUb3MvM8zrZ5pERQ0jPPSE3Wqw/clXvOq2F/Kw==",
         "dependencies": {
-          "Microsoft.Win32.SystemEvents": "9.0.3"
+          "Microsoft.Win32.SystemEvents": "9.0.8"
         }
       },
       "Downloader": {
@@ -46,8 +46,8 @@
       },
       "Glamourer.Api": {
         "type": "Transitive",
-        "resolved": "2.4.1",
-        "contentHash": "Q9jrGWDlIAXoMXihu+HbSRu8FpgR9xNy2j5YpAoqDHzhl2MZLgqAJPlQ+N5ISp6cn7xqQVMmxB9PchW2uEYoEA=="
+        "resolved": "2.6.0",
+        "contentHash": "zysCZgNBRm3k3qvibyw/31MmEckX0Uh0ZsT+Sax3ZHnYIRELr9Qhbz3cjJz7u0RHGIrNJiRpktu/LxgHEqDItw=="
       },
       "LibVLCSharp": {
         "type": "Transitive",
@@ -521,8 +521,8 @@
       },
       "Microsoft.Win32.SystemEvents": {
         "type": "Transitive",
-        "resolved": "9.0.3",
-        "contentHash": "Z0hIB2oeNqPOO0MYD0wkLpEe0LangoF3BSdMLLF5wft/rndYoXhLQvWni1OxymlWj+1adswAps2ZlrPmD9ZhBg=="
+        "resolved": "9.0.8",
+        "contentHash": "64oQBN8I8EOcyHGNt6+rlcqm4tlcKfqOpswtBCJZnpzBQ15L6IFKqjnbjbOWBpG9wKq9A/aC2LFSmSqplbwTYA=="
       },
       "NAudio": {
         "type": "Transitive",
@@ -693,8 +693,8 @@
       },
       "Penumbra.Api": {
         "type": "Transitive",
-        "resolved": "5.6.1",
-        "contentHash": "pZesXuBB9cMXKN10EfLJclLay3vjRYQy376PXXcPdx33kNI0jHwgPXGcy6BtVmoaMvn4UvK+EqGVYlt2b/Ns9Q=="
+        "resolved": "5.10.0",
+        "contentHash": "ZRIIXQCluNlLoI4I4gNYuYXqb7p48OR1P2/LcL27owToR/A/IG0mH8Ks2HguB/Kjq4RpCinaVkyufpGxGspbTA=="
       },
       "Penumbra.String": {
         "type": "Transitive",
@@ -815,8 +815,8 @@
       },
       "SixLabors.ImageSharp": {
         "type": "Transitive",
-        "resolved": "3.1.7",
-        "contentHash": "9fIOOAsyLFid6qKypM2Iy0Z3Q9yoanV8VoYAHtI2sYGMNKzhvRTjgFDHonIiVe+ANtxIxM6SuqUzj0r91nItpA=="
+        "resolved": "3.1.11",
+        "contentHash": "JfPLyigLthuE50yi6tMt7Amrenr/fA31t2CvJyhy/kQmfulIBAqo5T/YFUSRHtuYPXRSaUHygFeh6Qd933EoSw=="
       },
       "SixLabors.ImageSharp.Drawing": {
         "type": "Transitive",
@@ -1634,13 +1634,13 @@
       "brio": {
         "type": "Project",
         "dependencies": {
-          "DalamudPackager": "[12.0.0, )",
+          "DalamudPackager": "[13.0.0, )",
           "EmbedIO": "[3.5.2, )",
-          "Glamourer.Api": "[2.4.1, )",
+          "Glamourer.Api": "[2.6.0, )",
           "Microsoft.Extensions.DependencyInjection": "[9.0.3, )",
           "OneOf": "[3.0.271, )",
           "OneOf.SourceGenerator": "[3.0.271, )",
-          "Penumbra.Api": "[5.6.1, )"
+          "Penumbra.Api": "[5.10.0, )"
         }
       },
       "ecommons": {
@@ -1665,18 +1665,18 @@
       "mcdfdataimporter": {
         "type": "Project",
         "dependencies": {
-          "DalamudPackager": "[12.0.0, )",
+          "DalamudPackager": "[13.0.0, )",
           "Downloader": "[3.3.4, )",
-          "Glamourer.Api": "[2.4.1, )",
+          "Glamourer.Api": "[2.6.0, )",
           "MareSynchronos.API": "[1.0.0, )",
           "Microsoft.AspNetCore.SignalR.Client": "[9.0.3, )",
           "Microsoft.AspNetCore.SignalR.Protocols.MessagePack": "[9.0.3, )",
           "Microsoft.Extensions.Hosting": "[9.0.3, )",
           "NGuid": "[1.0.0, )",
           "NReco.Logging.File": "[1.2.2, )",
-          "Penumbra.Api": "[5.6.1, )",
+          "Penumbra.Api": "[5.10.0, )",
           "Penumbra.String": "[1.0.5, )",
-          "SixLabors.ImageSharp": "[3.1.7, )",
+          "SixLabors.ImageSharp": "[3.1.11, )",
           "System.IdentityModel.Tokens.Jwt": "[8.7.0, )",
           "lz4net": "[1.0.15.93, )"
         }

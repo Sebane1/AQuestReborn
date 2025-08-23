@@ -8,7 +8,7 @@ using Dalamud.Interface.Internal;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using System.Threading.Tasks;
 using Dalamud.Interface.Textures.TextureWraps;
 using FFXIVClientStructs.FFXIV.Client.System.Input;
@@ -168,7 +168,7 @@ public class ObjectiveWindow : Window, IDisposable
                                     if (_questStartIconTextureWrap != null && _questObjectiveIconTextureWrap != null
                                         && item.Item2.TypeOfObjectiveTrigger != RoleplayingQuestCore.QuestObjective.ObjectiveTriggerType.BoundingTrigger)
                                     {
-                                        ImGui.Image(item.Item1 == 0 ? _questStartIconTextureWrap.ImGuiHandle : _questObjectiveIconTextureWrap.ImGuiHandle, iconDimensions);
+                                        ImGui.Image(item.Item1 == 0 ? _questStartIconTextureWrap.Handle : _questObjectiveIconTextureWrap.Handle, iconDimensions);
                                     }
                                 }
                             }

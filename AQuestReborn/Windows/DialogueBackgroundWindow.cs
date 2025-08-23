@@ -15,7 +15,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.System.Input;
 using FFXIVClientStructs.FFXIV.Client.UI;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Lumina.Excel.Sheets;
 using RoleplayingMediaCore;
 using RoleplayingQuestCore;
@@ -185,7 +185,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
 
         if (_blackBarsFrame != null && _currentBackgroundType == QuestEvent.EventBackgroundType.Image)
         {
-            ImGui.Image(_blackBarsFrame.ImGuiHandle, displaySize);
+            ImGui.Image(_blackBarsFrame.Handle, displaySize);
         }
         if (!string.IsNullOrEmpty(_currentPath))
         {
@@ -198,7 +198,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
                 if (value != null)
                 {
                     ImGui.SetCursorPos(new Vector2((displaySize.X / 2) - (scaledSize.X / 2), (displaySize.Y / 2) - (scaledSize.Y / 2)));
-                    ImGui.Image(value.ImGuiHandle, scaledSize);
+                    ImGui.Image(value.Handle, scaledSize);
                 }
             }
         }
@@ -246,7 +246,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
                         float ratio = (float)1920 / (float)1080;
                         Vector2 scaledSize = new Vector2(displaySize.Y * ratio, displaySize.Y);
                         ImGui.SetCursorPos(new Vector2((displaySize.X / 2) - (scaledSize.X / 2), (displaySize.Y / 2) - (scaledSize.Y / 2)));
-                        ImGui.Image(_frameToLoad.ImGuiHandle, scaledSize);
+                        ImGui.Image(_frameToLoad.Handle, scaledSize);
                     }
                 }
             }

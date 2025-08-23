@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using RoleplayingQuestCore;
 
 namespace SamplePlugin.Windows;
