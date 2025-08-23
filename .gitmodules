@@ -22,9 +22,6 @@
 [submodule "MCDF-Loader"]
 	path = MCDF-Loader
 	url = https://github.com/Sebane1/MCDF-Loader
-[submodule "api"]
-	path = api
-	url = https://github.com/Penumbra-Sync/api
 [submodule "ECommons"]
 	path = ECommons
 	url = https://github.com/NightmareXIV/ECommons.git
