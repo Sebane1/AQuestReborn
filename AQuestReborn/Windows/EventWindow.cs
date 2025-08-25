@@ -736,8 +736,11 @@ public class EventWindow : Window, IDisposable
                             if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
                             {
                                 Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].StopFollowingPlayer();
-                                Plugin.RoleplayingQuestManager.RemovePartyMember(
-                                Plugin.RoleplayingQuestManager.GetNpcPartyMember(_questDisplayObject.RoleplayingQuest.QuestId, item.NpcName));
+                                var partyMember = Plugin.RoleplayingQuestManager.GetNpcPartyMember(_questDisplayObject.RoleplayingQuest.QuestId, item.NpcName);
+                                if (partyMember != null)
+                                {
+                                    Plugin.RoleplayingQuestManager.RemovePartyMember(partyMember);
+                                }
                                 _questStopFollowing = true;
                             }
 
