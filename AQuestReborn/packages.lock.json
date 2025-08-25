@@ -701,8 +701,8 @@
       },
       "Penumbra.Api": {
         "type": "Transitive",
-        "resolved": "5.10.0",
-        "contentHash": "ZRIIXQCluNlLoI4I4gNYuYXqb7p48OR1P2/LcL27owToR/A/IG0mH8Ks2HguB/Kjq4RpCinaVkyufpGxGspbTA=="
+        "resolved": "5.12.0",
+        "contentHash": "XGWviAZgokj2djpH50FWgM24jOTpKUuDHvd0HwrzBRY6BEMmpb3HfGIl8+BDE/DqbpH63u6aO2TvzUV6BmXT5w=="
       },
       "Penumbra.String": {
         "type": "Transitive",
@@ -1683,7 +1683,7 @@
           "Microsoft.Extensions.Hosting": "[9.0.3, )",
           "NGuid": "[1.0.0, )",
           "NReco.Logging.File": "[1.2.2, )",
-          "Penumbra.Api": "[5.10.0, )",
+          "Penumbra.Api": "[5.12.0, )",
           "Penumbra.String": "[1.0.5, )",
           "SixLabors.ImageSharp": "[3.1.11, )",
           "System.IdentityModel.Tokens.Jwt": "[8.7.0, )",
