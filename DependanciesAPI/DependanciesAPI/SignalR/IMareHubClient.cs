@@ -1,11 +1,11 @@
-﻿using MareSynchronos.API.Data.Enum;
-using MareSynchronos.API.Dto;
-using MareSynchronos.API.Dto.Group;
-using MareSynchronos.API.Dto.User;
+using McdfLoader.API.Data.Enum;
+using McdfLoader.API.Dto;
+using McdfLoader.API.Dto.Group;
+using McdfLoader.API.Dto.User;
 
-namespace MareSynchronos.API.SignalR;
+namespace McdfLoader.API.SignalR;
 
-public interface IMareHubClient : IMareHub
+public interface IMcdfHubClient : IMcdfHub
 {
     void OnDownloadReady(Action<Guid> act);
 

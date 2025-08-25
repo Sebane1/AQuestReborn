@@ -1,6 +1,6 @@
-﻿using MareSynchronos.API.Data.Enum;
+using McdfLoader.API.Data.Enum;
 
-namespace MareSynchronos.API.Data.Extensions;
+namespace McdfLoader.API.Data.Extensions;
 
 public static class UserPermissionsExtensions
 {

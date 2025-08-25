@@ -1,6 +1,6 @@
-﻿using MessagePack;
+using MessagePack;
 
-namespace MareSynchronos.API.Data;
+namespace McdfLoader.API.Data;
 
 [MessagePackObject(keyAsPropertyName: true)]
 public record UserData(string UID, string? Alias = null)

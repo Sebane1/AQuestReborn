@@ -1,14 +1,14 @@
-﻿using MareSynchronos.API.Data.Enum;
-using MareSynchronos.API.Dto;
-using MareSynchronos.API.Dto.Group;
-using MareSynchronos.API.Dto.User;
+using McdfLoader.API.Data.Enum;
+using McdfLoader.API.Dto;
+using McdfLoader.API.Dto.Group;
+using McdfLoader.API.Dto.User;
 
-namespace MareSynchronos.API.SignalR;
+namespace McdfLoader.API.SignalR;
 
-public interface IMareHub
+public interface IMcdfHub
 {
     const int ApiVersion = 32;
-    const string Path = "/mare";
+    const string Path = "/Mcdf";
 
     Task<bool> CheckClientHealth();
 

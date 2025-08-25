@@ -1,6 +1,6 @@
-﻿using MessagePack;
+using MessagePack;
 
-namespace MareSynchronos.API.Dto;
+namespace McdfLoader.API.Dto;
 
 [MessagePackObject(keyAsPropertyName: true)]
 public record SystemInfoDto

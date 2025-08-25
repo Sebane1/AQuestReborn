@@ -1,6 +1,6 @@
-﻿namespace MareSynchronos.API.Routes;
+namespace McdfLoader.API.Routes;
 
-public class MareFiles
+public class McdfFiles
 {
     public const string Cache = "/cache";
     public const string Cache_Get = "get";

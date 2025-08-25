@@ -1,6 +1,6 @@
-﻿using MareSynchronos.API.Dto.Group;
+using McdfLoader.API.Dto.Group;
 
-namespace MareSynchronos.API.Data.Comparer;
+namespace McdfLoader.API.Data.Comparer;
 
 public class GroupDtoComparer : IEqualityComparer<GroupDto>
 {

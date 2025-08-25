@@ -28,13 +28,13 @@ using AQuestReborn;
 using ArtemisRoleplayingKit;
 using AnamCore;
 using AQuestReborn.UIAtlasing;
-using MareSynchronos;
+using McdfLoader;
 using Dalamud.Game.ClientState.Objects;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using ECommons;
 using ECommons.Reflection;
 using GameObjectHelper.ThreadSafeDalamudObjectTable;
-using EntryPoint = MareSynchronos.EntryPoint;
+using EntryPoint = McdfLoader.EntryPoint;
 using AQuestReborn.UiHide;
 
 namespace SamplePlugin;

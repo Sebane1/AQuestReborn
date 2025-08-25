@@ -1,6 +1,6 @@
-﻿using MessagePack;
+using MessagePack;
 
-namespace MareSynchronos.API.Dto.Files;
+namespace McdfLoader.API.Dto.Files;
 
 [MessagePackObject(keyAsPropertyName: true)]
 public record DownloadFileDto : ITransferFileDto

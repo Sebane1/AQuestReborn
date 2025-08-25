@@ -1,6 +1,6 @@
-﻿namespace MareSynchronos.API.Routes;
+namespace McdfLoader.API.Routes;
 
-public class MareAuth
+public class McdfAuth
 {
     public const string OAuth = "/oauth";
     public const string Auth = "/auth";

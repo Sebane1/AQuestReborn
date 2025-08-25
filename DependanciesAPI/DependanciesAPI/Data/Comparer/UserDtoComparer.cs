@@ -1,6 +1,6 @@
-﻿using MareSynchronos.API.Dto.User;
+using McdfLoader.API.Dto.User;
 
-namespace MareSynchronos.API.Data.Comparer;
+namespace McdfLoader.API.Data.Comparer;
 
 public class UserDtoComparer : IEqualityComparer<UserDto>
 {

@@ -1,7 +1,7 @@
-﻿using MareSynchronos.API.Data;
+using McdfLoader.API.Data;
 using MessagePack;
 
-namespace MareSynchronos.API.Dto.Group;
+namespace McdfLoader.API.Dto.Group;
 
 [MessagePackObject(keyAsPropertyName: true)]
 public record GroupDto(GroupData Group)

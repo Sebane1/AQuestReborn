@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MareSynchronos.API.Dto.Files;
+namespace McdfLoader.API.Dto.Files;
 
 public class FilesSendDto
 {

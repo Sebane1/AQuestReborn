@@ -1,4 +1,4 @@
-﻿namespace MareSynchronos.API.Data.Comparer;
+namespace McdfLoader.API.Data.Comparer;
 
 public class GroupDataComparer : IEqualityComparer<GroupData>
 {
