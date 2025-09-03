@@ -261,6 +261,18 @@ namespace AQuestReborn
             try
             {
                 PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke((int)201, Guid.Empty);
+            }
+            catch (Exception e)
+            {
+                Plugin.PluginLog.Warning(e, e.Message);
+            }
+            ClearNPCs(territory);
+        }
+
+        private void ClearNPCs(ushort territory)
+        {
+            try
+            {
                 _pollingTimer = new Stopwatch();
                 _pollingTimer.Start();
                 _inputCooldown = new Stopwatch();
@@ -299,6 +311,7 @@ namespace AQuestReborn
                 Plugin.PluginLog.Warning(e, e.Message);
             }
         }
+
         public unsafe void RefreshMapMarkers()
         {
             try
@@ -455,6 +468,17 @@ namespace AQuestReborn
                         if (!zoneChangeCooldown.IsRunning)
                         {
                             zoneChangeCooldown.Start();
+                        }
+                    }
+                    else
+                    {
+                        if (Plugin.ClientState.IsGPosing)
+                        {
+                            if (_cutsceneNpcSpawned || _spawnedNpcsDictionary.Count > 0)
+                            {
+                                ClearNPCs(Plugin.ClientState.TerritoryType);
+                                _actorSpawnService.ClearAll();
+                            }
                         }
                     }
                 }
