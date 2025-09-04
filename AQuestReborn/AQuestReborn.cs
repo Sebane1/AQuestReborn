@@ -476,6 +476,11 @@ namespace AQuestReborn
                         {
                             if (_cutsceneNpcSpawned || _spawnedNpcsDictionary.Count > 0)
                             {
+                                foreach (var item in _interactiveNpcDictionary)
+                                {
+                                    item.Value?.Dispose();
+                                }
+                                _interactiveNpcDictionary.Clear();
                                 ClearNPCs(Plugin.ClientState.TerritoryType);
                                 _actorSpawnService.ClearAll();
                             }
