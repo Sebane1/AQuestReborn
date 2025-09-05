@@ -103,115 +103,118 @@ namespace AQuestReborn
         }
         public unsafe void Framework_Update(IFramework framework)
         {
-            try
+            if (!_disposed)
             {
-                if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking() && _plugin.ObjectTable.LocalPlayer != null)
+                try
                 {
-                    if (_character != null)
+                    if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking() && _plugin.ObjectTable.LocalPlayer != null)
                     {
-                        float delta = ((float)_plugin.Framework.UpdateDelta.Milliseconds / 1000f);
-                        if (_followPlayer && !_plugin.EventWindow.IsOpen && !_plugin.ChoiceWindow.IsOpen
-                            && _plugin.EventWindow.TimeSinceLastDialogueDisplayed.ElapsedMilliseconds > 200
-                            && _plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 200 && !Conditions.Instance()->Mounted)
+                        if (_character != null)
                         {
-                            var targetPosition = _plugin.ObjectTable.LocalPlayer.Position
-                                    + GetVerticalOffsetFromPlayer((_index) - ((float)(_plugin.AQuestReborn.InteractiveNpcDictionary.Count - 1) / 2f))
-                                    + GetHorizontalOffsetFromPlayer(_horizontalOffset);
-                            if (Vector3.Distance(_currentPosition, targetPosition) > 1)
+                            float delta = ((float)_plugin.Framework.UpdateDelta.Milliseconds / 1000f);
+                            if (_followPlayer && !_plugin.EventWindow.IsOpen && !_plugin.ChoiceWindow.IsOpen
+                                && _plugin.EventWindow.TimeSinceLastDialogueDisplayed.ElapsedMilliseconds > 200
+                                && _plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 200 && !Conditions.Instance()->Mounted)
                             {
-                                _currentPosition = Vector3.Lerp(_currentPosition, targetPosition, _speed * delta);
-                                _currentRotation = CoordinateUtility.LookAt(_currentPosition, targetPosition).QuaternionToEuler();
-                                _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
-                                var value = _plugin.AnamcoreManager.GetCurrentAnimationId(_plugin.ObjectTable.LocalPlayer);
-                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(true));
-                                if (_horizontalRefreshTimer.ElapsedMilliseconds > 5000)
+                                var targetPosition = _plugin.ObjectTable.LocalPlayer.Position
+                                        + GetVerticalOffsetFromPlayer((_index) - ((float)(_plugin.AQuestReborn.InteractiveNpcDictionary.Count - 1) / 2f))
+                                        + GetHorizontalOffsetFromPlayer(_horizontalOffset);
+                                if (Vector3.Distance(_currentPosition, targetPosition) > 1)
                                 {
-                                    _horizontalOffset = (float)new Random().NextDouble() * -4f;
-                                    _horizontalRefreshTimer.Restart();
-                                }
-                            }
-                            else
-                            {
-                                _currentPosition = Vector3.Lerp(_currentPosition, new Vector3(_currentPosition.X, _plugin.ObjectTable.LocalPlayer.Position.Y, _currentPosition.Z), _speed * delta);
-                                _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
-                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
-                            }
-                            SetTransform(_currentPosition, _currentRotation, _currentScale);
-                        }
-                        else
-                        {
-                            if (!_followPlayer || _plugin.EventWindow.IsOpen || _plugin.ChoiceWindow.IsOpen)
-                            {
-                                if (Vector3.Distance(new Vector3(_currentPosition.X, 0, _currentPosition.X), new Vector3(_defaultPosition.X, 0, _defaultPosition.X)) > 0.2)
-                                {
-                                    switch (_eventMovementType)
-                                    {
-                                        case QuestEvent.EventMovementType.Lerp:
-                                            _currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, (_speed / 2) * delta);
-                                            break;
-                                        case QuestEvent.EventMovementType.FixedTime:
-                                            if (!_fixedMovementTimer.IsRunning)
-                                            {
-                                                _fixedMovementTimer.Start();
-                                            }
-                                            _currentPosition = Vector3.Lerp(_lastDefaultPosition, _defaultPosition, Math.Clamp(_fixedMovementTimer.ElapsedMilliseconds / _speed, 0, 1));
-                                            break;
-                                    }
-                                    _currentRotation = _currentRotation = CoordinateUtility.LookAt(_currentPosition, _defaultPosition).QuaternionToEuler();
+                                    _currentPosition = Vector3.Lerp(_currentPosition, targetPosition, _speed * delta);
+                                    _currentRotation = CoordinateUtility.LookAt(_currentPosition, targetPosition).QuaternionToEuler();
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
-                                    if (Vector3.Distance(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position) > 0.2f)
+                                    var value = _plugin.AnamcoreManager.GetCurrentAnimationId(_plugin.ObjectTable.LocalPlayer);
+                                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(true));
+                                    if (_horizontalRefreshTimer.ElapsedMilliseconds > 5000)
                                     {
-                                        switch (_eventMovementAnimationType)
-                                        {
-                                            case EventMovementAnimation.Automatic:
-                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(true));
-                                                break;
-                                            case EventMovementAnimation.Run:
-                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
-                                                break;
-                                            case EventMovementAnimation.Walk:
-                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, 13);
-                                                break;
-                                            case EventMovementAnimation.Swim:
-                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, 4954);
-                                                break;
-                                        }
-                                        _wasMoving = true;
+                                        _horizontalOffset = (float)new Random().NextDouble() * -4f;
+                                        _horizontalRefreshTimer.Restart();
                                     }
                                 }
                                 else
                                 {
-                                    if (_wasMoving)
-                                    {
-                                        _wasMoving = false;
-                                        _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
-                                    }
-                                    if ((_plugin.EventWindow.IsOpen || _plugin.ChoiceWindow.IsOpen) && LooksAtPlayer)
-                                    {
-                                        _currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta);
-                                        _currentRotation = CoordinateUtility.LookAt(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position).QuaternionToEuler();
-                                        _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
-                                    }
-                                    else
-                                    {
-                                        _currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta);
-                                        _currentRotation = Vector3.Lerp(_currentRotation, _defaultRotation, 1);
-                                        _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
-                                    }
+                                    _currentPosition = Vector3.Lerp(_currentPosition, new Vector3(_currentPosition.X, _plugin.ObjectTable.LocalPlayer.Position.Y, _currentPosition.Z), _speed * delta);
+                                    _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
+                                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
                                 }
                                 SetTransform(_currentPosition, _currentRotation, _currentScale);
                             }
+                            else
+                            {
+                                if (!_followPlayer || _plugin.EventWindow.IsOpen || _plugin.ChoiceWindow.IsOpen)
+                                {
+                                    if (Vector3.Distance(new Vector3(_currentPosition.X, 0, _currentPosition.X), new Vector3(_defaultPosition.X, 0, _defaultPosition.X)) > 0.2)
+                                    {
+                                        switch (_eventMovementType)
+                                        {
+                                            case QuestEvent.EventMovementType.Lerp:
+                                                _currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, (_speed / 2) * delta);
+                                                break;
+                                            case QuestEvent.EventMovementType.FixedTime:
+                                                if (!_fixedMovementTimer.IsRunning)
+                                                {
+                                                    _fixedMovementTimer.Start();
+                                                }
+                                                _currentPosition = Vector3.Lerp(_lastDefaultPosition, _defaultPosition, Math.Clamp(_fixedMovementTimer.ElapsedMilliseconds / _speed, 0, 1));
+                                                break;
+                                        }
+                                        _currentRotation = _currentRotation = CoordinateUtility.LookAt(_currentPosition, _defaultPosition).QuaternionToEuler();
+                                        _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
+                                        if (Vector3.Distance(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position) > 0.2f)
+                                        {
+                                            switch (_eventMovementAnimationType)
+                                            {
+                                                case EventMovementAnimation.Automatic:
+                                                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(true));
+                                                    break;
+                                                case EventMovementAnimation.Run:
+                                                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
+                                                    break;
+                                                case EventMovementAnimation.Walk:
+                                                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, 13);
+                                                    break;
+                                                case EventMovementAnimation.Swim:
+                                                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, 4954);
+                                                    break;
+                                            }
+                                            _wasMoving = true;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (_wasMoving)
+                                        {
+                                            _wasMoving = false;
+                                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                                        }
+                                        if ((_plugin.EventWindow.IsOpen || _plugin.ChoiceWindow.IsOpen) && LooksAtPlayer)
+                                        {
+                                            _currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta);
+                                            _currentRotation = CoordinateUtility.LookAt(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position).QuaternionToEuler();
+                                            _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
+                                        }
+                                        else
+                                        {
+                                            _currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta);
+                                            _currentRotation = Vector3.Lerp(_currentRotation, _defaultRotation, 1);
+                                            _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
+                                        }
+                                    }
+                                    SetTransform(_currentPosition, _currentRotation, _currentScale);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Dispose();
                         }
                     }
-                    else
-                    {
-                        Dispose();
-                    }
                 }
-            }
-            catch (Exception e)
-            {
-                _plugin.PluginLog.Warning(e, e.Message);
+                catch (Exception e)
+                {
+                    _plugin.PluginLog.Warning(e, e.Message);
+                }
             }
         }
         public Brio.Core.Transform GetTransform()
@@ -252,12 +255,19 @@ namespace AQuestReborn
                     CheckPosing();
                     if (_posing != null)
                     {
-                        _posing.ModelPosing.Transform = new Brio.Core.Transform()
+                        if (_posing.ModelPosing != null)
                         {
-                            Position = position,
-                            Rotation = CoordinateUtility.ToQuaternion(rotation),
-                            Scale = scale
-                        };
+                            _posing.ModelPosing.Transform = new Brio.Core.Transform()
+                            {
+                                Position = position,
+                                Rotation = CoordinateUtility.ToQuaternion(rotation),
+                                Scale = scale
+                            };
+                        }
+                        else
+                        {
+                            Dispose();
+                        }
                     }
                 }
             }
