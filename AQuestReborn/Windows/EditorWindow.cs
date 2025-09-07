@@ -556,6 +556,7 @@ public class EditorWindow : Window, IDisposable
                 var cameraEndFov = item.CameraEndingFov;
 
                 var dialogueWindowIsHidden = item.DialogueWindowIsHidden;
+                var eventWaitTime = item.EventWaitTime;
 
 
                 if (ImGui.BeginTabBar("Event Editor Tabs"))
@@ -723,6 +724,10 @@ public class EditorWindow : Window, IDisposable
                         if (ImGui.Checkbox(Translator.LocalizeUI("Dialogue Window Is Hidden##"), ref dialogueWindowIsHidden))
                         {
                             item.DialogueWindowIsHidden = dialogueWindowIsHidden;
+                        }
+                        if (ImGui.InputInt(Translator.LocalizeUI("Event Time Delay##"), ref eventWaitTime))
+                        {
+                            item.EventWaitTime = eventWaitTime;
                         }
                         ImGui.EndTabItem();
                     }

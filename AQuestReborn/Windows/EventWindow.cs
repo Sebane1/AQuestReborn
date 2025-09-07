@@ -349,7 +349,7 @@ public class EventWindow : Window, IDisposable
         }
     }
 
-    public void SetEvent(int index)
+    public async void SetEvent(int index)
     {
         _index = index;
         bool allowedToContinue = true;
@@ -358,7 +358,8 @@ public class EventWindow : Window, IDisposable
         if (_index < _questDisplayObject.QuestObjective.QuestText.Count)
         {
             var item = _questDisplayObject.QuestObjective.QuestText[_index];
-
+            _dialogueWindowIsHidden = item.DialogueWindowIsHidden;
+            await Task.Delay(item.EventWaitTime);
             var customization = AQuestReborn.AQuestReborn.PlayerAppearanceData;
             switch (item.ConditionForDialogueToOccur)
             {
@@ -805,7 +806,6 @@ public class EventWindow : Window, IDisposable
                     }
                 }
                 textTimer.Restart();
-                _dialogueWindowIsHidden = item.DialogueWindowIsHidden;
                 if (item.EventHasNoReading)
                 {
                     _previousEventHasNoReading = true;
