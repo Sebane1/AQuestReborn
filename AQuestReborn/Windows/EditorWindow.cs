@@ -620,7 +620,7 @@ public class EditorWindow : Window, IDisposable
                         {
                             item.NpcName = npcName;
                         }
-                        if (ImGui.InputText(Translator.LocalizeUI("Dialogue##"), ref dialogue, 500))
+                        if (ImGui.InputTextMultiline(Translator.LocalizeUI("Dialogue##"), ref dialogue, 500))
                         {
                             item.Dialogue = dialogue;
                         }
