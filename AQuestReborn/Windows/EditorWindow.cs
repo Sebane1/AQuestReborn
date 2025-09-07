@@ -619,10 +619,12 @@ public class EditorWindow : Window, IDisposable
                         if (ImGui.InputText(Translator.LocalizeUI("Npc Name##"), ref npcName, 40))
                         {
                             item.NpcName = npcName;
+                            RefreshMenus();
                         }
                         if (ImGui.InputTextMultiline(Translator.LocalizeUI("Dialogue##"), ref dialogue, 500))
                         {
                             item.Dialogue = dialogue;
+                            RefreshMenus();
                         }
                         if (ImGui.InputText(Translator.LocalizeUI("Dialogue Audio Path##"), ref dialogueAudio, 255))
                         {
@@ -1219,6 +1221,34 @@ public class EditorWindow : Window, IDisposable
                     RefreshMenus();
                 });
             }
+            ImGui.SameLine();
+            if (ImGui.Button(Translator.LocalizeUI("Up")))
+            {
+                Task.Run(async () =>
+                {
+                    var object1 = questText[_selectedEvent - 1];
+                    var object2 = questText[_selectedEvent];
+
+                    questText[_selectedEvent] = object1;
+                    questText[_selectedEvent - 1] = object2;
+                    _selectedEvent -= 1;
+                    RefreshMenus();
+                });
+            }
+            ImGui.SameLine();
+            if (ImGui.Button(Translator.LocalizeUI("Down")))
+            {
+                Task.Run(async () =>
+                {
+                    var object1 = questText[_selectedEvent + 1];
+                    var object2 = questText[_selectedEvent];
+
+                    questText[_selectedEvent] = object1;
+                    questText[_selectedEvent + 1] = object2;
+                    _selectedEvent += 1;
+                    RefreshMenus();
+                });
+            }
             if (ImGui.Button(Translator.LocalizeUI("Add Clipboard")))
             {
                 _roleplayingQuestCreator.StoryScriptToObjectiveEvents(ImGui.GetClipboardText().Replace(Translator.LocalizeUI("…"), "..."), _objectiveInFocus);
@@ -1236,7 +1266,13 @@ public class EditorWindow : Window, IDisposable
         if (_objectiveInFocus != null)
         {
             var questText = _objectiveInFocus.QuestText;
-            _dialogues = Utility.FillNewList(questText.Count, await Translator.LocalizeText("Event", Translator.UiLanguage, LanguageEnum.English));
+            List<string> dialogues = new List<string>();
+            int index = 0;
+            foreach (var item in questText)
+            {
+                dialogues.Add((await Translator.LocalizeText("Event", Translator.UiLanguage, LanguageEnum.English)) + " " + index++ + " (" + item.NpcName + ": " + item.Dialogue + ")");
+                _dialogues = dialogues.ToArray();
+            }
             _nodeNames = Utility.FillNewList(_roleplayingQuestCreator.CurrentQuest.QuestObjectives.Count, await Translator.LocalizeText("Objective", Translator.UiLanguage, LanguageEnum.English));
             if (questText.Count > 0)
             {
