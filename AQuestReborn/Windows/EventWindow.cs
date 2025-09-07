@@ -19,6 +19,7 @@ using System.IO;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+using PenumbraAndGlamourerHelpers.IPC.ThirdParty.Glamourer;
 
 namespace SamplePlugin.Windows;
 
@@ -310,6 +311,44 @@ public class EventWindow : Window, IDisposable
             _previousEventHasNoReading = false;
         }
     }
+    public string FormatDialogue(string value, RoleplayingVoiceDalamud.Glamourer.CharacterCustomization customization)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            if (Plugin.ObjectTable.LocalPlayer != null)
+            {
+                string[] names = Plugin.ObjectTable.LocalPlayer.Name.TextValue.Split(" ");
+                return value.Replace(@"<fn>", names[0]).Replace("<ln>", names[1]).Replace("<n>", names[0] + " " + names[1]).Replace("<r>", customization != null ? Race(customization.Customize.Race.Value) : "");
+            }
+        }
+        return value;
+    }
+
+    public string Race(int value)
+    {
+        switch (value)
+        {
+            case 0:
+                return "Hyur";
+            case 1:
+                return "Elezen";
+            case 2:
+                return "Hyur";
+            case 3:
+                return "Lalafel";
+            case 4:
+                return "Miqo'te";
+            case 5:
+                return "Au Ra";
+            case 6:
+                return "Hrothgar";
+            case 7:
+                return "Viera";
+            default:
+                return "";
+        }
+    }
+
     public void SetEvent(int index)
     {
         _index = index;
@@ -389,7 +428,7 @@ public class EventWindow : Window, IDisposable
                 IsOpen = true;
                 _currentCharacter = 0;
                 _currentText = "";
-                _targetText = item.Dialogue;
+                _targetText = FormatDialogue(item.Dialogue, customization);
                 _currentDialogueBoxIndex = item.DialogueBoxStyle;
                 _npcAppearanceSwap = item.AppearanceSwap;
                 _playerAppearanceSwap = item.PlayerAppearanceSwap;

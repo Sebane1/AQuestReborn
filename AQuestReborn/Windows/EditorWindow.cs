@@ -1221,7 +1221,6 @@ public class EditorWindow : Window, IDisposable
                     RefreshMenus();
                 });
             }
-            ImGui.SameLine();
             if (ImGui.Button(Translator.LocalizeUI("Up")))
             {
                 Task.Run(async () =>
