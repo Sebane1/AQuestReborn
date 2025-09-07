@@ -1213,13 +1213,16 @@ public class EditorWindow : Window, IDisposable
             ImGui.SameLine();
             if (ImGui.Button(Translator.LocalizeUI("Remove")))
             {
-                questText.RemoveAt(_selectedEvent);
-                Task.Run(async () =>
+                if (_selectedEvent < questText.Count)
                 {
-                    _dialogues = Utility.FillNewList(questText.Count, await Translator.LocalizeText("Event", Translator.UiLanguage, LanguageEnum.English));
-                    _selectedEvent = questText.Count - 1;
-                    RefreshMenus();
-                });
+                    questText.RemoveAt(_selectedEvent);
+                    Task.Run(async () =>
+                    {
+                        _dialogues = Utility.FillNewList(questText.Count, await Translator.LocalizeText("Event", Translator.UiLanguage, LanguageEnum.English));
+                        _selectedEvent = questText.Count - 1;
+                        RefreshMenus();
+                    });
+                }
             }
             if (ImGui.Button(Translator.LocalizeUI("Up")))
             {
