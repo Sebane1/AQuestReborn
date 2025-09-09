@@ -255,16 +255,23 @@ namespace AQuestReborn
                     CheckPosing();
                     if (_posing != null)
                     {
-                        if (_posing.ModelPosing != null)
+                        try
                         {
-                            _posing.ModelPosing.Transform = new Brio.Core.Transform()
+                            if (_posing.ModelPosing != null)
                             {
-                                Position = position,
-                                Rotation = CoordinateUtility.ToQuaternion(rotation),
-                                Scale = scale
-                            };
+                                _posing.ModelPosing.Transform = new Brio.Core.Transform()
+                                {
+                                    Position = position,
+                                    Rotation = CoordinateUtility.ToQuaternion(rotation),
+                                    Scale = scale
+                                };
+                            }
+                            else
+                            {
+                                Dispose();
+                            }
                         }
-                        else
+                        catch
                         {
                             Dispose();
                         }
