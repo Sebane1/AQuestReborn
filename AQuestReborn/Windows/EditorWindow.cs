@@ -1275,6 +1275,7 @@ public class EditorWindow : Window, IDisposable
             var questText = _objectiveInFocus.QuestText;
             List<string> dialogues = new List<string>();
             int index = 0;
+            _dialogues = new string[0];
             foreach (var item in questText)
             {
                 dialogues.Add((await Translator.LocalizeText("Event", Translator.UiLanguage, LanguageEnum.English)) + " " + index++ + " (" + item.NpcName + ": " + item.Dialogue + ")");
