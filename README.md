@@ -1,6 +1,7 @@
 Play custom quests made by the community, or make your own!
-Note: A Quest Reborn is Alpha software, you may run into unfound bugs or issues. Please report found bugs via https://github.com/Sebane1/AQuestReborn/issues
-If you are running into bugs or issues with the plugin please report them! We cant fix what we dont know!
+
+**Note: A Quest Reborn is Alpha software, you may run into unfound bugs or issues. Please report found bugs via https://github.com/Sebane1/AQuestReborn/issues
+If you are running into bugs or issues with the plugin please report them! We cant fix what we dont know!**
 
 Quests are automatically localized into all supported FFXIV languages:
 - English
