@@ -490,7 +490,7 @@ public class EditorWindow : Window, IDisposable
             var questEvent = _objectiveInFocus.QuestText;
             if (questEvent.Count > 0)
             {
-                if (_selectedEvent > questEvent.Count || _selectedEvent < 0)
+                if (_selectedEvent > questEvent.Count - 1 || _selectedEvent < 0)
                 {
                     _selectedEvent = 0;
                 }
