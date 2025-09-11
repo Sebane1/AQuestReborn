@@ -124,7 +124,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
         try
         {
             var displaySize = ImGui.GetIO().DisplaySize;
-            Size = displaySize * 1.001f;
+            Size = displaySize * 1.005f;
             Position = new Vector2((displaySize.X / 2) - (Size.Value.X / 2), (displaySize.Y / 2) - (Size.Value.Y / 2));
             switch (_currentBackgroundType)
             {
