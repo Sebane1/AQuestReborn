@@ -189,7 +189,7 @@ public class DialogueBackgroundWindow : Window, IDisposable
         }
         if (!string.IsNullOrEmpty(_currentPath))
         {
-            if (_cachedBackgrounds.ContainsKey(_currentPath) && _cachedBackgrounds.ContainsKey(_currentPath))
+            if (_cachedBackgrounds.ContainsKey(_currentPath) && _cachedBackgroundsToLoad.ContainsKey(_currentPath))
             {
                 var value = _cachedBackgroundsToLoad[_currentPath];
                 var cachedBackground = _cachedBackgrounds[_currentPath];
