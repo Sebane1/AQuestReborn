@@ -1015,7 +1015,7 @@ public class EditorWindow : Window, IDisposable
                 var branchingChoices = questText[_selectedEvent].BranchingChoices;
                 if (branchingChoices.Count > 0)
                 {
-                    if (_selectedBranchingChoice > branchingChoices.Count)
+                    if (_selectedBranchingChoice > branchingChoices.Count - 1)
                     {
                         _selectedBranchingChoice = branchingChoices.Count - 1;
                     }
