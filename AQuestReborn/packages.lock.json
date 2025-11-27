@@ -4,9 +4,9 @@
     "net9.0-windows7.0": {
       "DalamudPackager": {
         "type": "Direct",
-        "requested": "[13.0.0, )",
-        "resolved": "13.0.0",
-        "contentHash": "Mb3cUDSK/vDPQ8gQIeuCw03EMYrej1B4J44a1AvIJ9C759p9XeqdU9Hg4WgOmlnlPe0G7ILTD32PKSUpkQNa8w=="
+        "requested": "[13.1.0, )",
+        "resolved": "13.1.0",
+        "contentHash": "XdoNhJGyFby5M/sdcRhnc5xTop9PHy+H50PTWpzLhJugjB19EDBiHD/AsiDF66RETM+0qKUdJBZrNuebn7qswQ=="
       },
       "DotNet.ReproducibleBuilds": {
         "type": "Direct",
@@ -54,8 +54,8 @@
       },
       "Glamourer.Api": {
         "type": "Transitive",
-        "resolved": "2.6.0",
-        "contentHash": "zysCZgNBRm3k3qvibyw/31MmEckX0Uh0ZsT+Sax3ZHnYIRELr9Qhbz3cjJz7u0RHGIrNJiRpktu/LxgHEqDItw=="
+        "resolved": "2.7.0",
+        "contentHash": "H4yRNEhdSQ+YkZlnE7qRM67GaNieb9Xe9Vpj3rvHvcSB0eWgMF1nHqCvkBNb4L38AV4WyWTzwtXh6+Rv5GuVTw=="
       },
       "LibVLCSharp": {
         "type": "Transitive",
@@ -1644,11 +1644,11 @@
         "dependencies": {
           "DalamudPackager": "[13.0.0, )",
           "EmbedIO": "[3.5.2, )",
-          "Glamourer.Api": "[2.6.0, )",
+          "Glamourer.Api": "[2.7.0, )",
           "Microsoft.Extensions.DependencyInjection": "[9.0.3, )",
           "OneOf": "[3.0.271, )",
           "OneOf.SourceGenerator": "[3.0.271, )",
-          "Penumbra.Api": "[5.10.0, )"
+          "Penumbra.Api": "[5.12.0, )"
         }
       },
       "dependancies.api": {
@@ -1677,7 +1677,7 @@
           "DalamudPackager": "[13.0.0, )",
           "Dependancies.API": "[1.0.0, )",
           "Downloader": "[3.3.4, )",
-          "Glamourer.Api": "[2.6.0, )",
+          "Glamourer.Api": "[2.7.0, )",
           "Microsoft.AspNetCore.SignalR.Client": "[9.0.3, )",
           "Microsoft.AspNetCore.SignalR.Protocols.MessagePack": "[9.0.3, )",
           "Microsoft.Extensions.Hosting": "[9.0.3, )",
