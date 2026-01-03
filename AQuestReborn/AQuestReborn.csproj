@@ -5,6 +5,7 @@
     <Description>A Quest Reborn</Description>
     <PackageProjectUrl>https://github.com/Sebane1/AQuestReborn/</PackageProjectUrl>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+    <TargetFramework>net10.0-windows7.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
