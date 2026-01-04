@@ -318,6 +318,10 @@ public class EventWindow : Window, IDisposable
             if (Plugin.ObjectTable.LocalPlayer != null)
             {
                 string[] names = Plugin.ObjectTable.LocalPlayer.Name.TextValue.Split(" ");
+                if (names.Length < 2)
+                {
+                    names = new string[2] { "", "" };
+                }
                 return value.Replace(@"<fn>", names[0]).Replace("<ln>", names[1]).Replace("<n>", names[0] + " " + names[1]).Replace("<r>", customization != null ? Race(customization.Customize.Race.Value) : "");
             }
         }

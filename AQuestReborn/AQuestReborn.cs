@@ -480,9 +480,9 @@ namespace AQuestReborn
                                 {
                                     item.Value?.Dispose();
                                 }
-                                _interactiveNpcDictionary.Clear();
+                                _interactiveNpcDictionary?.Clear();
                                 ClearNPCs(Plugin.ClientState.TerritoryType);
-                                _actorSpawnService.ClearAll();
+                                _actorSpawnService?.ClearAll();
                             }
                         }
                     }
