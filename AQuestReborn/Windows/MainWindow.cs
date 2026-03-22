@@ -54,36 +54,43 @@ public class MainWindow : Window, IDisposable
     }
     public override void Draw()
     {
-        _fileDialogManager.Draw();
-        if (ImGui.BeginTabBar("ConfigTabs"))
+        if (Plugin.ClientState.IsLoggedIn)
         {
-            if (!string.IsNullOrEmpty(Plugin.Configuration.QuestInstallFolder) && Directory.Exists(Plugin.Configuration.QuestInstallFolder))
+            _fileDialogManager.Draw();
+            if (ImGui.BeginTabBar("ConfigTabs"))
             {
-                if (ImGui.BeginTabItem(Translator.LocalizeUI("Installed Quests")))
+                if (!string.IsNullOrEmpty(Plugin.Configuration.QuestInstallFolder) && Directory.Exists(Plugin.Configuration.QuestInstallFolder))
                 {
-                    DrawInstalledQuests();
+                    if (ImGui.BeginTabItem(Translator.LocalizeUI("Installed Quests")))
+                    {
+                        DrawInstalledQuests();
+                        ImGui.EndTabItem();
+                    }
+                    if (ImGui.BeginTabItem(Translator.LocalizeUI("Quest Objectives")))
+                    {
+                        DrawQuestObjectives();
+                        ImGui.EndTabItem();
+                    }
+                }
+                if (ImGui.BeginTabItem(Translator.LocalizeUI("Settings")))
+                {
+                    DrawInitialSetup();
                     ImGui.EndTabItem();
                 }
-                if (ImGui.BeginTabItem(Translator.LocalizeUI("Quest Objectives")))
-                {
-                    DrawQuestObjectives();
-                    ImGui.EndTabItem();
-                }
+                ImGui.EndTabBar();
             }
-            if (ImGui.BeginTabItem(Translator.LocalizeUI("Settings")))
+            if (ImGui.Button(Translator.LocalizeUI("Donate To Further Development"), new Vector2(Size.Value.X, 50)))
             {
-                DrawInitialSetup();
-                ImGui.EndTabItem();
+                ProcessStartInfo ProcessInfo = new ProcessStartInfo();
+                Process Process = new Process();
+                ProcessInfo = new ProcessStartInfo("https://ko-fi.com/sebastina");
+                ProcessInfo.UseShellExecute = true;
+                Process = Process.Start(ProcessInfo);
             }
-            ImGui.EndTabBar();
         }
-        if (ImGui.Button(Translator.LocalizeUI("Donate To Further Development"), new Vector2(Size.Value.X, 50)))
+        else
         {
-            ProcessStartInfo ProcessInfo = new ProcessStartInfo();
-            Process Process = new Process();
-            ProcessInfo = new ProcessStartInfo("https://ko-fi.com/sebastina");
-            ProcessInfo.UseShellExecute = true;
-            Process = Process.Start(ProcessInfo);
+            ImGui.Text("Please pick a character before configuring settings.");
         }
     }
 
