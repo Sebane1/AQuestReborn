@@ -68,5 +68,5 @@ If you wish to donate you can do so here: https://ko-fi.com/sebastina
 
 Dalamud CN 兼容 repo 链接。
 ```
-https://raw.githubusercontent.com/Sebane1/AQuestReborn/master/repocn.json
+https://raw.githubusercontent.com/Sebane1/AQuestReborn/master/repo.json
 ```
