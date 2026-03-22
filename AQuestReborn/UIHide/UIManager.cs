@@ -33,8 +33,10 @@ public static unsafe class UIManager
 
     private static bool IsAddonFocused(string name)
     {
-        foreach (var addon in stage->RaptureAtkUnitManager->AtkUnitManager.FocusedUnitsList.Entries)
+        var list = stage->RaptureAtkUnitManager->AtkUnitManager.FocusedUnitsList;
+        for (int i = 0; i < list.Count; i++)
         {
+            var addon = list.Entries[i];
             if (addon.Value == null || addon.Value->Name == null)
                 continue;
 
