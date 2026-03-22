@@ -63,6 +63,7 @@ public class EventWindow : Window, IDisposable
     private bool _previousEventHasNoReading;
     private bool _dialogueWindowIsHidden;
     private DummyObject _backgroundMusic;
+    private CancellationTokenSource? _typewriterCts;
 
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
@@ -188,7 +189,11 @@ public class EventWindow : Window, IDisposable
     internal DummyObject DummyObject { get => _dummyObject; set => _dummyObject = value; }
     public Stopwatch TimeSinceLastDialogueDisplayed { get => _timeSinceLastDialogueDisplayed; set => _timeSinceLastDialogueDisplayed = value; }
 
-    public void Dispose() { }
+    public void Dispose()
+    {
+        _typewriterCts?.Cancel();
+        _typewriterCts?.Dispose();
+    }
 
     public override void Draw()
     {
@@ -200,16 +205,23 @@ public class EventWindow : Window, IDisposable
             Position = new Vector2((values.X / 2) - (Size.Value.X / 2), values.Y - Size.Value.Y);
             if (!_alreadyLoadingFrame)
             {
+                _alreadyLoadingFrame = true;
                 Task.Run(async () =>
                 {
-                    for (int i = 0; i < _dialogueBoxStyles.Count; i++)
+                    try
                     {
-                        if (!_dialogueStylesToLoad.ContainsKey(i) || _dialogueStylesToLoad[i] == null)
+                        for (int i = 0; i < _dialogueBoxStyles.Count; i++)
                         {
-                            _dialogueStylesToLoad[i] = await Plugin.TextureProvider.CreateFromImageAsync(_dialogueBoxStyles[i]);
+                            if (!_dialogueStylesToLoad.ContainsKey(i) || _dialogueStylesToLoad[i] == null)
+                            {
+                                _dialogueStylesToLoad[i] = await Plugin.TextureProvider.CreateFromImageAsync(_dialogueBoxStyles[i]);
+                            }
                         }
                     }
-                    _alreadyLoadingFrame = false;
+                    finally
+                    {
+                        _alreadyLoadingFrame = false;
+                    }
                 });
             }
             if (_dialogueStylesToLoad.ContainsKey(_currentDialogueBoxIndex) && _dialogueStylesToLoad[_currentDialogueBoxIndex] != null)
@@ -221,15 +233,21 @@ public class EventWindow : Window, IDisposable
             {
                 if (!_alreadyLoadingTitleFrame)
                 {
+                    _alreadyLoadingTitleFrame = true;
                     Task.Run(async () =>
                     {
-                        _alreadyLoadingTitleFrame = true;
-                        if (_lastLoadedFrame != _nameTitleStyle)
+                        try
                         {
-                            _dialogueTitleStyleToLoad = await Plugin.TextureProvider.CreateFromImageAsync(_nameTitleStyle);
-                            _lastLoadedTitleFrame = _nameTitleStyle;
+                            if (_lastLoadedFrame != _nameTitleStyle)
+                            {
+                                _dialogueTitleStyleToLoad = await Plugin.TextureProvider.CreateFromImageAsync(_nameTitleStyle);
+                                _lastLoadedTitleFrame = _nameTitleStyle;
+                            }
                         }
-                        _alreadyLoadingTitleFrame = false;
+                        finally
+                        {
+                            _alreadyLoadingTitleFrame = false;
+                        }
                     });
                 }
                 if (_dialogueTitleStyleToLoad != null)
@@ -356,6 +374,10 @@ public class EventWindow : Window, IDisposable
     public async void SetEvent(int index)
     {
         _index = index;
+        _typewriterCts?.Cancel();
+        _typewriterCts?.Dispose();
+        _typewriterCts = new CancellationTokenSource();
+        var typewriterToken = _typewriterCts.Token;
         bool allowedToContinue = true;
         Plugin.MediaManager.StopAudio(AQuestReborn.AQuestReborn.PlayerObject);
         Plugin.DialogueBackgroundWindow.ClearBackground();
@@ -469,30 +491,44 @@ public class EventWindow : Window, IDisposable
                 }
                 Task.Run(async () =>
                 {
-                    _currentName = item.NpcName.ToLower() == "system" ? "system" : await Translator.LocalizeText(string.IsNullOrEmpty(item.NpcAlias) ? item.NpcName : item.NpcAlias, Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
-                    _targetText = await Translator.LocalizeText(_targetText, Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
-                    var targetTextValue = _targetText;
-                    while (true)
+                    try
                     {
-                        if (targetTextValue == _targetText)
+                        _currentName = item.NpcName.ToLower() == "system" ? "system" : await Translator.LocalizeText(string.IsNullOrEmpty(item.NpcAlias) ? item.NpcName : item.NpcAlias, Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
+                        _targetText = await Translator.LocalizeText(_targetText, Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
+                        var targetTextValue = _targetText;
+                        while (true)
                         {
-                            if (_currentCharacter < _targetText.Length)
+                            typewriterToken.ThrowIfCancellationRequested();
+                            if (targetTextValue == _targetText)
                             {
-                                _currentText += _targetText[_currentCharacter++];
-                                textTimer.Restart();
+                                if (_currentCharacter < _targetText.Length)
+                                {
+                                    _currentText += _targetText[_currentCharacter++];
+                                    textTimer.Restart();
+                                }
+                                else
+                                {
+                                    break;
+                                }
                             }
                             else
                             {
                                 break;
                             }
+                            try
+                            {
+                                await Task.Delay(5, typewriterToken);
+                            }
+                            catch (TaskCanceledException)
+                            {
+                                break;
+                            }
                         }
-                        else
-                        {
-                            break;
-                        }
-                        Thread.Sleep(5);
                     }
-                });
+                    catch (OperationCanceledException)
+                    {
+                    }
+                }, typewriterToken);
                 string customDialoguePath = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueAudio);
                 string customBGMPath = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, item.DialogueBackgroundMusic);
                 string customBackgroundPath = Path.Combine(_questDisplayObject.RoleplayingQuest.FoundPath, item.EventBackground);
@@ -563,41 +599,36 @@ public class EventWindow : Window, IDisposable
                 {
                     _currentDialogueBoxIndex = _dialogueBoxStyles.Count - 1;
                 }
-                if (Plugin.AQuestReborn.SpawnedNPCs.ContainsKey(_questDisplayObject.RoleplayingQuest.QuestId))
+                if (true)
                 {
-                    if (Plugin.AQuestReborn.SpawnedNPCs[_questDisplayObject.RoleplayingQuest.QuestId].ContainsKey(item.NpcName))
+                    if (Plugin.AQuestReborn.SpawnedNPCs.ContainsKey(_questDisplayObject.RoleplayingQuest.QuestId))
                     {
-                        if ((ushort)item.BodyExpression > 0)
+                        if (Plugin.AQuestReborn.SpawnedNPCs[_questDisplayObject.RoleplayingQuest.QuestId].ContainsKey(item.NpcName))
                         {
-                            if (!item.LoopAnimation)
+                            if ((ushort)item.BodyExpression > 0)
                             {
-                                Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.AQuestReborn.SpawnedNPCs[_questDisplayObject.RoleplayingQuest.QuestId][item.NpcName], (ushort)item.BodyExpression);
+                                if (!item.LoopAnimation)
+                                {
+                                    Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.AQuestReborn.SpawnedNPCs[_questDisplayObject.RoleplayingQuest.QuestId][item.NpcName], (ushort)item.BodyExpression);
+                                }
+                                else
+                                {
+                                    Plugin.AnamcoreManager.TriggerEmote(Plugin.AQuestReborn.SpawnedNPCs[_questDisplayObject.RoleplayingQuest.QuestId][item.NpcName].Address, (ushort)item.BodyExpression);
+                                }
                             }
-                            else
-                            {
-                                Plugin.AnamcoreManager.TriggerEmote(Plugin.AQuestReborn.SpawnedNPCs[_questDisplayObject.RoleplayingQuest.QuestId][item.NpcName].Address, (ushort)item.BodyExpression);
-                            }
+                        }
+                    }
+                    if ((ushort)item.BodyExpressionPlayer > 0)
+                    {
+                        if (!item.LoopAnimationPlayer)
+                        {
+                            Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.ObjectTable.LocalPlayer, (ushort)item.BodyExpressionPlayer);
                         }
                         else
                         {
-                            Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.AQuestReborn.SpawnedNPCs[_questDisplayObject.RoleplayingQuest.QuestId][item.NpcName], (ushort)5810);
+                            Plugin.AnamcoreManager.TriggerEmote(Plugin.ObjectTable.LocalPlayer.Address, (ushort)item.BodyExpressionPlayer);
                         }
                     }
-                }
-                if ((ushort)item.BodyExpressionPlayer > 0)
-                {
-                    if (!item.LoopAnimationPlayer)
-                    {
-                        Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.ObjectTable.LocalPlayer, (ushort)item.BodyExpressionPlayer);
-                    }
-                    else
-                    {
-                        Plugin.AnamcoreManager.TriggerEmote(Plugin.ObjectTable.LocalPlayer.Address, (ushort)item.BodyExpressionPlayer);
-                    }
-                }
-                else
-                {
-                    Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.ObjectTable.LocalPlayer, (ushort)0);
                 }
                 if (Plugin.MediaManager != null)
                 {
@@ -819,6 +850,9 @@ public class EventWindow : Window, IDisposable
         }
         else
         {
+            _typewriterCts?.Cancel();
+            _typewriterCts?.Dispose();
+            _typewriterCts = null;
 
             _dontUnblockMovement = false;
             Plugin.DialogueBackgroundWindow.IsOpen = false;

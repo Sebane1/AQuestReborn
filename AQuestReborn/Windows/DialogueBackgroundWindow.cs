@@ -165,21 +165,27 @@ public class DialogueBackgroundWindow : Window, IDisposable
         CheckMouseDown();
         if (!_alreadyLoadingFrame)
         {
+            _alreadyLoadingFrame = true;
             Task.Run(async () =>
             {
-                _alreadyLoadingFrame = true;
-                if (_blackBarsFrame == null)
+                try
                 {
-                    _blackBarsFrame = await _textureProvider.CreateFromImageAsync(_blackBars);
-                }
-                for (int i = 0; i < _cachedBackgrounds.Count; i++)
-                {
-                    if (!_cachedBackgroundsToLoad.ContainsKey(_cachedBackgrounds.ElementAt(i).Key) || _cachedBackgroundsToLoad[_cachedBackgrounds.ElementAt(i).Key] == null)
+                    if (_blackBarsFrame == null)
                     {
-                        _cachedBackgroundsToLoad[_cachedBackgrounds.ElementAt(i).Key] = await Plugin.TextureProvider.CreateFromImageAsync(_cachedBackgrounds.ElementAt(i).Value.Item2);
+                        _blackBarsFrame = await _textureProvider.CreateFromImageAsync(_blackBars);
+                    }
+                    for (int i = 0; i < _cachedBackgrounds.Count; i++)
+                    {
+                        if (!_cachedBackgroundsToLoad.ContainsKey(_cachedBackgrounds.ElementAt(i).Key) || _cachedBackgroundsToLoad[_cachedBackgrounds.ElementAt(i).Key] == null)
+                        {
+                            _cachedBackgroundsToLoad[_cachedBackgrounds.ElementAt(i).Key] = await Plugin.TextureProvider.CreateFromImageAsync(_cachedBackgrounds.ElementAt(i).Value.Item2);
+                        }
                     }
                 }
-                _alreadyLoadingFrame = false;
+                finally
+                {
+                    _alreadyLoadingFrame = false;
+                }
             });
         }
 
@@ -311,14 +317,21 @@ public class DialogueBackgroundWindow : Window, IDisposable
     {
         if (!_cachedBackgrounds.ContainsKey(customBackgroundPath) || _cachedBackgrounds[customBackgroundPath].Item2 == null)
         {
-            MemoryStream background = new MemoryStream();
-            Bitmap newImage = new Bitmap(customBackgroundPath);
-            var backgroundAspectRatio = (float)newImage.Width / newImage.Height;
-            newImage.Save(background, ImageFormat.Png);
-            background.Position = 0;
-            var eventBackground = background.ToArray();
-            _cachedBackgrounds[customBackgroundPath] = new Tuple<float, byte[]>(backgroundAspectRatio, eventBackground);
-            newImage.Dispose();
+            if (!File.Exists(customBackgroundPath))
+            {
+                return false;
+            }
+            var tuple = await Task.Run(() =>
+            {
+                using var newImage = new Bitmap(customBackgroundPath);
+                var backgroundAspectRatio = (float)newImage.Width / newImage.Height;
+                using var background = new MemoryStream();
+                newImage.Save(background, ImageFormat.Png);
+                background.Position = 0;
+                var eventBackground = background.ToArray();
+                return new Tuple<float, byte[]>(backgroundAspectRatio, eventBackground);
+            }).ConfigureAwait(false);
+            _cachedBackgrounds[customBackgroundPath] = tuple;
         }
         return true;
     }

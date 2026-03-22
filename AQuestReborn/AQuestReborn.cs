@@ -88,6 +88,7 @@ namespace AQuestReborn
         private bool _checkForPartyMembers;
         private InteractiveNpc _cutscenePlayer;
         private bool _cutsceneNpcSpawned;
+        private bool _cutsceneNpcSpawnScheduled;
         private bool _hasCheckedForPlayerAppearance;
         private bool _disposed;
         private static nint _playerAddress;
@@ -273,6 +274,7 @@ namespace AQuestReborn
         {
             try
             {
+                _cutsceneNpcSpawnScheduled = false;
                 _pollingTimer = new Stopwatch();
                 _pollingTimer.Start();
                 _inputCooldown = new Stopwatch();
@@ -408,6 +410,41 @@ namespace AQuestReborn
                 Plugin.PluginLog.Warning(e, e.Message);
             }
         }
+        private void ScheduleCutsceneNpcSpawn()
+        {
+            _cutsceneNpcSpawnScheduled = true;
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(1000).ConfigureAwait(false);
+                    Plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        try
+                        {
+                            // Here we spawn an NPC for the purposes of acting as the player character in simulated cutscenes.
+                            _actorSpawnService.CreateCharacter(out ICharacter character, SpawnFlags.DefinePosition, true,
+                            (new Vector3(0, float.MaxValue, 0) / 8), CoordinateUtility.ConvertDegreesToRadians(0));
+                            _cutscenePlayer = new InteractiveNpc(Plugin, character);
+                            _cutscenePlayer.SetDefaults((new Vector3(0, float.MaxValue, 0) / 8), Quaternion.Identity.QuaternionToEuler());
+                            _cutscenePlayer.HideNPC();
+                            _cutsceneNpcSpawned = true;
+                        }
+                        catch (Exception e)
+                        {
+                            Plugin.PluginLog.Warning(e, e.Message);
+                            _cutsceneNpcSpawnScheduled = false;
+                        }
+                    });
+                }
+                catch (Exception e)
+                {
+                    Plugin.PluginLog.Warning(e, e.Message);
+                    _cutsceneNpcSpawnScheduled = false;
+                }
+            });
+        }
+
         private unsafe void _framework_Update(IFramework framework)
         {
             if (!_disposed)
@@ -426,27 +463,9 @@ namespace AQuestReborn
                             }
                             else
                             {
-                                if (!_cutsceneNpcSpawned && Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType, _discriminator).Count > 0)
+                                if (!_cutsceneNpcSpawned && !_cutsceneNpcSpawnScheduled && Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType, _discriminator).Count > 0)
                                 {
-                                    ICharacter character = null;
-                                    Thread.Sleep(1000);
-                                    try
-                                    {
-                                        Plugin.Framework.RunOnFrameworkThread(() =>
-                                        {
-                                            // Here we spawn an NPC for the purposes of acting as the player character in simulated cutscenes.
-                                            _actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
-                                            (new Vector3(0, float.MaxValue, 0) / 8), CoordinateUtility.ConvertDegreesToRadians(0));
-                                            _cutscenePlayer = new InteractiveNpc(Plugin, character);
-                                            _cutscenePlayer.SetDefaults((new Vector3(0, float.MaxValue, 0) / 8), Quaternion.Identity.QuaternionToEuler());
-                                            _cutscenePlayer.HideNPC();
-                                            _cutsceneNpcSpawned = true;
-                                        });
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        Plugin.PluginLog.Warning(e, e.Message);
-                                    }
+                                    ScheduleCutsceneNpcSpawn();
                                 }
                                 else if (_cutsceneNpcSpawned)
                                 {

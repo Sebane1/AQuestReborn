@@ -703,7 +703,7 @@
       "brio": {
         "type": "Project",
         "dependencies": {
-          "DalamudPackager": "[13.0.0, )",
+          "DalamudPackager": "[14.0.0, )",
           "EmbedIO": "[3.5.2, )",
           "Glamourer.Api": "[2.8.0, )",
           "Microsoft.Extensions.DependencyInjection": "[9.0.3, )",
@@ -735,7 +735,7 @@
       "mcdfdataimporter": {
         "type": "Project",
         "dependencies": {
-          "DalamudPackager": "[13.0.0, )",
+          "DalamudPackager": "[14.0.0, )",
           "Dependancies.API": "[1.0.0, )",
           "Downloader": "[3.3.4, )",
           "Glamourer.Api": "[2.8.0, )",
