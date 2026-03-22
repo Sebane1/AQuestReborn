@@ -104,9 +104,16 @@ public class MainWindow : Window, IDisposable
                     {
                         Directory.CreateDirectory(folder);
                         Plugin.Configuration.QuestInstallFolder = folder;
-                        Plugin.RoleplayingQuestManager.QuestInstallFolder = folder;
-                        Translator.LoadCache(Path.Combine(Plugin.Configuration.QuestInstallFolder, "languageCache.json"));
                         Plugin.Configuration.Save();
+                        if (Plugin.ClientState.IsLoggedIn && Plugin.RoleplayingQuestManager == null)
+                        {
+                            Plugin.Initialize();
+                        }
+                        if (Plugin.RoleplayingQuestManager != null)
+                        {
+                            Plugin.RoleplayingQuestManager.QuestInstallFolder = folder;
+                        }
+                        Translator.LoadCache(Path.Combine(Plugin.Configuration.QuestInstallFolder, "languageCache.json"));
                     }
                 }
             }, null, true);
