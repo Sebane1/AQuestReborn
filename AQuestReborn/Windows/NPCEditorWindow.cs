@@ -118,30 +118,37 @@ public class NPCEditorWindow : Window, IDisposable
         if (_roleplayingQuest != null)
         {
             var npcCustomizations = _roleplayingQuest.NpcCustomizations;
-            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-            if (ImGui.ListBox("##npcCustomization", ref _selectedNpcCustomization, _npcCustomizations, 13))
+            if (npcCustomizations != null)
             {
-                //RefreshMenus();
-            }
-            if (ImGui.Button(Translator.LocalizeUI("Add")))
-            {
-                var npcCustomization = new NpcInformation();
-                npcCustomizations[npcCustomizations.Count] = npcCustomization;
-                Task.Run(async () =>
+                ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                if (ImGui.ListBox("##npcCustomization", ref _selectedNpcCustomization, _npcCustomizations, 13))
                 {
-                    _npcCustomizations = Utility.FillNewList(npcCustomizations.Count, await Translator.LocalizeText("NPC Appearance", Translator.UiLanguage, LanguageConversionProxy.LanguageEnum.English));
-                    _selectedNpcCustomization = _npcCustomizations.Length - 1;
-                });
-            }
-            ImGui.SameLine();
-            if (ImGui.Button(Translator.LocalizeUI("Remove")))
-            {
-                npcCustomizations.Remove(_selectedNpcCustomization);
-                Task.Run(async () =>
+                    //RefreshMenus();
+                }
+                if (ImGui.Button(Translator.LocalizeUI("Add")))
                 {
-                    _npcCustomizations = Utility.FillNewList(npcCustomizations.Count, await Translator.LocalizeText("NPC Appearance", Translator.UiLanguage, LanguageConversionProxy.LanguageEnum.English));
-                    _selectedNpcCustomization = _npcCustomizations.Length - 1;
-                });
+                    var npcCustomization = new NpcInformation();
+                    npcCustomizations[npcCustomizations.Count] = npcCustomization;
+                    Task.Run(async () =>
+                    {
+                        _npcCustomizations = Utility.FillNewList(npcCustomizations.Count, await Translator.LocalizeText("NPC Appearance", Translator.UiLanguage, LanguageConversionProxy.LanguageEnum.English));
+                        _selectedNpcCustomization = _npcCustomizations.Length - 1;
+                    });
+                }
+                ImGui.SameLine();
+                if (ImGui.Button(Translator.LocalizeUI("Remove")))
+                {
+                    npcCustomizations.Remove(_selectedNpcCustomization);
+                    Task.Run(async () =>
+                    {
+                        _npcCustomizations = Utility.FillNewList(npcCustomizations.Count, await Translator.LocalizeText("NPC Appearance", Translator.UiLanguage, LanguageConversionProxy.LanguageEnum.English));
+                        _selectedNpcCustomization = _npcCustomizations.Length - 1;
+                    });
+                }
+            }
+            else
+            {
+                _roleplayingQuest.NpcCustomizations = new System.Collections.Generic.Dictionary<int, NpcInformation>();
             }
         }
     }
