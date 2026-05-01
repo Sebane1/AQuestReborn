@@ -269,7 +269,7 @@ public class EditorWindow : Window, IDisposable
         string questPath = Path.Combine(Plugin.Configuration.QuestInstallFolder, _roleplayingQuestCreator.CurrentQuest.QuestName);
         _roleplayingQuestCreator.SaveQuest(questPath);
         Plugin.RoleplayingQuestManager.AddQuest(Path.Combine(questPath, "main.quest"), false, true);
-        Plugin.AQuestReborn.RefreshNpcs(Plugin.ClientState.TerritoryType, _roleplayingQuestCreator.CurrentQuest.QuestId, true);
+        Plugin.AQuestReborn.RefreshNpcs((ushort)Plugin.ClientState.TerritoryType, _roleplayingQuestCreator.CurrentQuest.QuestId, true);
         Plugin.AQuestReborn.RefreshMapMarkers();
     }
 
@@ -309,7 +309,7 @@ public class EditorWindow : Window, IDisposable
             if (ImGui.Button(Translator.LocalizeUI("Set Quest Objective Coordinates")))
             {
                 questObjective.Coordinates = Plugin.ObjectTable.LocalPlayer.Position;
-                questObjective.TerritoryId = Plugin.ClientState.TerritoryType;
+                questObjective.TerritoryId = (int)Plugin.ClientState.TerritoryType;
                 questObjective.TerritoryDiscriminator = Plugin.AQuestReborn.Discriminator;
             }
             ImGui.SetNextItemWidth(200);
@@ -1350,7 +1350,7 @@ public class EditorWindow : Window, IDisposable
                                 Objective = await Translator.LocalizeText("Objective Name Here", Translator.UiLanguage, LanguageEnum.English),
                                 Coordinates = Plugin.ObjectTable.LocalPlayer.Position,
                                 Rotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ObjectTable.LocalPlayer.Rotation), 0),
-                                TerritoryId = Plugin.ClientState.TerritoryType
+                                TerritoryId = (int)Plugin.ClientState.TerritoryType
                             });
                         });
                     }
@@ -1405,7 +1405,7 @@ public class EditorWindow : Window, IDisposable
                     Objective = await Translator.LocalizeText("Objective Name Here", Translator.UiLanguage, LanguageEnum.English),
                     Coordinates = Plugin.ObjectTable.LocalPlayer.Position,
                     Rotation = new Vector3(0, CoordinateUtility.ConvertRadiansToDegrees(Plugin.ObjectTable.LocalPlayer.Rotation), 0),
-                    TerritoryId = Plugin.ClientState.TerritoryType,
+                    TerritoryId = (int)Plugin.ClientState.TerritoryType,
                     TerritoryDiscriminator = Plugin.AQuestReborn.Discriminator
                 });
                 RefreshMenus();

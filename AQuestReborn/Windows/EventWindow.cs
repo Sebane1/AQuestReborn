@@ -562,7 +562,7 @@ public class EventWindow : Window, IDisposable
                     }
                     if (Plugin.RoleplayingQuestManager.SwapAppearanceData(_questDisplayObject.RoleplayingQuest, item.NpcName, item.AppearanceSwap))
                     {
-                        Plugin.AQuestReborn.UpdateNPCAppearance(Plugin.ClientState.TerritoryType, _questDisplayObject.RoleplayingQuest.QuestId, item.NpcName, customNpcAppearancePath);
+                        Plugin.AQuestReborn.UpdateNPCAppearance((ushort)Plugin.ClientState.TerritoryType, _questDisplayObject.RoleplayingQuest.QuestId, item.NpcName, customNpcAppearancePath);
                     }
                 }
                 if (_playerAppearanceSwapType != QuestEvent.AppearanceSwapType.RevertAppearance)
@@ -573,7 +573,7 @@ public class EventWindow : Window, IDisposable
                         {
                             customPlayerAppearancePath = item.PlayerAppearanceSwap;
                         }
-                        var data = Plugin.RoleplayingQuestManager.GetPlayerAppearanceForZone(Plugin.ClientState.TerritoryType, Plugin.AQuestReborn.Discriminator);
+                        var data = Plugin.RoleplayingQuestManager.GetPlayerAppearanceForZone((int)Plugin.ClientState.TerritoryType, Plugin.AQuestReborn.Discriminator);
                         if (data == null || customPlayerAppearancePath != data.AppearanceData)
                         {
                             Task.Run(() =>
@@ -700,7 +700,7 @@ public class EventWindow : Window, IDisposable
                                 {
                                     NpcName = item.NpcName,
                                     QuestId = _questDisplayObject.RoleplayingQuest.QuestId,
-                                    ZoneWhiteList = new List<int> { Plugin.ClientState.TerritoryType }
+                                    ZoneWhiteList = new List<int> { (int)Plugin.ClientState.TerritoryType }
                                 });
                                 _questFollowing = true;
                             }
@@ -722,7 +722,7 @@ public class EventWindow : Window, IDisposable
                                 {
                                     NpcName = item.NpcName,
                                     QuestId = _questDisplayObject.RoleplayingQuest.QuestId,
-                                    ZoneWhiteList = new List<int> { Plugin.ClientState.TerritoryType }
+                                    ZoneWhiteList = new List<int> { (int)Plugin.ClientState.TerritoryType }
                                 });
                                 _questFollowing = true;
                             }
@@ -777,7 +777,7 @@ public class EventWindow : Window, IDisposable
                                 {
                                     NpcName = item.NpcName,
                                     QuestId = _questDisplayObject.RoleplayingQuest.QuestId,
-                                    ZoneWhiteList = new List<int> { Plugin.ClientState.TerritoryType }
+                                    ZoneWhiteList = new List<int> { (int)Plugin.ClientState.TerritoryType }
                                 });
                                 _questFollowing = true;
                             }
@@ -801,7 +801,7 @@ public class EventWindow : Window, IDisposable
                                 {
                                     NpcName = item.NpcName,
                                     QuestId = _questDisplayObject.RoleplayingQuest.QuestId,
-                                    ZoneWhiteList = new List<int> { Plugin.ClientState.TerritoryType }
+                                    ZoneWhiteList = new List<int> { (int)Plugin.ClientState.TerritoryType }
                                 });
                                 _questFollowing = true;
                             }
@@ -916,7 +916,7 @@ public class EventWindow : Window, IDisposable
                 _blockProgression = false;
                 _objectiveSkip = false;
             }
-            Plugin.AQuestReborn.RefreshNpcs(Plugin.ClientState.TerritoryType, _questDisplayObject.RoleplayingQuest.QuestId, true);
+            Plugin.AQuestReborn.RefreshNpcs((ushort)Plugin.ClientState.TerritoryType, _questDisplayObject.RoleplayingQuest.QuestId, true);
             Plugin.AQuestReborn.RefreshMapMarkers();
             Plugin.SaveProgress();
         }

@@ -86,7 +86,7 @@ public class ObjectiveWindow : Window, IDisposable
         Position = new Vector2(0, 0);
         if (!Plugin.EventWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen && Plugin.ClientState.IsLoggedIn && Plugin.ObjectTable.LocalPlayer != null)
         {
-            var questChainObjectives = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(Plugin.ClientState.TerritoryType, Plugin.AQuestReborn.Discriminator);
+            var questChainObjectives = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone((int)Plugin.ClientState.TerritoryType, Plugin.AQuestReborn.Discriminator);
             if (!_alreadyLoadingQuestStartIcon)
             {
                 Task.Run(async () =>

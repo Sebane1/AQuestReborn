@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project Sdk="Dalamud.NET.SDK/14.0.0">
+<Project Sdk="Dalamud.NET.SDK/15.0.0">
   <PropertyGroup>
     <Version>0.0.0.1</Version>
     <Description>A Quest Reborn</Description>
@@ -39,6 +39,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Update="DalamudPackager" Version="14.0.2" />
+    <PackageReference Update="DalamudPackager" Version="15.0.0" />
   </ItemGroup>
 </Project>

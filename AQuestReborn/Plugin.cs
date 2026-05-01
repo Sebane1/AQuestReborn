@@ -195,13 +195,13 @@ public sealed class Plugin : IDalamudPlugin
         {
             try
             {
+                _alreadyInitialized = true;
                 _anamcoreManager = new AnamcoreManager();
                 _roleplayingQuestManager = new RoleplayingQuestManager(
                     Configuration.QuestChains, Configuration.QuestProgression, Configuration.CompletedObjectives,
                     Configuration.NpcPartyMembers, Configuration.PlayerAppearances, Configuration.QuestInstallFolder);
                 _emoteReaderHook = new EmoteReaderHooks(_gameInteropProvider, _clientState, _objectTable);
                 _aQuestReborn = new AQuestReborn.AQuestReborn(this);
-                _alreadyInitialized = true;
                 new PenumbraAndGlamourerIpcWrapper(PluginInterface);
             }
             catch (Exception ex)
@@ -261,6 +261,7 @@ public sealed class Plugin : IDalamudPlugin
             _brio?.Dispose();
             _aQuestReborn?.Dispose();
             _movement?.Dispose();
+            _emoteReaderHook?.Dispose();
             _mcdfEntryPoint?.Dispose();
             _objectTable?.Dispose();
             ECommonsMain.Dispose();

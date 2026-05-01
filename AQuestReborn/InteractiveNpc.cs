@@ -76,7 +76,7 @@ namespace AQuestReborn
             _horizontalRefreshTimer.Start();
         }
 
-        private void ClientState_TerritoryChanged(ushort obj)
+        private void ClientState_TerritoryChanged(uint obj)
         {
             Dispose();
         }
@@ -107,7 +107,7 @@ namespace AQuestReborn
             {
                 try
                 {
-                    if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking() && _plugin.ObjectTable.LocalPlayer != null)
+                    if (_plugin.AQuestReborn != null && !_plugin.AQuestReborn.WaitingForMcdfLoad && (AppearanceAccessUtils.AppearanceManager == null || !AppearanceAccessUtils.AppearanceManager.IsWorking()) && _plugin.ObjectTable.LocalPlayer != null)
                     {
                         if (_character != null)
                         {
@@ -250,7 +250,7 @@ namespace AQuestReborn
         {
             try
             {
-                if (!_plugin.AQuestReborn.WaitingForMcdfLoad && !AppearanceAccessUtils.AppearanceManager.IsWorking() && _plugin.ObjectTable.LocalPlayer != null)
+                if (_plugin.AQuestReborn != null && !_plugin.AQuestReborn.WaitingForMcdfLoad && (AppearanceAccessUtils.AppearanceManager == null || !AppearanceAccessUtils.AppearanceManager.IsWorking()) && _plugin.ObjectTable.LocalPlayer != null)
                 {
                     CheckPosing();
                     if (_posing != null)
@@ -266,14 +266,9 @@ namespace AQuestReborn
                                     Scale = scale
                                 };
                             }
-                            else
-                            {
-                                Dispose();
-                            }
                         }
                         catch
                         {
-                            Dispose();
                         }
                     }
                 }

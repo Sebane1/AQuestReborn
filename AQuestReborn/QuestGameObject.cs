@@ -16,7 +16,7 @@ namespace SamplePlugin
             _clientState = clientState;
         }
 
-        int IQuestGameObject.TerritoryId => _clientState.TerritoryType;
+        int IQuestGameObject.TerritoryId => (int)_clientState.TerritoryType;
 
         string IQuestGameObject.Name => _objectTable.LocalPlayer != null ? _objectTable.LocalPlayer.Name.ToString() : "";
 

@@ -199,14 +199,16 @@ public class MainWindow : Window, IDisposable
             {
                 try
                 {
-                    Plugin.RoleplayingQuestManager.AddQuest(Path.Combine(Plugin.Configuration.QuestInstallFolder, roleplayingQuest.QuestName + @"\main.quest"));
+                    var questPath = Path.Combine(Plugin.Configuration.QuestInstallFolder, roleplayingQuest.QuestName + @"\main.quest");
+                    Plugin.RoleplayingQuestManager.AddQuest(questPath);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    Plugin.PluginLog.Warning(ex, ex.Message);
                     Plugin.RoleplayingQuestManager.QuestChains.Remove(roleplayingQuest.QuestId);
                 }
-                Plugin.AQuestReborn.RefreshNpcs(Plugin.ClientState.TerritoryType, roleplayingQuest.QuestId);
-                Plugin.AQuestReborn.RefreshMapMarkers();
+                Plugin.AQuestReborn?.RefreshNpcs((ushort)Plugin.ClientState.TerritoryType, roleplayingQuest.QuestId);
+                Plugin.AQuestReborn?.RefreshMapMarkers();
                 Plugin.SaveProgress();
             }
             ImGui.SameLine();
