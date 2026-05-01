@@ -77,6 +77,11 @@ public class MainWindow : Window, IDisposable
                     DrawInitialSetup();
                     ImGui.EndTabItem();
                 }
+                if (ImGui.BeginTabItem(Translator.LocalizeUI("Custom NPCs")))
+                {
+                    DrawCustomNpcTab();
+                    ImGui.EndTabItem();
+                }
                 ImGui.EndTabBar();
             }
             if (ImGui.Button(Translator.LocalizeUI("Donate To Further Development"), new Vector2(Size.Value.X, 50)))
@@ -325,6 +330,13 @@ public class MainWindow : Window, IDisposable
             {
                 Plugin.RoleplayingQuestManager.ScanDirectory();
             }
+        }
+    }
+    private void DrawCustomNpcTab()
+    {
+        if (Plugin.CustomNpcWindow != null)
+        {
+            Plugin.CustomNpcWindow.Draw();
         }
     }
 }

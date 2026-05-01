@@ -1,3 +1,4 @@
+using AQuestReborn.CustomNpc;
 using Dalamud.Configuration;
 using FFXIVClientStructs.FFXIV.Common.Lua;
 using LanguageConversionProxy;
@@ -41,6 +42,7 @@ public class Configuration : IPluginConfiguration
     private Dictionary<string, Dictionary<string, NpcPartyMember>> _npcPartyMembers = new Dictionary<string, Dictionary<string, NpcPartyMember>>();
     private Dictionary<string, PlayerAppearanceData> _playerAppearances = new Dictionary<string, PlayerAppearanceData>();
     private LanguageEnum _questLanguage = LanguageEnum.English;
+    private List<CustomNpcCharacter> _customNpcCharacters = new List<CustomNpcCharacter>();
 
     public Dictionary<string, int> QuestProgression { get => _questProgression; set => _questProgression = value; }
     public Dictionary<string, List<string>> CompletedObjectives { get { return _completedObjectives; } set { _completedObjectives = value; } }
@@ -48,6 +50,7 @@ public class Configuration : IPluginConfiguration
     public Dictionary<string, Dictionary<string, NpcPartyMember>> NpcPartyMembers { get => _npcPartyMembers; set => _npcPartyMembers = value; }
     public Dictionary<string, PlayerAppearanceData> PlayerAppearances { get => _playerAppearances; set => _playerAppearances = value; }
     public LanguageEnum QuestLanguage { get => _questLanguage; set => _questLanguage = value; }
+    public List<CustomNpcCharacter> CustomNpcCharacters { get => _customNpcCharacters; set => _customNpcCharacters = value; }
 
     // the below exist just to make saving less cumbersome
     public void Save()

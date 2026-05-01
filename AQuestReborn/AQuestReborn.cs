@@ -37,6 +37,7 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+using AQuestReborn.CustomNpc;
 using static RoleplayingQuestCore.QuestEvent;
 using Utf8String = FFXIVClientStructs.FFXIV.Client.System.String.Utf8String;
 
@@ -94,6 +95,9 @@ namespace AQuestReborn
         private static nint _playerAddress;
         private CutsceneCamera _cutsceneCamera;
         private bool _dummyNpcSpawned;
+        private Dictionary<string, InteractiveNpc> _customNpcDictionary = new Dictionary<string, InteractiveNpc>();
+        private Dictionary<string, ICharacter> _customNpcCharacters = new Dictionary<string, ICharacter>();
+        private Dictionary<string, NPCConversationManager> _customNpcConversationManagers = new Dictionary<string, NPCConversationManager>();
 
         public AQuestReborn(Plugin plugin)
         {
@@ -295,6 +299,16 @@ namespace AQuestReborn
                 _mcdfRefreshTimer.Reset();
                 _interactiveNpcDictionary.Clear();
                 _hasCheckedForPlayerAppearance = false;
+
+                // Clean up custom NPC references (Brio actors are destroyed on zone change)
+                foreach (var kvp in _customNpcDictionary)
+                {
+                    try { kvp.Value.Dispose(); } catch { }
+                }
+                _customNpcDictionary.Clear();
+                _customNpcCharacters.Clear();
+                _customNpcConversationManagers.Clear();
+
                 Task.Run(() =>
                 {
                     try
@@ -308,6 +322,9 @@ namespace AQuestReborn
                         _checkForPartyMembers = true;
                         _cutsceneNpcSpawned = false;
                         _dummyNpcSpawned = false;
+
+                        // Respawn custom NPCs that were active before zone change
+                        RespawnActiveCustomNpcs();
                     }
                     catch (Exception e)
                     {
@@ -318,6 +335,20 @@ namespace AQuestReborn
             catch (Exception e)
             {
                 Plugin.PluginLog.Warning(e, e.Message);
+            }
+        }
+
+        private void RespawnActiveCustomNpcs()
+        {
+            if (Plugin.Configuration.CustomNpcCharacters == null) return;
+            foreach (var npcData in Plugin.Configuration.CustomNpcCharacters)
+            {
+                if (npcData.IsFollowingPlayer)
+                {
+                    // Small delay to ensure the zone is fully loaded
+                    Thread.Sleep(2000);
+                    SummonCustomNpc(npcData);
+                }
             }
         }
 
@@ -1112,5 +1143,198 @@ namespace AQuestReborn
                 _objectiveTimers.Remove(questId);
             }
         }
+
+        #region Custom NPC Management
+        public void SummonCustomNpc(CustomNpcCharacter npcData)
+        {
+            if (_actorSpawnService == null || Plugin.ObjectTable.LocalPlayer == null) return;
+            if (_customNpcDictionary.ContainsKey(npcData.NpcName))
+            {
+                // Already summoned, dismiss instead
+                DismissCustomNpc(npcData.NpcName);
+                return;
+            }
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    Thread.Sleep(500);
+                    Plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        try
+                        {
+                            var playerPos = Plugin.ObjectTable.LocalPlayer.Position;
+                            var spawnPos = playerPos + new Vector3(2, 0, 2);
+                            ICharacter character = null;
+                            if (_actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
+                                spawnPos, 0) && character != null)
+                            {
+                                _customNpcCharacters[npcData.NpcName] = character;
+                                var npc = new InteractiveNpc(Plugin, character);
+                                _customNpcDictionary[npcData.NpcName] = npc;
+
+                                // Apply glamourer design by GUID
+                                if (!string.IsNullOrEmpty(npcData.NpcGlamourerAppearanceString))
+                                {
+                                    if (Guid.TryParse(npcData.NpcGlamourerAppearanceString, out var designGuid))
+                                    {
+                                        PenumbraAndGlamourerIpcWrapper.Instance.ApplyDesign.Invoke(designGuid, character.ObjectIndex);
+                                    }
+                                }
+
+                                Plugin.AnamcoreManager.SetVoice(character, 0);
+
+                                // Start following the player
+                                npc.FollowPlayer(2);
+
+                                // Create conversation manager
+                                string baseDir = Plugin.Configuration.QuestInstallFolder ?? Path.GetTempPath();
+                                string npcMemoryDir = Path.Combine(baseDir, "CustomNpcMemories");
+                                Directory.CreateDirectory(npcMemoryDir);
+                                var conversationManager = new NPCConversationManager(
+                                    npcData.NpcName, npcMemoryDir, Plugin, character);
+                                _customNpcConversationManagers[npcData.NpcName] = conversationManager;
+
+                                Plugin.ChatGui.Print("[A Quest Reborn] " + npcData.NpcName + " has been summoned!");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Plugin.PluginLog.Warning(ex, "Failed to summon custom NPC: " + ex.Message);
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Warning(ex, "Failed to summon custom NPC: " + ex.Message);
+                }
+            });
+        }
+
+        public void DismissCustomNpc(string npcName)
+        {
+            if (_customNpcDictionary.ContainsKey(npcName))
+            {
+                var npc = _customNpcDictionary[npcName];
+                npc.StopFollowingPlayer();
+                npc.Dispose();
+                _customNpcDictionary.Remove(npcName);
+            }
+            if (_customNpcCharacters.ContainsKey(npcName))
+            {
+                try
+                {
+                    if (_actorSpawnService != null)
+                    {
+                        _actorSpawnService.DestroyObject(_customNpcCharacters[npcName]);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Warning(ex, "Failed to destroy custom NPC character: " + ex.Message);
+                }
+                _customNpcCharacters.Remove(npcName);
+            }
+            if (_customNpcConversationManagers.ContainsKey(npcName))
+            {
+                _customNpcConversationManagers.Remove(npcName);
+            }
+            // Update the config state
+            foreach (var npc in Plugin.Configuration.CustomNpcCharacters)
+            {
+                if (npc.NpcName == npcName)
+                {
+                    npc.IsFollowingPlayer = false;
+                    break;
+                }
+            }
+            Plugin.ChatGui.Print("[A Quest Reborn] " + npcName + " has been dismissed.");
+        }
+
+        public void HandleCustomNpcChat(IPlayerCharacter sender, string message)
+        {
+            // Find the closest custom NPC to chat with
+            string targetNpcName = null;
+            float closestDistance = float.MaxValue;
+            foreach (var kvp in _customNpcCharacters)
+            {
+                float dist = Vector3.Distance(sender.Position, kvp.Value.Position);
+                if (dist < closestDistance)
+                {
+                    closestDistance = dist;
+                    targetNpcName = kvp.Key;
+                }
+            }
+            if (targetNpcName == null)
+            {
+                Plugin.ChatGui.PrintError("[A Quest Reborn] No custom NPCs are currently summoned.");
+                return;
+            }
+            if (!_customNpcConversationManagers.ContainsKey(targetNpcName))
+            {
+                Plugin.ChatGui.PrintError("[A Quest Reborn] Conversation manager not found for " + targetNpcName);
+                return;
+            }
+            // Find the NPC personality data
+            CustomNpcCharacter npcData = null;
+            foreach (var npc in Plugin.Configuration.CustomNpcCharacters)
+            {
+                if (npc.NpcName == targetNpcName)
+                {
+                    npcData = npc;
+                    break;
+                }
+            }
+            if (npcData == null) return;
+
+            var npcCharacter = _customNpcCharacters[targetNpcName];
+            var conversationManager = _customNpcConversationManagers[targetNpcName];
+
+            // Print the player's message
+            Plugin.ChatGui.Print(new Dalamud.Game.Text.XivChatEntry()
+            {
+                Name = sender.Name,
+                Message = message,
+                Type = Dalamud.Game.Text.XivChatType.Party
+            });
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    string response = await conversationManager.SendMessage(
+                        sender, npcCharacter,
+                        npcData.NpcName,
+                        npcData.NPCGreeting,
+                        message,
+                        "The world of Final Fantasy XIV, Eorzea.",
+                        npcData.NpcPersonality);
+
+                    if (!string.IsNullOrEmpty(response))
+                    {
+                        Plugin.ChatGui.Print(new Dalamud.Game.Text.XivChatEntry()
+                        {
+                            Name = npcData.NpcName,
+                            Message = response,
+                            Type = Dalamud.Game.Text.XivChatType.Party
+                        });
+
+                        // Trigger lip sync on the NPC
+                        if (npcCharacter != null)
+                        {
+                            Plugin.AnamcoreManager.TriggerLipSync(npcCharacter, 0);
+                            await Task.Delay(3000);
+                            Plugin.AnamcoreManager.StopLipSync(npcCharacter);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Warning(ex, "NPC Chat Error: " + ex.Message);
+                }
+            });
+        }
+        #endregion
     }
 }

@@ -8,7 +8,8 @@ using SamplePlugin.Windows;
 using RoleplayingQuestCore;
 using System;
 using System.Collections.Generic;
-using Dalamud.Game.ClientState.Objects.Types;
+using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 using System.Linq;
 using System.Diagnostics;
 using Dalamud.Game.Gui.Toast;
@@ -16,7 +17,6 @@ using RoleplayingMediaCore;
 using RoleplayingVoiceDalamudWrapper;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.Game;
-using System.Threading.Tasks;
 using Brio.Game.Actor;
 using Brio.IPC;
 using Lumina.Excel.Sheets;
@@ -25,6 +25,7 @@ using Anamnesis.GameData;
 using EmbedIO.Authentication;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using AQuestReborn;
+using AQuestReborn.CustomNpc;
 using ArtemisRoleplayingKit;
 using AnamCore;
 using AQuestReborn.UIAtlasing;
@@ -48,6 +49,8 @@ public sealed class Plugin : IDalamudPlugin
 
     private const string CommandName = "/questreborn";
     private const string CommandName2 = "/questchat";
+    private const string CommandName3 = "/npcchat";
+    private const string CommandName4 = "/npcsummon";
 
     public Configuration Configuration { get; init; }
 
@@ -73,6 +76,7 @@ public sealed class Plugin : IDalamudPlugin
     private AQuestReborn.AQuestReborn _aQuestReborn;
     private Brio.Brio _brio;
     private MoveController _movement;
+    private CustomNpcWindow _customNpcWindow;
 
     private MainWindow MainWindow { get; init; }
     public DialogueBackgroundWindow DialogueBackgroundWindow { get; private set; }
@@ -83,6 +87,7 @@ public sealed class Plugin : IDalamudPlugin
     public EditorWindow EditorWindow { get; init; }
     public ChoiceWindow ChoiceWindow { get; private set; }
     public EventWindow EventWindow { get; init; }
+    public CustomNpcWindow CustomNpcWindow { get => _customNpcWindow; }
     public IClientState ClientState { get => _clientState; set => _clientState = value; }
     public RoleplayingQuestManager RoleplayingQuestManager { get => _roleplayingQuestManager; set => _roleplayingQuestManager = value; }
     public IToastGui ToastGui { get => _toastGui; set => _toastGui = value; }
@@ -152,6 +157,16 @@ public sealed class Plugin : IDalamudPlugin
         QuestAcceptanceWindow = new QuestAcceptanceWindow(this);
         RewardWindow = new RewardWindow(this);
         TitleCardWindow = new TitleCardWindow(this, textureProvider);
+        _customNpcWindow = new CustomNpcWindow(dalamudPluginInterface);
+        _customNpcWindow.Plugin = this;
+        if (Configuration.CustomNpcCharacters.Count == 0)
+        {
+            MigrateArtemisNpcData();
+        }
+        if (Configuration.CustomNpcCharacters.Count > 0)
+        {
+            _customNpcWindow.LoadNPCCharacters(Configuration.CustomNpcCharacters);
+        }
 
         WindowSystem.AddWindow(TitleCardWindow);
         WindowSystem.AddWindow(EditorWindow);
@@ -162,6 +177,7 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.AddWindow(QuestAcceptanceWindow);
         WindowSystem.AddWindow(RewardWindow);
         WindowSystem.AddWindow(MainWindow);
+        WindowSystem.AddWindow(_customNpcWindow);
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
             HelpMessage = "Opens settings."
@@ -169,6 +185,14 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.AddHandler(CommandName2, new CommandInfo(OnCommandChat)
         {
             HelpMessage = "For chat objectives"
+        });
+        CommandManager.AddHandler(CommandName3, new CommandInfo(OnCommandNpcChat)
+        {
+            HelpMessage = "Chat with a custom NPC"
+        });
+        CommandManager.AddHandler(CommandName4, new CommandInfo(OnCommandNpcSummon)
+        {
+            HelpMessage = "Summon or dismiss a custom NPC"
         });
 
         PluginInterface.UiBuilder.Draw += DrawUI;
@@ -203,6 +227,14 @@ public sealed class Plugin : IDalamudPlugin
                 _emoteReaderHook = new EmoteReaderHooks(_gameInteropProvider, _clientState, _objectTable);
                 _aQuestReborn = new AQuestReborn.AQuestReborn(this);
                 new PenumbraAndGlamourerIpcWrapper(PluginInterface);
+                if (Configuration.CustomNpcCharacters.Count == 0)
+                {
+                    MigrateArtemisNpcData();
+                }
+                if (Configuration.CustomNpcCharacters.Count > 0)
+                {
+                    _customNpcWindow.LoadNPCCharacters(Configuration.CustomNpcCharacters);
+                }
             }
             catch (Exception ex)
             {
@@ -210,11 +242,94 @@ public sealed class Plugin : IDalamudPlugin
             }
         }
     }
+    private void MigrateArtemisNpcData()
+    {
+        try
+        {
+            string artemisConfigPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "XIVLauncher", "pluginConfigs", "RoleplayingVoiceDalamud.json");
+            if (File.Exists(artemisConfigPath))
+            {
+                string json = File.ReadAllText(artemisConfigPath);
+                var root = JObject.Parse(json);
+                var npcArray = root["CustomNpcCharacters"] as JArray;
+                if (npcArray != null && npcArray.Count > 0)
+                {
+                    var migratedNpcs = new List<CustomNpcCharacter>();
+                    foreach (var item in npcArray)
+                    {
+                        var npc = new CustomNpcCharacter
+                        {
+                            NpcName = item["NpcName"]?.ToString() ?? "New NPC",
+                            NPCGreeting = item["NPCGreeting"]?.ToString() ?? "Why hello there! How can I help you today?",
+                            NpcPersonality = item["NpcPersonality"]?.ToString() ?? "",
+                            NpcGlamourerAppearanceString = item["NpcGlamourerAppearanceString"]?.ToString() ?? "",
+                        };
+                        migratedNpcs.Add(npc);
+                    }
+                    if (migratedNpcs.Count > 0)
+                    {
+                        Configuration.CustomNpcCharacters = migratedNpcs;
+                        Configuration.Save();
+                        _chatGui.Print("[A Quest Reborn] Migrated " + migratedNpcs.Count + " Custom NPC(s) from Artemis Roleplaying Kit.");
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            PluginLog.Warning(ex, "Failed to migrate Artemis NPC data: " + ex.Message);
+        }
+    }
     private void OnCommandChat(string command, string arguments)
     {
         if (!EventWindow.IsOpen && !ChoiceWindow.IsOpen)
         {
             _roleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.SayPhrase, arguments);
+        }
+    }
+    private void OnCommandNpcChat(string command, string arguments)
+    {
+        if (_clientState.IsLoggedIn && _objectTable.LocalPlayer != null && _aQuestReborn != null)
+        {
+            if (!string.IsNullOrEmpty(arguments))
+            {
+                _aQuestReborn.HandleCustomNpcChat(_objectTable.LocalPlayer, arguments);
+            }
+        }
+    }
+    private void OnCommandNpcSummon(string command, string arguments)
+    {
+        if (_clientState.IsLoggedIn && _objectTable.LocalPlayer != null && _aQuestReborn != null)
+        {
+            if (!string.IsNullOrEmpty(arguments))
+            {
+                string npcName = arguments.Trim();
+                bool found = false;
+                foreach (var npc in Configuration.CustomNpcCharacters)
+                {
+                    if (npc.NpcName.ToLower().Contains(npcName.ToLower()))
+                    {
+                        if (!npc.IsFollowingPlayer)
+                        {
+                            _aQuestReborn.SummonCustomNpc(npc);
+                            npc.IsFollowingPlayer = true;
+                        }
+                        else
+                        {
+                            _aQuestReborn.DismissCustomNpc(npc.NpcName);
+                            npc.IsFollowingPlayer = false;
+                        }
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    _chatGui.PrintError("Could not find custom NPC with the name \"" + npcName + "\"");
+                }
+            }
         }
     }
     public bool GetAutomationGlobalState()
@@ -257,6 +372,9 @@ public sealed class Plugin : IDalamudPlugin
             MainWindow?.Dispose();
             WindowSystem?.RemoveAllWindows();
             CommandManager.RemoveHandler(CommandName);
+            CommandManager.RemoveHandler(CommandName2);
+            CommandManager.RemoveHandler(CommandName3);
+            CommandManager.RemoveHandler(CommandName4);
             _mediaManager?.Dispose();
             _brio?.Dispose();
             _aQuestReborn?.Dispose();
