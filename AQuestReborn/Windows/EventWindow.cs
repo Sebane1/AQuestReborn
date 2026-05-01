@@ -19,6 +19,8 @@ using System.IO;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+using NAudio.Wave.SampleProviders;
+using Dalamud.Game.ClientState.Objects.Types;
 using PenumbraAndGlamourerHelpers.IPC.ThirdParty.Glamourer;
 
 namespace SamplePlugin.Windows;
@@ -634,7 +636,43 @@ public class EventWindow : Window, IDisposable
                 {
                     if (File.Exists(customDialoguePath))
                     {
-                        Plugin.MediaManager.PlayMedia(AQuestReborn.AQuestReborn.PlayerObject, customDialoguePath, RoleplayingMediaCore.SoundType.NPC, true);
+                        ICharacter npcForLipSync = null;
+                        if (Plugin.AQuestReborn.SpawnedNPCs.ContainsKey(_questDisplayObject.RoleplayingQuest.QuestId)
+                            && Plugin.AQuestReborn.SpawnedNPCs[_questDisplayObject.RoleplayingQuest.QuestId].ContainsKey(item.NpcName))
+                        {
+                            npcForLipSync = Plugin.AQuestReborn.SpawnedNPCs[_questDisplayObject.RoleplayingQuest.QuestId][item.NpcName];
+                        }
+                        bool isTalking = false;
+                        EventHandler<StreamVolumeEventArgs> volumeHandler = null;
+                        EventHandler<string> stoppedHandler = null;
+                        if (npcForLipSync != null)
+                        {
+                            var npcRef = npcForLipSync;
+                            volumeHandler = (s, e) =>
+                            {
+                                try
+                                {
+                                    float maxVol = e.MaxSampleValues.Length > 0 ? e.MaxSampleValues[0] : 0;
+                                    if (maxVol > 0.05f && !isTalking)
+                                    {
+                                        isTalking = true;
+                                        Plugin.AnamcoreManager.TriggerLipSync(npcRef, 0);
+                                    }
+                                    else if (maxVol <= 0.05f && isTalking)
+                                    {
+                                        isTalking = false;
+                                        Plugin.AnamcoreManager.StopLipSync(npcRef);
+                                    }
+                                }
+                                catch { }
+                            };
+                            stoppedHandler = (s, e) =>
+                            {
+                                try { Plugin.AnamcoreManager.StopLipSync(npcRef); } catch { }
+                            };
+                        }
+                        Plugin.MediaManager.PlayMedia(AQuestReborn.AQuestReborn.PlayerObject, customDialoguePath,
+                            RoleplayingMediaCore.SoundType.NPC, true, 0, default, stoppedHandler, volumeHandler);
                     }
                     if (File.Exists(customBGMPath))
                     {
