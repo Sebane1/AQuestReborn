@@ -102,7 +102,7 @@ public class MainWindow : Window, IDisposable
 
     private void DrawInitialSetup()
     {
-        if (ImGui.Button(Translator.LocalizeUI("Pick Empty Folder For Custom Quest Installs (Cannot Require Admin Rights)")))
+        if (ImGui.Button(Translator.LocalizeUI("Pick Empty Folder For A Quest Reborn Cache (Cannot Require Admin Rights)")))
         {
             _fileDialogManager.Reset();
             ImGui.OpenPopup(Translator.LocalizeUI("OpenPathDialog##editorwindow"));
