@@ -351,13 +351,21 @@ public class NpcChatWindow : Window, IDisposable
                             break;
                         }
                     }
+
+                    // Strip asterisk actions for the UI display
+                    cleanResponse = System.Text.RegularExpressions.Regex.Replace(cleanResponse, @"\*[^*]+\*", "").Trim();
+                    if (string.IsNullOrWhiteSpace(cleanResponse))
+                    {
+                        cleanResponse = "...";
+                    }
+
                     // Strip surrounding quotes if present
                     if (cleanResponse.StartsWith("\"") && cleanResponse.EndsWith("\"") && cleanResponse.Length > 2)
                     {
                         cleanResponse = cleanResponse.Substring(1, cleanResponse.Length - 2);
                     }
                     // Always strip any trailing quote
-                    cleanResponse = cleanResponse.TrimEnd('"');
+                    cleanResponse = cleanResponse.TrimEnd('"').Trim();
 
                     _plugin.PluginLog.Information($"NPC Chat: Clean display text: [{cleanResponse}]");
 

@@ -299,10 +299,18 @@ namespace AQuestReborn.CustomNpc
                     break;
                 }
             }
+
+            // Strip asterisk actions for the UI display
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"\*[^*]+\*", "").Trim();
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                text = "...";
+            }
+
             if (text.StartsWith("\"") && text.EndsWith("\"") && text.Length > 2)
                 text = text.Substring(1, text.Length - 2);
-            text = text.TrimEnd('"');
-            return text.Trim();
+            text = text.TrimEnd('"').Trim();
+            return text;
         }
 
         /// <summary>
