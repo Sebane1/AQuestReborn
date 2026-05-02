@@ -45,6 +45,7 @@ namespace AQuestReborn
         private bool _disposed;
         private Vector3 _currentScale;
         private PosingCapability? _posing;
+        private ActionTimelineCapability? _actionTimeline;
         private int _index;
         private bool _followDataLock;
         private bool firstPositionSet;
@@ -95,7 +96,9 @@ namespace AQuestReborn
             _plugin.ClientState.TerritoryChanged += ClientState_TerritoryChanged;
             BrioAccessUtils.EntityManager.SetSelectedEntity(_character);
             BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
+            BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<ActionTimelineCapability>(out var actionTimeline);
             _posing = posing;
+            _actionTimeline = actionTimeline;
             _index = _plugin.AQuestReborn.InteractiveNpcDictionary.Count;
             _currentPosition = character.Position;
             _defaultPosition = character.Position;
@@ -219,9 +222,14 @@ namespace AQuestReborn
                                     {
                                         _wasMoving = false;
                                         if (inCombat)
-                                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, 34); // Re-apply combat stance
+                                        {
+                                            _actionTimeline?.ApplyBaseOverride(34, true); // Re-apply combat stance
+                                        }
                                         else
+                                        {
+                                            _actionTimeline?.ResetBaseOverride();
                                             _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                                        }
                                     }
 
                                     if (inCombat)
@@ -230,7 +238,7 @@ namespace AQuestReborn
                                         if (!_wasInCombat)
                                         {
                                             _wasInCombat = true;
-                                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, 34); // Draw Weapon / Combat Stance
+                                            _actionTimeline?.ApplyBaseOverride(34, true); // Draw Weapon / Combat Stance
                                         }
 
                                         if (_plugin.ObjectTable.LocalPlayer.TargetObject != null)
@@ -270,6 +278,7 @@ namespace AQuestReborn
                                         if (_wasInCombat)
                                         {
                                             _wasInCombat = false;
+                                            _actionTimeline?.ResetBaseOverride();
                                             _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
                                             _lastPlayerTimelineId = 0;
                                             _nextCombatAnimationToPlay = 0;
