@@ -141,9 +141,24 @@ namespace AQuestReborn
                                         + GetVerticalOffsetFromPlayer((_index) - ((float)(_plugin.AQuestReborn.InteractiveNpcDictionary.Count - 1) / 2f))
                                         + GetHorizontalOffsetFromPlayer(_horizontalOffset);
                                 float distToTarget = Vector3.Distance(_currentPosition, targetPosition);
+                                // Check if player is facing the NPC (within ~45° cone)
+                                bool playerFacingNpc = false;
+                                if (distToTarget > 0.5f)
+                                {
+                                    float playerRot = _plugin.ObjectTable.LocalPlayer.Rotation; // radians, yaw
+                                    float dx = _currentPosition.X - _plugin.ObjectTable.LocalPlayer.Position.X;
+                                    float dz = _currentPosition.Z - _plugin.ObjectTable.LocalPlayer.Position.Z;
+                                    float angleToNpc = MathF.Atan2(dx, dz);
+                                    float diff = angleToNpc - playerRot;
+                                    // Normalize to [-π, π]
+                                    while (diff > MathF.PI) diff -= 2f * MathF.PI;
+                                    while (diff < -MathF.PI) diff += 2f * MathF.PI;
+                                    playerFacingNpc = MathF.Abs(diff) < MathF.PI / 4f; // 45° half-angle
+                                }
                                 // Hysteresis: start moving at 4y, keep moving until within 2y
-                                if (distToTarget > 4) _isFollowMoving = true;
-                                if (distToTarget <= 2) _isFollowMoving = false;
+                                // Freeze when player is directly facing the NPC
+                                if (!playerFacingNpc && distToTarget > 4) _isFollowMoving = true;
+                                if (distToTarget <= 2 || playerFacingNpc) _isFollowMoving = false;
                                 if (_isFollowMoving)
                                 {
                                     // Always reset idle timer while moving
@@ -156,6 +171,8 @@ namespace AQuestReborn
                                         SetTransform(_currentPosition, _currentRotation, _currentScale);
                                         return;
                                     }
+                                    // Clear head target while moving so NPC looks forward
+                                    _plugin.AnamcoreManager.ClearHeadTarget(_character.Address);
                                     // Smooth rotation BEFORE moving
                                     if (distToTarget > 0.5f)
                                     {
@@ -204,6 +221,16 @@ namespace AQuestReborn
                                     else if (!_idleEmotePlaying)
                                     {
                                         _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                                    }
+                                    // Set head target to player if within range, otherwise look forward
+                                    if (_plugin.ObjectTable.LocalPlayer != null
+                                        && Vector3.Distance(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position) < 3f)
+                                    {
+                                        _plugin.AnamcoreManager.SetHeadTarget(_character.Address, _plugin.ObjectTable.LocalPlayer.EntityId);
+                                    }
+                                    else
+                                    {
+                                        _plugin.AnamcoreManager.ClearHeadTarget(_character.Address);
                                     }
                                 }
                                 SetTransform(_currentPosition, _currentRotation, _currentScale);
@@ -288,6 +315,16 @@ namespace AQuestReborn
                                             _currentPosition = Vector3.Lerp(_currentPosition, _defaultPosition, 5 * delta);
                                             _currentRotation = Vector3.Lerp(_currentRotation, _defaultRotation, 1);
                                             _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
+                                        }
+                                        // Head tracking for non-follow NPCs
+                                        if (_plugin.ObjectTable.LocalPlayer != null
+                                            && Vector3.Distance(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position) < 3f)
+                                        {
+                                            _plugin.AnamcoreManager.SetHeadTarget(_character.Address, _plugin.ObjectTable.LocalPlayer.EntityId);
+                                        }
+                                        else
+                                        {
+                                            _plugin.AnamcoreManager.ClearHeadTarget(_character.Address);
                                         }
                                     }
                                     SetTransform(_currentPosition, _currentRotation, _currentScale);

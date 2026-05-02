@@ -343,7 +343,14 @@ namespace AQuestReborn.CustomNpc
                             if (!isSpawned)
                             {
                                 _plugin.AQuestReborn.SummonCustomNpc(_customNpcCharacters[_currentSelection]);
-                                _customNpcCharacters[_currentSelection].IsFollowingPlayer = true;
+                                _customNpcCharacters[_currentSelection].IsFollowingPlayer = false;
+                                _customNpcCharacters[_currentSelection].IsStaying = true;
+                                _customNpcCharacters[_currentSelection].StayTerritoryId = _plugin.ClientState.TerritoryType;
+                                var playerPos = _plugin.ObjectTable.LocalPlayer?.Position ?? System.Numerics.Vector3.Zero;
+                                var spawnPos = playerPos + new System.Numerics.Vector3(2, 0, 2);
+                                _customNpcCharacters[_currentSelection].StayPositionX = spawnPos.X;
+                                _customNpcCharacters[_currentSelection].StayPositionY = spawnPos.Y;
+                                _customNpcCharacters[_currentSelection].StayPositionZ = spawnPos.Z;
                             }
                             else
                             {
