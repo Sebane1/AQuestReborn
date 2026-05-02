@@ -2,6 +2,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Bindings.ImGui;
 using PenumbraAndGlamourerHelpers;
+using RoleplayingQuestCore;
 using SamplePlugin;
 using System;
 using System.Collections.Generic;
@@ -21,6 +22,10 @@ namespace AQuestReborn.CustomNpc
         private int _designListSelectedIndex = 0;
         Plugin _plugin;
 
+        // Idle emote list built from Excel sheet
+        private string[] _idleEmoteNames = new string[] { "None" };
+        private ushort[] _idleEmoteRowIds = new ushort[] { 0 };
+
         public Plugin Plugin { get => _plugin; set => _plugin = value; }
         public List<CustomNpcCharacter> CustomNpcCharacters { get => _customNpcCharacters; set => _customNpcCharacters = value; }
 
@@ -35,6 +40,7 @@ namespace AQuestReborn.CustomNpc
         {
             base.OnOpen();
             RefreshDesignList();
+            RefreshEmoteList();
         }
         public override void OnClose()
         {
@@ -47,6 +53,31 @@ namespace AQuestReborn.CustomNpc
             list.Sort();
             _designListContents = list.ToArray();
         }
+        public void RefreshEmoteList()
+        {
+            if (_plugin == null) return;
+            try
+            {
+                var emotes = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>();
+                var names = new List<string> { "None" };
+                var rowIds = new List<ushort> { 0 };
+                foreach (var emote in emotes)
+                {
+                    string name = emote.Name.ToString();
+                    if (!string.IsNullOrWhiteSpace(name) && emote.ActionTimeline[0].RowId > 0)
+                    {
+                        names.Add(name);
+                        rowIds.Add((ushort)emote.RowId);
+                    }
+                }
+                _idleEmoteNames = names.ToArray();
+                _idleEmoteRowIds = rowIds.ToArray();
+            }
+            catch (Exception e)
+            {
+                _plugin?.PluginLog?.Warning(e, "Failed to load emote list");
+            }
+        }
 
         public override void Draw()
         {
@@ -56,10 +87,14 @@ namespace AQuestReborn.CustomNpc
                 {
                     RefreshDesignList();
                 }
+                if (_idleEmoteNames.Length <= 1)
+                {
+                    RefreshEmoteList();
+                }
                 RefreshNPCItemNames();
                 ImGui.BeginTable("##CustomNpcTable", 2);
-                ImGui.TableSetupColumn("Custom NPC", ImGuiTableColumnFlags.WidthFixed, 200);
-                ImGui.TableSetupColumn("Custom NPC Configuration", ImGuiTableColumnFlags.WidthStretch, 300);
+                ImGui.TableSetupColumn(Translator.LocalizeUI("Custom NPC"), ImGuiTableColumnFlags.WidthFixed, 200);
+                ImGui.TableSetupColumn(Translator.LocalizeUI("Custom NPC Configuration"), ImGuiTableColumnFlags.WidthStretch, 300);
                 ImGui.TableHeadersRow();
                 ImGui.TableNextRow();
                 ImGui.TableSetColumnIndex(0);
@@ -131,14 +166,14 @@ namespace AQuestReborn.CustomNpc
                         if (idx >= 0) _designListSelectedIndex = idx;
                     }
 
-                    ImGui.LabelText("##personalityLabel", "NPC Name");
+                    ImGui.LabelText("##personalityLabel", Translator.LocalizeUI("NPC Name"));
                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
                     if (ImGui.InputText("##NPCName", ref _customNpcCharacters[_currentSelection].NpcName, 255))
                     {
                         SaveNPCCharacters();
                     }
 
-                    ImGui.LabelText("##glamourerLabel", "Glamourer Design Appearance");
+                    ImGui.LabelText("##glamourerLabel", Translator.LocalizeUI("Glamourer Design Appearance"));
                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
                     if (ImGui.Combo("##savedDesigns", ref _designListSelectedIndex, _designListContents, _designListContents.Length))
                     {
@@ -166,14 +201,14 @@ namespace AQuestReborn.CustomNpc
                         }
                     }
 
-                    ImGui.LabelText("##greetingLabel", "NPC Greeting");
+                    ImGui.LabelText("##greetingLabel", Translator.LocalizeUI("NPC Greeting"));
                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
                     if (ImGui.InputText("##Greeting", ref _customNpcCharacters[_currentSelection].NPCGreeting, 500))
                     {
                         SaveNPCCharacters();
                     }
 
-                    ImGui.LabelText("##personalityFieldLabel", "NPC Personality");
+                    ImGui.LabelText("##personalityFieldLabel", Translator.LocalizeUI("NPC Personality"));
                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
                     if (ImGui.InputTextMultiline("##NpcPersonality", ref _customNpcCharacters[_currentSelection].NpcPersonality, 2000, new Vector2(ImGui.GetColumnWidth(), 100)))
                     {
@@ -182,8 +217,52 @@ namespace AQuestReborn.CustomNpc
 
                     ImGui.Dummy(new Vector2(0, 10));
 
-                    bool isSpawned = _customNpcCharacters[_currentSelection].IsFollowingPlayer;
-                    string buttonLabel = isSpawned ? "Dismiss NPC" : "Summon NPC";
+                    // Idle pose selector
+                    ImGui.LabelText("##idlePoseLabel", Translator.LocalizeUI("Idle Pose"));
+                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                    int idleSelection = Array.IndexOf(_idleEmoteRowIds, _customNpcCharacters[_currentSelection].IdleEmoteId);
+                    if (idleSelection < 0) idleSelection = 0;
+                    if (ImGui.Combo("##idlePose", ref idleSelection, _idleEmoteNames, _idleEmoteNames.Length))
+                    {
+                        _customNpcCharacters[_currentSelection].IdleEmoteId = _idleEmoteRowIds[idleSelection];
+                        SaveNPCCharacters();
+                        // Push to live NPC immediately
+                        if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
+                            && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
+                                _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
+                        {
+                            liveNpc.IdleEmoteId = _idleEmoteRowIds[idleSelection];
+                        }
+                    }
+
+                    ImGui.Dummy(new Vector2(0, 5));
+
+                    // Show stay location if NPC is staying in another zone
+                    var currentNpc = _customNpcCharacters[_currentSelection];
+                    if (currentNpc.IsStaying && currentNpc.StayTerritoryId > 0)
+                    {
+                        string territoryName = "Unknown";
+                        try
+                        {
+                            var territory = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>().GetRow(currentNpc.StayTerritoryId);
+                            territoryName = territory.PlaceName.Value.Name.ToString();
+                        }
+                        catch { }
+                        bool isHere = _plugin != null && _plugin.ClientState.TerritoryType == currentNpc.StayTerritoryId;
+                        if (isHere)
+                        {
+                            ImGui.TextColored(new Vector4(0.4f, 1f, 0.4f, 1f), Translator.LocalizeUI("Standing nearby in") + " " + territoryName);
+                        }
+                        else
+                        {
+                            ImGui.TextColored(new Vector4(1f, 0.8f, 0.3f, 1f), Translator.LocalizeUI("Left at") + " " + territoryName);
+                        }
+                        ImGui.Dummy(new Vector2(0, 5));
+                    }
+
+                    bool isSpawned = _customNpcCharacters[_currentSelection].IsFollowingPlayer
+                        || _customNpcCharacters[_currentSelection].IsStaying;
+                    string buttonLabel = isSpawned ? Translator.LocalizeUI("Dismiss NPC") : Translator.LocalizeUI("Summon NPC");
                     if (ImGui.Button(buttonLabel, new Vector2(ImGui.GetColumnWidth(), 30)))
                     {
                         if (_plugin != null && _plugin.AQuestReborn != null)
@@ -197,6 +276,8 @@ namespace AQuestReborn.CustomNpc
                             {
                                 _plugin.AQuestReborn.DismissCustomNpc(_customNpcCharacters[_currentSelection].NpcName);
                                 _customNpcCharacters[_currentSelection].IsFollowingPlayer = false;
+                                _customNpcCharacters[_currentSelection].IsStaying = false;
+                                _customNpcCharacters[_currentSelection].StayTerritoryId = 0;
                             }
                             SaveNPCCharacters();
                         }
@@ -205,7 +286,7 @@ namespace AQuestReborn.CustomNpc
                     if (isSpawned)
                     {
                         bool isStaying = _customNpcCharacters[_currentSelection].IsStaying;
-                        string followLabel = isStaying ? "Follow" : "Stay";
+                        string followLabel = isStaying ? Translator.LocalizeUI("Follow") : Translator.LocalizeUI("Stay");
                         if (ImGui.Button(followLabel, new Vector2(ImGui.GetColumnWidth(), 30)))
                         {
                             if (_plugin != null && _plugin.AQuestReborn != null)
@@ -222,7 +303,7 @@ namespace AQuestReborn.CustomNpc
             }
             else
             {
-                ImGui.Text("Glamourer plugin was not detected! This is required to make Custom NPCs");
+                ImGui.Text(Translator.LocalizeUI("Glamourer plugin was not detected! This is required to make Custom NPCs"));
             }
         }
 

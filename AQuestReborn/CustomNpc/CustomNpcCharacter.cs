@@ -21,5 +21,8 @@ namespace AQuestReborn.CustomNpc
         public float StayRotationX = 0;
         public float StayRotationY = 0;
         public float StayRotationZ = 0;
+
+        // Idle pose
+        public ushort IdleEmoteId = 0;
     }
 }

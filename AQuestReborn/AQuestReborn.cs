@@ -1224,6 +1224,7 @@ namespace AQuestReborn
 
                                 // Start following the player (offset handled by InteractiveNpcDictionary index)
                                 npc.FollowPlayer(2, true);
+                                npc.IdleEmoteId = npcData.IdleEmoteId;
 
                                 // Create conversation manager
                                 string baseDir = Plugin.Configuration.QuestInstallFolder ?? Path.GetTempPath();
@@ -1287,6 +1288,18 @@ namespace AQuestReborn
                                 // Set to stay at the saved position/rotation
                                 npc.SetDefaults(position, rotation);
                                 npc.SetDefaultRotation(rotation);
+                                npc.IdleEmoteId = npcData.IdleEmoteId;
+
+                                // Trigger idle emote immediately for staying NPCs
+                                if (npcData.IdleEmoteId > 0)
+                                {
+                                    try
+                                    {
+                                        var emote = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(npcData.IdleEmoteId);
+                                        Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
+                                    }
+                                    catch { }
+                                }
 
                                 // Create conversation manager
                                 string baseDir = Plugin.Configuration.QuestInstallFolder ?? Path.GetTempPath();

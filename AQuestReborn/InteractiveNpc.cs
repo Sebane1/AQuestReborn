@@ -55,6 +55,10 @@ namespace AQuestReborn
         private float _horizontalOffset;
         Stopwatch _horizontalRefreshTimer = new Stopwatch();
         Stopwatch _fixedMovementTimer = new Stopwatch();
+        Stopwatch _idleTimer = new Stopwatch();
+        private int _idleThresholdMs = 20000;
+        private bool _idleEmotePlaying;
+        private ushort _idleEmoteId;
         private bool _wasMoving;
         EventMovementAnimation _eventMovementAnimationType = EventMovementAnimation.Automatic;
         public string LastAppearance { get; internal set; }
@@ -62,6 +66,17 @@ namespace AQuestReborn
         public bool ShouldBeMoving { get => _shouldBeMoving; set => _shouldBeMoving = value; }
         public ICharacter Character { get => _character; set => _character = value; }
         public EventMovementAnimation EventMovementAnimationType { get => _eventMovementAnimationType; set => _eventMovementAnimationType = value; }
+        public ushort IdleEmoteId
+        {
+            get => _idleEmoteId;
+            set
+            {
+                _idleEmoteId = value;
+                _idleEmotePlaying = false;
+                _idleTimer.Restart();
+                _idleThresholdMs = 20000 + new System.Random().Next(20000);
+            }
+        }
 
         public InteractiveNpc(Plugin plugin, ICharacter character)
         {
@@ -74,6 +89,8 @@ namespace AQuestReborn
             _posing = posing;
             _index = _plugin.AQuestReborn.InteractiveNpcDictionary.Count;
             _horizontalRefreshTimer.Start();
+            _idleTimer.Start();
+            _idleThresholdMs = 20000 + new System.Random().Next(20000);
         }
 
         private void ClientState_TerritoryChanged(uint obj)
@@ -121,6 +138,9 @@ namespace AQuestReborn
                                         + GetHorizontalOffsetFromPlayer(_horizontalOffset);
                                 if (Vector3.Distance(_currentPosition, targetPosition) > 1)
                                 {
+                                    // Reset idle timer when moving
+                                    _idleEmotePlaying = false;
+                                    _idleTimer.Restart();
                                     // Use ground map Y at the NPC's current XZ instead of player's Y
                                     float groundY = _plugin.AQuestReborn.GroundMap.GetGroundY(
                                         _currentPosition.X, _currentPosition.Z, targetPosition.Y);
@@ -148,7 +168,21 @@ namespace AQuestReborn
                                     float yLerp = Math.Clamp(_speed * delta * 10f, 0f, 1f);
                                     _currentPosition = new Vector3(_currentPosition.X, _currentPosition.Y + (groundY - _currentPosition.Y) * yLerp, _currentPosition.Z);
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
-                                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                                    // Trigger idle emote if standing still long enough
+                                    if (_idleEmoteId > 0 && !_idleEmotePlaying && _idleTimer.ElapsedMilliseconds > _idleThresholdMs)
+                                    {
+                                        try
+                                        {
+                                            var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(_idleEmoteId);
+                                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
+                                        }
+                                        catch { }
+                                        _idleEmotePlaying = true;
+                                    }
+                                    else if (!_idleEmotePlaying)
+                                    {
+                                        _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                                    }
                                 }
                                 SetTransform(_currentPosition, _currentRotation, _currentScale);
                             }
@@ -198,7 +232,21 @@ namespace AQuestReborn
                                         if (_wasMoving)
                                         {
                                             _wasMoving = false;
+                                            _idleEmotePlaying = false;
+                                            _idleTimer.Restart();
+                                            _idleThresholdMs = 20000 + new Random().Next(20000); // 20-40 seconds
                                             _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                                        }
+                                        // Trigger idle emote after threshold
+                                        if (_idleEmoteId > 0 && !_idleEmotePlaying && _idleTimer.ElapsedMilliseconds > _idleThresholdMs)
+                                        {
+                                            try
+                                            {
+                                                var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(_idleEmoteId);
+                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
+                                            }
+                                            catch { }
+                                            _idleEmotePlaying = true;
                                         }
                                         if ((_plugin.EventWindow.IsOpen || _plugin.ChoiceWindow.IsOpen) && LooksAtPlayer)
                                         {
