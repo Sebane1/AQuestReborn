@@ -61,6 +61,7 @@ namespace AQuestReborn
         private bool _idleEmotePlaying;
         private ushort _idleEmoteId;
         private bool _wasMoving;
+        private bool _isFollowMoving;
         private ushort _activeEmoteTimelineId;
         private bool _waitingForEmoteExit;
         EventMovementAnimation _eventMovementAnimationType = EventMovementAnimation.Automatic;
@@ -139,7 +140,11 @@ namespace AQuestReborn
                                 var targetPosition = _plugin.ObjectTable.LocalPlayer.Position
                                         + GetVerticalOffsetFromPlayer((_index) - ((float)(_plugin.AQuestReborn.InteractiveNpcDictionary.Count - 1) / 2f))
                                         + GetHorizontalOffsetFromPlayer(_horizontalOffset);
-                                if (Vector3.Distance(_currentPosition, targetPosition) > 1)
+                                float distToTarget = Vector3.Distance(_currentPosition, targetPosition);
+                                // Hysteresis: start moving at 4y, keep moving until within 2y
+                                if (distToTarget > 4) _isFollowMoving = true;
+                                if (distToTarget <= 2) _isFollowMoving = false;
+                                if (_isFollowMoving)
                                 {
                                     // Always reset idle timer while moving
                                     _idleTimer.Restart();
@@ -438,6 +443,72 @@ namespace AQuestReborn
             _targetScale = scale;
             _scaleSpeed = speed;
         }
+
+        /// <summary>
+        /// Whether the NPC is currently standing still (not actively walking/following).
+        /// </summary>
+        public bool IsStationary
+        {
+            get
+            {
+                if (_followPlayer && _plugin.ObjectTable.LocalPlayer != null)
+                {
+                    return Vector3.Distance(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position) <= 1;
+                }
+                return !_shouldBeMoving;
+            }
+        }
+
+        /// <summary>
+        /// Make the NPC begin their idle emote soon (within ~2 seconds).
+        /// </summary>
+        public void TriggerIdleSoon()
+        {
+            if (!_idleEmotePlaying && _idleEmoteId > 0)
+            {
+                _idleThresholdMs = 2000;
+                _idleTimer.Restart();
+            }
+        }
+
+        /// <summary>
+        /// Make the NPC react to a player emote by mirroring it.
+        /// Faces the player and plays the emote's ActionTimeline.
+        /// </summary>
+        public void ReactToEmote(ushort emoteId)
+        {
+            if (_character == null || _disposed) return;
+            try
+            {
+                // Face the player
+                if (_plugin.ObjectTable.LocalPlayer != null)
+                {
+                    _currentRotation = CoordinateUtility.LookAt(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position).QuaternionToEuler();
+                    SetTransform(_currentPosition, _currentRotation, _currentScale);
+                }
+
+                // Stop current idle emote
+                if (_idleEmotePlaying)
+                {
+                    _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
+                    _idleEmotePlaying = false;
+                }
+
+                // Play the emote
+                var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(emoteId);
+                var timelineId = (ushort)emote.ActionTimeline[0].Value.RowId;
+                if (timelineId > 0)
+                {
+                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, timelineId);
+                }
+
+                // Reset idle timer so the reaction emote plays a while before idle kicks in
+                _idleTimer.Restart();
+                _idleThresholdMs = 20000 + new System.Random().Next(20000);
+            }
+            catch { }
+        }
+
         public void Dispose()
         {
             _disposed = true;

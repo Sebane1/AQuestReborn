@@ -24,5 +24,9 @@ namespace AQuestReborn.CustomNpc
 
         // Idle pose
         public ushort IdleEmoteId = 50; // Default: groundsit
+
+        // Appearance mode
+        public bool UseMcdfAppearance = false;
+        public string McdfFilePath = "";
     }
 }

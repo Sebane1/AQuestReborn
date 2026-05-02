@@ -262,6 +262,76 @@ namespace AQuestReborn
                     Plugin.ChatGui.Print("Emote Id: " + emoteId);
                     Plugin.ChatGui.Print("Body Animation Id: " + emote.ActionTimeline[0].Value.RowId);
                 }
+
+                // Emote mirroring for custom NPCs - only react to the local player
+                if (character != null && Plugin.ObjectTable.LocalPlayer != null
+                    && character.Address == Plugin.ObjectTable.LocalPlayer.Address)
+                {
+                    const float EMOTE_REACT_RANGE = 15f;
+                    const ushort BECKON_EMOTE_ID = 8;
+                    const ushort GOODBYE_EMOTE_ID = 15;
+
+                    // Only iterate custom NPCs - never quest NPCs
+                    foreach (var kvp in _customNpcDictionary.ToList())
+                    {
+                        var npc = kvp.Value;
+                        if (npc == null || npc.Character == null) continue;
+
+                        float distance = Vector3.Distance(npc.CurrentPosition, Plugin.ObjectTable.LocalPlayer.Position);
+                        if (distance > EMOTE_REACT_RANGE) continue;
+
+                        if (emoteId == BECKON_EMOTE_ID)
+                        {
+                            // Beckon: NPC starts following
+                            npc.FollowPlayer(2);
+                            // Update config state
+                            var npcConfig = Plugin.Configuration.CustomNpcCharacters?.Find(n => n.NpcName == kvp.Key);
+                            if (npcConfig != null)
+                            {
+                                npcConfig.IsFollowingPlayer = true;
+                                npcConfig.IsStaying = false;
+                                Plugin.Configuration.Save();
+                            }
+                        }
+                        else if (emoteId == GOODBYE_EMOTE_ID)
+                        {
+                            // Goodbye: following NPCs stop and stay
+                            var pos = npc.CurrentPosition;
+                            var rot = npc.CurrentRotation;
+                            npc.StopFollowingPlayer();
+                            npc.SetDefaults(pos, rot);
+                            npc.SetDefaultRotation(rot);
+                            // Save stay state
+                            var npcConfig = Plugin.Configuration.CustomNpcCharacters?.Find(n => n.NpcName == kvp.Key);
+                            if (npcConfig != null)
+                            {
+                                npcConfig.IsStaying = true;
+                                npcConfig.IsFollowingPlayer = false;
+                                npcConfig.StayTerritoryId = Plugin.ClientState.TerritoryType;
+                                npcConfig.StayPositionX = pos.X;
+                                npcConfig.StayPositionY = pos.Y;
+                                npcConfig.StayPositionZ = pos.Z;
+                                npcConfig.StayRotationX = rot.X;
+                                npcConfig.StayRotationY = rot.Y;
+                                npcConfig.StayRotationZ = rot.Z;
+                                Plugin.Configuration.Save();
+                            }
+                        }
+                        else if (npc.IsStationary)
+                        {
+                            // Sit emotes: NPCs settle into their idle sooner
+                            if (emoteId == 50 || emoteId == 52)
+                            {
+                                npc.TriggerIdleSoon();
+                            }
+                            else
+                            {
+                                // Mirror the emote if the NPC is standing still
+                                npc.ReactToEmote(emoteId);
+                            }
+                        }
+                    }
+                }
             }
             catch (Exception e)
             {
@@ -1142,6 +1212,30 @@ namespace AQuestReborn
             Plugin.ChatGui.ChatMessage -= ChatGui_ChatMessage;
             Plugin.EmoteReaderHook.OnEmote -= (instigator, emoteId) => OnEmote(instigator as ICharacter, emoteId);
             Plugin.ClientState.Logout -= ClientState_Logout;
+            // Save custom NPC state before shutdown
+            try
+            {
+                foreach (var kvp in _customNpcDictionary)
+                {
+                    var npcConfig = Plugin.Configuration.CustomNpcCharacters?.Find(n => n.NpcName == kvp.Key);
+                    if (npcConfig != null)
+                    {
+                        var npc = kvp.Value;
+                        if (npc != null)
+                        {
+                            // If NPC was staying, update position
+                            if (npcConfig.IsStaying)
+                            {
+                                npcConfig.StayPositionX = npc.CurrentPosition.X;
+                                npcConfig.StayPositionY = npc.CurrentPosition.Y;
+                                npcConfig.StayPositionZ = npc.CurrentPosition.Z;
+                            }
+                        }
+                    }
+                }
+                Plugin.Configuration.Save();
+            }
+            catch { }
             CleanupCache();
         }
 
@@ -1211,9 +1305,23 @@ namespace AQuestReborn
                                 _customNpcDictionary[npcData.NpcName] = npc;
                                 _interactiveNpcDictionary[npcData.NpcName] = npc;
 
-                                // Apply glamourer design by GUID
-                                if (!string.IsNullOrEmpty(npcData.NpcGlamourerAppearanceString))
+                                // Apply appearance
+                                if (npcData.UseMcdfAppearance && !string.IsNullOrEmpty(npcData.McdfFilePath))
                                 {
+                                    // Load MCDF file
+                                    try
+                                    {
+                                        AppearanceAccessUtils.AppearanceManager?.LoadAppearance(
+                                            npcData.McdfFilePath, character, (int)AppearanceSwapType.EntireAppearance);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Plugin.PluginLog.Warning(ex, "Failed to load MCDF appearance: " + npcData.McdfFilePath);
+                                    }
+                                }
+                                else if (!string.IsNullOrEmpty(npcData.NpcGlamourerAppearanceString))
+                                {
+                                    // Apply glamourer design by GUID
                                     if (Guid.TryParse(npcData.NpcGlamourerAppearanceString, out var designGuid))
                                     {
                                         PenumbraAndGlamourerIpcWrapper.Instance.ApplyDesign.Invoke(designGuid, character.ObjectIndex);
@@ -1274,8 +1382,20 @@ namespace AQuestReborn
                                 _customNpcDictionary[npcData.NpcName] = npc;
                                 _interactiveNpcDictionary[npcData.NpcName] = npc;
 
-                                // Apply glamourer design by GUID
-                                if (!string.IsNullOrEmpty(npcData.NpcGlamourerAppearanceString))
+                                // Apply appearance
+                                if (npcData.UseMcdfAppearance && !string.IsNullOrEmpty(npcData.McdfFilePath))
+                                {
+                                    try
+                                    {
+                                        AppearanceAccessUtils.AppearanceManager?.LoadAppearance(
+                                            npcData.McdfFilePath, character, (int)AppearanceSwapType.EntireAppearance);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Plugin.PluginLog.Warning(ex, "Failed to load MCDF appearance: " + npcData.McdfFilePath);
+                                    }
+                                }
+                                else if (!string.IsNullOrEmpty(npcData.NpcGlamourerAppearanceString))
                                 {
                                     if (Guid.TryParse(npcData.NpcGlamourerAppearanceString, out var designGuid))
                                     {
@@ -1465,6 +1585,22 @@ namespace AQuestReborn
                         Plugin.PluginLog.Warning(ex, "Failed to reapply appearance: " + ex.Message);
                     }
                 });
+            }
+        }
+        public void ReapplyCustomNpcMcdfAppearance(string npcName, string mcdfPath)
+        {
+            if (_customNpcCharacters.ContainsKey(npcName))
+            {
+                var character = _customNpcCharacters[npcName];
+                try
+                {
+                    AppearanceAccessUtils.AppearanceManager?.LoadAppearance(
+                        mcdfPath, character, (int)AppearanceSwapType.EntireAppearance);
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Warning(ex, "Failed to reapply MCDF appearance: " + ex.Message);
+                }
             }
         }
         public void ToggleCustomNpcFollow(string npcName, bool shouldFollow)

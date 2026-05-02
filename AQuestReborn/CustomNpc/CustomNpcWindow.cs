@@ -1,3 +1,4 @@
+using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Bindings.ImGui;
@@ -21,6 +22,7 @@ namespace AQuestReborn.CustomNpc
         private string[] _designListContents = new string[0];
         private int _designListSelectedIndex = 0;
         Plugin _plugin;
+        private FileDialogManager _fileDialogManager;
 
         // Idle emote list built from Excel sheet
         private string[] _idleEmoteNames = new string[] { "None" };
@@ -42,6 +44,7 @@ namespace AQuestReborn.CustomNpc
                 MinimumSize = new Vector2(550, 400),
                 MaximumSize = new Vector2(800, 2000),
             };
+            _fileDialogManager = new FileDialogManager();
         }
         public override void OnOpen()
         {
@@ -90,6 +93,7 @@ namespace AQuestReborn.CustomNpc
         {
             try
             {
+                _fileDialogManager.Draw();
                 if (_currentGlamourerDesigns.Count is 0)
                 {
                     RefreshDesignList();
@@ -180,31 +184,79 @@ namespace AQuestReborn.CustomNpc
                         SaveNPCCharacters();
                     }
 
-                    ImGui.LabelText("##glamourerLabel", Translator.LocalizeUI("Glamourer Design Appearance"));
-                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                    if (ImGui.Combo("##savedDesigns", ref _designListSelectedIndex, _designListContents, _designListContents.Length))
+                    ImGui.Dummy(new Vector2(0, 5));
+
+                    // Appearance mode toggle
+                    if (ImGui.Checkbox(Translator.LocalizeUI("Use MCDF File"), ref _customNpcCharacters[_currentSelection].UseMcdfAppearance))
                     {
-                        // Find the GUID that corresponds to the selected design name
-                        if (_designListSelectedIndex >= 0 && _designListSelectedIndex < _designListContents.Length)
+                        SaveNPCCharacters();
+                    }
+
+                    if (!_customNpcCharacters[_currentSelection].UseMcdfAppearance)
+                    {
+                        // Glamourer design dropdown
+                        ImGui.LabelText("##glamourerLabel", Translator.LocalizeUI("Glamourer Design Appearance"));
+                        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                        if (ImGui.Combo("##savedDesigns", ref _designListSelectedIndex, _designListContents, _designListContents.Length))
                         {
-                            string selectedName = _designListContents[_designListSelectedIndex];
-                            foreach (var kvp in _currentGlamourerDesigns)
+                            // Find the GUID that corresponds to the selected design name
+                            if (_designListSelectedIndex >= 0 && _designListSelectedIndex < _designListContents.Length)
                             {
-                                if (kvp.Value == selectedName)
+                                string selectedName = _designListContents[_designListSelectedIndex];
+                                foreach (var kvp in _currentGlamourerDesigns)
                                 {
-                                    _customNpcCharacters[_currentSelection].NpcGlamourerAppearanceString = kvp.Key.ToString();
+                                    if (kvp.Value == selectedName)
+                                    {
+                                        _customNpcCharacters[_currentSelection].NpcGlamourerAppearanceString = kvp.Key.ToString();
+                                        SaveNPCCharacters();
+
+                                        // Re-apply appearance if NPC is currently spawned
+                                        if (_customNpcCharacters[_currentSelection].IsFollowingPlayer
+                                            && _plugin != null && _plugin.AQuestReborn != null)
+                                        {
+                                            _plugin.AQuestReborn.ReapplyCustomNpcAppearance(
+                                                _customNpcCharacters[_currentSelection].NpcName, kvp.Key);
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // MCDF file path input
+                        ImGui.LabelText("##mcdfLabel", Translator.LocalizeUI("MCDF File Path"));
+                        ImGui.SetNextItemWidth(ImGui.GetColumnWidth() - 80);
+                        if (ImGui.InputText("##McdfPath", ref _customNpcCharacters[_currentSelection].McdfFilePath, 1024))
+                        {
+                            SaveNPCCharacters();
+                        }
+                        ImGui.SameLine();
+                        if (ImGui.Button(Translator.LocalizeUI("Browse"), new Vector2(70, 0)))
+                        {
+                            _fileDialogManager.Reset();
+                            ImGui.OpenPopup("OpenMcdfDialog##customnpc");
+                        }
+                        if (ImGui.BeginPopup("OpenMcdfDialog##customnpc"))
+                        {
+                            _fileDialogManager.OpenFileDialog(Translator.LocalizeUI("Select MCDF File"), ".mcdf", (isOk, file) =>
+                            {
+                                if (isOk && file.Count > 0)
+                                {
+                                    _customNpcCharacters[_currentSelection].McdfFilePath = file[0];
                                     SaveNPCCharacters();
 
-                                    // Re-apply appearance if NPC is currently spawned
+                                    // Apply immediately if NPC is spawned
                                     if (_customNpcCharacters[_currentSelection].IsFollowingPlayer
                                         && _plugin != null && _plugin.AQuestReborn != null)
                                     {
-                                        _plugin.AQuestReborn.ReapplyCustomNpcAppearance(
-                                            _customNpcCharacters[_currentSelection].NpcName, kvp.Key);
+                                        _plugin.AQuestReborn.ReapplyCustomNpcMcdfAppearance(
+                                            _customNpcCharacters[_currentSelection].NpcName, file[0]);
                                     }
-                                    break;
                                 }
-                            }
+                            }, 0, null, true);
+                            ImGui.EndPopup();
                         }
                     }
 
