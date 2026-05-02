@@ -256,6 +256,31 @@ public sealed class Plugin : IDalamudPlugin
             var territory = DataManager.GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>()?.GetRow(ClientState.TerritoryType);
             string placeName = territory?.PlaceName.Value.Name.ToString();
             context = $"Current Location: {placeName ?? "Eorzea"}";
+
+            var origin = observer != null ? observer.Position : _objectTable?.LocalPlayer?.Position;
+            if (origin != null)
+            {
+                try
+                {
+                    uint closestAetheryteId = ECommons.GameHelpers.Map.FindClosestAetheryte(ClientState.TerritoryType, origin.Value);
+                    if (closestAetheryteId != 0)
+                    {
+                        var aetheryte = DataManager.GetExcelSheet<Lumina.Excel.Sheets.Aetheryte>()?.GetRow(closestAetheryteId);
+                        if (aetheryte.HasValue)
+                        {
+                            string aetheryteName = aetheryte.Value.AethernetName.Value.Name.ToString();
+                            if (string.IsNullOrEmpty(aetheryteName))
+                                aetheryteName = aetheryte.Value.PlaceName.Value.Name.ToString();
+
+                            if (!string.IsNullOrEmpty(aetheryteName))
+                            {
+                                context += $" (Near: {aetheryteName})";
+                            }
+                        }
+                    }
+                }
+                catch { }
+            }
         }
         catch
         {
