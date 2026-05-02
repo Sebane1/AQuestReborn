@@ -16,6 +16,7 @@ using FFXIVLooseTextureCompiler.ImageProcessing;
 using AQuestReborn;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using Dalamud.Game.ClientState.Objects.Types;
 
 namespace SamplePlugin.Windows;
 
@@ -130,7 +131,9 @@ public class ObjectiveWindow : Window, IDisposable
                     switch (item.Item2.TypeOfQuestPoint)
                     {
                         case RoleplayingQuestCore.QuestObjective.QuestPointType.NPC:
-                            offset = new Vector3(0, 2.5f, 0);
+                            // Use actual head bone position — marker goes slightly above
+                            var headWorldPos = GetNpcHeadPosition(item.Item2.Coordinates);
+                            Plugin.GameGui.WorldToScreen(headWorldPos + new Vector3(0, 0.3f, 0), out screenPosition, out inView);
                             break;
                         case RoleplayingQuestCore.QuestObjective.QuestPointType.GroundItem:
                             // To do: Display something unique?
@@ -139,7 +142,9 @@ public class ObjectiveWindow : Window, IDisposable
                             // To do: Display something unique?
                             break;
                     }
-                    Plugin.GameGui.WorldToScreen(item.Item2.Coordinates + offset, out screenPosition, out inView);
+                    // For non-NPC types, use coordinate + offset
+                    if (item.Item2.TypeOfQuestPoint != RoleplayingQuestCore.QuestObjective.QuestPointType.NPC)
+                        Plugin.GameGui.WorldToScreen(item.Item2.Coordinates + offset, out screenPosition, out inView);
                     if (inView)
                     {
                         if (_questStartIconTextureWrap != null)
@@ -180,7 +185,134 @@ public class ObjectiveWindow : Window, IDisposable
                     }
                 }
             }
+
+            // Custom NPC click-to-chat detection
+            if (!Plugin.NpcChatWindow.IsConversationActive && Plugin.AQuestReborn != null)
+            {
+                foreach (var kvp in Plugin.AQuestReborn.CustomNpcCharacters)
+                {
+                    if (kvp.Value == null) continue;
+
+                    // Project feet and top of character to get full vertical coverage
+                    Vector2 feetScreenPos, topScreenPos;
+                    bool feetInView, topInView;
+                    Plugin.GameGui.WorldToScreen(kvp.Value.Position, out feetScreenPos, out feetInView);
+                    Plugin.GameGui.WorldToScreen(kvp.Value.Position + new Vector3(0, 1.8f, 0), out topScreenPos, out topInView);
+
+                    if (feetInView || topInView)
+                    {
+                        // Center click zone between feet and top
+                        var npcScreenPos = new Vector2(
+                            (feetScreenPos.X + topScreenPos.X) / 2f,
+                            (feetScreenPos.Y + topScreenPos.Y) / 2f);
+                        float verticalExtent = MathF.Abs(feetScreenPos.Y - topScreenPos.Y) / 2f;
+                        float horizontalExtent = MathF.Max(verticalExtent * 0.4f, 30f); // Narrower than tall
+
+                        var mousePos = ImGui.GetIO().MousePos;
+                        // Elliptical hit test: check if mouse is inside the character-shaped zone
+                        float dx = (mousePos.X - npcScreenPos.X) / horizontalExtent;
+                        float dy = (mousePos.Y - npcScreenPos.Y) / verticalExtent;
+                        float ellipseDist = dx * dx + dy * dy;
+
+                        var playerDist = Vector3.Distance(Plugin.ObjectTable.LocalPlayer.Position, kvp.Value.Position);
+
+                        // Draw clickable area debug visual
+                        var drawList = ImGui.GetWindowDrawList();
+                        bool inRange = playerDist < 5f;
+                        uint circleColor = inRange
+                            ? ImGui.ColorConvertFloat4ToU32(new Vector4(0.2f, 1f, 0.3f, 0.35f))
+                            : ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 0.8f, 0.2f, 0.2f));
+                        // Draw ellipse debug visual using path
+                        for (int seg = 0; seg < 32; seg++)
+                        {
+                            float angle = (seg / 32f) * MathF.PI * 2f;
+                            drawList.PathLineTo(new Vector2(
+                                npcScreenPos.X + MathF.Cos(angle) * horizontalExtent,
+                                npcScreenPos.Y + MathF.Sin(angle) * verticalExtent));
+                        }
+                        drawList.PathFillConvex(circleColor);
+                        for (int seg = 0; seg < 32; seg++)
+                        {
+                            float angle = (seg / 32f) * MathF.PI * 2f;
+                            drawList.PathLineTo(new Vector2(
+                                npcScreenPos.X + MathF.Cos(angle) * horizontalExtent,
+                                npcScreenPos.Y + MathF.Sin(angle) * verticalExtent));
+                        }
+                        drawList.PathStroke(ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 1f, 1f, 0.5f)), ImDrawFlags.Closed, 2f);
+
+                        if (ellipseDist <= 1f && inRange)
+                        {
+                            if (mouseDown)
+                            {
+                                // Find NPC data and conversation manager
+                                string npcName = kvp.Key;
+                                AQuestReborn.CustomNpc.CustomNpcCharacter npcData = null;
+                                foreach (var npc in Plugin.Configuration.CustomNpcCharacters)
+                                {
+                                    if (npc.NpcName == npcName)
+                                    {
+                                        npcData = npc;
+                                        break;
+                                    }
+                                }
+                                if (npcData != null && Plugin.AQuestReborn.CustomNpcConversationManagers.ContainsKey(npcName))
+                                {
+                                    Plugin.NpcChatWindow.OpenConversation(npcName,
+                                        Plugin.AQuestReborn.CustomNpcConversationManagers[npcName],
+                                        kvp.Value, npcData);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
         }
+    }
+
+    /// <summary>
+    /// Finds the nearest spawned NPC at the given position and returns their head world position
+    /// using actual bone data. Falls back to position + 1.6y if bone access fails.
+    /// </summary>
+    private unsafe Vector3 GetNpcHeadPosition(Vector3 position)
+    {
+        ICharacter closest = null;
+        float closestDist = float.MaxValue;
+
+        // Search spawned quest NPCs
+        foreach (var questKvp in Plugin.AQuestReborn.SpawnedNPCs)
+        {
+            foreach (var npcKvp in questKvp.Value)
+            {
+                if (npcKvp.Value != null)
+                {
+                    float dist = Vector3.Distance(npcKvp.Value.Position, position);
+                    if (dist < closestDist && dist < 3f)
+                    {
+                        closestDist = dist;
+                        closest = npcKvp.Value;
+                    }
+                }
+            }
+        }
+
+        if (closest == null) return position + new Vector3(0, 1.6f, 0);
+
+        try
+        {
+            var gameObject = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)closest.Address;
+            if (gameObject != null && gameObject->DrawObject != null)
+            {
+                // Bone 6 = head bone in FFXIV skeleton
+                var headPos = Hypostasis.Game.Common.GetBoneWorldPosition(gameObject, 6);
+                if (headPos != Vector3.Zero)
+                    return headPos;
+            }
+        }
+        catch { }
+
+        // Fallback
+        return position + new Vector3(0, 1.6f, 0);
     }
 
     public void Dispose()

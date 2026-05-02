@@ -181,7 +181,7 @@ namespace AQuestReborn.CustomNpc
                         {
                             if (_aiCharacter != null)
                             {
-                                _plugin.AnamcoreManager.TriggerEmote(_aiCharacter.Address, (ushort)item.ActionTimeline[0].Value.RowId);
+                                _plugin.AnamcoreManager.TriggerEmoteTimed(_aiCharacter, (ushort)item.ActionTimeline[0].Value.RowId, 5000);
                             }
                             break;
                         }

@@ -58,6 +58,8 @@ namespace AQuestReborn
         public Stopwatch CheckCooldownTimer { get => _checkCooldownTimer; set => _checkCooldownTimer = value; }
         internal CutsceneCamera CutsceneCamera { get => _cutsceneCamera; set => _cutsceneCamera = value; }
         public InteractiveNpc CutscenePlayer { get => _cutscenePlayer; set => _cutscenePlayer = value; }
+        public Dictionary<string, ICharacter> CustomNpcCharacters => _customNpcCharacters;
+        public Dictionary<string, NPCConversationManager> CustomNpcConversationManagers => _customNpcConversationManagers;
 
         private Stopwatch _pollingTimer;
         private Stopwatch _inputCooldown;
@@ -633,6 +635,8 @@ namespace AQuestReborn
                         {
                             zoneChangeCooldown.Start();
                         }
+                        // Custom NPC click-to-chat detection
+                        CustomNpcChatCheck();
                     }
                     else
                     {
@@ -1644,6 +1648,62 @@ namespace AQuestReborn
                         Plugin.Configuration.Save();
                     }
                 }
+            }
+        }
+        private Stopwatch _npcChatCooldown = new Stopwatch();
+        private bool _npcChatConfirmHeld;
+
+        /// <summary>
+        /// Detects when the player targets a custom NPC and presses confirm to open the chat window.
+        /// </summary>
+        private unsafe void CustomNpcChatCheck()
+        {
+            if (Plugin.NpcChatWindow.IsConversationActive) return;
+            if (Plugin.EventWindow.IsOpen || Plugin.ChoiceWindow.IsOpen) return;
+
+            // Check for confirm input (gamepad south or screen click)
+            bool confirmPressed = Plugin.GamepadState.Raw(GamepadButtons.South) == 1
+                || _screenButtonClicked;
+
+            if (confirmPressed && !_npcChatConfirmHeld)
+            {
+                _npcChatConfirmHeld = true;
+
+                // Get the player's current target
+                var target = Plugin.ObjectTable.LocalPlayer?.TargetObject;
+                if (target == null) return;
+
+                // Check if the target matches any custom NPC
+                foreach (var kvp in _customNpcCharacters)
+                {
+                    if (kvp.Value != null && kvp.Value.EntityId == target.EntityId)
+                    {
+                        string npcName = kvp.Key;
+
+                        // Find NPC config data
+                        CustomNpcCharacter npcData = null;
+                        foreach (var npc in Plugin.Configuration.CustomNpcCharacters)
+                        {
+                            if (npc.NpcName == npcName)
+                            {
+                                npcData = npc;
+                                break;
+                            }
+                        }
+                        if (npcData == null) return;
+
+                        // Ensure conversation manager exists
+                        if (!_customNpcConversationManagers.ContainsKey(npcName)) return;
+
+                        var conversationManager = _customNpcConversationManagers[npcName];
+                        Plugin.NpcChatWindow.OpenConversation(npcName, conversationManager, kvp.Value, npcData);
+                        break;
+                    }
+                }
+            }
+            else if (!confirmPressed)
+            {
+                _npcChatConfirmHeld = false;
             }
         }
         #endregion
