@@ -1,10 +1,12 @@
 
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.WebSockets;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -85,7 +87,59 @@ namespace AQuestReborn.CustomNpc.GPTApi
                     }
                 }
             }
-            return newValue.TrimStart('\n').Split("\n")[0].Split("]")[0].Replace("----", @"shakes ""Appologies, I forget myself sometimes""");
+            string finalValue = newValue.TrimStart('\n').Split("\n")[0].Split("]")[0].Replace("----", @"shakes ""Appologies, I forget myself sometimes""");
+            return ScrubEarthTerms(finalValue);
+        }
+
+        public string ScrubEarthTerms(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return value;
+
+            var replacements = new Dictionary<string, string>
+            {
+                { @"\bearth\b", "Eorzea" },
+                { @"\b(oh my god|omg)\b", "by the Twelve" },
+                { @"\bgod\b", "the Creator" },
+                { @"\bgods\b", "the Twelve" },
+                { @"\bjesus\b", "Halone" },
+                { @"\bchrist\b", "the Fury" },
+                { @"\bhell\b", "the Seventh Hell" },
+                { @"\bheaven\b", "the Heavens" },
+                { @"\bplanet\b", "star" },
+                { @"\bdollars?\b", "gil" },
+                { @"\bbucks?\b", "gil" },
+                { @"\b(cell ?)?phones?\b", "linkpearl" },
+                { @"\binternet\b", "tomestone network" },
+                { @"\bcars?\b", "magitek carriage" },
+                { @"\btrains?\b", "magitek train" },
+                { @"\bguns?\b", "machinist firearm" },
+                { @"\bmagic\b", "magicks" },
+                { @"\bmana\b", "aether" },
+                { @"\bhuman(s)?\b", "Hyur" },
+                { @"\belf\b", "Elezen" },
+                { @"\belves\b", "Elezen" },
+                { @"\bcatgirl(s)?\b", "Miqo'te" },
+                { @"\bcatboy(s)?\b", "Miqo'te" },
+                { @"\bcatperson\b", "Miqo'te" },
+                { @"\bcat people\b", "Miqo'te" },
+                { @"\bbunny girl(s)?\b", "Viera" },
+                { @"\bbunny boy(s)?\b", "Viera" },
+                { @"\bdragon( girl| boy)?(s)?\b", "Au Ra" },
+                { @"\bdwarf(s)?\b", "Lalafell" },
+                { @"\bdwarves\b", "Lalafell" },
+                { @"\bpolice\b", "Brass Blades" },
+                { @"\bcops\b", "Brass Blades" },
+                { @"\btelevision\b", "linkshell" },
+                { @"\btv\b", "linkshell" },
+                { @"\bcomputer\b", "tomestone" }
+            };
+
+            foreach (var kvp in replacements)
+            {
+                value = Regex.Replace(value, kvp.Key, kvp.Value, RegexOptions.IgnoreCase);
+            }
+
+            return value;
         }
         public static Task SendString(ClientWebSocket ws, String data, CancellationToken cancellation)
         {
