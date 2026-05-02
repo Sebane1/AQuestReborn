@@ -32,6 +32,7 @@ namespace AQuestReborn.CustomNpc
         private string[] _idleEmoteNames = new string[] { "None" };
         private ushort[] _idleEmoteRowIds = new ushort[] { 0 };
         private string _emoteSearchText = "";
+        private string _victoryEmoteSearchText = "";
 
         public Plugin Plugin { get => _plugin; set => _plugin = value; }
         public List<CustomNpcCharacter> CustomNpcCharacters { get => _customNpcCharacters; set => _customNpcCharacters = value; }
@@ -354,6 +355,54 @@ namespace AQuestReborn.CustomNpc
                                         _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
                                 {
                                     liveNpc.IdleEmoteId = _idleEmoteRowIds[i];
+                                }
+                            }
+                        }
+                    }
+                    ImGui.EndChild();
+
+                    ImGui.Dummy(new Vector2(0, 5));
+
+                    // Victory pose selector with search
+                    ImGui.LabelText("##victoryPoseLabel", Translator.LocalizeUI("Victory Pose"));
+                    int currentVicEmoteIdx = Array.IndexOf(_idleEmoteRowIds, _customNpcCharacters[_currentSelection].VictoryPoseEmoteId);
+                    string currentVicEmoteName = currentVicEmoteIdx >= 0 && currentVicEmoteIdx < _idleEmoteNames.Length
+                        ? _idleEmoteNames[currentVicEmoteIdx] : Translator.LocalizeUI("None");
+                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + currentVicEmoteName);
+                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                    ImGui.InputTextWithHint("##victoryEmoteSearch", Translator.LocalizeUI("Search emotes..."), ref _victoryEmoteSearchText, 100);
+                    if (ImGui.BeginChild("##victoryEmoteList", new Vector2(ImGui.GetColumnWidth(), 120), true))
+                    {
+                        // Add "None" option
+                        bool isVicNoneSelected = _customNpcCharacters[_currentSelection].VictoryPoseEmoteId == 0;
+                        if (ImGui.Selectable("None##vic_none", isVicNoneSelected))
+                        {
+                            _customNpcCharacters[_currentSelection].VictoryPoseEmoteId = 0;
+                            SaveNPCCharacters();
+                            if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
+                                && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
+                                    _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
+                            {
+                                liveNpc.VictoryPoseEmoteId = 0;
+                            }
+                        }
+
+                        for (int i = 0; i < _idleEmoteNames.Length; i++)
+                        {
+                            if (!string.IsNullOrEmpty(_victoryEmoteSearchText)
+                                && !_idleEmoteNames[i].Contains(_victoryEmoteSearchText, StringComparison.OrdinalIgnoreCase))
+                                continue;
+                            bool isSelected = _idleEmoteRowIds[i] == _customNpcCharacters[_currentSelection].VictoryPoseEmoteId;
+                            if (ImGui.Selectable(_idleEmoteNames[i] + "##vic_" + i, isSelected))
+                            {
+                                _customNpcCharacters[_currentSelection].VictoryPoseEmoteId = _idleEmoteRowIds[i];
+                                SaveNPCCharacters();
+                                // Push to live NPC immediately
+                                if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
+                                    && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
+                                        _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
+                                {
+                                    liveNpc.VictoryPoseEmoteId = _idleEmoteRowIds[i];
                                 }
                             }
                         }

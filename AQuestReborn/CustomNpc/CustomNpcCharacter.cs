@@ -24,6 +24,7 @@ namespace AQuestReborn.CustomNpc
 
         // Idle pose
         public ushort IdleEmoteId = 50; // Default: groundsit
+        public ushort VictoryPoseEmoteId = 0; // Default: none
 
         // Appearance mode
         public bool UseMcdfAppearance = false;

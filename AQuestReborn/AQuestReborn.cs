@@ -1430,6 +1430,7 @@ namespace AQuestReborn
                                 npc.SetDefaults(position, rotation);
                                 npc.SetDefaultRotation(rotation);
                                 npc.IdleEmoteId = npcData.IdleEmoteId;
+                                npc.VictoryPoseEmoteId = npcData.VictoryPoseEmoteId;
 
                                 // Trigger idle emote immediately for staying NPCs
                                 if (npcData.IdleEmoteId > 0)

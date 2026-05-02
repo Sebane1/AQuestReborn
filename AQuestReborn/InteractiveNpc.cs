@@ -69,12 +69,16 @@ namespace AQuestReborn
         private ushort _nextCombatAnimationToPlay;
         private Stopwatch _combatAttackDelayTimer = new Stopwatch();
         private int _currentCombatDelayMs;
+        private ushort _queuedVictoryPose;
+        private Stopwatch _victoryPoseDelayTimer = new Stopwatch();
+        private int _victoryPoseDelayMs;
         EventMovementAnimation _eventMovementAnimationType = EventMovementAnimation.Automatic;
         public string LastAppearance { get; internal set; }
         public bool LooksAtPlayer { get; internal set; }
         public bool ShouldBeMoving { get => _shouldBeMoving; set => _shouldBeMoving = value; }
         public ICharacter Character { get => _character; set => _character = value; }
         public EventMovementAnimation EventMovementAnimationType { get => _eventMovementAnimationType; set => _eventMovementAnimationType = value; }
+        public ushort VictoryPoseEmoteId { get; set; }
         public ushort IdleEmoteId
         {
             get => _idleEmoteId;
@@ -277,11 +281,31 @@ namespace AQuestReborn
                                         if (_wasInCombat)
                                         {
                                             _wasInCombat = false;
-                                            var nChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
-                                            nChara->Timeline.TimelineSequencer.PlayTimeline(5617); // Sheathe weapon
-                                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                                            if (VictoryPoseEmoteId > 0)
+                                            {
+                                                _queuedVictoryPose = VictoryPoseEmoteId;
+                                                _victoryPoseDelayTimer.Restart();
+                                                _victoryPoseDelayMs = new Random(Environment.TickCount + _index).Next(500, 3000);
+                                            }
+                                            else
+                                            {
+                                                var nChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
+                                                nChara->Timeline.TimelineSequencer.PlayTimeline(5617); // Sheathe weapon
+                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                                            }
                                             _lastPlayerTimelineId = 0;
                                             _nextCombatAnimationToPlay = 0;
+                                        }
+
+                                        if (_queuedVictoryPose > 0 && _victoryPoseDelayTimer.ElapsedMilliseconds > _victoryPoseDelayMs)
+                                        {
+                                            try
+                                            {
+                                                var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(_queuedVictoryPose);
+                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
+                                            }
+                                            catch { }
+                                            _queuedVictoryPose = 0;
                                         }
 
                                         // Trigger idle emote if standing still long enough
