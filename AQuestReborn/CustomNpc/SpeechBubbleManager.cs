@@ -23,39 +23,77 @@ namespace AQuestReborn.CustomNpc
         public SpeechBubbleManager(Plugin plugin)
         {
             _plugin = plugin;
-            _nextAmbientIntervalMs = _random.Next(300000, 600000); // 5-10 minutes
+            _nextAmbientIntervalMs = 30000; // 30 seconds (testing)
             _ambientTimer.Start();
         }
 
         /// <summary>
-        /// Shows a native FFXIV speech bubble above a character's head.
+        /// Active speech bubbles to render via ImGui overlay.
         /// </summary>
-        public unsafe void ShowNativeBubble(ICharacter character, string text)
+        public class ActiveBubble
         {
-            try
+            public ICharacter Character;
+            public string Text;
+            public Stopwatch Timer = new Stopwatch();
+            public int DurationMs = 8000;
+        }
+
+        private ConcurrentDictionary<string, ActiveBubble> _activeBubbles = new ConcurrentDictionary<string, ActiveBubble>();
+        public IReadOnlyDictionary<string, ActiveBubble> ActiveBubbles => _activeBubbles;
+
+        /// <summary>
+        /// Shows a speech bubble above a character's head via ImGui overlay.
+        /// </summary>
+        public void ShowBubble(ICharacter character, string npcName, string text)
+        {
+            var bubble = new ActiveBubble
             {
-                var charStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)character.Address;
-                if (charStruct != null)
+                Character = character,
+                Text = text,
+            };
+            bubble.Timer.Start();
+            _activeBubbles[npcName] = bubble;
+        }
+
+        /// <summary>
+        /// Expire old bubbles. Call from framework update.
+        /// </summary>
+        public void CleanupBubbles()
+        {
+            foreach (var kvp in _activeBubbles)
+            {
+                if (kvp.Value.Timer.ElapsedMilliseconds > kvp.Value.DurationMs)
                 {
-                    charStruct->Balloon.PlayTimer = 1;
-                    charStruct->Balloon.Text = new FFXIVClientStructs.FFXIV.Client.System.String.Utf8String(text);
-                    // Write Type and State directly via pointer cast
-                    *((byte*)&charStruct->Balloon.Type) = 0; // Timer
-                    *((byte*)&charStruct->Balloon.State) = 1; // Active
+                    _activeBubbles.TryRemove(kvp.Key, out _);
                 }
-            }
-            catch (Exception e)
-            {
-                _plugin.PluginLog.Warning(e, "Failed to show native bubble");
             }
         }
 
         /// <summary>
         /// Called from Framework.Update to check if it's time for ambient NPC chatter.
         /// </summary>
+        private Stopwatch _debugLogTimer = new Stopwatch();
         public void Update()
         {
-            if (!_ambientEnabled || _isProcessingAmbient) return;
+            // Periodic diagnostic (every 5s) to see what's blocking
+            if (!_debugLogTimer.IsRunning) _debugLogTimer.Start();
+            if (_debugLogTimer.ElapsedMilliseconds > 5000)
+            {
+                _debugLogTimer.Restart();
+                var aq = _plugin.AQuestReborn;
+                int npcCount = aq?.CustomNpcCharacters?.Count ?? -1;
+                int convCount = aq?.CustomNpcConversationManagers?.Count ?? -1;
+                bool chatActive = _plugin.NpcChatWindow?.IsConversationActive ?? false;
+                _plugin.PluginLog.Information($"[SpeechBubble] DEBUG: enabled={_ambientEnabled}, processing={_isProcessingAmbient}, npcs={npcCount}, convMgrs={convCount}, chatActive={chatActive}, timer={_ambientTimer.ElapsedMilliseconds}/{_nextAmbientIntervalMs}");
+            }
+
+            if (!_ambientEnabled || _isProcessingAmbient)
+            {
+                CleanupBubbles();
+                return;
+            }
+
+            CleanupBubbles();
 
             if (_plugin.AQuestReborn == null) return;
             var customNpcs = _plugin.AQuestReborn.CustomNpcCharacters;
@@ -68,8 +106,9 @@ namespace AQuestReborn.CustomNpc
 
             if (_ambientTimer.ElapsedMilliseconds >= _nextAmbientIntervalMs)
             {
+                _plugin.PluginLog.Information($"[SpeechBubble] Timer fired! NPCs={customNpcs.Count}, ConvMgrs={conversationManagers?.Count ?? 0}");
                 _ambientTimer.Restart();
-                _nextAmbientIntervalMs = _random.Next(300000, 600000); // Reset to 5-10 min
+                _nextAmbientIntervalMs = 30000; // 30 seconds (testing)
                 _isProcessingAmbient = true;
 
                 Task.Run(async () =>
@@ -78,6 +117,8 @@ namespace AQuestReborn.CustomNpc
                     {
                         var npcNames = customNpcs.Keys.ToList();
                         if (npcNames.Count == 0) return;
+
+                        _plugin.PluginLog.Information($"[SpeechBubble] Picking from {npcNames.Count} NPCs: {string.Join(", ", npcNames)}");
 
                         // If multiple NPCs, 50% chance of NPC-to-NPC conversation
                         if (npcNames.Count >= 2 && _random.Next(2) == 0)
@@ -88,6 +129,7 @@ namespace AQuestReborn.CustomNpc
                         {
                             // Solo ambient thought
                             string npcName = npcNames[_random.Next(npcNames.Count)];
+                            _plugin.PluginLog.Information($"[SpeechBubble] Solo ambient for: {npcName}");
                             await TriggerSoloAmbient(npcName, customNpcs, conversationManagers);
                         }
                     }
@@ -107,12 +149,20 @@ namespace AQuestReborn.CustomNpc
             Dictionary<string, ICharacter> customNpcs,
             Dictionary<string, NPCConversationManager> conversationManagers)
         {
-            if (!customNpcs.ContainsKey(npcName) || !conversationManagers.ContainsKey(npcName)) return;
+            if (!customNpcs.ContainsKey(npcName) || !conversationManagers.ContainsKey(npcName))
+            {
+                _plugin.PluginLog.Information($"[SpeechBubble] NPC '{npcName}' not in dictionaries. customNpcs={customNpcs.ContainsKey(npcName)}, convMgrs={conversationManagers.ContainsKey(npcName)}");
+                return;
+            }
 
             var npcChar = customNpcs[npcName];
             var convManager = conversationManagers[npcName];
             var sender = _plugin.ObjectTable.LocalPlayer;
-            if (sender == null || npcChar == null) return;
+            if (sender == null || npcChar == null)
+            {
+                _plugin.PluginLog.Information($"[SpeechBubble] sender or npcChar null");
+                return;
+            }
 
             // Find NPC data
             CustomNpcCharacter npcData = null;
@@ -124,7 +174,13 @@ namespace AQuestReborn.CustomNpc
                     break;
                 }
             }
-            if (npcData == null) return;
+            if (npcData == null)
+            {
+                _plugin.PluginLog.Information($"[SpeechBubble] npcData not found in config for '{npcName}'");
+                return;
+            }
+
+            _plugin.PluginLog.Information($"[SpeechBubble] Sending ambient message for '{npcName}'...");
 
             string response = await convManager.SendMessage(
                 sender, npcChar,
@@ -134,17 +190,19 @@ namespace AQuestReborn.CustomNpc
                 "The world of Final Fantasy XIV, Eorzea.",
                 npcData.NpcPersonality);
 
+            _plugin.PluginLog.Information($"[SpeechBubble] Got response: '{response?.Substring(0, Math.Min(response?.Length ?? 0, 80))}'");
+
             if (!string.IsNullOrEmpty(response))
             {
                 string clean = CleanBubbleText(response);
-                // Truncate for bubble display (bubbles can't be too long)
                 if (clean.Length > 120) clean = clean.Substring(0, 117) + "...";
 
                 _lastAmbientMessages[npcName] = clean;
 
                 _plugin.Framework.RunOnFrameworkThread(() =>
                 {
-                    ShowNativeBubble(npcChar, clean);
+                    _plugin.PluginLog.Information($"[SpeechBubble] Showing bubble: '{clean}'");
+                    ShowBubble(npcChar, npcName, clean);
                 });
             }
         }
@@ -191,7 +249,7 @@ namespace AQuestReborn.CustomNpc
 
                 _plugin.Framework.RunOnFrameworkThread(() =>
                 {
-                    ShowNativeBubble(charA, cleanA);
+                    ShowBubble(charA, npcA, cleanA);
                 });
 
                 // Wait for bubble to be read, then NPC B responds
@@ -213,7 +271,7 @@ namespace AQuestReborn.CustomNpc
 
                     _plugin.Framework.RunOnFrameworkThread(() =>
                     {
-                        ShowNativeBubble(charB, cleanB);
+                        ShowBubble(charB, npcB, cleanB);
                     });
                 }
             }

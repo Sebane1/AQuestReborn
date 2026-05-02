@@ -471,10 +471,7 @@ namespace AQuestReborn
             {
                 _followPlayer = true;
                 _speed = speed;
-                if (usePlayerPos)
-                {
-                    _currentPosition = _plugin.ObjectTable.LocalPlayer.Position;
-                }
+                // NPC walks from current position — no snap
             }
         }
         public void StopFollowingPlayer()

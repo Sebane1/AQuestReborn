@@ -1339,7 +1339,18 @@ namespace AQuestReborn
 
                                 Plugin.AnamcoreManager.SetVoice(character, 0);
 
-                                // NPC spawns stationary at offset — follow mode activated via beckon emote
+                                // Restore follow/stay state from config
+                                if (npcData.IsFollowingPlayer)
+                                {
+                                    npc.FollowPlayer(2);
+                                }
+                                else if (npcData.IsStaying && npcData.StayTerritoryId == Plugin.ClientState.TerritoryType)
+                                {
+                                    var stayPos = new Vector3(npcData.StayPositionX, npcData.StayPositionY, npcData.StayPositionZ);
+                                    var stayRot = new Vector3(npcData.StayRotationX, npcData.StayRotationY, npcData.StayRotationZ);
+                                    npc.SetDefaults(stayPos, stayRot);
+                                    npc.SetDefaultRotation(stayRot);
+                                }
                                 npc.IdleEmoteId = npcData.IdleEmoteId;
 
                                 // Create conversation manager

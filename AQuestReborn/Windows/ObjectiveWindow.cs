@@ -248,6 +248,89 @@ public class ObjectiveWindow : Window, IDisposable
                 }
             }
         }
+
+        // --- Draw ambient speech bubbles ---
+        DrawSpeechBubbles();
+    }
+
+    private unsafe void DrawSpeechBubbles()
+    {
+        if (Plugin.SpeechBubbleManager == null) return;
+        var bubbles = Plugin.SpeechBubbleManager.ActiveBubbles;
+        if (bubbles.Count == 0) return;
+
+        var drawList = ImGui.GetWindowDrawList();
+
+        foreach (var kvp in bubbles)
+        {
+            var bubble = kvp.Value;
+            if (bubble.Character == null) continue;
+
+            // Get head bone position
+            Vector3 headPos;
+            try
+            {
+                headPos = Hypostasis.Game.Common.GetBoneWorldPosition((FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)bubble.Character.Address, 6);
+            }
+            catch
+            {
+                headPos = bubble.Character.Position + new Vector3(0, 1.6f, 0);
+            }
+
+            // Project to screen, offset above head
+            bool inView;
+            Vector2 screenPos;
+            Plugin.GameGui.WorldToScreen(headPos + new Vector3(0, 0.5f, 0), out screenPos, out inView);
+            if (!inView) continue;
+
+            // Fade out in last 2 seconds
+            float elapsed = bubble.Timer.ElapsedMilliseconds;
+            float alpha = 1f;
+            float fadeStart = bubble.DurationMs - 2000f;
+            if (elapsed > fadeStart)
+                alpha = Math.Max(0f, 1f - ((elapsed - fadeStart) / 2000f));
+
+            // Word wrap text
+            float maxWidth = 300f;
+            string text = bubble.Text;
+            var textSize = ImGui.CalcTextSize(text, false, maxWidth);
+
+            // Bubble dimensions
+            float padX = 16f, padY = 12f;
+            float nameH = ImGui.CalcTextSize(kvp.Key).Y + 4f;
+            float bubbleW = textSize.X + padX * 2;
+            float bubbleH = nameH + textSize.Y + padY * 2;
+            float tailH = 10f;
+
+            // Center above head
+            var topLeft = new Vector2(screenPos.X - bubbleW / 2, screenPos.Y - bubbleH - tailH);
+            var bottomRight = new Vector2(topLeft.X + bubbleW, topLeft.Y + bubbleH);
+
+            // Background
+            uint bgColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.08f, 0.08f, 0.12f, 0.92f * alpha));
+            uint borderColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.5f, 0.6f, 0.9f, 0.7f * alpha));
+            uint textColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 1f, 1f, alpha));
+            uint nameColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.6f, 0.8f, 1f, alpha));
+
+            drawList.AddRectFilled(topLeft, bottomRight, bgColor, 8f);
+            drawList.AddRect(topLeft, bottomRight, borderColor, 8f, ImDrawFlags.None, 1.5f);
+
+            // Tail triangle
+            var tailMid = new Vector2(screenPos.X, bottomRight.Y);
+            var tailLeft = new Vector2(screenPos.X - 6, bottomRight.Y);
+            var tailRight = new Vector2(screenPos.X + 6, bottomRight.Y);
+            var tailBottom = new Vector2(screenPos.X, bottomRight.Y + tailH);
+            drawList.AddTriangleFilled(tailLeft, tailRight, tailBottom, bgColor);
+            drawList.AddLine(tailLeft, tailBottom, borderColor, 1.5f);
+            drawList.AddLine(tailRight, tailBottom, borderColor, 1.5f);
+
+            // Name
+            var nameSize = ImGui.CalcTextSize(kvp.Key);
+            drawList.AddText(new Vector2(topLeft.X + (bubbleW - nameSize.X) / 2, topLeft.Y + 2f), nameColor, kvp.Key);
+
+            // Text (wrapped)
+            drawList.AddText(ImGui.GetFont(), ImGui.GetFontSize(), new Vector2(topLeft.X + padX, topLeft.Y + padY + 2f + nameSize.Y), textColor, text, maxWidth);
+        }
     }
 
     /// <summary>
