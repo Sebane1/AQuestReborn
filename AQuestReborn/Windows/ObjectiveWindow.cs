@@ -189,7 +189,7 @@ public class ObjectiveWindow : Window, IDisposable
             }
 
             // Custom NPC click-to-chat detection
-            if (!Plugin.NpcChatWindow.IsConversationActive && Plugin.AQuestReborn != null)
+            if (!Plugin.NpcChatWindow.IsConversationActive && Plugin.AQuestReborn != null && !Conditions.Instance()->InCombat)
             {
                 foreach (var kvp in Plugin.AQuestReborn.CustomNpcCharacters)
                 {
