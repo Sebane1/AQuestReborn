@@ -1569,6 +1569,7 @@ namespace AQuestReborn
                                 }
                             }
                             cleanResponse = System.Text.RegularExpressions.Regex.Replace(cleanResponse, @"\*[^*]+\*", "").Trim();
+                            cleanResponse = System.Text.RegularExpressions.Regex.Replace(cleanResponse, @"\[[^\]]+\]", "").Trim();
                             if (string.IsNullOrWhiteSpace(cleanResponse)) cleanResponse = "...";
                             if (cleanResponse.StartsWith("\"") && cleanResponse.EndsWith("\"") && cleanResponse.Length > 2)
                                 cleanResponse = cleanResponse.Substring(1, cleanResponse.Length - 2);

@@ -311,6 +311,8 @@ namespace AQuestReborn.CustomNpc
 
             // Strip asterisk actions for the UI display
             text = System.Text.RegularExpressions.Regex.Replace(text, @"\*[^*]+\*", "").Trim();
+            // Strip bracketed meta-text
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"\[[^\]]+\]", "").Trim();
             if (string.IsNullOrWhiteSpace(text))
             {
                 text = "...";
