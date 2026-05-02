@@ -68,9 +68,14 @@ namespace AQuestReborn.CustomNpc
                 }
             }
             string name = !string.IsNullOrEmpty(alias) ? alias : player.Name.TextValue.Split(" ")[0];
+            string combatMemory = "";
+            if (!string.IsNullOrEmpty(InteractiveNpc.LastCombatTarget))
+            {
+                combatMemory = $" The player recently fought a {InteractiveNpc.LastCombatTarget}. ";
+            }
             return $"{name} is a {genderStr}. {pronounSingularAlternate} is a race of {raceStr}. " +
                 $"{GetPlayerExperience(player.Level, player.ClassJob.Value.NameEnglish.ToString(), pronounSingularAlternate)}." +
-                chatSummaries;
+                combatMemory + chatSummaries;
         }
         private string GetRaceDescription(int race, string pronoun)
         {

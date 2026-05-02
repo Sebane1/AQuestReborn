@@ -27,6 +27,7 @@ namespace AQuestReborn
 {
     public class InteractiveNpc : IDisposable
     {
+        public static string LastCombatTarget = "";
         private ICharacter _character;
         private Plugin _plugin;
         private bool _shouldBeMoving;
@@ -246,6 +247,7 @@ namespace AQuestReborn
 
                                         if (_plugin.ObjectTable.LocalPlayer.TargetObject != null)
                                         {
+                                            LastCombatTarget = _plugin.ObjectTable.LocalPlayer.TargetObject.Name.TextValue;
                                             _plugin.AnamcoreManager.SetHeadTarget(_character.Address, _plugin.ObjectTable.LocalPlayer.TargetObject.EntityId);
                                             var tgtPos = _plugin.ObjectTable.LocalPlayer.TargetObject.Position;
                                             var desiredQuat = CoordinateUtility.LookAt(_currentPosition, tgtPos);
