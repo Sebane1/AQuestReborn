@@ -289,8 +289,6 @@ namespace AQuestReborn
                                             }
                                             else
                                             {
-                                                var nChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
-                                                nChara->Timeline.TimelineSequencer.PlayTimeline(5617); // Sheathe weapon
                                                 _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
                                             }
                                             _lastPlayerTimelineId = 0;
