@@ -220,6 +220,18 @@ public class ObjectiveWindow : Window, IDisposable
                         var playerDist = Vector3.Distance(Plugin.ObjectTable.LocalPlayer.Position, kvp.Value.Position);
                         bool inRange = playerDist < 5f;
 
+                        if (Plugin.Configuration.ShowNpcHitboxes)
+                        {
+                            var drawList = ImGui.GetWindowDrawList();
+                            uint color = (ellipseDist <= 1f && inRange) 
+                                ? ImGui.ColorConvertFloat4ToU32(new Vector4(0f, 1f, 0f, 0.4f)) // Green if hovered and in range
+                                : ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 0f, 0f, 0.4f)); // Red otherwise
+                            var min = new Vector2(npcScreenPos.X - horizontalExtent, npcScreenPos.Y - verticalExtent);
+                            var max = new Vector2(npcScreenPos.X + horizontalExtent, npcScreenPos.Y + verticalExtent);
+                            drawList.AddRectFilled(min, max, color, 8f);
+                            drawList.AddRect(min, max, ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 1f, 1f, 1f)), 8f, ImDrawFlags.None, 2f);
+                        }
+
                         if (ellipseDist <= 1f && inRange)
                         {
                             if (mouseDown)

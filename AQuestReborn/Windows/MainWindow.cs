@@ -139,6 +139,14 @@ public class MainWindow : Window, IDisposable
             Translator.UiLanguage = Plugin.Configuration.QuestLanguage;
             Plugin.Configuration.Save();
         }
+
+        ImGui.Dummy(new Vector2(0, 10));
+        bool showHitboxes = Plugin.Configuration.ShowNpcHitboxes;
+        if (ImGui.Checkbox(Translator.LocalizeUI("Show NPC Clickable Hitboxes (Debug)"), ref showHitboxes))
+        {
+            Plugin.Configuration.ShowNpcHitboxes = showHitboxes;
+            Plugin.Configuration.Save();
+        }
     }
 
     private void DrawQuestObjectives()
