@@ -58,7 +58,6 @@ public sealed class Plugin : IDalamudPlugin
     public readonly WindowSystem WindowSystem = new("A Quest Reborn");
     private IClientState _clientState;
     private IFramework _framework;
-    private ITargetManager _targetManager;
     private EntryPoint _mcdfEntryPoint;
     private AnamcoreManager _anamcoreManager;
     private RoleplayingQuestManager _roleplayingQuestManager;
@@ -100,7 +99,6 @@ public sealed class Plugin : IDalamudPlugin
     public IDataManager DataManager { get => _dataManager; set => _dataManager = value; }
     public IPluginLog PluginLog { get => _pluginLog; set => _pluginLog = value; }
     public IFramework Framework { get => _framework; set => _framework = value; }
-    public ITargetManager TargetManager { get => _targetManager; set => _targetManager = value; }
     public EmoteReaderHooks EmoteReaderHook { get => _emoteReaderHook; set => _emoteReaderHook = value; }
     public IDalamudPluginInterface DalamudPluginInterface { get => _dalamudPluginInterface; set => _dalamudPluginInterface = value; }
     internal AQuestReborn.AQuestReborn AQuestReborn { get => _aQuestReborn; set => _aQuestReborn = value; }
@@ -140,7 +138,6 @@ public sealed class Plugin : IDalamudPlugin
         _gameConfig = gameConfig;
         _chatGui = chatGui;
         _gamepadState = gamepadState;
-        _targetManager = targetManager;
         _dalamudPluginInterface = dalamudPluginInterface;
         _gameInteropProvider = gameInteropProvider;
         var threadSafeObjectTable = new ThreadSafeGameObjectManager(clientState, objectTable, framework, pluginLog);
