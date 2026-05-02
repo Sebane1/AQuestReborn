@@ -202,6 +202,7 @@ namespace AQuestReborn
                                         _currentPosition.Y + (groundY - _currentPosition.Y) * yLerp,
                                         _currentPosition.Z + (targetPosition.Z - _currentPosition.Z) * xzLerp);
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
+                                    _wasMoving = true;
                                     _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(true));
                                     if (_horizontalRefreshTimer.ElapsedMilliseconds > 5000)
                                     {
