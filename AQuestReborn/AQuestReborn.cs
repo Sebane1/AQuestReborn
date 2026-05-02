@@ -644,6 +644,22 @@ namespace AQuestReborn
                     }
                     else
                     {
+                        if (Conditions.Instance()->InCombat && Plugin.ClientState.IsLoggedIn)
+                        {
+                            var target = Plugin.TargetManager.Target;
+                            if (target != null)
+                            {
+                                foreach (var kvp in _customNpcCharacters)
+                                {
+                                    if (kvp.Value != null && kvp.Value.EntityId == target.EntityId)
+                                    {
+                                        Plugin.TargetManager.Target = null;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
                         if (Plugin.ClientState.IsGPosing)
                         {
                             if (_cutsceneNpcSpawned || _spawnedNpcsDictionary.Count > 0)
