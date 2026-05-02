@@ -349,16 +349,29 @@ namespace AQuestReborn
             }
             // Wait for zone to be fully loaded before spawning
             Thread.Sleep(3000);
-            Plugin.PluginLog.Information("[Custom NPC] Checking " + Plugin.Configuration.CustomNpcCharacters.Count + " NPCs for respawn. Dict count: " + _customNpcDictionary.Count);
+            uint currentTerritory = Plugin.ClientState.TerritoryType;
+            Plugin.PluginLog.Information("[Custom NPC] Checking " + Plugin.Configuration.CustomNpcCharacters.Count + " NPCs for respawn in territory " + currentTerritory);
             int spawned = 0;
             foreach (var npcData in Plugin.Configuration.CustomNpcCharacters)
             {
-                Plugin.PluginLog.Information("[Custom NPC] " + npcData.NpcName + " IsFollowing=" + npcData.IsFollowingPlayer + " InDict=" + _customNpcDictionary.ContainsKey(npcData.NpcName));
-                if (npcData.IsFollowingPlayer && spawned < MAX_CUSTOM_NPCS)
+                if (spawned >= MAX_CUSTOM_NPCS) break;
+
+                if (npcData.IsFollowingPlayer && !npcData.IsStaying)
                 {
-                    Plugin.PluginLog.Information("[Custom NPC] Respawning: " + npcData.NpcName + " (ActorService=" + (_actorSpawnService != null) + ")");
+                    // Following NPCs spawn in any zone
+                    Plugin.PluginLog.Information("[Custom NPC] Respawning follower: " + npcData.NpcName);
                     Thread.Sleep(1000);
                     SummonCustomNpc(npcData);
+                    spawned++;
+                }
+                else if (npcData.IsStaying && npcData.StayTerritoryId == currentTerritory)
+                {
+                    // Staying NPCs only spawn if we're in their saved territory
+                    Plugin.PluginLog.Information("[Custom NPC] Respawning at stay location: " + npcData.NpcName);
+                    Thread.Sleep(1000);
+                    SummonCustomNpcAtPosition(npcData,
+                        new System.Numerics.Vector3(npcData.StayPositionX, npcData.StayPositionY, npcData.StayPositionZ),
+                        new System.Numerics.Vector3(npcData.StayRotationX, npcData.StayRotationY, npcData.StayRotationZ));
                     spawned++;
                 }
             }
@@ -1236,6 +1249,69 @@ namespace AQuestReborn
             });
         }
 
+        public void SummonCustomNpcAtPosition(CustomNpcCharacter npcData, System.Numerics.Vector3 position, System.Numerics.Vector3 rotation)
+        {
+            if (_actorSpawnService == null || Plugin.ObjectTable.LocalPlayer == null) return;
+            if (_customNpcDictionary.ContainsKey(npcData.NpcName)) return;
+            if (_customNpcDictionary.Count >= MAX_CUSTOM_NPCS) return;
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    Thread.Sleep(500);
+                    Plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        try
+                        {
+                            ICharacter character = null;
+                            if (_actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
+                                position, 0) && character != null)
+                            {
+                                _customNpcCharacters[npcData.NpcName] = character;
+                                var npc = new InteractiveNpc(Plugin, character);
+                                _customNpcDictionary[npcData.NpcName] = npc;
+                                _interactiveNpcDictionary[npcData.NpcName] = npc;
+
+                                // Apply glamourer design by GUID
+                                if (!string.IsNullOrEmpty(npcData.NpcGlamourerAppearanceString))
+                                {
+                                    if (Guid.TryParse(npcData.NpcGlamourerAppearanceString, out var designGuid))
+                                    {
+                                        PenumbraAndGlamourerIpcWrapper.Instance.ApplyDesign.Invoke(designGuid, character.ObjectIndex);
+                                    }
+                                }
+
+                                Plugin.AnamcoreManager.SetVoice(character, 0);
+
+                                // Set to stay at the saved position/rotation
+                                npc.SetDefaults(position, rotation);
+                                npc.SetDefaultRotation(rotation);
+
+                                // Create conversation manager
+                                string baseDir = Plugin.Configuration.QuestInstallFolder ?? Path.GetTempPath();
+                                string npcMemoryDir = Path.Combine(baseDir, "CustomNpcMemories");
+                                Directory.CreateDirectory(npcMemoryDir);
+                                var conversationManager = new NPCConversationManager(
+                                    npcData.NpcName, npcMemoryDir, Plugin, character);
+                                _customNpcConversationManagers[npcData.NpcName] = conversationManager;
+
+                                Plugin.ChatGui.Print("[A Quest Reborn] " + npcData.NpcName + " is waiting where you left them!");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Plugin.PluginLog.Warning(ex, "Failed to summon custom NPC at position: " + ex.Message);
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Warning(ex, "Failed to summon custom NPC at position: " + ex.Message);
+                }
+            });
+        }
+
         public void DismissCustomNpc(string npcName)
         {
             if (_customNpcDictionary.ContainsKey(npcName))
@@ -1383,21 +1459,40 @@ namespace AQuestReborn
             if (_customNpcDictionary.ContainsKey(npcName))
             {
                 var npc = _customNpcDictionary[npcName];
+                // Find the config data for this NPC
+                var npcConfig = Plugin.Configuration.CustomNpcCharacters?.Find(n => n.NpcName == npcName);
                 if (shouldFollow)
                 {
                     npc.FollowPlayer(2);
+                    // Clear stay data
+                    if (npcConfig != null)
+                    {
+                        npcConfig.IsStaying = false;
+                        npcConfig.StayTerritoryId = 0;
+                        Plugin.Configuration.Save();
+                    }
                 }
                 else
                 {
-                    // Update default position to where the NPC is currently standing
-                    if (_customNpcCharacters.ContainsKey(npcName))
+                    // Capture the Brio transform position and rotation before stopping
+                    var pos = npc.CurrentPosition;
+                    var rot = npc.CurrentRotation;
+                    npc.StopFollowingPlayer();
+                    npc.SetDefaults(pos, rot);
+                    npc.SetDefaultRotation(rot);
+
+                    // Save stay location to config
+                    if (npcConfig != null)
                     {
-                        var character = _customNpcCharacters[npcName];
-                        // Capture the Brio transform rotation before stopping
-                        var rot = npc.CurrentRotation;
-                        npc.StopFollowingPlayer();
-                        npc.SetDefaults(character.Position, rot);
-                        npc.SetDefaultRotation(rot);
+                        npcConfig.IsStaying = true;
+                        npcConfig.StayTerritoryId = Plugin.ClientState.TerritoryType;
+                        npcConfig.StayPositionX = pos.X;
+                        npcConfig.StayPositionY = pos.Y;
+                        npcConfig.StayPositionZ = pos.Z;
+                        npcConfig.StayRotationX = rot.X;
+                        npcConfig.StayRotationY = rot.Y;
+                        npcConfig.StayRotationZ = rot.Z;
+                        Plugin.Configuration.Save();
                     }
                 }
             }

@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 
 namespace AQuestReborn.CustomNpc
 {
@@ -11,5 +12,14 @@ namespace AQuestReborn.CustomNpc
         public string NpcGlamourerAppearanceString = "";
         public bool IsFollowingPlayer = false;
         public bool IsStaying = false;
+
+        // Stay location persistence
+        public uint StayTerritoryId = 0;
+        public float StayPositionX = 0;
+        public float StayPositionY = 0;
+        public float StayPositionZ = 0;
+        public float StayRotationX = 0;
+        public float StayRotationY = 0;
+        public float StayRotationZ = 0;
     }
 }

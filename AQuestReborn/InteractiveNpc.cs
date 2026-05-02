@@ -334,6 +334,7 @@ namespace AQuestReborn
             _plugin.AnamcoreManager.StopEmote(_character.Address);
         }
 
+        public Vector3 CurrentPosition => _currentPosition;
         public Vector3 CurrentRotation => _currentRotation;
         public void SetDefaultRotation(Vector3 rotation)
         {
