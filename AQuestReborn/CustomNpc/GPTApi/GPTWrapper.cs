@@ -112,6 +112,22 @@ namespace AQuestReborn.CustomNpc
                     return;
                 }
 
+                string formattedResponse = DetectFormatting(trimmedBotResponse).Trim().ToLower();
+
+                if (_histories[sender].History.Visible.Count > 0)
+                {
+                    var lastMessage = _histories[sender].History.Visible[_histories[sender].History.Visible.Count - 1];
+                    if (lastMessage.Count > 1)
+                    {
+                        string cleanLast = lastMessage[1].Replace(_personality, "").Trim().ToLower();
+                        if (cleanLast == formattedResponse)
+                        {
+                            ClearHistory(sender);
+                            return;
+                        }
+                    }
+                }
+
                 _histories[sender].History.Visible.Add(new List<string> {
                 sender.Split(" ")[0] + DetectFormatting(trimmedUserText), _personality + DetectFormatting(trimmedBotResponse) });
             }
