@@ -102,6 +102,8 @@ namespace AQuestReborn
         private Dictionary<string, ICharacter> _customNpcCharacters = new Dictionary<string, ICharacter>();
         private Dictionary<string, NPCConversationManager> _customNpcConversationManagers = new Dictionary<string, NPCConversationManager>();
 
+        public DateTime LastNpcChatTime { get; set; } = DateTime.MinValue;
+
         public AQuestReborn(Plugin plugin)
         {
             Plugin = plugin;
@@ -1507,6 +1509,8 @@ namespace AQuestReborn
 
         public void HandleCustomNpcChat(IPlayerCharacter sender, string message)
         {
+            LastNpcChatTime = DateTime.Now;
+
             if (_customNpcCharacters.Count == 0)
             {
                 Plugin.ChatGui.PrintError("[A Quest Reborn] No custom NPCs are currently summoned.");

@@ -264,7 +264,15 @@ namespace AQuestReborn.CustomNpc
                 });
 
                 // Wait for bubble to be read, then NPC B responds
+                DateTime delayStart = DateTime.Now;
                 await Task.Delay(4000);
+
+                // If player talked via .npcchat during this 4-second pause, cancel NPC B's response so they don't get talked over.
+                if (_plugin.AQuestReborn != null && _plugin.AQuestReborn.LastNpcChatTime > delayStart)
+                {
+                    _plugin.PluginLog.Information("[SpeechBubble] Player interrupted ambient chat with /npcchat. Canceling NPC B response.");
+                    return;
+                }
 
                 string responseB = await conversationManagers[npcB].SendMessage(
                     sender, charB,
