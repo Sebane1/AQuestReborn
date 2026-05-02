@@ -9,6 +9,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.IO;
+using System.Threading.Tasks;
+using McdfDataImporter;
 
 namespace AQuestReborn.CustomNpc
 {
@@ -23,6 +26,7 @@ namespace AQuestReborn.CustomNpc
         private int _designListSelectedIndex = 0;
         Plugin _plugin;
         private FileDialogManager _fileDialogManager;
+        private bool _isCreatingMcdf;
 
         // Idle emote list built from Excel sheet
         private string[] _idleEmoteNames = new string[] { "None" };
@@ -190,6 +194,49 @@ namespace AQuestReborn.CustomNpc
                     if (ImGui.Checkbox(Translator.LocalizeUI("Use MCDF File"), ref _customNpcCharacters[_currentSelection].UseMcdfAppearance))
                     {
                         SaveNPCCharacters();
+                    }
+
+                    // Create MCDF from player appearance
+                    if (_isCreatingMcdf)
+                    {
+                        ImGui.BeginDisabled();
+                    }
+                    if (ImGui.Button(Translator.LocalizeUI(_isCreatingMcdf ? "Creating Appearance..." : "Create MCDF From Player Appearance##customnpc")))
+                    {
+                        Task.Run(() =>
+                        {
+                            _isCreatingMcdf = true;
+                            try
+                            {
+                                string npcName = _customNpcCharacters[_currentSelection].NpcName;
+                                string mcdfDir = Path.Combine(_plugin.Configuration.QuestInstallFolder, "CustomNpcs");
+                                Directory.CreateDirectory(mcdfDir);
+                                string mcdfName = npcName + "-" + Guid.NewGuid().ToString() + ".mcdf";
+                                string mcdfPath = Path.Combine(mcdfDir, mcdfName);
+                                AppearanceAccessUtils.AppearanceManager.CreateMCDF(mcdfPath);
+                                _customNpcCharacters[_currentSelection].McdfFilePath = mcdfPath;
+                                _customNpcCharacters[_currentSelection].UseMcdfAppearance = true;
+                                SaveNPCCharacters();
+
+                                // Apply immediately if NPC is spawned
+                                if (_plugin?.AQuestReborn != null)
+                                {
+                                    _plugin.AQuestReborn.ReapplyCustomNpcMcdfAppearance(npcName, mcdfPath);
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                _plugin?.PluginLog?.Warning(e, "Failed to create MCDF");
+                            }
+                            finally
+                            {
+                                _isCreatingMcdf = false;
+                            }
+                        });
+                    }
+                    if (_isCreatingMcdf)
+                    {
+                        ImGui.EndDisabled();
                     }
 
                     if (!_customNpcCharacters[_currentSelection].UseMcdfAppearance)
