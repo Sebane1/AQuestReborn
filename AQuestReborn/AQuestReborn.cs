@@ -1173,6 +1173,7 @@ namespace AQuestReborn
                                 _customNpcCharacters[npcData.NpcName] = character;
                                 var npc = new InteractiveNpc(Plugin, character);
                                 _customNpcDictionary[npcData.NpcName] = npc;
+                                _interactiveNpcDictionary[npcData.NpcName] = npc;
 
                                 // Apply glamourer design by GUID
                                 if (!string.IsNullOrEmpty(npcData.NpcGlamourerAppearanceString))
@@ -1185,15 +1186,8 @@ namespace AQuestReborn
 
                                 Plugin.AnamcoreManager.SetVoice(character, 0);
 
-                                // Snap NPC beside the player using Brio transform
-                                var spawnNearPos = Plugin.ObjectTable.LocalPlayer.Position;
-                                float yaw = Plugin.ObjectTable.LocalPlayer.Rotation;
-                                var right = new Vector3(-(float)Math.Cos(yaw), 0, (float)Math.Sin(yaw));
-                                var offsetPos = spawnNearPos + right * 4f;
-                                npc.SetDefaults(offsetPos, new Vector3(0, 0, 0));
-
-                                // Start following the player
-                                npc.FollowPlayer(2);
+                                // Start following the player (offset handled by InteractiveNpcDictionary index)
+                                npc.FollowPlayer(2, true);
 
                                 // Create conversation manager
                                 string baseDir = Plugin.Configuration.QuestInstallFolder ?? Path.GetTempPath();
@@ -1227,6 +1221,7 @@ namespace AQuestReborn
                 npc.StopFollowingPlayer();
                 npc.Dispose();
                 _customNpcDictionary.Remove(npcName);
+                _interactiveNpcDictionary.Remove(npcName);
             }
             if (_customNpcCharacters.ContainsKey(npcName))
             {
