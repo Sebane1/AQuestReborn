@@ -247,6 +247,12 @@ public sealed class Plugin : IDalamudPlugin
             }
         }
     }
+    public string GetEnvironmentContext()
+    {
+        if (_clientState == null || !_clientState.IsLoggedIn) return string.Empty;
+        return $"Zone: {ClientState.TerritoryType}";
+    }
+
     private void MigrateArtemisNpcData()
     {
         try

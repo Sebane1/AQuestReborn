@@ -143,7 +143,12 @@ namespace AQuestReborn.CustomNpc
 
             if (ImGui.Button("+", new Vector2(35)))
             {
-                _customNpcCharacters.Add(new CustomNpcCharacter());
+                var newNpc = new CustomNpcCharacter();
+                if (_currentGlamourerDesigns.Count > 0)
+                {
+                    newNpc.NpcGlamourerAppearanceString = _currentGlamourerDesigns.Keys.First().ToString();
+                }
+                _customNpcCharacters.Add(newNpc);
                 SaveNPCCharacters();
             }
 
@@ -418,10 +423,12 @@ namespace AQuestReborn.CustomNpc
                         {
                             if (_plugin != null && _plugin.AQuestReborn != null)
                             {
-                                _customNpcCharacters[_currentSelection].IsStaying = !isStaying;
+                                bool shouldFollow = isStaying; // If it's currently staying, we want it to follow.
+                                _customNpcCharacters[_currentSelection].IsStaying = !shouldFollow;
+                                _customNpcCharacters[_currentSelection].IsFollowingPlayer = shouldFollow;
                                 _plugin.AQuestReborn.ToggleCustomNpcFollow(
                                     _customNpcCharacters[_currentSelection].NpcName,
-                                    !_customNpcCharacters[_currentSelection].IsStaying);
+                                    shouldFollow);
                                 SaveNPCCharacters();
                             }
                         }

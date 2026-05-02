@@ -332,7 +332,7 @@ public class NpcChatWindow : Window, IDisposable
                     npcData.NpcName,
                     npcData.NPCGreeting,
                     message,
-                    "The world of Final Fantasy XIV, Eorzea.",
+                    _plugin.GetEnvironmentContext(),
                     npcData.NpcPersonality);
 
                 _plugin.PluginLog.Information($"NPC Chat: Got response in {sw.ElapsedMilliseconds}ms, length={response?.Length ?? 0}");

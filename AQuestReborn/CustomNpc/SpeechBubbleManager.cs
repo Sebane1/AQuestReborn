@@ -198,7 +198,7 @@ namespace AQuestReborn.CustomNpc
                 npcData.NpcName,
                 npcData.NPCGreeting,
                 "*is standing nearby, looking around idly*",
-                "The world of Final Fantasy XIV, Eorzea.",
+                _plugin.GetEnvironmentContext(),
                 npcData.NpcPersonality);
 
             _plugin.PluginLog.Information($"[SpeechBubble] Got response: '{response?.Substring(0, Math.Min(response?.Length ?? 0, 80))}'");
@@ -249,7 +249,7 @@ namespace AQuestReborn.CustomNpc
                 dataA.NpcName,
                 dataA.NPCGreeting,
                 $"*notices {npcB} nearby and makes casual conversation*",
-                "The world of Final Fantasy XIV, Eorzea.",
+                _plugin.GetEnvironmentContext(),
                 dataA.NpcPersonality);
 
             if (!string.IsNullOrEmpty(responseA))
@@ -271,7 +271,7 @@ namespace AQuestReborn.CustomNpc
                     dataB.NpcName,
                     dataB.NPCGreeting,
                     $"*{npcA} just said: \"{cleanA}\". Respond naturally.*",
-                    "The world of Final Fantasy XIV, Eorzea.",
+                    _plugin.GetEnvironmentContext(),
                     dataB.NpcPersonality);
 
                 if (!string.IsNullOrEmpty(responseB))
