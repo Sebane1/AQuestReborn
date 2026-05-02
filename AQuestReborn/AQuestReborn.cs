@@ -49,6 +49,7 @@ namespace AQuestReborn
         public Dictionary<string, Dictionary<string, ICharacter>> SpawnedNPCs { get => _spawnedNpcsDictionary; set => _spawnedNpcsDictionary = value; }
         public string Discriminator { get => _discriminator; set => _discriminator = value; }
         public Dictionary<string, InteractiveNpc> InteractiveNpcDictionary { get => _interactiveNpcDictionary; set => _interactiveNpcDictionary = value; }
+        public PlayerGroundMap GroundMap { get; } = new PlayerGroundMap();
         public bool WaitingForMcdfLoad { get => _waitingForAppearanceLoad; set => _waitingForAppearanceLoad = value; }
         public static MediaGameObject PlayerObject { get => _playerObject; set => _playerObject = value; }
         public static nint PlayerAddress { get => _playerAddress; set => _playerAddress = value; }
@@ -299,6 +300,7 @@ namespace AQuestReborn
                 _mcdfRefreshTimer.Reset();
                 _interactiveNpcDictionary.Clear();
                 _hasCheckedForPlayerAppearance = false;
+                GroundMap.SetTerritory(territory);
 
                 // Clean up custom NPC references (Brio actors are destroyed on zone change)
                 foreach (var kvp in _customNpcDictionary)
@@ -340,14 +342,24 @@ namespace AQuestReborn
 
         private void RespawnActiveCustomNpcs()
         {
-            if (Plugin.Configuration.CustomNpcCharacters == null) return;
+            if (Plugin.Configuration.CustomNpcCharacters == null)
+            {
+                Plugin.PluginLog.Information("[Custom NPC] No CustomNpcCharacters in config.");
+                return;
+            }
+            // Wait for zone to be fully loaded before spawning
+            Thread.Sleep(3000);
+            Plugin.PluginLog.Information("[Custom NPC] Checking " + Plugin.Configuration.CustomNpcCharacters.Count + " NPCs for respawn. Dict count: " + _customNpcDictionary.Count);
+            int spawned = 0;
             foreach (var npcData in Plugin.Configuration.CustomNpcCharacters)
             {
-                if (npcData.IsFollowingPlayer)
+                Plugin.PluginLog.Information("[Custom NPC] " + npcData.NpcName + " IsFollowing=" + npcData.IsFollowingPlayer + " InDict=" + _customNpcDictionary.ContainsKey(npcData.NpcName));
+                if (npcData.IsFollowingPlayer && spawned < MAX_CUSTOM_NPCS)
                 {
-                    // Small delay to ensure the zone is fully loaded
-                    Thread.Sleep(2000);
+                    Plugin.PluginLog.Information("[Custom NPC] Respawning: " + npcData.NpcName + " (ActorService=" + (_actorSpawnService != null) + ")");
+                    Thread.Sleep(1000);
                     SummonCustomNpc(npcData);
+                    spawned++;
                 }
             }
         }
@@ -499,6 +511,11 @@ namespace AQuestReborn
                     if (!Plugin.ClientState.IsGPosing && !Plugin.ClientState.IsPvPExcludingDen && !Conditions.Instance()->BetweenAreas && !Conditions.Instance()->WatchingCutscene
                         && !Conditions.Instance()->Occupied && !Conditions.Instance()->InCombat && Plugin.ClientState.IsLoggedIn)
                     {
+                        // Record player position for NPC ground height map
+                        if (Plugin.ObjectTable.LocalPlayer != null)
+                        {
+                            GroundMap.RecordPosition(Plugin.ObjectTable.LocalPlayer.Position);
+                        }
                         // Hopefully waiting prevents crashing on zone changes?
                         if (zoneChangeCooldown.ElapsedMilliseconds > 500)
                         {
@@ -1145,6 +1162,7 @@ namespace AQuestReborn
         }
 
         #region Custom NPC Management
+        private const int MAX_CUSTOM_NPCS = 3;
         public void SummonCustomNpc(CustomNpcCharacter npcData)
         {
             if (_actorSpawnService == null || Plugin.ObjectTable.LocalPlayer == null) return;
@@ -1152,6 +1170,11 @@ namespace AQuestReborn
             {
                 // Already summoned, dismiss instead
                 DismissCustomNpc(npcData.NpcName);
+                return;
+            }
+            if (_customNpcDictionary.Count >= MAX_CUSTOM_NPCS)
+            {
+                Plugin.ToastGui.ShowError("Custom NPC limit reached! Maximum of " + MAX_CUSTOM_NPCS + " NPCs allowed.");
                 return;
             }
 

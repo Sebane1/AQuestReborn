@@ -121,7 +121,16 @@ namespace AQuestReborn
                                         + GetHorizontalOffsetFromPlayer(_horizontalOffset);
                                 if (Vector3.Distance(_currentPosition, targetPosition) > 1)
                                 {
-                                    _currentPosition = Vector3.Lerp(_currentPosition, targetPosition, _speed * delta);
+                                    // Use ground map Y at the NPC's current XZ instead of player's Y
+                                    float groundY = _plugin.AQuestReborn.GroundMap.GetGroundY(
+                                        _currentPosition.X, _currentPosition.Z, targetPosition.Y);
+                                    // Lerp XZ at normal speed, Y at 10x for quick ground snapping
+                                    float xzLerp = _speed * delta;
+                                    float yLerp = Math.Clamp(_speed * delta * 10f, 0f, 1f);
+                                    _currentPosition = new Vector3(
+                                        _currentPosition.X + (targetPosition.X - _currentPosition.X) * xzLerp,
+                                        _currentPosition.Y + (groundY - _currentPosition.Y) * yLerp,
+                                        _currentPosition.Z + (targetPosition.Z - _currentPosition.Z) * xzLerp);
                                     _currentRotation = CoordinateUtility.LookAt(_currentPosition, targetPosition).QuaternionToEuler();
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
                                     var value = _plugin.AnamcoreManager.GetCurrentAnimationId(_plugin.ObjectTable.LocalPlayer);
@@ -134,7 +143,10 @@ namespace AQuestReborn
                                 }
                                 else
                                 {
-                                    _currentPosition = Vector3.Lerp(_currentPosition, new Vector3(_currentPosition.X, _plugin.ObjectTable.LocalPlayer.Position.Y, _currentPosition.Z), _speed * delta);
+                                    float groundY = _plugin.AQuestReborn.GroundMap.GetGroundY(
+                                        _currentPosition.X, _currentPosition.Z, _plugin.ObjectTable.LocalPlayer.Position.Y);
+                                    float yLerp = Math.Clamp(_speed * delta * 10f, 0f, 1f);
+                                    _currentPosition = new Vector3(_currentPosition.X, _currentPosition.Y + (groundY - _currentPosition.Y) * yLerp, _currentPosition.Z);
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
                                     _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
                                 }
