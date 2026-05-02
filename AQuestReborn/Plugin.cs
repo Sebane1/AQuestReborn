@@ -250,7 +250,16 @@ public sealed class Plugin : IDalamudPlugin
     public string GetEnvironmentContext()
     {
         if (_clientState == null || !_clientState.IsLoggedIn) return string.Empty;
-        return $"Zone: {ClientState.TerritoryType}";
+        try
+        {
+            var territory = DataManager.GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>()?.GetRow(ClientState.TerritoryType);
+            string placeName = territory?.PlaceName.Value.Name.ToString();
+            return $"Current Location: {placeName ?? "Eorzea"}";
+        }
+        catch
+        {
+            return "Current Location: Eorzea";
+        }
     }
 
     private void MigrateArtemisNpcData()
