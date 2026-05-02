@@ -1301,7 +1301,10 @@ namespace AQuestReborn
                         try
                         {
                             var playerPos = Plugin.ObjectTable.LocalPlayer.Position;
-                            var spawnPos = playerPos + new Vector3(2, 0, 2);
+                            float spawnX = playerPos.X + 2;
+                            float spawnZ = playerPos.Z + 2;
+                            float spawnY = GroundMap.GetGroundY(spawnX, spawnZ, playerPos.Y);
+                            var spawnPos = new Vector3(spawnX, spawnY, spawnZ);
                             ICharacter character = null;
                             if (_actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
                                 spawnPos, 0) && character != null)
@@ -1336,8 +1339,7 @@ namespace AQuestReborn
 
                                 Plugin.AnamcoreManager.SetVoice(character, 0);
 
-                                // Start following the player (offset handled by InteractiveNpcDictionary index)
-                                npc.FollowPlayer(2, true);
+                                // NPC spawns stationary at offset — follow mode activated via beckon emote
                                 npc.IdleEmoteId = npcData.IdleEmoteId;
 
                                 // Create conversation manager

@@ -92,6 +92,8 @@ namespace AQuestReborn
             BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
             _posing = posing;
             _index = _plugin.AQuestReborn.InteractiveNpcDictionary.Count;
+            _currentPosition = character.Position;
+            _defaultPosition = character.Position;
             _horizontalRefreshTimer.Start();
             _idleTimer.Start();
             _idleThresholdMs = 20000 + new System.Random().Next(20000);
@@ -521,35 +523,44 @@ namespace AQuestReborn
         public void ReactToEmote(ushort emoteId)
         {
             if (_character == null || _disposed) return;
-            try
+            // Delay 2 seconds for natural feel
+            Task.Run(async () =>
             {
-                // Face the player
-                if (_plugin.ObjectTable.LocalPlayer != null)
+                await Task.Delay(2000);
+                if (_character == null || _disposed) return;
+                try
                 {
-                    _currentRotation = CoordinateUtility.LookAt(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position).QuaternionToEuler();
-                    SetTransform(_currentPosition, _currentRotation, _currentScale);
-                }
+                    _plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        // Face the player
+                        if (_plugin.ObjectTable.LocalPlayer != null)
+                        {
+                            _currentRotation = CoordinateUtility.LookAt(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position).QuaternionToEuler();
+                            SetTransform(_currentPosition, _currentRotation, _currentScale);
+                        }
 
-                // Stop current idle emote
-                if (_idleEmotePlaying)
-                {
-                    _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
-                    _idleEmotePlaying = false;
-                }
+                        // Stop current idle emote
+                        if (_idleEmotePlaying)
+                        {
+                            _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
+                            _idleEmotePlaying = false;
+                        }
 
-                // Play the emote
-                var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(emoteId);
-                var timelineId = (ushort)emote.ActionTimeline[0].Value.RowId;
-                if (timelineId > 0)
-                {
-                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, timelineId);
-                }
+                        // Play the emote (timed, not looping)
+                        var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(emoteId);
+                        var timelineId = (ushort)emote.ActionTimeline[0].Value.RowId;
+                        if (timelineId > 0)
+                        {
+                            _plugin.AnamcoreManager.TriggerEmoteTimed(_character, timelineId, 5000);
+                        }
 
-                // Reset idle timer so the reaction emote plays a while before idle kicks in
-                _idleTimer.Restart();
-                _idleThresholdMs = 20000 + new System.Random().Next(20000);
-            }
-            catch { }
+                        // Reset idle timer so the reaction emote plays a while before idle kicks in
+                        _idleTimer.Restart();
+                        _idleThresholdMs = 20000 + new System.Random().Next(20000);
+                    });
+                }
+                catch { }
+            });
         }
 
         public void Dispose()
