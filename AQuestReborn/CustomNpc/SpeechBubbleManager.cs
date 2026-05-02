@@ -53,6 +53,17 @@ namespace AQuestReborn.CustomNpc
             };
             bubble.Timer.Start();
             _activeBubbles[npcName] = bubble;
+
+            // Log to FFXIV chat
+            try
+            {
+                _plugin.ChatGui.Print(new Dalamud.Game.Text.XivChatEntry
+                {
+                    Message = $"{npcName}: {text}",
+                    Type = Dalamud.Game.Text.XivChatType.NPCDialogue,
+                });
+            }
+            catch { }
         }
 
         /// <summary>
