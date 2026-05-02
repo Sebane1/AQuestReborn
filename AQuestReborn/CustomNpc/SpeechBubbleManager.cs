@@ -207,7 +207,7 @@ namespace AQuestReborn.CustomNpc
             if (!string.IsNullOrEmpty(response))
             {
                 string clean = CleanBubbleText(response);
-                if (clean.Length > 120) clean = clean.Substring(0, 117) + "...";
+                if (clean.Length > 450) clean = clean.Substring(0, 447) + "...";
 
                 _lastAmbientMessages[npcName] = clean;
 
@@ -256,7 +256,7 @@ namespace AQuestReborn.CustomNpc
             if (!string.IsNullOrEmpty(responseA))
             {
                 string cleanA = CleanBubbleText(responseA);
-                if (cleanA.Length > 120) cleanA = cleanA.Substring(0, 117) + "...";
+                if (cleanA.Length > 450) cleanA = cleanA.Substring(0, 447) + "...";
                 _lastAmbientMessages[npcA] = cleanA;
 
                 _plugin.Framework.RunOnFrameworkThread(() =>
@@ -286,7 +286,7 @@ namespace AQuestReborn.CustomNpc
                 if (!string.IsNullOrEmpty(responseB))
                 {
                     string cleanB = CleanBubbleText(responseB);
-                    if (cleanB.Length > 120) cleanB = cleanB.Substring(0, 117) + "...";
+                    if (cleanB.Length > 450) cleanB = cleanB.Substring(0, 447) + "...";
                     _lastAmbientMessages[npcB] = cleanB;
 
                     _plugin.Framework.RunOnFrameworkThread(() =>
