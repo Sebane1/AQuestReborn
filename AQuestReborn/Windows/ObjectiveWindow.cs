@@ -79,9 +79,11 @@ public class ObjectiveWindow : Window, IDisposable
     public override void Draw()
     {
         bool mouseDown = false;
+        bool inCombat = false;
         unsafe
         {
             mouseDown = UIInputData.Instance()->CursorInputs.MouseButtonPressedFlags.HasFlag(MouseButtonFlags.LBUTTON);
+            inCombat = Conditions.Instance()->InCombat;
         }
         Size = new Vector2(ImGui.GetMainViewport().Size.X, ImGui.GetMainViewport().Size.Y);
         Position = new Vector2(0, 0);
@@ -189,7 +191,7 @@ public class ObjectiveWindow : Window, IDisposable
             }
 
             // Custom NPC click-to-chat detection
-            if (!Plugin.NpcChatWindow.IsConversationActive && Plugin.AQuestReborn != null && !Conditions.Instance()->InCombat)
+            if (!Plugin.NpcChatWindow.IsConversationActive && Plugin.AQuestReborn != null && !inCombat)
             {
                 foreach (var kvp in Plugin.AQuestReborn.CustomNpcCharacters)
                 {

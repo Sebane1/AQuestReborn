@@ -140,6 +140,8 @@ namespace AQuestReborn.CustomNpc
                 int i = value.IndexOf(" ") + 1;
                 value = value.Substring(i) + (value.Split('"').Length == 1 ? @"""" : "");
             }
+            // Failsafe to strip any leaked bracketed meta-instructions
+            value = System.Text.RegularExpressions.Regex.Replace(value, @"\[.*?\]", "").Trim();
             return value;
         }
         public void AddMemory(string title, string description)
