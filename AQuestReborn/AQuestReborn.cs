@@ -1185,6 +1185,13 @@ namespace AQuestReborn
 
                                 Plugin.AnamcoreManager.SetVoice(character, 0);
 
+                                // Snap NPC beside the player using Brio transform
+                                var spawnNearPos = Plugin.ObjectTable.LocalPlayer.Position;
+                                float yaw = Plugin.ObjectTable.LocalPlayer.Rotation;
+                                var right = new Vector3(-(float)Math.Cos(yaw), 0, (float)Math.Sin(yaw));
+                                var offsetPos = spawnNearPos + right * 4f;
+                                npc.SetDefaults(offsetPos, new Vector3(0, 0, 0));
+
                                 // Start following the player
                                 npc.FollowPlayer(2);
 
@@ -1334,6 +1341,48 @@ namespace AQuestReborn
                     Plugin.PluginLog.Warning(ex, "NPC Chat Error: " + ex.Message);
                 }
             });
+        }
+        public void ReapplyCustomNpcAppearance(string npcName, Guid designGuid)
+        {
+            if (_customNpcCharacters.ContainsKey(npcName))
+            {
+                var character = _customNpcCharacters[npcName];
+                Plugin.Framework.RunOnFrameworkThread(() =>
+                {
+                    try
+                    {
+                        PenumbraAndGlamourerIpcWrapper.Instance.ApplyDesign.Invoke(designGuid, character.ObjectIndex);
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.PluginLog.Warning(ex, "Failed to reapply appearance: " + ex.Message);
+                    }
+                });
+            }
+        }
+        public void ToggleCustomNpcFollow(string npcName, bool shouldFollow)
+        {
+            if (_customNpcDictionary.ContainsKey(npcName))
+            {
+                var npc = _customNpcDictionary[npcName];
+                if (shouldFollow)
+                {
+                    npc.FollowPlayer(2);
+                }
+                else
+                {
+                    // Update default position to where the NPC is currently standing
+                    if (_customNpcCharacters.ContainsKey(npcName))
+                    {
+                        var character = _customNpcCharacters[npcName];
+                        // Capture the Brio transform rotation before stopping
+                        var rot = npc.CurrentRotation;
+                        npc.StopFollowingPlayer();
+                        npc.SetDefaults(character.Position, rot);
+                        npc.SetDefaultRotation(rot);
+                    }
+                }
+            }
         }
         #endregion
     }

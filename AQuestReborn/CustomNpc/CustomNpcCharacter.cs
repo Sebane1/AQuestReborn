@@ -10,5 +10,6 @@ namespace AQuestReborn.CustomNpc
         public string NpcPersonality = "New NPC is a polite individual who likes to take long walks on the beach and see the world.";
         public string NpcGlamourerAppearanceString = "";
         public bool IsFollowingPlayer = false;
+        public bool IsStaying = false;
     }
 }

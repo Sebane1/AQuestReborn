@@ -133,7 +133,10 @@ namespace AQuestReborn.CustomNpc
 
                     ImGui.LabelText("##personalityLabel", "NPC Name");
                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                    ImGui.InputText("##NPCName", ref _customNpcCharacters[_currentSelection].NpcName, 255);
+                    if (ImGui.InputText("##NPCName", ref _customNpcCharacters[_currentSelection].NpcName, 255))
+                    {
+                        SaveNPCCharacters();
+                    }
 
                     ImGui.LabelText("##glamourerLabel", "Glamourer Design Appearance");
                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
@@ -148,6 +151,15 @@ namespace AQuestReborn.CustomNpc
                                 if (kvp.Value == selectedName)
                                 {
                                     _customNpcCharacters[_currentSelection].NpcGlamourerAppearanceString = kvp.Key.ToString();
+                                    SaveNPCCharacters();
+
+                                    // Re-apply appearance if NPC is currently spawned
+                                    if (_customNpcCharacters[_currentSelection].IsFollowingPlayer
+                                        && _plugin != null && _plugin.AQuestReborn != null)
+                                    {
+                                        _plugin.AQuestReborn.ReapplyCustomNpcAppearance(
+                                            _customNpcCharacters[_currentSelection].NpcName, kvp.Key);
+                                    }
                                     break;
                                 }
                             }
@@ -156,11 +168,17 @@ namespace AQuestReborn.CustomNpc
 
                     ImGui.LabelText("##greetingLabel", "NPC Greeting");
                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                    ImGui.InputText("##Greeting", ref _customNpcCharacters[_currentSelection].NPCGreeting, 500);
+                    if (ImGui.InputText("##Greeting", ref _customNpcCharacters[_currentSelection].NPCGreeting, 500))
+                    {
+                        SaveNPCCharacters();
+                    }
 
                     ImGui.LabelText("##personalityFieldLabel", "NPC Personality");
                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                    ImGui.InputTextMultiline("##NpcPersonality", ref _customNpcCharacters[_currentSelection].NpcPersonality, 2000, new Vector2(ImGui.GetColumnWidth(), 100));
+                    if (ImGui.InputTextMultiline("##NpcPersonality", ref _customNpcCharacters[_currentSelection].NpcPersonality, 2000, new Vector2(ImGui.GetColumnWidth(), 100)))
+                    {
+                        SaveNPCCharacters();
+                    }
 
                     ImGui.Dummy(new Vector2(0, 10));
 
@@ -180,14 +198,25 @@ namespace AQuestReborn.CustomNpc
                                 _plugin.AQuestReborn.DismissCustomNpc(_customNpcCharacters[_currentSelection].NpcName);
                                 _customNpcCharacters[_currentSelection].IsFollowingPlayer = false;
                             }
+                            SaveNPCCharacters();
                         }
                     }
 
-                    ImGui.Dummy(new Vector2(0, 5));
-
-                    if (ImGui.Button("Save", new Vector2(ImGui.GetColumnWidth(), 25)))
+                    if (isSpawned)
                     {
-                        SaveNPCCharacters();
+                        bool isStaying = _customNpcCharacters[_currentSelection].IsStaying;
+                        string followLabel = isStaying ? "Follow" : "Stay";
+                        if (ImGui.Button(followLabel, new Vector2(ImGui.GetColumnWidth(), 30)))
+                        {
+                            if (_plugin != null && _plugin.AQuestReborn != null)
+                            {
+                                _customNpcCharacters[_currentSelection].IsStaying = !isStaying;
+                                _plugin.AQuestReborn.ToggleCustomNpcFollow(
+                                    _customNpcCharacters[_currentSelection].NpcName,
+                                    !_customNpcCharacters[_currentSelection].IsStaying);
+                                SaveNPCCharacters();
+                            }
+                        }
                     }
                 }
             }

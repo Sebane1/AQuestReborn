@@ -322,9 +322,11 @@ namespace AQuestReborn
             _plugin.AnamcoreManager.StopEmote(_character.Address);
         }
 
+        public Vector3 CurrentRotation => _currentRotation;
         public void SetDefaultRotation(Vector3 rotation)
         {
             _defaultRotation = rotation;
+            _currentRotation = rotation;
         }
 
         public void WalkToTarget(Vector3 vector3, float speed)
