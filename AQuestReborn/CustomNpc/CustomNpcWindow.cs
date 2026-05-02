@@ -433,6 +433,23 @@ namespace AQuestReborn.CustomNpc
                             }
                         }
                     }
+
+                    ImGui.Dummy(new Vector2(0, 15));
+                    if (ImGui.CollapsingHeader(Translator.LocalizeUI("Debug: Environmental Context")))
+                    {
+                        if (_plugin != null && _plugin.AQuestReborn != null)
+                        {
+                            if (_plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(_customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
+                            {
+                                string context = _plugin.GetEnvironmentContext(liveNpc.Character);
+                                ImGui.TextWrapped(context);
+                            }
+                            else
+                            {
+                                ImGui.TextColored(new Vector4(1, 0, 0, 1), Translator.LocalizeUI("NPC is not spawned."));
+                            }
+                        }
+                    }
                 }
             }
             else
