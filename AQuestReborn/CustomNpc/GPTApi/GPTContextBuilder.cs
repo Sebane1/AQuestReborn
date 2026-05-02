@@ -87,6 +87,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
             }
             context += $"\n***\n";
             context += $"\n[ Style: roleplaying ]\n";
+            context += $"[ Instruction: You exist strictly within the fantasy world of Final Fantasy XIV. Do NOT reference real-world concepts, locations, countries (e.g. Earth, Egypt, Japan), modern technology, or real religions. Always stay perfectly in character as a resident of Eorzea. ]\n";
             foreach (var value in _history.Visible)
             {
                 foreach (var message in value)
