@@ -1522,7 +1522,7 @@ namespace AQuestReborn
             {
                 Name = sender.Name,
                 Message = message,
-                Type = Dalamud.Game.Text.XivChatType.Party
+                Type = Dalamud.Game.Text.XivChatType.Say
             });
 
             Random random = new Random();
@@ -1579,11 +1579,9 @@ namespace AQuestReborn
                                 cleanResponse = cleanResponse.Substring(1, cleanResponse.Length - 2);
                             cleanResponse = cleanResponse.TrimEnd('"').Trim();
 
-                            Plugin.ChatGui.Print(new Dalamud.Game.Text.XivChatEntry()
+                            Plugin.Framework.RunOnFrameworkThread(() =>
                             {
-                                Name = npcData.NpcName,
-                                Message = cleanResponse,
-                                Type = Dalamud.Game.Text.XivChatType.Party
+                                Plugin.SpeechBubbleManager.ShowBubble(npcCharacter, npcData.NpcName, cleanResponse);
                             });
 
                             // Trigger lip sync on the NPC

@@ -59,7 +59,8 @@ namespace AQuestReborn.CustomNpc
             {
                 _plugin.ChatGui.Print(new Dalamud.Game.Text.XivChatEntry
                 {
-                    Message = $"{npcName}: {text}",
+                    Name = npcName,
+                    Message = text,
                     Type = Dalamud.Game.Text.XivChatType.NPCDialogue,
                 });
             }
