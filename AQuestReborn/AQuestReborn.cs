@@ -1518,12 +1518,7 @@ namespace AQuestReborn
             }
 
             // Print the player's message
-            Plugin.ChatGui.Print(new Dalamud.Game.Text.XivChatEntry()
-            {
-                Name = sender.Name,
-                Message = message,
-                Type = Dalamud.Game.Text.XivChatType.Say
-            });
+            Plugin.SpeechBubbleManager.ShowBubble(sender, sender.Name.TextValue, message);
 
             Random random = new Random();
 
