@@ -1507,42 +1507,11 @@ namespace AQuestReborn
 
         public void HandleCustomNpcChat(IPlayerCharacter sender, string message)
         {
-            // Find the closest custom NPC to chat with
-            string targetNpcName = null;
-            float closestDistance = float.MaxValue;
-            foreach (var kvp in _customNpcCharacters)
-            {
-                float dist = Vector3.Distance(sender.Position, kvp.Value.Position);
-                if (dist < closestDistance)
-                {
-                    closestDistance = dist;
-                    targetNpcName = kvp.Key;
-                }
-            }
-            if (targetNpcName == null)
+            if (_customNpcCharacters.Count == 0)
             {
                 Plugin.ChatGui.PrintError("[A Quest Reborn] No custom NPCs are currently summoned.");
                 return;
             }
-            if (!_customNpcConversationManagers.ContainsKey(targetNpcName))
-            {
-                Plugin.ChatGui.PrintError("[A Quest Reborn] Conversation manager not found for " + targetNpcName);
-                return;
-            }
-            // Find the NPC personality data
-            CustomNpcCharacter npcData = null;
-            foreach (var npc in Plugin.Configuration.CustomNpcCharacters)
-            {
-                if (npc.NpcName == targetNpcName)
-                {
-                    npcData = npc;
-                    break;
-                }
-            }
-            if (npcData == null) return;
-
-            var npcCharacter = _customNpcCharacters[targetNpcName];
-            var conversationManager = _customNpcConversationManagers[targetNpcName];
 
             // Print the player's message
             Plugin.ChatGui.Print(new Dalamud.Game.Text.XivChatEntry()
@@ -1552,41 +1521,82 @@ namespace AQuestReborn
                 Type = Dalamud.Game.Text.XivChatType.Party
             });
 
-            Task.Run(async () =>
+            Random random = new Random();
+
+            foreach (var kvp in _customNpcCharacters)
             {
-                try
+                string targetNpcName = kvp.Key;
+                var npcCharacter = kvp.Value;
+
+                if (!_customNpcConversationManagers.ContainsKey(targetNpcName)) continue;
+                var conversationManager = _customNpcConversationManagers[targetNpcName];
+
+                CustomNpcCharacter npcData = null;
+                foreach (var npc in Plugin.Configuration.CustomNpcCharacters)
                 {
-                    string response = await conversationManager.SendMessage(
-                        sender, npcCharacter,
-                        npcData.NpcName,
-                        npcData.NPCGreeting,
-                        message,
-                        "The world of Final Fantasy XIV, Eorzea.",
-                        npcData.NpcPersonality);
-
-                    if (!string.IsNullOrEmpty(response))
+                    if (npc.NpcName == targetNpcName)
                     {
-                        Plugin.ChatGui.Print(new Dalamud.Game.Text.XivChatEntry()
-                        {
-                            Name = npcData.NpcName,
-                            Message = response,
-                            Type = Dalamud.Game.Text.XivChatType.Party
-                        });
-
-                        // Trigger lip sync on the NPC
-                        if (npcCharacter != null)
-                        {
-                            Plugin.AnamcoreManager.TriggerLipSync(npcCharacter, 0);
-                            await Task.Delay(3000);
-                            Plugin.AnamcoreManager.StopLipSync(npcCharacter);
-                        }
+                        npcData = npc;
+                        break;
                     }
                 }
-                catch (Exception ex)
+                if (npcData == null) continue;
+
+                Task.Run(async () =>
                 {
-                    Plugin.PluginLog.Warning(ex, "NPC Chat Error: " + ex.Message);
-                }
-            });
+                    try
+                    {
+                        // Add a random delay so they don't all reply on the exact same frame
+                        await Task.Delay(random.Next(500, 3000));
+
+                        string response = await conversationManager.SendMessage(
+                            sender, npcCharacter,
+                            npcData.NpcName,
+                            npcData.NPCGreeting,
+                            message,
+                            Plugin.GetEnvironmentContext(),
+                            npcData.NpcPersonality);
+
+                        if (!string.IsNullOrEmpty(response))
+                        {
+                            // Strip actions for the chat log, similar to speech bubbles
+                            string cleanResponse = response;
+                            foreach (var prefix in new[] { "says, ", "asks, ", "exclaims, " })
+                            {
+                                if (cleanResponse.StartsWith(prefix))
+                                {
+                                    cleanResponse = cleanResponse.Substring(prefix.Length);
+                                    break;
+                                }
+                            }
+                            cleanResponse = System.Text.RegularExpressions.Regex.Replace(cleanResponse, @"\*[^*]+\*", "").Trim();
+                            if (string.IsNullOrWhiteSpace(cleanResponse)) cleanResponse = "...";
+                            if (cleanResponse.StartsWith("\"") && cleanResponse.EndsWith("\"") && cleanResponse.Length > 2)
+                                cleanResponse = cleanResponse.Substring(1, cleanResponse.Length - 2);
+                            cleanResponse = cleanResponse.TrimEnd('"').Trim();
+
+                            Plugin.ChatGui.Print(new Dalamud.Game.Text.XivChatEntry()
+                            {
+                                Name = npcData.NpcName,
+                                Message = cleanResponse,
+                                Type = Dalamud.Game.Text.XivChatType.Party
+                            });
+
+                            // Trigger lip sync on the NPC
+                            if (npcCharacter != null)
+                            {
+                                Plugin.AnamcoreManager.TriggerLipSync(npcCharacter, 0);
+                                await Task.Delay(3000);
+                                Plugin.AnamcoreManager.StopLipSync(npcCharacter);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.PluginLog.Warning(ex, "NPC Chat Error: " + ex.Message);
+                    }
+                });
+            }
         }
         public void ReapplyCustomNpcAppearance(string npcName, Guid designGuid)
         {
