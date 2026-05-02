@@ -39,7 +39,8 @@ public class MainWindow : Window, IDisposable
         Plugin = plugin;
         _fileDialogManager = new FileDialogManager();
         _territorySheets = Plugin.DataManager.GameData.GetExcelSheet<TerritoryType>();
-        Size = new Vector2(800, 500);
+        Size = new Vector2(800, 800);
+        SizeCondition = ImGuiCond.FirstUseEver;
     }
 
     public void Dispose() { }

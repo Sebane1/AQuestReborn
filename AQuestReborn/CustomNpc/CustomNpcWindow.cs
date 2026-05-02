@@ -25,6 +25,7 @@ namespace AQuestReborn.CustomNpc
         // Idle emote list built from Excel sheet
         private string[] _idleEmoteNames = new string[] { "None" };
         private ushort[] _idleEmoteRowIds = new ushort[] { 0 };
+        private string _emoteSearchText = "";
 
         public Plugin Plugin { get => _plugin; set => _plugin = value; }
         public List<CustomNpcCharacter> CustomNpcCharacters { get => _customNpcCharacters; set => _customNpcCharacters = value; }
@@ -34,7 +35,13 @@ namespace AQuestReborn.CustomNpc
         {
             _pluginInterface = pluginInterface;
             _customNpcCharacters.Add(new CustomNpcCharacter());
-            Size = new Vector2(550, 500);
+            Size = new Vector2(550, 800);
+            SizeCondition = ImGuiCond.FirstUseEver;
+            SizeConstraints = new WindowSizeConstraints
+            {
+                MinimumSize = new Vector2(550, 400),
+                MaximumSize = new Vector2(800, 2000),
+            };
         }
         public override void OnOpen()
         {
@@ -217,23 +224,37 @@ namespace AQuestReborn.CustomNpc
 
                     ImGui.Dummy(new Vector2(0, 10));
 
-                    // Idle pose selector
+                    // Idle pose selector with search
                     ImGui.LabelText("##idlePoseLabel", Translator.LocalizeUI("Idle Pose"));
+                    int currentEmoteIdx = Array.IndexOf(_idleEmoteRowIds, _customNpcCharacters[_currentSelection].IdleEmoteId);
+                    string currentEmoteName = currentEmoteIdx >= 0 && currentEmoteIdx < _idleEmoteNames.Length
+                        ? _idleEmoteNames[currentEmoteIdx] : Translator.LocalizeUI("None");
+                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + currentEmoteName);
                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                    int idleSelection = Array.IndexOf(_idleEmoteRowIds, _customNpcCharacters[_currentSelection].IdleEmoteId);
-                    if (idleSelection < 0) idleSelection = 0;
-                    if (ImGui.Combo("##idlePose", ref idleSelection, _idleEmoteNames, _idleEmoteNames.Length))
+                    ImGui.InputTextWithHint("##emoteSearch", Translator.LocalizeUI("Search emotes..."), ref _emoteSearchText, 100);
+                    if (ImGui.BeginChild("##emoteList", new Vector2(ImGui.GetColumnWidth(), 120), true))
                     {
-                        _customNpcCharacters[_currentSelection].IdleEmoteId = _idleEmoteRowIds[idleSelection];
-                        SaveNPCCharacters();
-                        // Push to live NPC immediately
-                        if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
-                            && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
-                                _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
+                        for (int i = 0; i < _idleEmoteNames.Length; i++)
                         {
-                            liveNpc.IdleEmoteId = _idleEmoteRowIds[idleSelection];
+                            if (!string.IsNullOrEmpty(_emoteSearchText)
+                                && !_idleEmoteNames[i].Contains(_emoteSearchText, StringComparison.OrdinalIgnoreCase))
+                                continue;
+                            bool isSelected = _idleEmoteRowIds[i] == _customNpcCharacters[_currentSelection].IdleEmoteId;
+                            if (ImGui.Selectable(_idleEmoteNames[i] + "##" + i, isSelected))
+                            {
+                                _customNpcCharacters[_currentSelection].IdleEmoteId = _idleEmoteRowIds[i];
+                                SaveNPCCharacters();
+                                // Push to live NPC immediately
+                                if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
+                                    && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
+                                        _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
+                                {
+                                    liveNpc.IdleEmoteId = _idleEmoteRowIds[i];
+                                }
+                            }
                         }
                     }
+                    ImGui.EndChild();
 
                     ImGui.Dummy(new Vector2(0, 5));
 

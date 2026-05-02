@@ -23,6 +23,6 @@ namespace AQuestReborn.CustomNpc
         public float StayRotationZ = 0;
 
         // Idle pose
-        public ushort IdleEmoteId = 0;
+        public ushort IdleEmoteId = 50; // Default: groundsit
     }
 }

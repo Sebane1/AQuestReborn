@@ -56,10 +56,13 @@ namespace AQuestReborn
         Stopwatch _horizontalRefreshTimer = new Stopwatch();
         Stopwatch _fixedMovementTimer = new Stopwatch();
         Stopwatch _idleTimer = new Stopwatch();
+        Stopwatch _emoteExitCooldown = new Stopwatch();
         private int _idleThresholdMs = 20000;
         private bool _idleEmotePlaying;
         private ushort _idleEmoteId;
         private bool _wasMoving;
+        private ushort _activeEmoteTimelineId;
+        private bool _waitingForEmoteExit;
         EventMovementAnimation _eventMovementAnimationType = EventMovementAnimation.Automatic;
         public string LastAppearance { get; internal set; }
         public bool LooksAtPlayer { get; internal set; }
@@ -138,9 +141,17 @@ namespace AQuestReborn
                                         + GetHorizontalOffsetFromPlayer(_horizontalOffset);
                                 if (Vector3.Distance(_currentPosition, targetPosition) > 1)
                                 {
-                                    // Reset idle timer when moving
-                                    _idleEmotePlaying = false;
+                                    // Always reset idle timer while moving
                                     _idleTimer.Restart();
+                                    // Clear emote state - give StopEmote one frame to process
+                                    if (_idleEmotePlaying)
+                                    {
+                                        _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
+                                        _idleEmotePlaying = false;
+                                        SetTransform(_currentPosition, _currentRotation, _currentScale);
+                                        return;
+                                    }
+                                    // Normal movement
                                     // Use ground map Y at the NPC's current XZ instead of player's Y
                                     float groundY = _plugin.AQuestReborn.GroundMap.GetGroundY(
                                         _currentPosition.X, _currentPosition.Z, targetPosition.Y);
@@ -153,7 +164,6 @@ namespace AQuestReborn
                                         _currentPosition.Z + (targetPosition.Z - _currentPosition.Z) * xzLerp);
                                     _currentRotation = CoordinateUtility.LookAt(_currentPosition, targetPosition).QuaternionToEuler();
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
-                                    var value = _plugin.AnamcoreManager.GetCurrentAnimationId(_plugin.ObjectTable.LocalPlayer);
                                     _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(true));
                                     if (_horizontalRefreshTimer.ElapsedMilliseconds > 5000)
                                     {
@@ -174,7 +184,8 @@ namespace AQuestReborn
                                         try
                                         {
                                             var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(_idleEmoteId);
-                                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
+                                            _activeEmoteTimelineId = (ushort)emote.ActionTimeline[0].Value.RowId;
+                                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, _activeEmoteTimelineId);
                                         }
                                         catch { }
                                         _idleEmotePlaying = true;
@@ -224,6 +235,13 @@ namespace AQuestReborn
                                                     _plugin.AnamcoreManager.TriggerEmote(_character.Address, 4954);
                                                     break;
                                             }
+                                            // Break out of idle emote when starting to move
+                                            if (_idleEmotePlaying)
+                                            {
+                                                _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
+                                                _idleEmotePlaying = false;
+                                            }
+                                            _idleTimer.Restart();
                                             _wasMoving = true;
                                         }
                                     }
@@ -379,7 +397,7 @@ namespace AQuestReborn
                 _currentRotation = rotation;
             }
             _shouldBeMoving = false;
-            _plugin.AnamcoreManager.StopEmote(_character.Address);
+            _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
         }
 
         public Vector3 CurrentPosition => _currentPosition;
