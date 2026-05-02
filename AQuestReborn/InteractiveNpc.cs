@@ -156,7 +156,14 @@ namespace AQuestReborn
                                         SetTransform(_currentPosition, _currentRotation, _currentScale);
                                         return;
                                     }
-                                    // Normal movement
+                                    // Smooth rotation BEFORE moving
+                                    if (distToTarget > 0.5f)
+                                    {
+                                        var desiredQuat = CoordinateUtility.LookAt(_currentPosition, targetPosition);
+                                        var currentQuat = CoordinateUtility.ToQuaternion(_currentRotation);
+                                        var smoothed = Quaternion.Slerp(currentQuat, desiredQuat, Math.Min(10f * delta, 1f));
+                                        _currentRotation = smoothed.QuaternionToEuler();
+                                    }
                                     // Use ground map Y at the NPC's current XZ instead of player's Y
                                     float groundY = _plugin.AQuestReborn.GroundMap.GetGroundY(
                                         _currentPosition.X, _currentPosition.Z, targetPosition.Y);
@@ -167,7 +174,6 @@ namespace AQuestReborn
                                         _currentPosition.X + (targetPosition.X - _currentPosition.X) * xzLerp,
                                         _currentPosition.Y + (groundY - _currentPosition.Y) * yLerp,
                                         _currentPosition.Z + (targetPosition.Z - _currentPosition.Z) * xzLerp);
-                                    _currentRotation = CoordinateUtility.LookAt(_currentPosition, targetPosition).QuaternionToEuler();
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
                                     _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(true));
                                     if (_horizontalRefreshTimer.ElapsedMilliseconds > 5000)
