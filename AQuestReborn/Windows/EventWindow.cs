@@ -497,6 +497,18 @@ public class EventWindow : Window, IDisposable
                     {
                         _currentName = item.NpcName.ToLower() == "system" ? "system" : await Translator.LocalizeText(string.IsNullOrEmpty(item.NpcAlias) ? item.NpcName : item.NpcAlias, Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
                         _targetText = await Translator.LocalizeText(_targetText, Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
+
+                        // Log dialogue to FFXIV chat
+                        try
+                        {
+                            Plugin.ChatGui.Print(new Dalamud.Game.Text.XivChatEntry
+                            {
+                                Message = $"{_currentName}: {_targetText}",
+                                Type = Dalamud.Game.Text.XivChatType.NPCDialogue,
+                            });
+                        }
+                        catch { }
+
                         var targetTextValue = _targetText;
                         while (true)
                         {

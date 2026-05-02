@@ -368,6 +368,17 @@ public class NpcChatWindow : Window, IDisposable
                     _typewriterActive = true;
                     _typewriterTimer.Restart();
 
+                    // Log to FFXIV chat
+                    try
+                    {
+                        _plugin.ChatGui.Print(new Dalamud.Game.Text.XivChatEntry
+                        {
+                            Message = $"{_activeNpcName}: {cleanResponse}",
+                            Type = Dalamud.Game.Text.XivChatType.NPCDialogue,
+                        });
+                    }
+                    catch { }
+
                     // Trigger lip sync
                     try
                     {
