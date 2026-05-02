@@ -1682,6 +1682,7 @@ namespace AQuestReborn
         /// </summary>
         private unsafe void CustomNpcChatCheck()
         {
+            if (Conditions.Instance()->InCombat) return;
             if (Plugin.NpcChatWindow.IsConversationActive) return;
             if (Plugin.EventWindow.IsOpen || Plugin.ChoiceWindow.IsOpen) return;
 
