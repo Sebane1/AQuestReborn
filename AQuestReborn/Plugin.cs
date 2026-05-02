@@ -88,6 +88,7 @@ public sealed class Plugin : IDalamudPlugin
     public ChoiceWindow ChoiceWindow { get; private set; }
     public EventWindow EventWindow { get; init; }
     public NpcChatWindow NpcChatWindow { get; private set; }
+    public SpeechBubbleManager SpeechBubbleManager { get; private set; }
     public CustomNpcWindow CustomNpcWindow { get => _customNpcWindow; }
     public IClientState ClientState { get => _clientState; set => _clientState = value; }
     public RoleplayingQuestManager RoleplayingQuestManager { get => _roleplayingQuestManager; set => _roleplayingQuestManager = value; }
@@ -160,6 +161,7 @@ public sealed class Plugin : IDalamudPlugin
         TitleCardWindow = new TitleCardWindow(this, textureProvider);
         _customNpcWindow = new CustomNpcWindow(dalamudPluginInterface);
         NpcChatWindow = new NpcChatWindow(this);
+        SpeechBubbleManager = new SpeechBubbleManager(this);
         _customNpcWindow.Plugin = this;
         if (Configuration.CustomNpcCharacters.Count == 0)
         {

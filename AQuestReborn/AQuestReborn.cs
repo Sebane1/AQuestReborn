@@ -637,6 +637,8 @@ namespace AQuestReborn
                         }
                         // Custom NPC click-to-chat detection
                         CustomNpcChatCheck();
+                        // Ambient NPC speech bubbles
+                        Plugin.SpeechBubbleManager?.Update();
                     }
                     else
                     {

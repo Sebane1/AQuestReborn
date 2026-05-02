@@ -147,6 +147,8 @@ public class ObjectiveWindow : Window, IDisposable
                         Plugin.GameGui.WorldToScreen(item.Item2.Coordinates + offset, out screenPosition, out inView);
                     if (inView)
                     {
+                        // Offset marker up by 25px in screen space
+                        screenPosition.Y -= 75f;
                         if (_questStartIconTextureWrap != null)
                         {
                             try
@@ -214,31 +216,9 @@ public class ObjectiveWindow : Window, IDisposable
                         float dy = (mousePos.Y - npcScreenPos.Y) / verticalExtent;
                         float ellipseDist = dx * dx + dy * dy;
 
-                        var playerDist = Vector3.Distance(Plugin.ObjectTable.LocalPlayer.Position, kvp.Value.Position);
 
-                        // Draw clickable area debug visual
-                        var drawList = ImGui.GetWindowDrawList();
+                        var playerDist = Vector3.Distance(Plugin.ObjectTable.LocalPlayer.Position, kvp.Value.Position);
                         bool inRange = playerDist < 5f;
-                        uint circleColor = inRange
-                            ? ImGui.ColorConvertFloat4ToU32(new Vector4(0.2f, 1f, 0.3f, 0.35f))
-                            : ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 0.8f, 0.2f, 0.2f));
-                        // Draw ellipse debug visual using path
-                        for (int seg = 0; seg < 32; seg++)
-                        {
-                            float angle = (seg / 32f) * MathF.PI * 2f;
-                            drawList.PathLineTo(new Vector2(
-                                npcScreenPos.X + MathF.Cos(angle) * horizontalExtent,
-                                npcScreenPos.Y + MathF.Sin(angle) * verticalExtent));
-                        }
-                        drawList.PathFillConvex(circleColor);
-                        for (int seg = 0; seg < 32; seg++)
-                        {
-                            float angle = (seg / 32f) * MathF.PI * 2f;
-                            drawList.PathLineTo(new Vector2(
-                                npcScreenPos.X + MathF.Cos(angle) * horizontalExtent,
-                                npcScreenPos.Y + MathF.Sin(angle) * verticalExtent));
-                        }
-                        drawList.PathStroke(ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 1f, 1f, 0.5f)), ImDrawFlags.Closed, 2f);
 
                         if (ellipseDist <= 1f && inRange)
                         {
