@@ -100,6 +100,18 @@ namespace AQuestReborn.CustomNpc
             {
                 string trimmedUserText = userText.Trim();
                 string trimmedBotResponse = botResponse.Trim();
+
+                string lowerResponse = trimmedBotResponse.ToLower();
+                if (string.IsNullOrWhiteSpace(lowerResponse) || 
+                    lowerResponse == "..." || 
+                    lowerResponse == "…" || 
+                    lowerResponse.Contains("*silence*") || 
+                    lowerResponse.Contains("*silent*"))
+                {
+                    ClearHistory(sender);
+                    return;
+                }
+
                 _histories[sender].History.Visible.Add(new List<string> {
                 sender.Split(" ")[0] + DetectFormatting(trimmedUserText), _personality + DetectFormatting(trimmedBotResponse) });
             }
