@@ -246,10 +246,10 @@ namespace AQuestReborn.CustomNpc
 
             // NPC A says something to NPC B
             string responseA = await conversationManagers[npcA].SendMessage(
-                sender, charA,
+                charB, charA,
                 dataA.NpcName,
                 dataA.NPCGreeting,
-                $"*notices {npcB} nearby and makes casual conversation*",
+                $"You notice {npcB} nearby. Make casual conversation with them.",
                 _plugin.GetEnvironmentContext(),
                 dataA.NpcPersonality);
 
@@ -276,10 +276,10 @@ namespace AQuestReborn.CustomNpc
                 }
 
                 string responseB = await conversationManagers[npcB].SendMessage(
-                    sender, charB,
+                    charA, charB,
                     dataB.NpcName,
                     dataB.NPCGreeting,
-                    $"*{npcA} just said: \"{cleanA}\". Respond naturally.*",
+                    cleanA,
                     _plugin.GetEnvironmentContext(),
                     dataB.NpcPersonality);
 
