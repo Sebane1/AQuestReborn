@@ -68,6 +68,7 @@ namespace AQuestReborn
         private ushort _lastPlayerTimelineId;
         private ushort _nextCombatAnimationToPlay;
         private Stopwatch _combatAttackDelayTimer = new Stopwatch();
+        private int _currentCombatDelayMs;
         EventMovementAnimation _eventMovementAnimationType = EventMovementAnimation.Automatic;
         public string LastAppearance { get; internal set; }
         public bool LooksAtPlayer { get; internal set; }
@@ -213,6 +214,16 @@ namespace AQuestReborn
                                     _currentPosition = new Vector3(_currentPosition.X, _currentPosition.Y + (groundY - _currentPosition.Y) * yLerp, _currentPosition.Z);
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
                                     bool inCombat = Conditions.Instance()->InCombat;
+
+                                    if (_wasMoving)
+                                    {
+                                        _wasMoving = false;
+                                        if (inCombat)
+                                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, 34); // Re-apply combat stance
+                                        else
+                                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                                    }
+
                                     if (inCombat)
                                     {
                                         _idleTimer.Restart();
@@ -241,11 +252,13 @@ namespace AQuestReborn
                                         if (pTimeline != 0 && pTimeline != _lastPlayerTimelineId)
                                         {
                                             _nextCombatAnimationToPlay = pTimeline;
+                                            // Seed random differently for each NPC based on their index
+                                            _currentCombatDelayMs = new Random(Environment.TickCount + _index).Next(300, 1500);
                                             _combatAttackDelayTimer.Restart();
                                         }
                                         _lastPlayerTimelineId = pTimeline;
 
-                                        if (_nextCombatAnimationToPlay != 0 && _combatAttackDelayTimer.ElapsedMilliseconds > new Random().Next(300, 1200))
+                                        if (_nextCombatAnimationToPlay != 0 && _combatAttackDelayTimer.ElapsedMilliseconds > _currentCombatDelayMs)
                                         {
                                             var nChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
                                             nChara->Timeline.TimelineSequencer.PlayTimeline(_nextCombatAnimationToPlay);
