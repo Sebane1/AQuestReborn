@@ -1553,7 +1553,7 @@ namespace AQuestReborn
                             npcData.NpcName,
                             npcData.NPCGreeting,
                             message,
-                            Plugin.GetEnvironmentContext(),
+                            Plugin.GetEnvironmentContext(npcCharacter),
                             npcData.NpcPersonality);
 
                         if (!string.IsNullOrEmpty(response))

@@ -199,7 +199,7 @@ namespace AQuestReborn.CustomNpc
                 npcData.NpcName,
                 npcData.NPCGreeting,
                 "*is standing nearby, looking around idly*",
-                _plugin.GetEnvironmentContext(),
+                _plugin.GetEnvironmentContext(npcChar),
                 npcData.NpcPersonality);
 
             _plugin.PluginLog.Information($"[SpeechBubble] Got response: '{response?.Substring(0, Math.Min(response?.Length ?? 0, 80))}'");
@@ -250,7 +250,7 @@ namespace AQuestReborn.CustomNpc
                 dataA.NpcName,
                 dataA.NPCGreeting,
                 $"You notice {npcB} nearby. Make casual conversation with them.",
-                _plugin.GetEnvironmentContext(),
+                _plugin.GetEnvironmentContext(charA),
                 dataA.NpcPersonality);
 
             if (!string.IsNullOrEmpty(responseA))
@@ -280,7 +280,7 @@ namespace AQuestReborn.CustomNpc
                     dataB.NpcName,
                     dataB.NPCGreeting,
                     cleanA,
-                    _plugin.GetEnvironmentContext(),
+                    _plugin.GetEnvironmentContext(charB),
                     dataB.NpcPersonality);
 
                 if (!string.IsNullOrEmpty(responseB))

@@ -247,19 +247,55 @@ public sealed class Plugin : IDalamudPlugin
             }
         }
     }
-    public string GetEnvironmentContext()
+    public string GetEnvironmentContext(Dalamud.Game.ClientState.Objects.Types.IGameObject observer = null)
     {
         if (_clientState == null || !_clientState.IsLoggedIn) return string.Empty;
+        string context = "";
         try
         {
             var territory = DataManager.GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>()?.GetRow(ClientState.TerritoryType);
             string placeName = territory?.PlaceName.Value.Name.ToString();
-            return $"Current Location: {placeName ?? "Eorzea"}";
+            context = $"Current Location: {placeName ?? "Eorzea"}";
         }
         catch
         {
-            return "Current Location: Eorzea";
+            context = "Current Location: Eorzea";
         }
+
+        try
+        {
+            var origin = observer != null ? observer.Position : _objectTable?.LocalPlayer?.Position;
+            if (origin != null && _objectTable != null)
+            {
+                var customNpcNames = Configuration.CustomNpcCharacters.Select(n => n.NpcName).ToHashSet();
+                var nearbyObjects = new List<string>();
+
+                var objects = _objectTable.DalamudObjectTable
+                    .Where(obj => obj != null 
+                        && obj.Address != _objectTable?.LocalPlayer?.Address 
+                        && !string.IsNullOrWhiteSpace(obj.Name.TextValue)
+                        && !customNpcNames.Contains(obj.Name.TextValue))
+                    .OrderBy(obj => System.Numerics.Vector3.Distance(origin.Value, obj.Position))
+                    .Take(5);
+
+                foreach (var obj in objects)
+                {
+                    string type = obj.ObjectKind.ToString().ToLower();
+                    nearbyObjects.Add($"{obj.Name.TextValue} ({type})");
+                }
+
+                if (nearbyObjects.Count > 0)
+                {
+                    context += $". Nearby Objects: {string.Join(", ", nearbyObjects)}";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            PluginLog.Warning(ex, "Failed to get nearby objects");
+        }
+
+        return context;
     }
 
     private void MigrateArtemisNpcData()

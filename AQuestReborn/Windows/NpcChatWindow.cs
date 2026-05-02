@@ -332,7 +332,7 @@ public class NpcChatWindow : Window, IDisposable
                     npcData.NpcName,
                     npcData.NPCGreeting,
                     message,
-                    _plugin.GetEnvironmentContext(),
+                    _plugin.GetEnvironmentContext(npcChar),
                     npcData.NpcPersonality);
 
                 _plugin.PluginLog.Information($"NPC Chat: Got response in {sw.ElapsedMilliseconds}ms, length={response?.Length ?? 0}");
