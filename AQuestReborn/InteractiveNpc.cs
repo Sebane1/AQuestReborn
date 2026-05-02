@@ -64,6 +64,10 @@ namespace AQuestReborn
         private bool _isFollowMoving;
         private ushort _activeEmoteTimelineId;
         private bool _waitingForEmoteExit;
+        private bool _wasInCombat;
+        private ushort _lastPlayerTimelineId;
+        private ushort _nextCombatAnimationToPlay;
+        private Stopwatch _combatAttackDelayTimer = new Stopwatch();
         EventMovementAnimation _eventMovementAnimationType = EventMovementAnimation.Automatic;
         public string LastAppearance { get; internal set; }
         public bool LooksAtPlayer { get; internal set; }
@@ -208,31 +212,82 @@ namespace AQuestReborn
                                     float yLerp = Math.Clamp(_speed * delta * 10f, 0f, 1f);
                                     _currentPosition = new Vector3(_currentPosition.X, _currentPosition.Y + (groundY - _currentPosition.Y) * yLerp, _currentPosition.Z);
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
-                                    // Trigger idle emote if standing still long enough
-                                    if (_idleEmoteId > 0 && !_idleEmotePlaying && _idleTimer.ElapsedMilliseconds > _idleThresholdMs)
+                                    bool inCombat = Conditions.Instance()->InCombat;
+                                    if (inCombat)
                                     {
-                                        try
+                                        _idleTimer.Restart();
+                                        if (!_wasInCombat)
                                         {
-                                            var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(_idleEmoteId);
-                                            _activeEmoteTimelineId = (ushort)emote.ActionTimeline[0].Value.RowId;
-                                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, _activeEmoteTimelineId);
+                                            _wasInCombat = true;
+                                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, 34); // Draw Weapon / Combat Stance
                                         }
-                                        catch { }
-                                        _idleEmotePlaying = true;
-                                    }
-                                    else if (!_idleEmotePlaying)
-                                    {
-                                        _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
-                                    }
-                                    // Set head target to player if within range, otherwise look forward
-                                    if (_plugin.ObjectTable.LocalPlayer != null
-                                        && Vector3.Distance(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position) < 3f)
-                                    {
-                                        _plugin.AnamcoreManager.SetHeadTarget(_character.Address, _plugin.ObjectTable.LocalPlayer.EntityId);
+
+                                        if (_plugin.ObjectTable.LocalPlayer.TargetObject != null)
+                                        {
+                                            _plugin.AnamcoreManager.SetHeadTarget(_character.Address, _plugin.ObjectTable.LocalPlayer.TargetObject.EntityId);
+                                            var tgtPos = _plugin.ObjectTable.LocalPlayer.TargetObject.Position;
+                                            var desiredQuat = CoordinateUtility.LookAt(_currentPosition, tgtPos);
+                                            var currentQuat = CoordinateUtility.ToQuaternion(_currentRotation);
+                                            var smoothed = Quaternion.Slerp(currentQuat, desiredQuat, Math.Min(10f * delta, 1f));
+                                            _currentRotation = smoothed.QuaternionToEuler();
+                                        }
+                                        else
+                                        {
+                                            _plugin.AnamcoreManager.ClearHeadTarget(_character.Address);
+                                        }
+
+                                        var pChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_plugin.ObjectTable.LocalPlayer.Address;
+                                        ushort pTimeline = pChara->Timeline.TimelineSequencer.TimelineIds[1];
+                                        if (pTimeline != 0 && pTimeline != _lastPlayerTimelineId)
+                                        {
+                                            _nextCombatAnimationToPlay = pTimeline;
+                                            _combatAttackDelayTimer.Restart();
+                                        }
+                                        _lastPlayerTimelineId = pTimeline;
+
+                                        if (_nextCombatAnimationToPlay != 0 && _combatAttackDelayTimer.ElapsedMilliseconds > new Random().Next(300, 1200))
+                                        {
+                                            var nChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
+                                            nChara->Timeline.TimelineSequencer.PlayTimeline(_nextCombatAnimationToPlay);
+                                            _nextCombatAnimationToPlay = 0;
+                                        }
                                     }
                                     else
                                     {
-                                        _plugin.AnamcoreManager.ClearHeadTarget(_character.Address);
+                                        if (_wasInCombat)
+                                        {
+                                            _wasInCombat = false;
+                                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                                            _lastPlayerTimelineId = 0;
+                                            _nextCombatAnimationToPlay = 0;
+                                        }
+
+                                        // Trigger idle emote if standing still long enough
+                                        if (_idleEmoteId > 0 && !_idleEmotePlaying && _idleTimer.ElapsedMilliseconds > _idleThresholdMs)
+                                        {
+                                            try
+                                            {
+                                                var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(_idleEmoteId);
+                                                _activeEmoteTimelineId = (ushort)emote.ActionTimeline[0].Value.RowId;
+                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, _activeEmoteTimelineId);
+                                            }
+                                            catch { }
+                                            _idleEmotePlaying = true;
+                                        }
+                                        else if (!_idleEmotePlaying)
+                                        {
+                                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                                        }
+                                        // Set head target to player if within range, otherwise look forward
+                                        if (_plugin.ObjectTable.LocalPlayer != null
+                                            && Vector3.Distance(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position) < 3f)
+                                        {
+                                            _plugin.AnamcoreManager.SetHeadTarget(_character.Address, _plugin.ObjectTable.LocalPlayer.EntityId);
+                                        }
+                                        else
+                                        {
+                                            _plugin.AnamcoreManager.ClearHeadTarget(_character.Address);
+                                        }
                                     }
                                 }
                                 SetTransform(_currentPosition, _currentRotation, _currentScale);
