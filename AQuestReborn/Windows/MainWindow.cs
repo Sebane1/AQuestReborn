@@ -72,15 +72,15 @@ public class MainWindow : Window, IDisposable
                         DrawQuestObjectives();
                         ImGui.EndTabItem();
                     }
+                    if (ImGui.BeginTabItem(Translator.LocalizeUI("Custom NPCs")))
+                    {
+                        DrawCustomNpcTab();
+                        ImGui.EndTabItem();
+                    }
                 }
                 if (ImGui.BeginTabItem(Translator.LocalizeUI("Settings")))
                 {
                     DrawInitialSetup();
-                    ImGui.EndTabItem();
-                }
-                if (ImGui.BeginTabItem(Translator.LocalizeUI("Custom NPCs")))
-                {
-                    DrawCustomNpcTab();
                     ImGui.EndTabItem();
                 }
                 ImGui.EndTabBar();
