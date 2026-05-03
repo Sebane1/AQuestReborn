@@ -302,7 +302,8 @@ namespace AQuestReborn.CustomNpc
                 dataA.NPCGreeting,
                 $"You notice {npcB} nearby. Make casual conversation with them.",
                 _plugin.GetEnvironmentContext(charA),
-                dataA.GetFullLore());
+                dataA.GetFullLore(),
+                senderNameOverride: npcB);
 
             if (!string.IsNullOrEmpty(responseA))
             {
@@ -332,7 +333,8 @@ namespace AQuestReborn.CustomNpc
                     dataB.NPCGreeting,
                     cleanA,
                     _plugin.GetEnvironmentContext(charB),
-                    dataB.GetFullLore());
+                    dataB.GetFullLore(),
+                    senderNameOverride: npcA);
 
                 if (!string.IsNullOrEmpty(responseB))
                 {

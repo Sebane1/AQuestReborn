@@ -55,6 +55,12 @@ namespace AQuestReborn.CustomNpc
         private int[] _monsterModelIds = new int[] { 0 };
         private string _monsterSearchText = "";
 
+        // Memory tab cached data
+        private string _memoryTabNpcName = "";
+        private Dictionary<string, string> _cachedKeywordMemories = new Dictionary<string, string>();
+        private Dictionary<string, List<string>> _cachedConversationSummaries = new Dictionary<string, List<string>>();
+        private bool _memoryNeedsRefresh = true;
+
         public Plugin Plugin { get => _plugin; set => _plugin = value; }
         public List<CustomNpcCharacter> CustomNpcCharacters { get => _customNpcCharacters; set => _customNpcCharacters = value; }
 
@@ -798,6 +804,9 @@ namespace AQuestReborn.CustomNpc
                                             if (ImGui.Selectable(_placeNames[i] + "##" + i, isSelected))
                                             {
                                                 _customNpcCharacters[_currentSelection].NpcBirthLocation = _placeNames[i] == "Unknown" ? "" : _placeNames[i];
+                                                // Home location counts as a place they've been
+                                                if (!string.IsNullOrEmpty(_customNpcCharacters[_currentSelection].NpcBirthLocation))
+                                                    _customNpcCharacters[_currentSelection].RecordVisit(_customNpcCharacters[_currentSelection].NpcBirthLocation);
                                                 SaveNPCCharacters();
                                             }
                                         }
@@ -1021,6 +1030,214 @@ namespace AQuestReborn.CustomNpc
                                     }
                                 }
                                 ImGui.EndChild();
+                            }
+
+                            ImGui.EndTabItem();
+                        }
+
+                        if (ImGui.BeginTabItem(Translator.LocalizeUI("Memory")))
+                        {
+                            var npc = _customNpcCharacters[_currentSelection];
+
+                            // Refresh cached memory files when NPC selection changes or on demand
+                            if (_memoryTabNpcName != npc.NpcName || _memoryNeedsRefresh)
+                            {
+                                _memoryTabNpcName = npc.NpcName;
+                                _memoryNeedsRefresh = false;
+                                LoadMemoryFilesForNpc(npc.NpcName);
+                            }
+
+                            // --- Conversation Summaries ---
+                            ImGui.TextColored(new Vector4(0.6f, 1f, 0.8f, 1f), "Conversation Summaries");
+                            ImGui.Separator();
+
+                            if (_cachedConversationSummaries.Count == 0)
+                            {
+                                ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1f), "No conversation summaries yet.");
+                            }
+                            else
+                            {
+                                if (ImGui.BeginTabBar("##ConvSummaryTabs"))
+                                {
+                                    foreach (var kvp in _cachedConversationSummaries)
+                                    {
+                                        if (ImGui.BeginTabItem(kvp.Key + "##convTab"))
+                                        {
+                                            if (ImGui.BeginChild($"##convScroll_{kvp.Key}", new Vector2(ImGui.GetColumnWidth(), 140), true))
+                                            {
+                                                for (int i = 0; i < kvp.Value.Count; i++)
+                                                {
+                                                    ImGui.PushTextWrapPos(ImGui.GetContentRegionAvail().X);
+                                                    ImGui.TextWrapped($"{i + 1}. {kvp.Value[i]}");
+                                                    ImGui.PopTextWrapPos();
+                                                }
+                                            }
+                                            ImGui.EndChild();
+                                            ImGui.EndTabItem();
+                                        }
+                                    }
+                                    ImGui.EndTabBar();
+                                }
+                            }
+
+                            ImGui.Dummy(new Vector2(0, 5));
+
+                            // --- Keyword Memories ---
+                            ImGui.TextColored(new Vector4(1f, 0.7f, 0.5f, 1f), "Keyword Memories");
+                            ImGui.Separator();
+
+                            if (_cachedKeywordMemories.Count == 0)
+                            {
+                                ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1f), "No keyword memories yet.");
+                            }
+                            else
+                            {
+                                if (ImGui.BeginTable("##KeywordTable", 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp))
+                                {
+                                    ImGui.TableSetupColumn("Keyword", ImGuiTableColumnFlags.WidthFixed, 120);
+                                    ImGui.TableSetupColumn("Memory", ImGuiTableColumnFlags.WidthStretch);
+                                    ImGui.TableHeadersRow();
+
+                                    foreach (var kvp in _cachedKeywordMemories)
+                                    {
+                                        ImGui.TableNextRow();
+                                        ImGui.TableSetColumnIndex(0);
+                                        ImGui.Text(kvp.Key);
+                                        ImGui.TableSetColumnIndex(1);
+                                        ImGui.TextWrapped(kvp.Value);
+                                    }
+                                    ImGui.EndTable();
+                                }
+                            }
+
+                            ImGui.Dummy(new Vector2(0, 5));
+
+                            // --- Relationships ---
+                            ImGui.TextColored(new Vector4(0.9f, 0.6f, 1f, 1f), "Relationships");
+                            ImGui.Separator();
+
+                            if (npc.EncounterCounts.Count == 0)
+                            {
+                                ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1f), "No relationships formed yet.");
+                            }
+                            else
+                            {
+                                if (ImGui.BeginTable("##RelationshipTable", 4, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp))
+                                {
+                                    ImGui.TableSetupColumn("Person", ImGuiTableColumnFlags.WidthStretch);
+                                    ImGui.TableSetupColumn("Bond", ImGuiTableColumnFlags.WidthFixed, 90);
+                                    ImGui.TableSetupColumn("Meetings", ImGuiTableColumnFlags.WidthFixed, 55);
+                                    ImGui.TableSetupColumn("Last Seen", ImGuiTableColumnFlags.WidthFixed, 65);
+                                    ImGui.TableHeadersRow();
+
+                                    foreach (var kvp in npc.EncounterCounts)
+                                    {
+                                        var relationship = npc.GetRelationshipWith(kvp.Key);
+
+                                        ImGui.TableNextRow();
+                                        ImGui.TableSetColumnIndex(0);
+                                        ImGui.Text(kvp.Key);
+
+                                        ImGui.TableSetColumnIndex(1);
+                                        // Color the bond label based on score
+                                        Vector4 bondColor;
+                                        if (relationship.Score >= 80)
+                                            bondColor = new Vector4(1f, 0.84f, 0f, 1f);    // Gold
+                                        else if (relationship.Score >= 60)
+                                            bondColor = new Vector4(0.4f, 1f, 0.4f, 1f);   // Green
+                                        else if (relationship.Score >= 40)
+                                            bondColor = new Vector4(0.4f, 0.8f, 1f, 1f);   // Blue
+                                        else if (relationship.Score >= 20)
+                                            bondColor = new Vector4(0.7f, 0.7f, 0.7f, 1f); // Gray
+                                        else
+                                            bondColor = new Vector4(0.5f, 0.5f, 0.5f, 1f); // Dim
+
+                                        ImGui.TextColored(bondColor, $"{relationship.Label} ({relationship.Score})");
+
+                                        ImGui.TableSetColumnIndex(2);
+                                        ImGui.Text(kvp.Value.ToString());
+
+                                        ImGui.TableSetColumnIndex(3);
+                                        if (npc.LastSeenTimestamps.TryGetValue(kvp.Key, out long ticks))
+                                        {
+                                            var lastSeen = new DateTime(ticks, DateTimeKind.Utc).ToLocalTime();
+                                            var elapsed = DateTime.Now - lastSeen;
+
+                                            string timeAgo;
+                                            if (elapsed.TotalMinutes < 2)
+                                                timeAgo = "Just now";
+                                            else if (elapsed.TotalMinutes < 60)
+                                                timeAgo = $"{(int)elapsed.TotalMinutes}m ago";
+                                            else if (elapsed.TotalHours < 24)
+                                                timeAgo = $"{(int)elapsed.TotalHours}h ago";
+                                            else
+                                                timeAgo = $"{(int)elapsed.TotalDays}d ago";
+
+                                            ImGui.Text(timeAgo);
+                                        }
+                                        else
+                                        {
+                                            ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1f), "—");
+                                        }
+                                    }
+                                    ImGui.EndTable();
+                                }
+
+                                // Show the player's relationship description below
+                                string playerName = _plugin?.ObjectTable?.LocalPlayer?.Name?.TextValue ?? "";
+                                if (!string.IsNullOrEmpty(playerName) && npc.EncounterCounts.ContainsKey(playerName))
+                                {
+                                    var playerRel = npc.GetRelationshipWith(playerName);
+                                    ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), playerRel.Description);
+                                }
+                            }
+
+                            ImGui.Dummy(new Vector2(0, 5));
+
+                            // --- Travel History ---
+                            ImGui.TextColored(new Vector4(0.4f, 0.9f, 1f, 1f), "Places Visited");
+                            ImGui.Separator();
+
+                            if (npc.VisitedLocations.Count == 0)
+                            {
+                                ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1f), "No travel history yet.");
+                            }
+                            else
+                            {
+                                ImGui.TextWrapped(string.Join(", ", npc.VisitedLocations));
+                            }
+
+                            ImGui.Dummy(new Vector2(0, 10));
+
+                            // --- Actions ---
+                            float buttonWidth = (ImGui.GetColumnWidth() - 8) / 2;
+                            if (ImGui.Button(Translator.LocalizeUI("Refresh"), new Vector2(buttonWidth, 28)))
+                            {
+                                _memoryNeedsRefresh = true;
+                            }
+                            ImGui.SameLine();
+                            if (ImGui.Button(Translator.LocalizeUI("Clear All Memory"), new Vector2(buttonWidth, 28)))
+                            {
+                                npc.EncounterCounts.Clear();
+                                npc.LastSeenTimestamps.Clear();
+                                npc.VisitedLocations.Clear();
+                                npc.SentimentModifiers.Clear();
+                                npc.WasLeftBehind = false;
+                                SaveNPCCharacters();
+
+                                // Also delete the memory files
+                                try
+                                {
+                                    string baseDir = _plugin.Configuration.QuestInstallFolder ?? Path.GetTempPath();
+                                    string npcMemoryDir = Path.Combine(baseDir, "CustomNpcMemories");
+                                    string memPath = Path.Combine(npcMemoryDir, npc.NpcName + "-memories.json");
+                                    string convPath = Path.Combine(npcMemoryDir, npc.NpcName + "-memories-conversation.json");
+                                    if (File.Exists(memPath)) File.Delete(memPath);
+                                    if (File.Exists(convPath)) File.Delete(convPath);
+                                }
+                                catch { }
+
+                                _memoryNeedsRefresh = true;
                             }
 
                             ImGui.EndTabItem();
@@ -1376,6 +1593,50 @@ namespace AQuestReborn.CustomNpc
             finally
             {
                 _testingConnection = false;
+            }
+        }
+        private void LoadMemoryFilesForNpc(string npcName)
+        {
+            _cachedKeywordMemories.Clear();
+            _cachedConversationSummaries.Clear();
+
+            if (_plugin == null || string.IsNullOrEmpty(npcName)) return;
+
+            try
+            {
+                string baseDir = _plugin.Configuration.QuestInstallFolder ?? Path.GetTempPath();
+                string npcMemoryDir = Path.Combine(baseDir, "CustomNpcMemories");
+
+                // Keyword memories
+                string memPath = Path.Combine(npcMemoryDir, npcName + "-memories.json");
+                if (File.Exists(memPath))
+                {
+                    string json = File.ReadAllText(memPath);
+                    var parsed = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
+                    if (parsed != null)
+                        _cachedKeywordMemories = parsed
+                            .Where(kvp => !string.IsNullOrWhiteSpace(kvp.Key) && !string.IsNullOrWhiteSpace(kvp.Value))
+                            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                }
+
+                // Conversation summaries
+                string convPath = Path.Combine(npcMemoryDir, npcName + "-memories-conversation.json");
+                if (File.Exists(convPath))
+                {
+                    string json = File.ReadAllText(convPath);
+                    var parsed = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, List<string>>>(json);
+                    if (parsed != null)
+                        _cachedConversationSummaries = parsed
+                            .ToDictionary(
+                                kvp => kvp.Key,
+                                kvp => kvp.Value.Where(s => !string.IsNullOrWhiteSpace(s)).ToList())
+                            .Where(kvp => kvp.Value.Count > 0)
+                            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                }
+            }
+            catch (Exception e)
+            {
+                _plugin?.PluginLog?.Warning(e, "Failed to load NPC memory files for display.");
             }
         }
     }

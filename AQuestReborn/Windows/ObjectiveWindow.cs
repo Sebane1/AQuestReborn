@@ -87,7 +87,7 @@ public class ObjectiveWindow : Window, IDisposable
         }
         Size = new Vector2(ImGui.GetMainViewport().Size.X, ImGui.GetMainViewport().Size.Y);
         Position = new Vector2(0, 0);
-        if (!Plugin.EventWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen && Plugin.ClientState.IsLoggedIn && Plugin.ObjectTable.LocalPlayer != null)
+        if (!Plugin.EventWindow.IsOpen && !Plugin.ChoiceWindow.IsOpen && Plugin.ClientState.IsLoggedIn && Plugin.ObjectTable.LocalPlayer != null && Plugin.AQuestReborn != null)
         {
             var questChainObjectives = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone((int)Plugin.ClientState.TerritoryType, Plugin.AQuestReborn.Discriminator);
             if (!_alreadyLoadingQuestStartIcon)

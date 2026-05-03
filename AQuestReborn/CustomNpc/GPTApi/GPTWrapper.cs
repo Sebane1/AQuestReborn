@@ -192,6 +192,32 @@ namespace AQuestReborn.CustomNpc
         {
             _histories.Clear();
         }
+
+        /// <summary>
+        /// Summarizes and persists all active conversation histories to disk.
+        /// Call this before clearing conversation managers (e.g., on zone change).
+        /// </summary>
+        public async Task FlushAllSummaries()
+        {
+            foreach (var kvp in _histories)
+            {
+                string name = kvp.Key;
+                try
+                {
+                    // Only summarize if there's actual conversation content
+                    if (kvp.Value?.History?.Visible?.Count > 1)
+                    {
+                        string summary = await GetSummary(name);
+                        if (!string.IsNullOrWhiteSpace(summary))
+                        {
+                            memoryContextManager.AddConversationalMemory(name, summary);
+                        }
+                    }
+                }
+                catch { }
+            }
+        }
+
         public async void AddConversationalMemory(string key)
         {
             memoryContextManager.AddConversationalMemory(key, await GetSummary(key));

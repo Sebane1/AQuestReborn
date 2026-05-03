@@ -42,9 +42,11 @@ namespace AQuestReborn.CustomNpc
             return candidates[System.Random.Shared.Next(candidates.Count)];
         }
         public async Task<string> SendMessage(ICharacter sendingCharacter, ICharacter receivingCharacter, string aiName,
-            string aiGreeting, string message, string setting, string aiDescription, string modelChoice = "")
+            string aiGreeting, string message, string setting, string aiDescription, string modelChoice = "", string senderNameOverride = "")
         {
-            string senderName = sendingCharacter.Name.TextValue.Split(" ")[0];
+            // Use the override name if provided (for NPC-to-NPC chat where Brio actors are named "Reborn")
+            string senderFullName = !string.IsNullOrEmpty(senderNameOverride) ? senderNameOverride : sendingCharacter.Name.TextValue;
+            string senderName = senderFullName.Split(" ")[0];
             if (string.IsNullOrEmpty(modelChoice))
             {
                 foreach (var npc in _plugin.Configuration.CustomNpcCharacters)
@@ -69,7 +71,7 @@ namespace AQuestReborn.CustomNpc
             }
             // Enrich the AI description with encounter history
             string encounterContext = "";
-            string playerFullName = sendingCharacter.Name.TextValue;
+            string playerFullName = senderFullName;
             
             // Find the NPC data to pull encounter tracking from
             CustomNpcCharacter npcDataRef = null;
@@ -103,7 +105,7 @@ namespace AQuestReborn.CustomNpc
             string enrichedDescription = aiDescription.Trim('.').Trim() + "." + encounterContext;
 
             string aiMessage = await _gptWrapper.SendMessage(senderName, message, $@" smiles. ""{aiGreeting}""",
-            GetPlayerDescription(sendingCharacter), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 2, modelChoice);
+            GetPlayerDescription(sendingCharacter, false, "", senderFullName), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 2, modelChoice);
             
             if (string.IsNullOrEmpty(aiMessage))
             {
@@ -123,7 +125,7 @@ namespace AQuestReborn.CustomNpc
                 
                 // Retry once with new model
                 aiMessage = await _gptWrapper.SendMessage(senderName, message, $@" smiles. ""{aiGreeting}""",
-                GetPlayerDescription(sendingCharacter), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 2, newModelChoice);
+                GetPlayerDescription(sendingCharacter, false, "", senderFullName), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 2, newModelChoice);
             }
             string correctedMessage = PenumbraAndGlamourerHelperFunctions.GetGender(sendingCharacter) == 1 ? GenderFix(aiMessage) : aiMessage;
             Task.Run(() =>
@@ -141,7 +143,17 @@ namespace AQuestReborn.CustomNpc
             _gptWrapper?.InjectNarratorContext(_fullName, contextLine);
         }
 
-        public string GetPlayerDescription(ICharacter player, bool skipSummary = false, string alias = "")
+        /// <summary>
+        /// Summarizes and persists all active conversations this NPC has had.
+        /// Call before disposing on zone change to preserve conversation memory.
+        /// </summary>
+        public async Task FlushSummaries()
+        {
+            if (_gptWrapper != null)
+                await _gptWrapper.FlushAllSummaries();
+        }
+
+        public string GetPlayerDescription(ICharacter player, bool skipSummary = false, string alias = "", string nameOverride = "")
         {
             int gender = PenumbraAndGlamourerHelperFunctions.GetGender(player);
             int race = PenumbraAndGlamourerHelperFunctions.GetRace(player);
@@ -150,9 +162,10 @@ namespace AQuestReborn.CustomNpc
             string pronounSingular = gender == 1 ? "her" : "his";
             string pronounSingularAlternate = gender == 1 ? "She" : "He";
             string raceStr = GetRaceDescription(race, pronounSingularAlternate);
-            var summaries = !skipSummary ? _gptWrapper.GetConversationalMemory(player.Name.TextValue) : new List<string>();
+            string playerNameFull = !string.IsNullOrEmpty(nameOverride) ? nameOverride : player.Name.TextValue;
+            var summaries = !skipSummary ? _gptWrapper.GetConversationalMemory(playerNameFull) : new List<string>();
             string chatSummaries = "\n\nIn the past " + _gptWrapper.Personality
-            + " and " + player.Name.TextValue + " had the following situations:";
+            + " and " + playerNameFull + " had the following situations:";
             if (summaries.Count == 0)
             {
                 chatSummaries = "";
@@ -172,7 +185,7 @@ namespace AQuestReborn.CustomNpc
                     }
                 }
             }
-            string name = !string.IsNullOrEmpty(alias) ? alias : player.Name.TextValue.Split(" ")[0];
+            string name = !string.IsNullOrEmpty(alias) ? alias : playerNameFull.Split(" ")[0];
             string combatMemory = "";
             if (!string.IsNullOrEmpty(InteractiveNpc.LastCombatTarget))
             {

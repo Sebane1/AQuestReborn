@@ -59,6 +59,8 @@ namespace AQuestReborn.CustomNpc.GPTApi
         }
         public void AddConversationalMemory(string key, string value)
         {
+            if (string.IsNullOrWhiteSpace(value)) return;
+
             if (pastConversations.ContainsKey(key.ToLower()))
             {
                 pastConversations[key.ToLower()].Add(value);

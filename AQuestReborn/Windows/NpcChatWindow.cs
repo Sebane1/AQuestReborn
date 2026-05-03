@@ -312,7 +312,7 @@ public class NpcChatWindow : Window, IDisposable
         var sender = _plugin.ObjectTable.LocalPlayer;
         if (sender == null) return;
 
-        // Echo player message to FFXIV green event text
+        // Echo player message to FFXIV event text
         try
         {
             string playerName = sender.Name.TextValue;
@@ -320,10 +320,21 @@ public class NpcChatWindow : Window, IDisposable
             {
                 Name = playerName,
                 Message = message,
-                Type = Dalamud.Game.Text.XivChatType.NPCDialogueAnnouncements,
+                Type = Dalamud.Game.Text.XivChatType.NPCDialogue,
             });
         }
         catch { }
+
+        // Track sentiment from player's message
+        _activeNpcData.RecordSentiment(sender.Name.TextValue, message);
+
+        // If relationship is broken, refuse to engage
+        if (_activeNpcData.ShouldRefuseConversation(sender.Name.TextValue))
+        {
+            _displayText = "*turns away and refuses to speak*";
+            _isWaitingForResponse = false;
+            return;
+        }
 
         _isWaitingForResponse = true;
 
@@ -340,13 +351,16 @@ public class NpcChatWindow : Window, IDisposable
                 var sw = Stopwatch.StartNew();
 
 
+                // Build lore with mood context injected
+                string npcLore = npcData.GetFullLore() + npcData.GetMoodContext(sender.Name.TextValue);
+
                 string response = await convManager.SendMessage(
                     sender, npcChar,
                     npcData.NpcName,
                     npcData.NPCGreeting,
                     message,
                     _plugin.GetEnvironmentContext(npcChar),
-                    npcData.GetFullLore());
+                    npcLore);
 
                 _plugin.PluginLog.Information($"NPC Chat: Got response in {sw.ElapsedMilliseconds}ms, length={response?.Length ?? 0}");
                 _plugin.PluginLog.Information($"NPC Chat: Raw response text: [{response}]");

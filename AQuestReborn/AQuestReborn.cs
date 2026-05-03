@@ -484,6 +484,20 @@ namespace AQuestReborn
                 }
                 catch { }
 
+                // Flush conversation summaries to disk before cleanup
+                foreach (var convMgr in _customNpcConversationManagers.Values)
+                {
+                    try
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try { await convMgr.FlushSummaries(); }
+                            catch { }
+                        });
+                    }
+                    catch { }
+                }
+
                 // Clean up custom NPC references (Brio actors are destroyed on zone change)
                 foreach (var kvp in _customNpcDictionary)
                 {
@@ -1515,6 +1529,20 @@ namespace AQuestReborn
                 // Start the "chatty first minute" phase for this NPC
                 Plugin.SpeechBubbleManager?.NotifyNpcSummoned(npcData.NpcName);
 
+                // Record this zone as a visited location
+                try
+                {
+                    var territory = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>()?.GetRow(Plugin.ClientState.TerritoryType);
+                    string placeName = territory?.PlaceName.Value.Name.ToString();
+                    if (!string.IsNullOrWhiteSpace(placeName))
+                        npcData.RecordVisit(placeName);
+                }
+                catch { }
+
+                // Ensure birth/home location is in the visited list
+                if (!string.IsNullOrWhiteSpace(npcData.NpcBirthLocation))
+                    npcData.RecordVisit(npcData.NpcBirthLocation);
+
                 // Record NPC meeting all other co-summoned NPCs (bidirectional)
                 foreach (var otherNpc in Plugin.Configuration.CustomNpcCharacters)
                 {
@@ -1868,6 +1896,13 @@ namespace AQuestReborn
                 }
                 if (_customNpcConversationManagers.ContainsKey(npcName))
                 {
+                    // Flush conversation summaries before removing
+                    var convMgr = _customNpcConversationManagers[npcName];
+                    _ = Task.Run(async () =>
+                    {
+                        try { await convMgr.FlushSummaries(); }
+                        catch { }
+                    });
                     _customNpcConversationManagers.Remove(npcName);
                 }
                 // Update the config state
@@ -1944,6 +1979,25 @@ namespace AQuestReborn
                 }
                 if (npcData == null) continue;
 
+                // Analyze the player's message for sentiment toward this NPC
+                npcData.RecordSentiment(sender.Name.TextValue, message);
+
+                // If relationship is completely broken, NPC refuses to engage
+                if (npcData.ShouldRefuseConversation(sender.Name.TextValue))
+                {
+                    var refusalNpc = npcCharacter; // Capture for lambda
+                    var refusalName = npcData.NpcName;
+                    Plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        Plugin.SpeechBubbleManager?.ShowBubble(refusalNpc, refusalName,
+                            "*turns away and refuses to speak*");
+                    });
+                    continue;
+                }
+
+                // Build lore with mood context injected
+                string npcLore = npcData.GetFullLore() + npcData.GetMoodContext(sender.Name.TextValue);
+
                 Task.Run(async () =>
                 {
                     try
@@ -1957,7 +2011,7 @@ namespace AQuestReborn
                             npcData.NPCGreeting,
                             message,
                             Plugin.GetEnvironmentContext(npcCharacter),
-                            npcData.GetFullLore());
+                            npcLore);
 
                         if (!string.IsNullOrEmpty(response))
                         {
