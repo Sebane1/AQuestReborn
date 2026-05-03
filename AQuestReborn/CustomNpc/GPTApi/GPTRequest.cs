@@ -14,9 +14,9 @@ namespace AQuestReborn.CustomNpc.GPTApi
      string character, string instruction_template, string preset = "None")
         {
         }
-        public GPTRequest(string name, string prompt, string aiName, string preset = "None")
+        public GPTRequest(string name, string prompt, string aiName, string modelChoice = "", string preset = "None")
         {
-            this.engine_id = "cassandra-lit-6-9b";
+            this.engine_id = string.IsNullOrEmpty(modelChoice) ? "cassandra-lit-6-9b" : modelChoice;
             this.prompt = prompt;
             this.max_tokens = 70;
             this.do_sample = true;
@@ -51,7 +51,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
             this.stop = new List<object> { "\n", name + ":", aiName + ":" };
         }
 
-        private string engine_id;
+        public string engine_id { get; set; }
 
         public string prompt { get; set; }
         public int max_tokens { get; set; }

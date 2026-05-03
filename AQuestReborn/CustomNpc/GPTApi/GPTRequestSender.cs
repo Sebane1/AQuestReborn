@@ -14,7 +14,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
 {
     public class GPTRequestSender
     {
-        public async Task<string> GetGPTResponse(string sender, string message, string aiName, bool local, int failure = 0)
+        public async Task<string> GetGPTResponse(string sender, string message, string aiName, bool local, string modelChoice = "", int failure = 0)
         {
             var httpWebRequest = (HttpWebRequest)WebRequest.Create(local ?
                 "http://localhost:5000/api/v1/chat" :
@@ -26,7 +26,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
             {
                 using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
                 {
-                    string json = JsonConvert.SerializeObject(new GPTRequest(sender, message, aiName));
+                    string json = JsonConvert.SerializeObject(new GPTRequest(sender, message, aiName, modelChoice));
                     streamWriter.Write(json);
                 }
                 var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
@@ -41,7 +41,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
             {
                 if (failure < 10)
                 {
-                    return await GetGPTResponse(sender, message, aiName, local, failure + 1);
+                    return await GetGPTResponse(sender, message, aiName, local, modelChoice, failure + 1);
                 }
                 else
                 {
@@ -50,13 +50,13 @@ namespace AQuestReborn.CustomNpc.GPTApi
             }
         }
 
-        public async Task<string> GetGPTResponse(string sender, string message, string aiName)
+        public async Task<string> GetGPTResponse(string sender, string message, string aiName, string modelChoice = "")
         {
             string value = "";
             using (ClientWebSocket websocket = new ClientWebSocket())
             {
                 await websocket.ConnectAsync(new System.Uri("ws://localhost:5005/api/v1/stream"), default);
-                string json = JsonConvert.SerializeObject(new GPTRequest(sender, message, aiName));
+                string json = JsonConvert.SerializeObject(new GPTRequest(sender, message, aiName, modelChoice));
                 await SendString(websocket, json, default);
                 while (true)
                 {
@@ -89,8 +89,8 @@ namespace AQuestReborn.CustomNpc.GPTApi
             }
             string finalValue = newValue.TrimStart('\n', '~', '.', '-', ' ').Split("\n")[0].Split("]")[0].Replace("----", @"shakes ""Appologies, I forget myself sometimes""");
             
-            // Failsafe: Hard truncate if the AI hallucinated ANY dialogue tag inline (e.g. Sasha:, Petunia:, Mita:)
-            var match = Regex.Match(finalValue, @"[A-Z][a-zA-Z]+:");
+            // Failsafe: Hard truncate if the AI hallucinated ANY dialogue tag inline (e.g. Sasha:, Petunia:, Heleyna Ewal:)
+            var match = Regex.Match(finalValue, @"(?:[A-Z][a-zA-Z]+(?: [A-Z][a-zA-Z]+)*):");
             if (match.Success)
             {
                 finalValue = finalValue.Substring(0, match.Index).Trim();

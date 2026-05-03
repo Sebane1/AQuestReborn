@@ -95,8 +95,8 @@ namespace AQuestReborn.CustomNpc.GPTApi
             context += $"{_userName}: hands you a potion. Here, take this.\n";
             context += $"{_aiName}: takes the potion gracefully. \"Oh, thank you kindly! This will surely be of use.\"\n";
             context += $"[ End Example ]\n";
-            context += $"CRITICAL RULE: You MUST use double quotation marks (\" \") for ALL spoken dialogue. NEVER use single quotation marks (' ') or markdown for dialogue. The game engine strictly requires double quotes to extract your speech.\n\n";
-
+            context += $"CRITICAL RULE: You MUST use double quotation marks (\" \") for ALL spoken dialogue. NEVER use single quotation marks (' ') or markdown for dialogue. The game engine strictly requires double quotes to extract your speech.\n";
+            context += $"CRITICAL RULE: You are ONLY playing the character {_aiName}. NEVER generate dialogue, actions, or reactions for {_userName} or any other character. NEVER prefix your response with \"{_aiName}:\". Just respond directly with your actions in asterisks and your speech in double quotes.\n\n";
             foreach (var value in _history.Visible)
             {
                 foreach (var message in value)

@@ -39,6 +39,9 @@ namespace AQuestReborn.CustomNpc
         public bool UseMcdfAppearance = false;
         public string McdfFilePath = "";
 
+        // Model Choice
+        public string ModelChoice = "";
+
         public string GetFullLore()
         {
             string lore = NpcPersonality;

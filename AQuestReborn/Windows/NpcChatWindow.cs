@@ -352,6 +352,12 @@ public class NpcChatWindow : Window, IDisposable
                         }
                     }
 
+                    int quoteCount = cleanResponse.Split(new[] { '"', '“', '”' }).Length - 1;
+                    if (quoteCount % 2 != 0)
+                    {
+                        cleanResponse += "\"";
+                    }
+
                     var quoteMatches = System.Text.RegularExpressions.Regex.Matches(cleanResponse, "[\"“]([^\"”]+)[\"”]");
                     if (quoteMatches.Count > 0)
                     {

@@ -53,6 +53,16 @@ namespace AQuestReborn
         }
 
         /// <summary>
+        /// Record a position directly into the map without updating the player's last recorded position.
+        /// Useful for recording other entities like enemies.
+        /// </summary>
+        public void ForceRecordPosition(Vector3 position)
+        {
+            long key = QuantizeKey(position.X, position.Z);
+            _activeMap[key] = position.Y;
+        }
+
+        /// <summary>
         /// Get the ground Y height at the given XZ position.
         /// Searches the exact grid cell first, then expands outward to find the
         /// closest recorded point. Covers up to ~5 units from the query position

@@ -473,6 +473,41 @@ namespace AQuestReborn.CustomNpc
                                 SaveNPCCharacters();
                             }
                             
+                            ImGui.Dummy(new Vector2(0, 15));
+                            if (ImGui.Button(Translator.LocalizeUI("Reset AI Brain (Wipes memory & model choice)"), new Vector2(ImGui.GetColumnWidth(), 30)))
+                            {
+                                // Wipe the assigned model choice
+                                _customNpcCharacters[_currentSelection].ModelChoice = "";
+                                SaveNPCCharacters();
+                                
+                                string npcName = _customNpcCharacters[_currentSelection].NpcName;
+                                
+                                // Dismiss the NPC to clear out any in-memory conversational history
+                                if (_plugin != null && _plugin.AQuestReborn != null)
+                                {
+                                    _plugin.AQuestReborn.DismissCustomNpc(npcName);
+                                    _customNpcCharacters[_currentSelection].IsFollowingPlayer = false;
+                                    _customNpcCharacters[_currentSelection].IsStaying = false;
+                                    _customNpcCharacters[_currentSelection].StayTerritoryId = 0;
+                                }
+
+                                // Wipe the memory JSON file
+                                try
+                                {
+                                    string baseDir = _plugin.Configuration.QuestInstallFolder ?? Path.GetTempPath();
+                                    string npcMemoryDir = Path.Combine(baseDir, "CustomNpcMemories");
+                                    string memPath = Path.Combine(npcMemoryDir, npcName.Split(" ")[0] + "-memories.json");
+                                    if (File.Exists(memPath))
+                                    {
+                                        File.Delete(memPath);
+                                    }
+                                }
+                                catch (Exception e)
+                                {
+                                    _plugin?.PluginLog?.Warning(e, "Failed to delete NPC memory file.");
+                                }
+                            }
+                            
                             ImGui.EndTabItem();
                         }
 
@@ -606,7 +641,7 @@ namespace AQuestReborn.CustomNpc
                                 var playerPos = _plugin.ObjectTable.LocalPlayer?.Position ?? System.Numerics.Vector3.Zero;
                                 var spawnPos = playerPos + new System.Numerics.Vector3(2, 0, 2);
                                 _customNpcCharacters[_currentSelection].StayPositionX = spawnPos.X;
-                                _customNpcCharacters[_currentSelection].StayPositionY = spawnPos.Y;
+                                _customNpcCharacters[_currentSelection].StayPositionY = _plugin.AQuestReborn.GroundMap.GetGroundY(spawnPos.X, spawnPos.Z, playerPos.Y);
                                 _customNpcCharacters[_currentSelection].StayPositionZ = spawnPos.Z;
                             }
                             else

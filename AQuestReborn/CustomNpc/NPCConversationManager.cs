@@ -25,11 +25,29 @@ namespace AQuestReborn.CustomNpc
             _aiCharacter = receivingCharacter;
         }
         public async Task<string> SendMessage(ICharacter sendingCharacter, ICharacter receivingCharacter, string aiName,
-            string aiGreeting, string message, string setting, string aiDescription)
+            string aiGreeting, string message, string setting, string aiDescription, string modelChoice = "")
         {
             string senderName = sendingCharacter.Name.TextValue.Split(" ")[0];
+            if (string.IsNullOrEmpty(modelChoice))
+            {
+                foreach (var npc in _plugin.Configuration.CustomNpcCharacters)
+                {
+                    if (npc.NpcName == aiName || npc.NpcName.StartsWith(aiName + " "))
+                    {
+                        if (string.IsNullOrEmpty(npc.ModelChoice))
+                        {
+                            var models = new[] { "cassandra-lit-6-9b", "convo-6b", "fairsqeq-6-7b", "gpt-j-6b" };
+                            npc.ModelChoice = models[System.Random.Shared.Next(models.Length)];
+                            _plugin.Configuration.Save();
+                        }
+                        modelChoice = npc.ModelChoice;
+                        break;
+                    }
+                }
+            }
+
             string aiMessage = await _gptWrapper.SendMessage(senderName, message, $@" smiles. ""{aiGreeting}""",
-            GetPlayerDescription(sendingCharacter), aiDescription.Trim('.').Trim() + ". " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 2);
+            GetPlayerDescription(sendingCharacter), aiDescription.Trim('.').Trim() + ". " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 2, modelChoice);
             string correctedMessage = PenumbraAndGlamourerHelperFunctions.GetGender(sendingCharacter) == 1 ? GenderFix(aiMessage) : aiMessage;
             Task.Run(() =>
             {

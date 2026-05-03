@@ -22,7 +22,7 @@ namespace AQuestReborn.CustomNpc
             memoryContextManager = new MemoryContextManager(memoryPath);
         }
 
-        public async Task<string> SendMessage(string name, string message, string aiGreeting, string userDetails, string aiDetails, string setting, int maxContext)
+        public async Task<string> SendMessage(string name, string message, string aiGreeting, string userDetails, string aiDetails, string setting, int maxContext, string modelChoice = "")
         {
             var newHistory = new GPTHistory(name, userDetails,
                 _aiName + ":" + aiGreeting, $"{name} said hello, and {_aiName} responded back with their own greeting.");
@@ -41,7 +41,40 @@ namespace AQuestReborn.CustomNpc
             _histories[name].UpdateSetting(setting);
             string lastValue = _histories.ContainsKey(name) ? _histories[name].History.GetLastVisibleItem() : Guid.NewGuid().ToString();
             string response = await new GPTRequestSender().GetGPTResponse(name, _histories[name].ToString()
-                + name.Split(" ")[0] + DetectFormatting(message.Trim()) + "\n" + _aiName + ": ", _aiName, false);
+                + name.Split(" ")[0] + DetectFormatting(message.Trim()) + "\n" + _aiName + ": ", _aiName, false, modelChoice);
+
+            // Reject responses that lack both dialogue quotes and action asterisks
+            if (!string.IsNullOrEmpty(response) && !response.Contains("\"") && !response.Contains("*"))
+            {
+                return "";
+            }
+
+            if (_histories.ContainsKey(name) && _histories[name].History.Visible.Count > 0)
+            {
+                var lastMessage = _histories[name].History.Visible[_histories[name].History.Visible.Count - 1];
+                if (lastMessage.Count > 1)
+                {
+                    string lastResponse = lastMessage[1].Replace(_aiName + ":", "").Trim();
+                    string currentResponse = response.Trim();
+                    var lastTokens = lastResponse.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    var currentTokens = currentResponse.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    
+                    if (lastTokens.Length >= 2 && currentTokens.Length >= 2 &&
+                        lastTokens[0].ToLower() == currentTokens[0].ToLower() && 
+                        lastTokens[1].ToLower() == currentTokens[1].ToLower())
+                    {
+                        int index = currentResponse.IndexOf(currentTokens[1], currentResponse.IndexOf(currentTokens[0])) + currentTokens[1].Length;
+                        response = currentResponse.Substring(index).Trim();
+                    }
+                    else if (lastTokens.Length >= 1 && currentTokens.Length >= 1 &&
+                             lastTokens[0].ToLower() == currentTokens[0].ToLower())
+                    {
+                        int index = currentResponse.IndexOf(currentTokens[0]) + currentTokens[0].Length;
+                        response = currentResponse.Substring(index).Trim();
+                    }
+                }
+            }
+
             AddToHistory(name, message, response);
             if (_persistenceCounter.ContainsKey(name))
             {

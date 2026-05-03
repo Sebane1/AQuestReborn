@@ -309,6 +309,12 @@ namespace AQuestReborn.CustomNpc
                 }
             }
 
+            int quoteCount = text.Split(new[] { '"', '“', '”' }).Length - 1;
+            if (quoteCount % 2 != 0)
+            {
+                text += "\"";
+            }
+
             var quoteMatches = System.Text.RegularExpressions.Regex.Matches(text, "[\"“]([^\"”]+)[\"”]");
             if (quoteMatches.Count > 0)
             {

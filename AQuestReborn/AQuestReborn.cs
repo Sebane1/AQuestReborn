@@ -627,6 +627,14 @@ namespace AQuestReborn
                         if (Plugin.ObjectTable.LocalPlayer != null)
                         {
                             GroundMap.RecordPosition(Plugin.ObjectTable.LocalPlayer.Position);
+                            
+                            foreach (var obj in Plugin.ObjectTable)
+                            {
+                                if (obj != null && obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc)
+                                {
+                                    GroundMap.ForceRecordPosition(obj.Position);
+                                }
+                            }
                         }
                         // Hopefully waiting prevents crashing on zone changes?
                         if (zoneChangeCooldown.ElapsedMilliseconds > 500)
@@ -1498,43 +1506,48 @@ namespace AQuestReborn
 
         public void DismissCustomNpc(string npcName)
         {
-            if (_customNpcDictionary.ContainsKey(npcName))
+            Plugin.Framework.RunOnFrameworkThread(() =>
             {
-                var npc = _customNpcDictionary[npcName];
-                npc.StopFollowingPlayer();
-                npc.Dispose();
-                _customNpcDictionary.Remove(npcName);
-                _interactiveNpcDictionary.Remove(npcName);
-            }
-            if (_customNpcCharacters.ContainsKey(npcName))
-            {
-                try
+                if (_customNpcDictionary.ContainsKey(npcName))
                 {
-                    if (_actorSpawnService != null)
+                    var npc = _customNpcDictionary[npcName];
+                    npc.StopFollowingPlayer();
+                    npc.Dispose();
+                    _customNpcDictionary.Remove(npcName);
+                    _interactiveNpcDictionary.Remove(npcName);
+                }
+                if (_customNpcCharacters.ContainsKey(npcName))
+                {
+                    var characterToDestroy = _customNpcCharacters[npcName];
+                    _customNpcCharacters.Remove(npcName);
+                    
+                    try
                     {
-                        _actorSpawnService.DestroyObject(_customNpcCharacters[npcName]);
+                        if (_actorSpawnService != null && characterToDestroy != null)
+                        {
+                            _actorSpawnService.DestroyObject(characterToDestroy);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.PluginLog.Warning(ex, "Failed to destroy custom NPC character: " + ex.Message);
                     }
                 }
-                catch (Exception ex)
+                if (_customNpcConversationManagers.ContainsKey(npcName))
                 {
-                    Plugin.PluginLog.Warning(ex, "Failed to destroy custom NPC character: " + ex.Message);
+                    _customNpcConversationManagers.Remove(npcName);
                 }
-                _customNpcCharacters.Remove(npcName);
-            }
-            if (_customNpcConversationManagers.ContainsKey(npcName))
-            {
-                _customNpcConversationManagers.Remove(npcName);
-            }
-            // Update the config state
-            foreach (var npc in Plugin.Configuration.CustomNpcCharacters)
-            {
-                if (npc.NpcName == npcName)
+                // Update the config state
+                foreach (var npc in Plugin.Configuration.CustomNpcCharacters)
                 {
-                    npc.IsFollowingPlayer = false;
-                    break;
+                    if (npc.NpcName == npcName)
+                    {
+                        npc.IsFollowingPlayer = false;
+                        break;
+                    }
                 }
-            }
-            Plugin.ChatGui.Print("[A Quest Reborn] " + npcName + " has been dismissed.");
+                Plugin.ChatGui.Print("[A Quest Reborn] " + npcName + " has been dismissed.");
+            });
         }
 
         public void HandleCustomNpcChat(IPlayerCharacter sender, string message)
@@ -1598,6 +1611,13 @@ namespace AQuestReborn
                                     break;
                                 }
                             }
+
+                            int quoteCount = cleanResponse.Split(new[] { '"', '“', '”' }).Length - 1;
+                            if (quoteCount % 2 != 0)
+                            {
+                                cleanResponse += "\"";
+                            }
+
                             var quoteMatches = System.Text.RegularExpressions.Regex.Matches(cleanResponse, "[\"“]([^\"”]+)[\"”]");
                             if (quoteMatches.Count > 0)
                             {

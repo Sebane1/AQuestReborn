@@ -219,8 +219,17 @@ public class ObjectiveWindow : Window, IDisposable
                         float ellipseDist = dx * dx + dy * dy;
 
 
-                        var playerDist = Vector3.Distance(Plugin.ObjectTable.LocalPlayer.Position, kvp.Value.Position);
-                        bool inRange = playerDist < 5f;
+                        var player = Plugin.ObjectTable.LocalPlayer;
+                        var playerDist = Vector3.Distance(player.Position, kvp.Value.Position);
+                        
+                        // Calculate facing using player rotation
+                        var toNpc = new Vector2(kvp.Value.Position.X - player.Position.X, kvp.Value.Position.Z - player.Position.Z);
+                        toNpc = Vector2.Normalize(toNpc);
+                        var playerForward = new Vector2((float)Math.Sin(player.Rotation), (float)Math.Cos(player.Rotation));
+                        float dot = Vector2.Dot(toNpc, playerForward);
+                        
+                        // Must be close and facing within ~60 degrees (dot > 0.5)
+                        bool inRange = playerDist < 3.5f && dot > 0.5f;
 
                         if (Plugin.Configuration.ShowNpcHitboxes)
                         {
