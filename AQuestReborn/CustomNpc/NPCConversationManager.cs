@@ -6,6 +6,7 @@ using SamplePlugin;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AQuestReborn.CustomNpc
@@ -13,6 +14,7 @@ namespace AQuestReborn.CustomNpc
     public class NPCConversationManager
     {
         public static List<string> RecentGameDialogue = new List<string>();
+        public static List<string> RecentCombatEvents = new List<string>();
         private GPTWrapper _gptWrapper;
         private Plugin _plugin;
         private ICharacter _aiCharacter;
@@ -26,6 +28,19 @@ namespace AQuestReborn.CustomNpc
             _plugin = plugin;
             _aiCharacter = receivingCharacter;
         }
+
+        private string GetLeastUsedModel(System.Collections.Generic.IEnumerable<string> availableModels)
+        {
+            var usedModels = _plugin.Configuration.CustomNpcCharacters
+                .Where(c => !string.IsNullOrEmpty(c.ModelChoice))
+                .GroupBy(c => c.ModelChoice)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            var leastUsedModels = availableModels.OrderBy(m => usedModels.ContainsKey(m) ? usedModels[m] : 0).ToList();
+            int minCount = usedModels.ContainsKey(leastUsedModels[0]) ? usedModels[leastUsedModels[0]] : 0;
+            var candidates = leastUsedModels.Where(m => (usedModels.ContainsKey(m) ? usedModels[m] : 0) == minCount).ToList();
+            return candidates[System.Random.Shared.Next(candidates.Count)];
+        }
         public async Task<string> SendMessage(ICharacter sendingCharacter, ICharacter receivingCharacter, string aiName,
             string aiGreeting, string message, string setting, string aiDescription, string modelChoice = "")
         {
@@ -36,10 +51,15 @@ namespace AQuestReborn.CustomNpc
                 {
                     if (npc.NpcName == aiName || npc.NpcName.StartsWith(aiName + " "))
                     {
+                        if (npc.ModelChoice.Contains("fairsqeq") || npc.ModelChoice.Contains("fairseq"))
+                        {
+                            npc.ModelChoice = "";
+                        }
+                        
                         if (string.IsNullOrEmpty(npc.ModelChoice))
                         {
-                            var models = new[] { "cassandra-lit-6-9b", "convo-6b", "fairsqeq-6-7b", "gpt-j-6b" };
-                            npc.ModelChoice = models[System.Random.Shared.Next(models.Length)];
+                            var models = new[] { "cassandra-lit-6-9b", "convo-6b", "gpt-j-6b" };
+                            npc.ModelChoice = GetLeastUsedModel(models);
                             _plugin.Configuration.Save();
                         }
                         modelChoice = npc.ModelChoice;
@@ -53,9 +73,9 @@ namespace AQuestReborn.CustomNpc
             
             if (string.IsNullOrEmpty(aiMessage))
             {
-                var models = new System.Collections.Generic.List<string> { "cassandra-lit-6-9b", "convo-6b", "fairsqeq-6-7b", "gpt-j-6b" };
+                var models = new System.Collections.Generic.List<string> { "cassandra-lit-6-9b", "convo-6b", "gpt-j-6b" };
                 models.Remove(modelChoice);
-                string newModelChoice = models[System.Random.Shared.Next(models.Count)];
+                string newModelChoice = GetLeastUsedModel(models);
                 
                 foreach (var npc in _plugin.Configuration.CustomNpcCharacters)
                 {
@@ -125,9 +145,18 @@ namespace AQuestReborn.CustomNpc
                 }
             }
 
+            string recentCombatMemory = "";
+            lock (RecentCombatEvents)
+            {
+                if (RecentCombatEvents.Count > 0)
+                {
+                    recentCombatMemory = " Recent combat events around you: " + string.Join(" ", RecentCombatEvents) + " ";
+                }
+            }
+
             return $"{name} is a {genderStr}. {pronounSingularAlternate} is a race of {raceStr}. " +
                 $"{GetPlayerExperience(player.Level, player.ClassJob.Value.NameEnglish.ToString(), pronounSingularAlternate)}." +
-                combatMemory + recentDialogueMemory + chatSummaries;
+                combatMemory + recentCombatMemory + recentDialogueMemory + chatSummaries;
         }
         private string GetRaceDescription(int race, string pronoun)
         {

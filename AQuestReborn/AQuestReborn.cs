@@ -183,6 +183,17 @@ namespace AQuestReborn
         {
             try
             {
+                if (chatMessage.Message.ToString().ToLower() == "/rerollmodels")
+                {
+                    foreach (var npc in Plugin.Configuration.CustomNpcCharacters)
+                    {
+                        npc.ModelChoice = "";
+                    }
+                    Plugin.Configuration.Save();
+                    Plugin.PluginLog.Information("All Custom NPC models have been reset for re-rolling.");
+                    return;
+                }
+
                 Plugin.PluginLog.Debug((int)chatMessage.LogKind + " " + chatMessage.Message);
                 var messageAsString = chatMessage.Message.ToString();
                 var chatType = (Dalamud.Game.Text.XivChatType)chatMessage.LogKind;
@@ -197,6 +208,17 @@ namespace AQuestReborn
                         if (CustomNpc.NPCConversationManager.RecentGameDialogue.Count > 2)
                         {
                             CustomNpc.NPCConversationManager.RecentGameDialogue.RemoveAt(0);
+                        }
+                    }
+                }
+                else if ((int)chatType == 41 || (int)chatType == 42 || (int)chatType == 43 || (int)chatType == 58)
+                {
+                    lock (CustomNpc.NPCConversationManager.RecentCombatEvents)
+                    {
+                        CustomNpc.NPCConversationManager.RecentCombatEvents.Add(messageAsString);
+                        if (CustomNpc.NPCConversationManager.RecentCombatEvents.Count > 3)
+                        {
+                            CustomNpc.NPCConversationManager.RecentCombatEvents.RemoveAt(0);
                         }
                     }
                 }

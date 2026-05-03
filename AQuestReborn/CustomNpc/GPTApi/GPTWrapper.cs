@@ -44,10 +44,10 @@ namespace AQuestReborn.CustomNpc
                 + name.Split(" ")[0] + DetectFormatting(message.Trim()) + "\n" + _aiName + ": ", _aiName, false, modelChoice);
 
             // Reject responses that lack both dialogue quotes and action asterisks
-            if (!string.IsNullOrEmpty(response) && !response.Contains("\"") && !response.Contains("*"))
+            /*if (!string.IsNullOrEmpty(response) && !response.Contains("\"") && !response.Contains("*"))
             {
                 return "";
-            }
+            }*/
             
             // Reject parroting (where the AI echoes the user's message exactly)
             if (!string.IsNullOrEmpty(response))

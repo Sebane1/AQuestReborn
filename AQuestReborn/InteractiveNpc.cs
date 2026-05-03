@@ -520,10 +520,6 @@ namespace AQuestReborn
                                             catch { }
                                             _idleEmotePlaying = true;
                                         }
-                                        else if (!_idleEmotePlaying)
-                                        {
-                                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
-                                        }
                                         // Set head target to player if within range, otherwise look forward
                                         if (_plugin.ObjectTable.LocalPlayer != null
                                             && Vector3.Distance(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position) < 3f)
@@ -796,7 +792,7 @@ namespace AQuestReborn
             {
                 if (_followPlayer && _plugin.ObjectTable.LocalPlayer != null)
                 {
-                    return Vector3.Distance(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position) <= 1;
+                    return !_isFollowMoving;
                 }
                 return !_shouldBeMoving;
             }

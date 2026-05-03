@@ -16,6 +16,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
     {
         public async Task<string> GetGPTResponse(string sender, string message, string aiName, bool local, string modelChoice = "", int failure = 0)
         {
+            ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
             var httpWebRequest = (HttpWebRequest)WebRequest.Create(local ?
                 "http://localhost:5000/api/v1/chat" :
                 "https://ai.hubujubu.com:5696");
@@ -32,13 +33,18 @@ namespace AQuestReborn.CustomNpc.GPTApi
                 var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
                 using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
                 {
-                    var result = streamReader.ReadToEnd();
+                    var result = await streamReader.ReadToEndAsync();
+                    try { SamplePlugin.Plugin.Instance.PluginLog.Warning($"Raw GPT Response: {result}"); } catch { }
                     var response = JsonConvert.DeserializeObject<GPTOpenAIResult>(result);
                     return ResponseCleaner(response.choices[0].text, sender, aiName);
                 }
             }
             catch (Exception e)
             {
+                if (failure == 0)
+                {
+                    try { SamplePlugin.Plugin.Instance.PluginLog.Warning(e, $"GPT API Connection failed: {e.Message}"); } catch { }
+                }
                 if (failure < 10)
                 {
                     return await GetGPTResponse(sender, message, aiName, local, modelChoice, failure + 1);
@@ -94,6 +100,21 @@ namespace AQuestReborn.CustomNpc.GPTApi
             if (match.Success)
             {
                 finalValue = finalValue.Substring(0, match.Index).Trim();
+            }
+            
+            // Filter out fairseq's weird underscores and tildes (e.g. _____ or ~~)
+            finalValue = Regex.Replace(finalValue, @"[_~]{2,}", "").Trim();
+
+            // Reject excessive repeated punctuation (token loops) to force a model cycle
+            if (Regex.IsMatch(finalValue, @"\?{4,}") || Regex.IsMatch(finalValue, @"!{4,}") || Regex.IsMatch(finalValue, @"\.{4,}"))
+            {
+                return "";
+            }
+
+            // Reject naked strings (missing both quotes and asterisks) to force a model cycle
+            if (finalValue.Length > 0 && !finalValue.Contains("\"") && !finalValue.Contains("*"))
+            {
+                return "";
             }
             
             return ScrubEarthTerms(finalValue);
