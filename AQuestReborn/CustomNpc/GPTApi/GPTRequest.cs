@@ -14,7 +14,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
      string character, string instruction_template, string preset = "None")
         {
         }
-        public GPTRequest(string name, string prompt, string personality, string preset = "None")
+        public GPTRequest(string name, string prompt, string aiName, string preset = "None")
         {
             this.engine_id = "cassandra-lit-6-9b";
             this.prompt = prompt;
@@ -47,7 +47,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
             this.stream = false;
             this.logprobs = 10;
             this.logit_bias = new LogitBias() { _187 = -0.5f };
-            this.stopping_strings = new List<object> { "\n", name + ":", personality + ":" };
+            this.stopping_strings = new List<object> { "\n", name + ":", aiName + ":" };
         }
 
         private string engine_id;

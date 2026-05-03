@@ -9,39 +9,39 @@ namespace AQuestReborn.CustomNpc
 {
     public class GPTWrapper : IDisposable
     {
-        private string _personality;
+        private string _aiName;
         ConcurrentDictionary<string, GPTContextBuilder> _histories = new ConcurrentDictionary<string, GPTContextBuilder>();
         ConcurrentDictionary<string, int> _persistenceCounter = new ConcurrentDictionary<string, int>();
         MemoryContextManager memoryContextManager;
 
-        public string Personality { get => _personality; }
+        public string Personality { get => _aiName; }
 
-        public GPTWrapper(string personality, string memoryPath)
+        public GPTWrapper(string aiName, string memoryPath)
         {
-            _personality = personality;
+            _aiName = aiName;
             memoryContextManager = new MemoryContextManager(memoryPath);
         }
 
         public async Task<string> SendMessage(string name, string message, string aiGreeting, string userDetails, string aiDetails, string setting, int maxContext)
         {
             var newHistory = new GPTHistory(name, userDetails,
-                _personality + aiGreeting, $"{name} said hello, and {_personality} responded back with their own greeting.");
+                _aiName + aiGreeting, $"{name} said hello, and {_aiName} responded back with their own greeting.");
             if (!_histories.ContainsKey(name))
             {
                 _histories[name] = new GPTContextBuilder("Square Enix", "Final Fantasy XIV", "fantasy",
-                _personality, name, aiDetails, userDetails, newHistory);
+                _aiName, name, aiDetails, userDetails, newHistory);
                 _histories[name].UpdateMemories(memoryContextManager.GetMemoriesInValue(message));
             }
             else
             {
-                _histories[name].UpdateAITraits(_personality, aiDetails);
+                _histories[name].UpdateAITraits(_aiName, aiDetails);
                 _histories[name].UpdateUserTraits(name, userDetails);
                 _histories[name].UpdateMemories(memoryContextManager.GetMemoriesInValue((!string.IsNullOrEmpty(userDetails) ? "" : name + " ") + message));
             }
             _histories[name].UpdateSetting(setting);
             string lastValue = _histories.ContainsKey(name) ? _histories[name].History.GetLastVisibleItem() : Guid.NewGuid().ToString();
             string response = await new GPTRequestSender().GetGPTResponse(name, _histories[name].ToString()
-                + name.Split(" ")[0] + DetectFormatting(message.Trim()) + "\n" + _personality + ": ", _personality, false);
+                + name.Split(" ")[0] + DetectFormatting(message.Trim()) + "\n" + _aiName + ": ", _aiName, false);
             AddToHistory(name, message, response);
             if (_persistenceCounter.ContainsKey(name))
             {
@@ -73,7 +73,7 @@ namespace AQuestReborn.CustomNpc
         {
             string lastValue = _histories.ContainsKey(name) ? _histories[name].History.GetLastVisibleItem() : Guid.NewGuid().ToString();
             string response = await new GPTRequestSender().GetGPTResponse(name, _histories[name].ToString()
-                + "[Chat Summary:", _personality, false);
+                + "[Chat Summary:", _aiName, false);
             return response.Replace("[Chat Summary:", null);
         }
 
@@ -119,7 +119,7 @@ namespace AQuestReborn.CustomNpc
                     var lastMessage = _histories[sender].History.Visible[_histories[sender].History.Visible.Count - 1];
                     if (lastMessage.Count > 1)
                     {
-                        string cleanLast = lastMessage[1].Replace(_personality, "").Trim().ToLower();
+                        string cleanLast = lastMessage[1].Replace(_aiName, "").Trim().ToLower();
                         if (cleanLast == formattedResponse)
                         {
                             ClearHistory(sender);
@@ -129,13 +129,13 @@ namespace AQuestReborn.CustomNpc
                 }
 
                 _histories[sender].History.Visible.Add(new List<string> {
-                sender.Split(" ")[0] + DetectFormatting(trimmedUserText), _personality + DetectFormatting(trimmedBotResponse) });
+                sender.Split(" ")[0] + DetectFormatting(trimmedUserText), _aiName + DetectFormatting(trimmedBotResponse) });
             }
         }
 
         public string WordFilter(string value)
         {
-            if (value.Length > 0 && value.StartsWith(_personality))
+            if (value.Length > 0 && value.StartsWith(_aiName))
             {
                 int i = value.IndexOf(" ");
                 if (i != -1)
