@@ -309,18 +309,27 @@ namespace AQuestReborn.CustomNpc
                 }
             }
 
-            // Strip asterisk actions for the UI display
-            text = System.Text.RegularExpressions.Regex.Replace(text, @"\*[^*]+\*", "").Trim();
-            // Strip bracketed meta-text
-            text = System.Text.RegularExpressions.Regex.Replace(text, @"\[[^\]]+\]", "").Trim();
-            if (string.IsNullOrWhiteSpace(text))
+            var quoteMatches = System.Text.RegularExpressions.Regex.Matches(text, "[\"“]([^\"”]+)[\"”]");
+            if (quoteMatches.Count > 0)
             {
-                text = "...";
+                string dialogueOnly = "";
+                foreach (System.Text.RegularExpressions.Match m in quoteMatches)
+                {
+                    dialogueOnly += m.Groups[1].Value.Trim() + " ";
+                }
+                text = dialogueOnly.Trim();
             }
-
-            if (text.StartsWith("\"") && text.EndsWith("\"") && text.Length > 2)
-                text = text.Substring(1, text.Length - 2);
-            text = text.TrimEnd('"').Trim();
+            else
+            {
+                // Strip asterisk actions for the UI display
+                text = System.Text.RegularExpressions.Regex.Replace(text, @"\*[^*]+\*", "").Trim();
+                // Strip bracketed meta-text
+                text = System.Text.RegularExpressions.Regex.Replace(text, @"\[[^\]]+\]", "").Trim();
+                if (text.StartsWith("\"") && text.EndsWith("\"") && text.Length > 2)
+                    text = text.Substring(1, text.Length - 2);
+                text = text.TrimEnd('"').Trim();
+            }
+            if (string.IsNullOrWhiteSpace(text)) text = "...";
             return text;
         }
 
