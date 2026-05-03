@@ -47,6 +47,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
             this.stream = false;
             this.logprobs = 10;
             this.logit_bias = new LogitBias() { _187 = -0.5f };
+            this.stopping_strings = new List<object> { "\n", name + ":" };
         }
 
         private string engine_id;
