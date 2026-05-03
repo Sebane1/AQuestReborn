@@ -100,7 +100,7 @@ namespace AQuestReborn
 
                 foreach (var action in actions)
                 {
-                    uint animId = action.AnimationStart.RowId;
+                    uint animId = action.AnimationEnd.RowId;
                     uint catId = action.ActionCategory.RowId;
 
                     if (animId > 0 && catId >= 2 && catId <= 4)
@@ -366,6 +366,7 @@ namespace AQuestReborn
                                         {
                                             _wasInCombat = true;
                                             var nChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
+                                            nChara->DrawData.IsWeaponHidden = false;
                                             nChara->Timeline.TimelineSequencer.PlayTimeline(5616); // Draw weapon
                                             _plugin.AnamcoreManager.TriggerEmote(_character.Address, 34); // Draw Weapon / Combat Stance
                                         }
@@ -410,6 +411,7 @@ namespace AQuestReborn
                                         if (_nextCombatAnimationToPlay != 0 && _combatAttackDelayTimer.ElapsedMilliseconds > _currentCombatDelayMs)
                                         {
                                             var nChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
+                                            _plugin.PluginLog.Information($"Playing timeline {_nextCombatAnimationToPlay} for job {TargetClassJobId}");
                                             nChara->Timeline.TimelineSequencer.PlayTimeline(_nextCombatAnimationToPlay);
                                             _nextCombatAnimationToPlay = 0;
                                         }

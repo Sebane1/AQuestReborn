@@ -170,10 +170,13 @@ namespace AQuestReborn
             }
         }
 
-        public unsafe void TestActionSheet(nint characterAddress)
+        public void TestActionSheet()
         {
-            var chara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)characterAddress;
-            chara->ClassJob = 1; // Try setting it
+            var props = typeof(Lumina.Excel.Sheets.Action).GetProperties();
+            foreach (var p in props)
+            {
+                Plugin.PluginLog.Information("Action Prop: " + p.Name);
+            }
         }
 
         private unsafe void ChatGui_ChatMessage(Dalamud.Game.Chat.IChatMessage chatMessage)
