@@ -402,20 +402,21 @@ namespace AQuestReborn
                                                 float spreadAngle = (_index * (MathF.PI * 2f / totalNpcs));
                                                 Vector3 meleeTgtPos = tgtPos + new Vector3(MathF.Cos(spreadAngle) * 2.5f, 0, MathF.Sin(spreadAngle) * 2.5f);
 
-                                                float distToTgt = Vector3.Distance(_currentPosition, meleeTgtPos);
-                                                if (distToTgt > 0.5f) // Move closer to assigned slot
+                                                var diff = new Vector3(meleeTgtPos.X - _currentPosition.X, 0, meleeTgtPos.Z - _currentPosition.Z);
+                                                float distToTgtXZ = diff.Length();
+
+                                                if (distToTgtXZ > 0.5f) // Move closer to assigned slot
                                                 {
-                                                    var diff = new Vector3(meleeTgtPos.X - _currentPosition.X, 0, meleeTgtPos.Z - _currentPosition.Z);
-                                                    var dir = Vector3.Normalize(diff);
                                                     float moveSpeed = _speed * delta * 2.4f; // 12.0 yalms per second (fast run/sprint pace)
                                                     
-                                                    if (diff.Length() < moveSpeed)
+                                                    if (distToTgtXZ <= moveSpeed || distToTgtXZ == 0)
                                                     {
                                                         _currentPosition.X = meleeTgtPos.X;
                                                         _currentPosition.Z = meleeTgtPos.Z;
                                                     }
                                                     else
                                                     {
+                                                        var dir = Vector3.Normalize(diff);
                                                         _currentPosition.X += dir.X * moveSpeed;
                                                         _currentPosition.Z += dir.Z * moveSpeed;
                                                     }
