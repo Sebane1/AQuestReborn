@@ -199,13 +199,20 @@ public class ObjectiveWindow : Window, IDisposable
             {
                 foreach (var kvp in Plugin.AQuestReborn.CustomNpcCharacters)
                 {
-                    if (kvp.Value == null) continue;
+                    if (kvp.Value == null || kvp.Value.Address == 0) continue;
+                    
+                    var pos = kvp.Value.Position;
+                    unsafe
+                    {
+                        var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)kvp.Value.Address;
+                        if (native != null) pos = native->GameObject.Position;
+                    }
 
                     // Project feet and top of character to get full vertical coverage
                     Vector2 feetScreenPos, topScreenPos;
                     bool feetInView, topInView;
-                    Plugin.GameGui.WorldToScreen(kvp.Value.Position, out feetScreenPos, out feetInView);
-                    Plugin.GameGui.WorldToScreen(kvp.Value.Position + new Vector3(0, 1.8f, 0), out topScreenPos, out topInView);
+                    Plugin.GameGui.WorldToScreen(pos, out feetScreenPos, out feetInView);
+                    Plugin.GameGui.WorldToScreen(pos + new Vector3(0, 1.8f, 0), out topScreenPos, out topInView);
 
                     if (feetInView || topInView)
                     {
@@ -224,10 +231,10 @@ public class ObjectiveWindow : Window, IDisposable
 
 
                         var player = Plugin.ObjectTable.LocalPlayer;
-                        var playerDist = Vector3.Distance(player.Position, kvp.Value.Position);
+                        var playerDist = Vector3.Distance(player.Position, pos);
                         
                         // Calculate facing using player rotation
-                        var toNpc = new Vector2(kvp.Value.Position.X - player.Position.X, kvp.Value.Position.Z - player.Position.Z);
+                        var toNpc = new Vector2(pos.X - player.Position.X, pos.Z - player.Position.Z);
                         toNpc = Vector2.Normalize(toNpc);
                         var playerForward = new Vector2((float)Math.Sin(player.Rotation), (float)Math.Cos(player.Rotation));
                         float dot = Vector2.Dot(toNpc, playerForward);
@@ -292,6 +299,11 @@ public class ObjectiveWindow : Window, IDisposable
         {
             if (kvp.Value == null || kvp.Value.Address == 0) continue;
             var pos = kvp.Value.Position;
+            unsafe
+            {
+                var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)kvp.Value.Address;
+                if (native != null) pos = native->GameObject.Position;
+            }
 
             float dist = Vector3.Distance(Plugin.ObjectTable.LocalPlayer.Position, pos);
             if (dist < 40f)
@@ -306,6 +318,11 @@ public class ObjectiveWindow : Window, IDisposable
             foreach (var npcKvp in questKvp.Value)
             {
                 var pos = npcKvp.Value.Position;
+                unsafe
+                {
+                    var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)npcKvp.Value.Address;
+                    if (native != null) pos = native->GameObject.Position;
+                }
 
                 float dist = Vector3.Distance(Plugin.ObjectTable.LocalPlayer.Position, pos);
                 if (dist < 40f)

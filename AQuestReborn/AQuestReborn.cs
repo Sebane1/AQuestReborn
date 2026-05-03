@@ -452,6 +452,7 @@ namespace AQuestReborn
                 _spawnedNpcsDictionary.Clear();
                 _mcdfRefreshTimer.Reset();
                 _interactiveNpcDictionary.Clear();
+                _nameplateForcedActors.Clear();
                 _hasCheckedForPlayerAppearance = false;
                 GroundMap.SetTerritory(territory);
 
@@ -468,9 +469,11 @@ namespace AQuestReborn
                 {
                     try
                     {
-                        while (Plugin.ObjectTable.LocalPlayer == null || _actorSpawnService == null)
+                        bool stillLoading = true;
+                        while (stillLoading)
                         {
-                            Thread.Sleep(3000);
+                            unsafe { stillLoading = Plugin.ObjectTable.LocalPlayer == null || _actorSpawnService == null || Conditions.Instance()->BetweenAreas; }
+                            if (stillLoading) Thread.Sleep(3000);
                         }
                         _triggerRefresh = true;
                         _gotZoneDiscriminator = false;
@@ -678,7 +681,6 @@ namespace AQuestReborn
                 {
                     var characterStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)kvp.Value.Address;
                     characterStruct->NamePlateIconId = 71201; // Force Friendly NPC icon
-                    characterStruct->GameObject.ObjectKind = (FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind)1; // Force PlayerCharacter so they aren't culled indoors
                     characterStruct->GameObject.RenderFlags = 0; // Clear all render flags (specifically HideNameplate)
                     
                     if (!_nameplateForcedActors.Contains(kvp.Value.Address))
@@ -696,7 +698,6 @@ namespace AQuestReborn
                     {
                         var characterStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)npcKvp.Value.Address;
                         characterStruct->NamePlateIconId = 71201;
-                        characterStruct->GameObject.ObjectKind = (FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind)1;
                         characterStruct->GameObject.RenderFlags = 0; // Clear HideNameplate flag
                         
                         if (!_nameplateForcedActors.Contains(npcKvp.Value.Address))
@@ -778,6 +779,12 @@ namespace AQuestReborn
                         if (!zoneChangeCooldown.IsRunning)
                         {
                             zoneChangeCooldown.Start();
+                        }
+                        // Ensure ObjectiveWindow is open whenever custom NPCs exist,
+                        // even if no quest cutscene NPC has been spawned in this zone.
+                        if (_customNpcCharacters.Count > 0 || _spawnedNpcsDictionary.Count > 0)
+                        {
+                            Plugin.ObjectiveWindow.IsOpen = true;
                         }
                         // Custom NPC click-to-chat detection
                         CustomNpcChatCheck();
@@ -1576,21 +1583,24 @@ namespace AQuestReborn
                                 if (npcData.RandomIdleEmotes != null) npc.RandomIdleEmotes = npcData.RandomIdleEmotes.ToList();
                                 npc.VictoryPoseEmoteId = npcData.VictoryPoseEmoteId;
 
-                                // Trigger idle emote immediately for following NPCs as well to override battle stance
-                                ushort initialEmoteId = npcData.IdleEmoteId;
-                                if (npcData.RandomIdleEmotes != null && npcData.RandomIdleEmotes.Count > 0)
+                                // Trigger idle emote immediately ONLY if not following the player
+                                if (!npcData.IsFollowingPlayer)
                                 {
-                                    initialEmoteId = npcData.RandomIdleEmotes[new System.Random().Next(npcData.RandomIdleEmotes.Count)];
-                                }
-
-                                if (initialEmoteId > 0)
-                                {
-                                    try
+                                    ushort initialEmoteId = npcData.IdleEmoteId;
+                                    if (npcData.RandomIdleEmotes != null && npcData.RandomIdleEmotes.Count > 0)
                                     {
-                                        var emote = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(initialEmoteId);
-                                        Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
+                                        initialEmoteId = npcData.RandomIdleEmotes[new System.Random().Next(npcData.RandomIdleEmotes.Count)];
                                     }
-                                    catch { }
+
+                                    if (initialEmoteId > 0)
+                                    {
+                                        try
+                                        {
+                                            var emote = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(initialEmoteId);
+                                            Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
+                                        }
+                                        catch { }
+                                    }
                                 }
 
                                 // Create conversation manager
@@ -2203,8 +2213,10 @@ namespace AQuestReborn
                 {
                     foreach (var kvp in _customNpcCharacters)
                     {
-                            if (kvp.Value == null) continue;
+                            if (kvp.Value == null || kvp.Value.Address == 0) continue;
                             var pos = kvp.Value.Position;
+                            var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)kvp.Value.Address;
+                            if (native != null) pos = native->GameObject.Position;
 
                             var dist = System.Numerics.Vector3.Distance(player.Position, pos);
                             if (dist < 3.5f)

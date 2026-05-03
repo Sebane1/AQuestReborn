@@ -803,6 +803,16 @@ namespace AQuestReborn
         {
             try
             {
+                if (_character != null && _character.Address != 0)
+                {
+                    unsafe
+                    {
+                        var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
+                        native->GameObject.Position = position;
+                        native->GameObject.Rotation = rotation.Y; // FFXIV uses radians on Y-axis for basic rotation
+                    }
+                }
+
                 if (_plugin.AQuestReborn != null && !_plugin.AQuestReborn.WaitingForMcdfLoad && (AppearanceAccessUtils.AppearanceManager == null || !AppearanceAccessUtils.AppearanceManager.IsWorking()) && _plugin.ObjectTable.LocalPlayer != null)
                 {
                     CheckPosing();
