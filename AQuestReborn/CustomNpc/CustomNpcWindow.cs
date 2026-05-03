@@ -33,6 +33,10 @@ namespace AQuestReborn.CustomNpc
         private ushort[] _idleEmoteRowIds = new ushort[] { 0 };
         private string _emoteSearchText = "";
         private string _victoryEmoteSearchText = "";
+        
+        // PlaceName list
+        private string[] _placeNames = new string[] { "Unknown" };
+        private string _placeNameSearchText = "";
 
         public Plugin Plugin { get => _plugin; set => _plugin = value; }
         public List<CustomNpcCharacter> CustomNpcCharacters { get => _customNpcCharacters; set => _customNpcCharacters = value; }
@@ -56,6 +60,7 @@ namespace AQuestReborn.CustomNpc
             base.OnOpen();
             RefreshDesignList();
             RefreshEmoteList();
+            RefreshPlaceNameList();
         }
         public override void OnClose()
         {
@@ -91,6 +96,32 @@ namespace AQuestReborn.CustomNpc
             catch (Exception e)
             {
                 _plugin?.PluginLog?.Warning(e, "Failed to load emote list");
+            }
+        }
+
+        public void RefreshPlaceNameList()
+        {
+            if (_plugin == null) return;
+            try
+            {
+                var places = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.PlaceName>();
+                var names = new HashSet<string>();
+                foreach (var place in places)
+                {
+                    string name = place.Name.ToString();
+                    if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        names.Add(name);
+                    }
+                }
+                var sortedNames = names.ToList();
+                sortedNames.Sort();
+                sortedNames.Insert(0, "Unknown");
+                _placeNames = sortedNames.ToArray();
+            }
+            catch (Exception e)
+            {
+                _plugin?.PluginLog?.Warning(e, "Failed to load placename list");
             }
         }
 
@@ -335,10 +366,25 @@ namespace AQuestReborn.CustomNpc
                     }
 
                     ImGui.LabelText("##npcBirthLocationLabel", Translator.LocalizeUI("Birth Location (Lore)"));
+                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + 
+                        (string.IsNullOrEmpty(_customNpcCharacters[_currentSelection].NpcBirthLocation) ? Translator.LocalizeUI("Unknown") : _customNpcCharacters[_currentSelection].NpcBirthLocation));
                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                    if (ImGui.InputText("##NpcBirthLocation", ref _customNpcCharacters[_currentSelection].NpcBirthLocation, 200))
+                    ImGui.InputTextWithHint("##placeNameSearch", Translator.LocalizeUI("Search locations..."), ref _placeNameSearchText, 100);
+                    if (ImGui.BeginChild("##placeNameList", new Vector2(ImGui.GetColumnWidth(), 120), true))
                     {
-                        SaveNPCCharacters();
+                        for (int i = 0; i < _placeNames.Length; i++)
+                        {
+                            if (!string.IsNullOrEmpty(_placeNameSearchText)
+                                && !_placeNames[i].Contains(_placeNameSearchText, StringComparison.OrdinalIgnoreCase))
+                                continue;
+                            bool isSelected = _placeNames[i] == _customNpcCharacters[_currentSelection].NpcBirthLocation;
+                            if (ImGui.Selectable(_placeNames[i] + "##" + i, isSelected))
+                            {
+                                _customNpcCharacters[_currentSelection].NpcBirthLocation = _placeNames[i] == "Unknown" ? "" : _placeNames[i];
+                                SaveNPCCharacters();
+                            }
+                        }
+                        ImGui.EndChild();
                     }
 
                     ImGui.LabelText("##npcJobLabel", Translator.LocalizeUI("Profession/Job"));
