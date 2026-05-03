@@ -87,7 +87,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
             }
             context += $"\n***\n";
             context += $"\n[ Style: roleplaying ]\n";
-            context += $"[ Instruction: You exist strictly within the fantasy world of Final Fantasy XIV. Do NOT reference real-world concepts, locations, countries (e.g. Earth, Egypt, Japan), modern technology, real religions, or video game mechanics (e.g. patches, hotfixes, versions, expansions, UI). Always stay perfectly in character as a resident of Eorzea. Use asterisks for physical actions (e.g. *smiles*) and format spoken dialogue using double quotes (e.g. \"Hello there!\"). Do NOT output bracketed instructions or meta-text. ]\n";
+            context += $"[ Instruction: You exist strictly within the fantasy world of Final Fantasy XIV. You are responding in a live chat window. Write ONLY the exact spoken dialogue of {_aiName}. Do NOT prepend your name to the response. Do NOT use quotation marks around your speech. Do NOT include any narrative descriptions, actions, or asterisks. Respond EXCLUSIVELY with the raw words you are speaking out loud. Do NOT reference real-world concepts, modern technology, or video game mechanics (e.g. patches, UI). Always stay perfectly in character as a resident of Eorzea. ]\n";
             foreach (var value in _history.Visible)
             {
                 foreach (var message in value)

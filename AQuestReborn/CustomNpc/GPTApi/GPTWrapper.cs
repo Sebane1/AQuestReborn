@@ -137,11 +137,37 @@ namespace AQuestReborn.CustomNpc
         {
             if (value.Length > 0 && value.StartsWith(_personality))
             {
-                int i = value.IndexOf(" ") + 1;
-                value = value.Substring(i) + (value.Split('"').Length == 1 ? @"""" : "");
+                int i = value.IndexOf(" ");
+                if (i != -1)
+                {
+                    value = value.Substring(i + 1);
+                }
             }
+
             // Failsafe to strip any leaked bracketed meta-instructions, even if unclosed
             value = System.Text.RegularExpressions.Regex.Replace(value, @"\[.*?(?:\]|$)", "").Trim();
+
+            // If the LLM disobeyed and included narrative actions with quotes, extract ONLY the dialogue inside quotes
+            if (value.Contains("\""))
+            {
+                var matches = System.Text.RegularExpressions.Regex.Matches(value, "\"([^\"]*)\"");
+                if (matches.Count > 0)
+                {
+                    var dialogue = new System.Text.StringBuilder();
+                    foreach (System.Text.RegularExpressions.Match match in matches)
+                    {
+                        dialogue.Append(match.Groups[1].Value).Append(" ");
+                    }
+                    value = dialogue.ToString();
+                }
+            }
+
+            // Strip any leftover narrative actions framed by asterisks
+            value = System.Text.RegularExpressions.Regex.Replace(value, @"\*.*?\*", "").Trim();
+
+            // Clean up leading colons, names, or leftover quotes
+            value = value.TrimStart(':', ' ', '"', '\'').TrimEnd('"', '\'').Trim();
+
             return value;
         }
         public void AddMemory(string title, string description)
