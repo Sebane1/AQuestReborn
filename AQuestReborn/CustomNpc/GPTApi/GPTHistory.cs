@@ -6,7 +6,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
     {
         public GPTHistory(string name, string firstMessage, string botResponse, string summaryExample)
         {
-            Visible = new List<List<string>> { new List<string> { $"{name} smiles happily \"Hello there!, how are you!\"", botResponse, "[Chat Summary: " + summaryExample + "]" } };
+            Visible = new List<List<string>> { new List<string> { $"{name}: *smiles happily* \"Hello there! How are you?\"", botResponse, "[Chat Summary: " + summaryExample + "]" } };
         }
 
         public List<List<string>> Visible { get; set; }

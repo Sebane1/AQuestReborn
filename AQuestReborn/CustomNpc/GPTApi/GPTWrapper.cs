@@ -25,7 +25,7 @@ namespace AQuestReborn.CustomNpc
         public async Task<string> SendMessage(string name, string message, string aiGreeting, string userDetails, string aiDetails, string setting, int maxContext)
         {
             var newHistory = new GPTHistory(name, userDetails,
-                _aiName + aiGreeting, $"{name} said hello, and {_aiName} responded back with their own greeting.");
+                _aiName + ":" + aiGreeting, $"{name} said hello, and {_aiName} responded back with their own greeting.");
             if (!_histories.ContainsKey(name))
             {
                 _histories[name] = new GPTContextBuilder("Square Enix", "Final Fantasy XIV", "fantasy",
