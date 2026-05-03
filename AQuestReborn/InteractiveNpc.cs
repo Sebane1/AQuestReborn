@@ -78,6 +78,7 @@ namespace AQuestReborn
         private int _nextAutonomousAttackMs;
         private Vector3 _lastPlayerPos;
         private float _playerSpeedSmoothed;
+        private float _stamina = 100f;
         EventMovementAnimation _eventMovementAnimationType = EventMovementAnimation.Automatic;
         public static Dictionary<uint, List<ushort>> JobCombatAnimations = null;
 
@@ -356,7 +357,35 @@ namespace AQuestReborn
                                         targetSpeed = distToTarget > 5f ? 6.0f : 2.4f; // Player stopped
                                     }
                                     
-                                    if (distToTarget > 6f) targetSpeed *= 1.25f; // Catch up bonus
+                                    // Stamina System
+                                    if (targetSpeed > 3.0f) {
+                                        _stamina = Math.Max(0f, _stamina - (15f * delta)); // Drain when running
+                                    } else {
+                                        _stamina = Math.Min(100f, _stamina + (25f * delta)); // Recover when walking
+                                    }
+                                    
+                                    // Apply exhaustion penalty if stamina is low
+                                    if (_stamina < 30f) {
+                                        // Speed smoothly drops to a slow jog as stamina hits 0
+                                        float exhaustionFactor = Math.Max(0.7f, _stamina / 30f);
+                                        targetSpeed *= exhaustionFactor;
+                                        targetSpeed = Math.Max(4.2f, targetSpeed); // Cap minimum to a slow jog (prevents dropping to walk animation)
+                                    }
+                                    
+                                    // Catch up logic
+                                    if (distToTarget > 2.0f) {
+                                        if (_playerSpeedSmoothed >= 4.5f) {
+                                            // Player is running, sprint to catch up
+                                            targetSpeed = Math.Max(targetSpeed, _playerSpeedSmoothed) * 1.35f;
+                                        } else {
+                                            // Player is walking or stopped, catch up gently
+                                            targetSpeed = Math.Max(targetSpeed, _playerSpeedSmoothed) * 1.1f;
+                                        }
+                                    }
+                                    if (distToTarget > 6.0f) {
+                                        // Panic burst if extremely far behind
+                                        targetSpeed = Math.Max(targetSpeed, 7.8f); 
+                                    }
                                     
                                     Vector3 currentH = new Vector3(_currentPosition.X, 0, _currentPosition.Z);
                                     Vector3 targetH = new Vector3(targetPosition.X, 0, targetPosition.Z);
