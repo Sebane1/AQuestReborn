@@ -27,7 +27,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
             this.eta_cutoff = 0;
             this.tfs = 1;
             this.top_a = 0;
-            this.repetition_penalty = 1.45f;
+            this.repetition_penalty = 1.35f;
             this.repetition_penalty_range = 1024;
             this.top_k = 0;
             this.min_length = 0;
