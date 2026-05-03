@@ -28,7 +28,7 @@ namespace AQuestReborn.CustomNpc
             string aiGreeting, string message, string setting, string aiDescription)
         {
             string senderName = sendingCharacter.Name.TextValue.Split(" ")[0];
-            string aiMessage = await _gptWrapper.SendMessage(senderName, message, $@" *smiles* ""{aiGreeting}""",
+            string aiMessage = await _gptWrapper.SendMessage(senderName, message, $@" smiles. ""{aiGreeting}""",
             GetPlayerDescription(sendingCharacter), aiDescription.Trim('.').Trim() + ". " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 2);
             string correctedMessage = PenumbraAndGlamourerHelperFunctions.GetGender(sendingCharacter) == 1 ? GenderFix(aiMessage) : aiMessage;
             Task.Run(() =>
