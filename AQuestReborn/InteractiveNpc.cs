@@ -83,21 +83,54 @@ namespace AQuestReborn
             try
             {
                 var actions = plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Action>();
+                var jobs = plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.ClassJob>();
+                
+                // Cache job abbreviations
+                var jobProps = new Dictionary<uint, System.Reflection.PropertyInfo>();
+                var jobCategoriesType = typeof(Lumina.Excel.Sheets.ClassJobCategory);
+                foreach (var job in jobs)
+                {
+                    if (job.RowId == 0) continue;
+                    var prop = jobCategoriesType.GetProperty(job.Abbreviation.ToString());
+                    if (prop != null)
+                    {
+                        jobProps[job.RowId] = prop;
+                    }
+                }
+
                 foreach (var action in actions)
                 {
-                    uint jobId = action.ClassJob.RowId;
                     uint animId = action.AnimationStart.RowId;
                     uint catId = action.ActionCategory.RowId;
 
-                    if (jobId > 0 && animId > 0 && catId >= 2 && catId <= 4)
+                    if (animId > 0 && catId >= 2 && catId <= 4)
                     {
-                        if (!JobCombatAnimations.ContainsKey(jobId))
+                        // Some actions have direct ClassJob
+                        uint directJobId = action.ClassJob.RowId;
+                        if (directJobId > 0)
                         {
-                            JobCombatAnimations[jobId] = new List<ushort>();
+                            if (!JobCombatAnimations.ContainsKey(directJobId))
+                                JobCombatAnimations[directJobId] = new List<ushort>();
+                            if (!JobCombatAnimations[directJobId].Contains((ushort)animId))
+                                JobCombatAnimations[directJobId].Add((ushort)animId);
                         }
-                        if (!JobCombatAnimations[jobId].Contains((ushort)animId))
+
+                        // Map via ClassJobCategory
+                        var cjc = action.ClassJobCategory.Value;
+                        if (cjc.RowId > 0)
                         {
-                            JobCombatAnimations[jobId].Add((ushort)animId);
+                            foreach (var kvp in jobProps)
+                            {
+                                bool allowed = (bool)kvp.Value.GetValue(cjc);
+                                if (allowed)
+                                {
+                                    uint jobId = kvp.Key;
+                                    if (!JobCombatAnimations.ContainsKey(jobId))
+                                        JobCombatAnimations[jobId] = new List<ushort>();
+                                    if (!JobCombatAnimations[jobId].Contains((ushort)animId))
+                                        JobCombatAnimations[jobId].Add((ushort)animId);
+                                }
+                            }
                         }
                     }
                 }
