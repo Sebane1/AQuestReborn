@@ -170,6 +170,12 @@ namespace AQuestReborn
             }
         }
 
+        public unsafe void TestActionSheet(nint characterAddress)
+        {
+            var chara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)characterAddress;
+            chara->ClassJob = 1; // Try setting it
+        }
+
         private unsafe void ChatGui_ChatMessage(Dalamud.Game.Chat.IChatMessage chatMessage)
         {
             try

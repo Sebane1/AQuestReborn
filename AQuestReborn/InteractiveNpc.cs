@@ -160,12 +160,14 @@ namespace AQuestReborn
             _targetScale = new Vector3(1f, 1f, 1f);
         }
 
-        public void ApplyClassWeapon()
+        public unsafe void ApplyClassWeapon()
         {
             if (_character == null) return;
             if (TargetClassJobId == 0)
             {
                 _plugin.AnamcoreManager.SetWeapon(_character, 0, 0);
+                var nullChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
+                nullChara->ClassJob = 0;
                 return;
             }
 
@@ -201,6 +203,10 @@ namespace AQuestReborn
             if (mainHandModel != 0)
             {
                 _plugin.AnamcoreManager.SetWeapon(_character, mainHandModel, offHandModel);
+                
+                // Force the NPC's class job to match so combat stances and animations are natively correct!
+                var chara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
+                chara->ClassJob = (byte)TargetClassJobId;
             }
         }
 
@@ -352,10 +358,9 @@ namespace AQuestReborn
                                         {
                                             LoadJobAnimations(_plugin);
                                             
-                                            var customNpc = _plugin.Configuration.CustomNpcCharacters.FirstOrDefault(c => c.NpcName == _character.Name.TextValue);
-                                            if (customNpc != null && customNpc.NpcClassJobId > 0 && JobCombatAnimations != null && JobCombatAnimations.ContainsKey(customNpc.NpcClassJobId))
+                                            if (TargetClassJobId > 0 && JobCombatAnimations != null && JobCombatAnimations.ContainsKey(TargetClassJobId))
                                             {
-                                                var jobAnims = JobCombatAnimations[customNpc.NpcClassJobId];
+                                                var jobAnims = JobCombatAnimations[TargetClassJobId];
                                                 _nextCombatAnimationToPlay = jobAnims[new Random(Environment.TickCount + _index).Next(jobAnims.Count)];
                                             }
                                             else
