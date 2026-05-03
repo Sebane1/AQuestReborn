@@ -89,17 +89,11 @@ namespace AQuestReborn.CustomNpc.GPTApi
             }
             string finalValue = newValue.TrimStart('\n').Split("\n")[0].Split("]")[0].Replace("----", @"shakes ""Appologies, I forget myself sometimes""");
             
-            // Failsafe: Hard truncate if the AI hallucinated a dialogue tag inline
-            int senderIndex = finalValue.IndexOf(sender + ":", StringComparison.OrdinalIgnoreCase);
-            if (senderIndex > 0)
+            // Failsafe: Hard truncate if the AI hallucinated ANY dialogue tag inline (e.g. Sasha:, Petunia:, Mita:)
+            var match = Regex.Match(finalValue, @"\b[A-Z][a-zA-Z]+:");
+            if (match.Success)
             {
-                finalValue = finalValue.Substring(0, senderIndex).Trim();
-            }
-            
-            int aiIndex = finalValue.IndexOf(aiName + ":", StringComparison.OrdinalIgnoreCase);
-            if (aiIndex > 0)
-            {
-                finalValue = finalValue.Substring(0, aiIndex).Trim();
+                finalValue = finalValue.Substring(0, match.Index).Trim();
             }
             
             return ScrubEarthTerms(finalValue);
