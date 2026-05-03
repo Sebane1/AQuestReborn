@@ -76,6 +76,8 @@ namespace AQuestReborn
         private int _victoryPoseDelayMs;
         private Stopwatch _autonomousAttackTimer = new Stopwatch();
         private int _nextAutonomousAttackMs;
+        private Vector3 _lastPlayerPos;
+        private float _playerSpeedSmoothed;
         EventMovementAnimation _eventMovementAnimationType = EventMovementAnimation.Automatic;
         public static Dictionary<uint, List<ushort>> JobCombatAnimations = null;
 
@@ -254,7 +256,7 @@ namespace AQuestReborn
             }
         }
 
-        public unsafe uint ContextBasedMovementId(bool isMoving)
+        public unsafe uint ContextBasedMovementId(bool isMoving, float speed = 6.0f)
         {
             if (Conditions.Instance()->Swimming || Conditions.Instance()->Diving)
             {
@@ -262,7 +264,8 @@ namespace AQuestReborn
             }
             else
             {
-                return isMoving ? 22u : 0u;
+                if (!isMoving) return 0u;
+                return speed < 3.5f ? 13u : 22u;
             }
         }
         public unsafe void Framework_Update(IFramework framework)
@@ -281,6 +284,12 @@ namespace AQuestReborn
                                 ClassWeaponApplied = true;
                             }
                             float delta = ((float)_plugin.Framework.UpdateDelta.Milliseconds / 1000f);
+                            if (delta > 0)
+                            {
+                                float playerSpeedThisFrame = Vector3.Distance(_plugin.ObjectTable.LocalPlayer.Position, _lastPlayerPos) / delta;
+                                _lastPlayerPos = _plugin.ObjectTable.LocalPlayer.Position;
+                                _playerSpeedSmoothed = Math.Clamp(_playerSpeedSmoothed + (playerSpeedThisFrame - _playerSpeedSmoothed) * Math.Min(10f * delta, 1f), 0f, 15f);
+                            }
                             if (_followPlayer && !_plugin.EventWindow.IsOpen && !_plugin.ChoiceWindow.IsOpen
                                 && _plugin.EventWindow.TimeSinceLastDialogueDisplayed.ElapsedMilliseconds > 200
                                 && _plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 200 && !Conditions.Instance()->Mounted)
@@ -303,10 +312,10 @@ namespace AQuestReborn
                                     while (diff < -MathF.PI) diff += 2f * MathF.PI;
                                     playerFacingNpc = MathF.Abs(diff) < MathF.PI / 4f; // 45° half-angle
                                 }
-                                // Hysteresis: start moving at 4y, keep moving until within 2y
+                                // Hysteresis: start moving at 2.5y, keep moving until within 1.5y
                                 // Freeze when player is directly facing the NPC
-                                if (!playerFacingNpc && distToTarget > 4) _isFollowMoving = true;
-                                if (distToTarget <= 2 || playerFacingNpc) _isFollowMoving = false;
+                                if (!playerFacingNpc && distToTarget > 2.5f) _isFollowMoving = true;
+                                if (distToTarget <= 1.5f || playerFacingNpc) _isFollowMoving = false;
                                 
                                 bool inCombat = Conditions.Instance()->InCombat;
                                 if (inCombat) _isFollowMoving = false;
@@ -336,16 +345,43 @@ namespace AQuestReborn
                                     // Use ground map Y at the NPC's current XZ instead of player's Y
                                     float groundY = _plugin.AQuestReborn.GroundMap.GetGroundY(
                                         _currentPosition.X, _currentPosition.Z, targetPosition.Y);
-                                    // Lerp XZ at normal speed, Y at 10x for quick ground snapping
-                                    float xzLerp = _speed * delta;
+                                    // Match player speed categories (Walk: 2.4, Run: 6.0, Sprint: 7.8)
+                                    float targetSpeed = 6.0f;
+                                    if (_playerSpeedSmoothed > 0.1f && _playerSpeedSmoothed < 4.5f) {
+                                        targetSpeed = 2.4f; // Walk
+                                    } else if (_playerSpeedSmoothed >= 4.5f) {
+                                        targetSpeed = 6.0f; // Run
+                                        if (_playerSpeedSmoothed > 7.0f) targetSpeed = 7.8f; // Sprint
+                                    } else {
+                                        targetSpeed = distToTarget > 5f ? 6.0f : 2.4f; // Player stopped
+                                    }
+                                    
+                                    if (distToTarget > 6f) targetSpeed *= 1.25f; // Catch up bonus
+                                    
+                                    Vector3 currentH = new Vector3(_currentPosition.X, 0, _currentPosition.Z);
+                                    Vector3 targetH = new Vector3(targetPosition.X, 0, targetPosition.Z);
+                                    
+                                    float maxMoveDist = targetSpeed * delta;
+                                    Vector3 newH;
+                                    if (Vector3.Distance(currentH, targetH) <= maxMoveDist) {
+                                        newH = targetH;
+                                    } else {
+                                        Vector3 dirH = Vector3.Normalize(targetH - currentH);
+                                        newH = currentH + (dirH * maxMoveDist);
+                                    }
+
                                     float yLerp = Math.Clamp(_speed * delta * 10f, 0f, 1f);
-                                    _currentPosition = new Vector3(
-                                        _currentPosition.X + (targetPosition.X - _currentPosition.X) * xzLerp,
+                                    var newPosition = new Vector3(
+                                        newH.X,
                                         _currentPosition.Y + (groundY - _currentPosition.Y) * yLerp,
-                                        _currentPosition.Z + (targetPosition.Z - _currentPosition.Z) * xzLerp);
+                                        newH.Z);
+                                        
+                                    float speedThisFrame = targetSpeed;
+                                    _currentPosition = newPosition;
+                                    
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
                                     _wasMoving = true;
-                                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(true));
+                                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(true, speedThisFrame));
                                     if (_horizontalRefreshTimer.ElapsedMilliseconds > 5000)
                                     {
                                         _horizontalOffset = (float)new Random().NextDouble() * -4f;
