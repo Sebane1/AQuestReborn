@@ -454,6 +454,13 @@ namespace AQuestReborn.CustomNpc
                                         _customNpcCharacters[_currentSelection].NpcJob = _classJobNames[i] == "None" ? "" : _classJobNames[i];
                                         _customNpcCharacters[_currentSelection].NpcClassJobId = _classJobRowIds[i];
                                         SaveNPCCharacters();
+                                        if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
+                                            && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
+                                                _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
+                                        {
+                                            liveNpc.TargetClassJobId = _classJobRowIds[i];
+                                            liveNpc.ClassWeaponApplied = false;
+                                        }
                                     }
                                 }
                             }

@@ -125,6 +125,9 @@ namespace AQuestReborn
                 _idleThresholdMs = 20000 + new System.Random().Next(20000);
             }
         }
+        
+        public uint TargetClassJobId { get; set; }
+        public bool ClassWeaponApplied { get; set; }
 
         public InteractiveNpc(Plugin plugin, ICharacter character)
         {
@@ -157,6 +160,45 @@ namespace AQuestReborn
             _targetScale = new Vector3(1f, 1f, 1f);
         }
 
+        public void ApplyClassWeapon()
+        {
+            if (_character == null || TargetClassJobId == 0) return;
+
+            var cj = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.ClassJob>().GetRow(TargetClassJobId);
+            if (cj.RowId == 0) return;
+            string abrv = cj.Abbreviation.ToString();
+            var prop = typeof(Lumina.Excel.Sheets.ClassJobCategory).GetProperty(abrv);
+            if (prop == null) return;
+
+            var items = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Item>();
+            
+            ulong mainHandModel = 0;
+            ulong offHandModel = 0;
+
+            foreach (var item in items)
+            {
+                if (item.EquipSlotCategory.RowId == 1 || item.EquipSlotCategory.RowId == 13) 
+                {
+                    var cjc = item.ClassJobCategory.Value;
+                    if (cjc.RowId != 0)
+                    {
+                        bool allowed = (bool)prop.GetValue(cjc);
+                        if (allowed && item.ModelMain != 0)
+                        {
+                            mainHandModel = item.ModelMain;
+                            offHandModel = item.ModelSub;
+                            break; 
+                        }
+                    }
+                }
+            }
+
+            if (mainHandModel != 0)
+            {
+                _plugin.AnamcoreManager.SetWeapon(_character, mainHandModel, offHandModel);
+            }
+        }
+
         public unsafe uint ContextBasedMovementId(bool isMoving)
         {
             if (Conditions.Instance()->Swimming || Conditions.Instance()->Diving)
@@ -178,6 +220,11 @@ namespace AQuestReborn
                     {
                         if (_character != null)
                         {
+                            if (!ClassWeaponApplied && TargetClassJobId > 0)
+                            {
+                                ApplyClassWeapon();
+                                ClassWeaponApplied = true;
+                            }
                             float delta = ((float)_plugin.Framework.UpdateDelta.Milliseconds / 1000f);
                             if (_followPlayer && !_plugin.EventWindow.IsOpen && !_plugin.ChoiceWindow.IsOpen
                                 && _plugin.EventWindow.TimeSinceLastDialogueDisplayed.ElapsedMilliseconds > 200

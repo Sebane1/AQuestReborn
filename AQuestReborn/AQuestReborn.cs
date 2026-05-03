@@ -170,15 +170,6 @@ namespace AQuestReborn
             }
         }
 
-        public void TestActionSheet()
-        {
-            var places = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.PlaceName>();
-            foreach (var place in places)
-            {
-                var n = place.Name;
-            }
-        }
-
         private unsafe void ChatGui_ChatMessage(Dalamud.Game.Chat.IChatMessage chatMessage)
         {
             try
@@ -1379,6 +1370,8 @@ namespace AQuestReborn
                                     npc.SetDefaultRotation(stayRot);
                                 }
                                 npc.IdleEmoteId = npcData.IdleEmoteId;
+                                npc.TargetClassJobId = npcData.NpcClassJobId;
+                                npc.ClassWeaponApplied = false;
 
                                 // Create conversation manager
                                 string baseDir = Plugin.Configuration.QuestInstallFolder ?? Path.GetTempPath();
@@ -1456,6 +1449,8 @@ namespace AQuestReborn
                                 npc.SetDefaultRotation(rotation);
                                 npc.IdleEmoteId = npcData.IdleEmoteId;
                                 npc.VictoryPoseEmoteId = npcData.VictoryPoseEmoteId;
+                                npc.TargetClassJobId = npcData.NpcClassJobId;
+                                npc.ClassWeaponApplied = false;
 
                                 // Trigger idle emote immediately for staying NPCs
                                 if (npcData.IdleEmoteId > 0)
