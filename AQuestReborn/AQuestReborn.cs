@@ -1851,6 +1851,7 @@ namespace AQuestReborn
                         if (native != null)
                         {
                             native->ModelContainer.ModelCharaId = (int)monsterModelId;
+                            PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
                         }
                     }
                     catch (Exception ex)

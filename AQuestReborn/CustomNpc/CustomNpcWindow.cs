@@ -178,6 +178,16 @@ namespace AQuestReborn.CustomNpc
 
                 if (bNpcBases != null && bNpcNames != null)
                 {
+                    System.Collections.Generic.IReadOnlyDictionary<string, string> brioNameMap = null;
+                    try
+                    {
+                        if (Brio.Resources.ResourceProvider.Instance != null)
+                        {
+                            brioNameMap = Brio.Resources.ResourceProvider.Instance.GetResourceDocument<System.Collections.Generic.IReadOnlyDictionary<string, string>>("Data.NpcNames.json");
+                        }
+                    }
+                    catch { }
+
                     foreach (var bnpc in bNpcBases)
                     {
                         if (bnpc.ModelChara.RowId > 0 && bnpc.ModelChara.RowId < 10000)
@@ -185,8 +195,31 @@ namespace AQuestReborn.CustomNpc
                             int modelId = (int)bnpc.ModelChara.RowId;
                             if (seenIds.Contains(modelId)) continue;
 
-                            var nameRow = bNpcNames.GetRow(bnpc.RowId);
-                            string name = nameRow.Singular.ToString();
+                            string name = "";
+                            string rawName = $"B:{bnpc.RowId:D7}";
+                            
+                            if (brioNameMap != null && brioNameMap.TryGetValue(rawName, out var mappedName))
+                            {
+                                rawName = mappedName;
+                            }
+
+                            if (rawName.StartsWith("N:"))
+                            {
+                                if (uint.TryParse(rawName.Substring(2), out var nameId))
+                                {
+                                    var nameRow = bNpcNames.GetRow(nameId);
+                                    name = nameRow.Singular.ToString();
+                                }
+                            }
+                            else if (!rawName.StartsWith("B:")) // if it was mapped to a direct string instead of an N: id
+                            {
+                                name = rawName;
+                            }
+
+                            if (string.IsNullOrWhiteSpace(name))
+                            {
+                                name = $"Monster Base {bnpc.RowId}";
+                            }
 
                             if (!string.IsNullOrWhiteSpace(name))
                             {
@@ -237,6 +270,10 @@ namespace AQuestReborn.CustomNpc
                 if (_classJobNames.Length <= 1)
                 {
                     RefreshClassJobList();
+                }
+                if (_monsterNames.Length <= 1)
+                {
+                    RefreshMonsterList();
                 }
                 RefreshNPCItemNames();
                 ImGui.BeginTable("##CustomNpcTable", 2);
@@ -341,10 +378,43 @@ namespace AQuestReborn.CustomNpc
                             ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
                             if (ImGui.Combo("##appearanceMode", ref appearanceMethod, appearanceMethods, appearanceMethods.Length))
                             {
+                                bool wasMonster = _customNpcCharacters[_currentSelection].UseMonsterModel;
+
                                 _customNpcCharacters[_currentSelection].UseMcdfAppearance = (appearanceMethod == 0);
                                 _customNpcCharacters[_currentSelection].UseMonsterModel = (appearanceMethod == 1);
                                 _customNpcCharacters[_currentSelection].UsePenumbraCollection = (appearanceMethod == 2);
                                 SaveNPCCharacters();
+
+                                // Re-apply immediately if spawned
+                                if (_customNpcCharacters[_currentSelection].IsFollowingPlayer || _customNpcCharacters[_currentSelection].IsStaying)
+                                {
+                                    if (_plugin != null && _plugin.AQuestReborn != null)
+                                    {
+                                        if (appearanceMethod == 1) // Switched TO Monster
+                                        {
+                                            _plugin.AQuestReborn.ReapplyCustomNpcMonsterAppearance(
+                                                _customNpcCharacters[_currentSelection].NpcName, _customNpcCharacters[_currentSelection].MonsterModelId);
+                                        }
+                                        else if (wasMonster && appearanceMethod != 1) // Switched AWAY FROM Monster
+                                        {
+                                            // Reset back to Humanoid (0)
+                                            _plugin.AQuestReborn.ReapplyCustomNpcMonsterAppearance(
+                                                _customNpcCharacters[_currentSelection].NpcName, 0);
+
+                                            // Re-apply the newly selected appearance
+                                            if (appearanceMethod == 0 && !string.IsNullOrEmpty(_customNpcCharacters[_currentSelection].McdfFilePath))
+                                            {
+                                                _plugin.AQuestReborn.ReapplyCustomNpcMcdfAppearance(
+                                                    _customNpcCharacters[_currentSelection].NpcName, _customNpcCharacters[_currentSelection].McdfFilePath);
+                                            }
+                                            else if (appearanceMethod == 2 && Guid.TryParse(_customNpcCharacters[_currentSelection].NpcGlamourerAppearanceString, out var designGuid))
+                                            {
+                                                _plugin.AQuestReborn.ReapplyCustomNpcAppearance(
+                                                    _customNpcCharacters[_currentSelection].NpcName, designGuid);
+                                            }
+                                        }
+                                    }
+                                }
                             }
 
                             if (_customNpcCharacters[_currentSelection].UseMcdfAppearance)
@@ -442,38 +512,41 @@ namespace AQuestReborn.CustomNpc
                                     }
                                 }
 
-                                if (ImGui.BeginCombo("##MonsterModelCombo", previewValue))
+                                if (_monsterNames.Length > 1)
                                 {
+                                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + previewValue);
+                                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
                                     ImGui.InputTextWithHint("##monsterSearch", Translator.LocalizeUI("Search monsters..."), ref _monsterSearchText, 100);
                                     
-                                    for (int i = 0; i < _monsterNames.Length; i++)
+                                    if (ImGui.BeginChild("##MonsterModelList", new Vector2(ImGui.GetColumnWidth(), 120), true))
                                     {
-                                        string name = _monsterNames[i];
-                                        int id = _monsterModelIds[i];
-
-                                        if (!string.IsNullOrEmpty(_monsterSearchText) && !name.Contains(_monsterSearchText, StringComparison.OrdinalIgnoreCase))
-                                            continue;
-
-                                        bool isSelected = (currentModelId == id);
-                                        if (ImGui.Selectable(name, isSelected))
+                                        for (int i = 0; i < _monsterNames.Length; i++)
                                         {
-                                            _customNpcCharacters[_currentSelection].MonsterModelId = (uint)id;
-                                            SaveNPCCharacters();
-                                            
-                                            // Re-apply immediately if spawned
-                                            if (_customNpcCharacters[_currentSelection].IsFollowingPlayer || _customNpcCharacters[_currentSelection].IsStaying)
+                                            string name = _monsterNames[i];
+                                            int id = _monsterModelIds[i];
+
+                                            if (!string.IsNullOrEmpty(_monsterSearchText) && !name.Contains(_monsterSearchText, StringComparison.OrdinalIgnoreCase))
+                                                continue;
+
+                                            bool isSelected = (currentModelId == id);
+                                            if (ImGui.Selectable(name + "##monster_" + i, isSelected))
                                             {
-                                                if (_plugin != null && _plugin.AQuestReborn != null)
+                                                _customNpcCharacters[_currentSelection].MonsterModelId = (uint)id;
+                                                SaveNPCCharacters();
+                                                
+                                                // Re-apply immediately if spawned
+                                                if (_customNpcCharacters[_currentSelection].IsFollowingPlayer || _customNpcCharacters[_currentSelection].IsStaying)
                                                 {
-                                                    _plugin.AQuestReborn.ReapplyCustomNpcMonsterAppearance(
-                                                        _customNpcCharacters[_currentSelection].NpcName, _customNpcCharacters[_currentSelection].MonsterModelId);
+                                                    if (_plugin != null && _plugin.AQuestReborn != null)
+                                                    {
+                                                        _plugin.AQuestReborn.ReapplyCustomNpcMonsterAppearance(
+                                                            _customNpcCharacters[_currentSelection].NpcName, (uint)id);
+                                                    }
                                                 }
                                             }
                                         }
-                                        if (isSelected)
-                                            ImGui.SetItemDefaultFocus();
                                     }
-                                    ImGui.EndCombo();
+                                    ImGui.EndChild();
                                 }
 
                                 // Keep manual entry as an option for raw IDs just in case
@@ -563,119 +636,134 @@ namespace AQuestReborn.CustomNpc
 
                         if (ImGui.BeginTabItem(Translator.LocalizeUI("Lore & Personality")))
                         {
-                            ImGui.LabelText("##greetingLabel", Translator.LocalizeUI("NPC Greeting"));
-                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                            if (ImGui.InputText("##Greeting", ref _customNpcCharacters[_currentSelection].NPCGreeting, 500))
+                            if (ImGui.BeginTabBar("LorePersonalityTabBar"))
                             {
-                                SaveNPCCharacters();
-                            }
-
-                            ImGui.LabelText("##personalityFieldLabel", Translator.LocalizeUI("NPC Personality"));
-                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                            if (ImGui.InputTextMultiline("##NpcPersonality", ref _customNpcCharacters[_currentSelection].NpcPersonality, 2000, new Vector2(ImGui.GetColumnWidth(), 100)))
-                            {
-                                SaveNPCCharacters();
-                            }
-
-                            ImGui.LabelText("##npcBirthDateLabel", Translator.LocalizeUI("Birth Date (Lore)"));
-                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                            if (ImGui.InputText("##NpcBirthDate", ref _customNpcCharacters[_currentSelection].NpcBirthDate, 100))
-                            {
-                                SaveNPCCharacters();
-                            }
-
-                            ImGui.LabelText("##npcBirthLocationLabel", Translator.LocalizeUI("Birth Location (Lore)"));
-                            ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + 
-                                (string.IsNullOrEmpty(_customNpcCharacters[_currentSelection].NpcBirthLocation) ? Translator.LocalizeUI("Unknown") : _customNpcCharacters[_currentSelection].NpcBirthLocation));
-                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                            ImGui.InputTextWithHint("##placeNameSearch", Translator.LocalizeUI("Search locations..."), ref _placeNameSearchText, 100);
-                            if (ImGui.BeginChild("##placeNameList", new Vector2(ImGui.GetColumnWidth(), 120), true))
-                            {
-                                for (int i = 0; i < _placeNames.Length; i++)
+                                if (ImGui.BeginTabItem(Translator.LocalizeUI("Personality")))
                                 {
-                                    if (!string.IsNullOrEmpty(_placeNameSearchText)
-                                        && !_placeNames[i].Contains(_placeNameSearchText, StringComparison.OrdinalIgnoreCase))
-                                        continue;
-                                    bool isSelected = _placeNames[i] == _customNpcCharacters[_currentSelection].NpcBirthLocation;
-                                    if (ImGui.Selectable(_placeNames[i] + "##" + i, isSelected))
+                                    ImGui.LabelText("##greetingLabel", Translator.LocalizeUI("NPC Greeting"));
+                                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                                    if (ImGui.InputText("##Greeting", ref _customNpcCharacters[_currentSelection].NPCGreeting, 500))
                                     {
-                                        _customNpcCharacters[_currentSelection].NpcBirthLocation = _placeNames[i] == "Unknown" ? "" : _placeNames[i];
                                         SaveNPCCharacters();
                                     }
-                                }
-                            }
-                            ImGui.EndChild();
 
-                            ImGui.LabelText("##npcJobLabel", Translator.LocalizeUI("Profession/Job"));
-                            ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + 
-                                (string.IsNullOrEmpty(_customNpcCharacters[_currentSelection].NpcJob) ? Translator.LocalizeUI("None") : _customNpcCharacters[_currentSelection].NpcJob));
-                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                            ImGui.InputTextWithHint("##classJobSearch", Translator.LocalizeUI("Search jobs..."), ref _classJobSearchText, 100);
-                            if (ImGui.BeginChild("##classJobList", new Vector2(ImGui.GetColumnWidth(), 120), true))
-                            {
-                                for (int i = 0; i < _classJobNames.Length; i++)
-                                {
-                                    if (!string.IsNullOrEmpty(_classJobSearchText)
-                                        && !_classJobNames[i].Contains(_classJobSearchText, StringComparison.OrdinalIgnoreCase))
-                                        continue;
-                                    bool isSelected = _classJobRowIds[i] == _customNpcCharacters[_currentSelection].NpcClassJobId;
-                                    if (ImGui.Selectable(_classJobNames[i] + "##" + i, isSelected))
+                                    ImGui.LabelText("##personalityFieldLabel", Translator.LocalizeUI("NPC Personality"));
+                                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                                    if (ImGui.InputTextMultiline("##NpcPersonality", ref _customNpcCharacters[_currentSelection].NpcPersonality, 2000, new Vector2(ImGui.GetColumnWidth(), 100)))
                                     {
-                                        _customNpcCharacters[_currentSelection].NpcJob = _classJobNames[i] == "None" ? "" : _classJobNames[i];
-                                        _customNpcCharacters[_currentSelection].NpcClassJobId = _classJobRowIds[i];
                                         SaveNPCCharacters();
-                                        if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
-                                            && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
-                                                _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
+                                    }
+
+                                    ImGui.LabelText("##npcHobbiesLabel", Translator.LocalizeUI("Hobbies"));
+                                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                                    if (ImGui.InputText("##NpcHobbies", ref _customNpcCharacters[_currentSelection].NpcHobbies, 500))
+                                    {
+                                        SaveNPCCharacters();
+                                    }
+                                    
+                                    ImGui.Dummy(new Vector2(0, 15));
+                                    if (ImGui.Button(Translator.LocalizeUI("Reset AI Brain (Wipes memory & model choice)"), new Vector2(ImGui.GetColumnWidth(), 30)))
+                                    {
+                                        // Wipe the assigned model choice
+                                        _customNpcCharacters[_currentSelection].ModelChoice = "";
+                                        SaveNPCCharacters();
+                                        
+                                        string npcName = _customNpcCharacters[_currentSelection].NpcName;
+                                        
+                                        // Dismiss the NPC to clear out any in-memory conversational history
+                                        if (_plugin != null && _plugin.AQuestReborn != null)
                                         {
-                                            liveNpc.TargetClassJobId = _classJobRowIds[i];
-                                            liveNpc.ClassWeaponApplied = false;
+                                            _plugin.AQuestReborn.DismissCustomNpc(npcName);
+                                            _customNpcCharacters[_currentSelection].IsFollowingPlayer = false;
+                                            _customNpcCharacters[_currentSelection].IsStaying = false;
+                                            _customNpcCharacters[_currentSelection].StayTerritoryId = 0;
+                                        }
+
+                                        // Wipe the memory JSON file
+                                        try
+                                        {
+                                            string baseDir = _plugin.Configuration.QuestInstallFolder ?? Path.GetTempPath();
+                                            string npcMemoryDir = Path.Combine(baseDir, "CustomNpcMemories");
+                                            string memPath = Path.Combine(npcMemoryDir, npcName.Split(" ")[0] + "-memories.json");
+                                            if (File.Exists(memPath))
+                                            {
+                                                File.Delete(memPath);
+                                            }
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            _plugin?.PluginLog?.Warning(e, "Failed to delete NPC memory file.");
                                         }
                                     }
-                                }
-                            }
-                            ImGui.EndChild();
-
-                            ImGui.LabelText("##npcHobbiesLabel", Translator.LocalizeUI("Hobbies"));
-                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                            if (ImGui.InputText("##NpcHobbies", ref _customNpcCharacters[_currentSelection].NpcHobbies, 500))
-                            {
-                                SaveNPCCharacters();
-                            }
-                            
-                            ImGui.Dummy(new Vector2(0, 15));
-                            if (ImGui.Button(Translator.LocalizeUI("Reset AI Brain (Wipes memory & model choice)"), new Vector2(ImGui.GetColumnWidth(), 30)))
-                            {
-                                // Wipe the assigned model choice
-                                _customNpcCharacters[_currentSelection].ModelChoice = "";
-                                SaveNPCCharacters();
-                                
-                                string npcName = _customNpcCharacters[_currentSelection].NpcName;
-                                
-                                // Dismiss the NPC to clear out any in-memory conversational history
-                                if (_plugin != null && _plugin.AQuestReborn != null)
-                                {
-                                    _plugin.AQuestReborn.DismissCustomNpc(npcName);
-                                    _customNpcCharacters[_currentSelection].IsFollowingPlayer = false;
-                                    _customNpcCharacters[_currentSelection].IsStaying = false;
-                                    _customNpcCharacters[_currentSelection].StayTerritoryId = 0;
+                                    
+                                    ImGui.EndTabItem();
                                 }
 
-                                // Wipe the memory JSON file
-                                try
+                                if (ImGui.BeginTabItem(Translator.LocalizeUI("Lore")))
                                 {
-                                    string baseDir = _plugin.Configuration.QuestInstallFolder ?? Path.GetTempPath();
-                                    string npcMemoryDir = Path.Combine(baseDir, "CustomNpcMemories");
-                                    string memPath = Path.Combine(npcMemoryDir, npcName.Split(" ")[0] + "-memories.json");
-                                    if (File.Exists(memPath))
+                                    ImGui.LabelText("##npcBirthDateLabel", Translator.LocalizeUI("Birth Date (Lore)"));
+                                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                                    if (ImGui.InputText("##NpcBirthDate", ref _customNpcCharacters[_currentSelection].NpcBirthDate, 100))
                                     {
-                                        File.Delete(memPath);
+                                        SaveNPCCharacters();
                                     }
+
+                                    ImGui.LabelText("##npcBirthLocationLabel", Translator.LocalizeUI("Birth Location (Lore)"));
+                                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + 
+                                        (string.IsNullOrEmpty(_customNpcCharacters[_currentSelection].NpcBirthLocation) ? Translator.LocalizeUI("Unknown") : _customNpcCharacters[_currentSelection].NpcBirthLocation));
+                                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                                    ImGui.InputTextWithHint("##placeNameSearch", Translator.LocalizeUI("Search locations..."), ref _placeNameSearchText, 100);
+                                    if (ImGui.BeginChild("##placeNameList", new Vector2(ImGui.GetColumnWidth(), 120), true))
+                                    {
+                                        for (int i = 0; i < _placeNames.Length; i++)
+                                        {
+                                            if (!string.IsNullOrEmpty(_placeNameSearchText)
+                                                && !_placeNames[i].Contains(_placeNameSearchText, StringComparison.OrdinalIgnoreCase))
+                                                continue;
+                                            bool isSelected = _placeNames[i] == _customNpcCharacters[_currentSelection].NpcBirthLocation;
+                                            if (ImGui.Selectable(_placeNames[i] + "##" + i, isSelected))
+                                            {
+                                                _customNpcCharacters[_currentSelection].NpcBirthLocation = _placeNames[i] == "Unknown" ? "" : _placeNames[i];
+                                                SaveNPCCharacters();
+                                            }
+                                        }
+                                    }
+                                    ImGui.EndChild();
+
+                                    ImGui.LabelText("##npcJobLabel", Translator.LocalizeUI("Profession/Job"));
+                                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + 
+                                        (string.IsNullOrEmpty(_customNpcCharacters[_currentSelection].NpcJob) ? Translator.LocalizeUI("None") : _customNpcCharacters[_currentSelection].NpcJob));
+                                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                                    ImGui.InputTextWithHint("##classJobSearch", Translator.LocalizeUI("Search jobs..."), ref _classJobSearchText, 100);
+                                    if (ImGui.BeginChild("##classJobList", new Vector2(ImGui.GetColumnWidth(), 120), true))
+                                    {
+                                        for (int i = 0; i < _classJobNames.Length; i++)
+                                        {
+                                            if (!string.IsNullOrEmpty(_classJobSearchText)
+                                                && !_classJobNames[i].Contains(_classJobSearchText, StringComparison.OrdinalIgnoreCase))
+                                                continue;
+                                            bool isSelected = _classJobRowIds[i] == _customNpcCharacters[_currentSelection].NpcClassJobId;
+                                            if (ImGui.Selectable(_classJobNames[i] + "##" + i, isSelected))
+                                            {
+                                                _customNpcCharacters[_currentSelection].NpcJob = _classJobNames[i] == "None" ? "" : _classJobNames[i];
+                                                _customNpcCharacters[_currentSelection].NpcClassJobId = _classJobRowIds[i];
+                                                SaveNPCCharacters();
+                                                if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
+                                                    && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
+                                                        _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
+                                                {
+                                                    liveNpc.TargetClassJobId = _classJobRowIds[i];
+                                                    liveNpc.ClassWeaponApplied = false;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    ImGui.EndChild();
+                                    
+                                    ImGui.EndTabItem();
                                 }
-                                catch (Exception e)
-                                {
-                                    _plugin?.PluginLog?.Warning(e, "Failed to delete NPC memory file.");
-                                }
+                                
+                                ImGui.EndTabBar();
                             }
                             
                             ImGui.EndTabItem();

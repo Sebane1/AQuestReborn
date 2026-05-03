@@ -103,35 +103,43 @@ namespace AQuestReborn
 
                 foreach (var action in actions)
                 {
-                    uint animId = action.AnimationEnd.RowId;
+                    uint animIdEnd = action.AnimationEnd.RowId;
+                    uint animIdStart = action.AnimationStart.RowId;
                     uint catId = action.ActionCategory.RowId;
 
-                    if (animId > 0 && catId >= 2 && catId <= 4)
+                    if (catId >= 2 && catId <= 4 && action.IsPlayerAction)
                     {
-                        // Some actions have direct ClassJob
-                        uint directJobId = action.ClassJob.RowId;
-                        if (directJobId > 0)
-                        {
-                            if (!JobCombatAnimations.ContainsKey(directJobId))
-                                JobCombatAnimations[directJobId] = new List<ushort>();
-                            if (!JobCombatAnimations[directJobId].Contains((ushort)animId))
-                                JobCombatAnimations[directJobId].Add((ushort)animId);
-                        }
+                        var animIdsToMap = new List<uint>();
+                        if (animIdEnd > 0) animIdsToMap.Add(animIdEnd);
+                        if (animIdStart > 0) animIdsToMap.Add(animIdStart);
 
-                        // Map via ClassJobCategory
-                        var cjc = action.ClassJobCategory.Value;
-                        if (cjc.RowId > 0)
+                        foreach (uint animId in animIdsToMap)
                         {
-                            foreach (var kvp in jobProps)
+                            // Some actions have direct ClassJob
+                            uint directJobId = action.ClassJob.RowId;
+                            if (directJobId > 0)
                             {
-                                bool allowed = (bool)kvp.Value.GetValue(cjc);
-                                if (allowed)
+                                if (!JobCombatAnimations.ContainsKey(directJobId))
+                                    JobCombatAnimations[directJobId] = new List<ushort>();
+                                if (!JobCombatAnimations[directJobId].Contains((ushort)animId))
+                                    JobCombatAnimations[directJobId].Add((ushort)animId);
+                            }
+
+                            // Map via ClassJobCategory
+                            var cjc = action.ClassJobCategory.Value;
+                            if (cjc.RowId > 0)
+                            {
+                                foreach (var kvp in jobProps)
                                 {
-                                    uint jobId = kvp.Key;
-                                    if (!JobCombatAnimations.ContainsKey(jobId))
-                                        JobCombatAnimations[jobId] = new List<ushort>();
-                                    if (!JobCombatAnimations[jobId].Contains((ushort)animId))
-                                        JobCombatAnimations[jobId].Add((ushort)animId);
+                                    bool allowed = (bool)kvp.Value.GetValue(cjc);
+                                    if (allowed)
+                                    {
+                                        uint jobId = kvp.Key;
+                                        if (!JobCombatAnimations.ContainsKey(jobId))
+                                            JobCombatAnimations[jobId] = new List<ushort>();
+                                        if (!JobCombatAnimations[jobId].Contains((ushort)animId))
+                                            JobCombatAnimations[jobId].Add((ushort)animId);
+                                    }
                                 }
                             }
                         }
