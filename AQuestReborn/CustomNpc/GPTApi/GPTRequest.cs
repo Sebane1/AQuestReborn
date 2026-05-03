@@ -20,14 +20,14 @@ namespace AQuestReborn.CustomNpc.GPTApi
             this.prompt = prompt;
             this.max_tokens = 70;
             this.do_sample = true;
-            this.temperature = 0.85f;
+            this.temperature = 0.7f;
             this.top_p = 0.9f;
             this.typical_p = 0.9f;
             this.epsilon_cutoff = 0;
             this.eta_cutoff = 0;
             this.tfs = 1;
             this.top_a = 0;
-            this.repetition_penalty = 1.35f;
+            this.repetition_penalty = 1.15f;
             this.repetition_penalty_range = 1024;
             this.top_k = 0;
             this.min_length = 0;
