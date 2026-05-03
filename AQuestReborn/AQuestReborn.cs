@@ -1458,63 +1458,77 @@ namespace AQuestReborn
                                 _customNpcDictionary[npcData.NpcName] = npc;
                                 _interactiveNpcDictionary[npcData.NpcName] = npc;
 
-                                // Apply appearance
-                                if (!npcData.UseMcdfAppearance)
+                                // Allow engine to initialize the NPC fully before overriding appearance
+                                Task.Run(() =>
                                 {
-                                    AppearanceAccessUtils.AppearanceManager?.RemoveTemporaryCollection(character.Name.TextValue);
-                                }
-
-                                // Apply Penumbra Collection separately
-                                if (!npcData.UseMcdfAppearance && npcData.UsePenumbraCollection && !string.IsNullOrEmpty(npcData.PenumbraCollection))
-                                {
-                                    if (Brio.Brio.TryGetService<Brio.IPC.PenumbraService>(out var penumbraService))
+                                    Thread.Sleep(500); // 500ms delay to ensure copy-from-player is complete
+                                    Plugin.Framework.RunOnFrameworkThread(() =>
                                     {
-                                        var collections = penumbraService.GetCollections();
-                                        var collectionGuid = collections.FirstOrDefault(x => x.Value == npcData.PenumbraCollection).Key;
-                                        if (collectionGuid != Guid.Empty)
+                                        if (character == null || !character.IsValid()) return;
+
+                                        // Apply appearance
+                                        if (!npcData.UseMcdfAppearance)
                                         {
-                                            PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke(character.ObjectIndex, collectionGuid, true, true);
+                                            AppearanceAccessUtils.AppearanceManager?.RemoveTemporaryCollection(character.Name.TextValue);
+                                        }
+
+                                        // Apply Penumbra Collection separately
+                                        if (!npcData.UseMcdfAppearance && npcData.UsePenumbraCollection && !string.IsNullOrEmpty(npcData.PenumbraCollection))
+                                        {
+                                            if (Brio.Brio.TryGetService<Brio.IPC.PenumbraService>(out var penumbraService))
+                                            {
+                                                var collections = penumbraService.GetCollections();
+                                                var collectionGuid = collections.FirstOrDefault(x => x.Value == npcData.PenumbraCollection).Key;
+                                                if (collectionGuid != Guid.Empty)
+                                                {
+                                                    PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke(character.ObjectIndex, collectionGuid, true, true);
+                                                    PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                                                }
+                                                else
+                                                {
+                                                    Plugin.PluginLog.Warning($"Could not find Penumbra collection: {npcData.PenumbraCollection}");
+                                                }
+                                            }
+                                        }
+
+                                        if (npcData.UseMonsterModel)
+                                        {
+                                            unsafe
+                                            {
+                                                var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)character.Address;
+                                                native->ModelContainer.ModelCharaId = (int)npcData.MonsterModelId;
+                                            }
                                             PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
                                         }
-                                        else
+                                        else if (npcData.UseMcdfAppearance && !string.IsNullOrEmpty(npcData.McdfFilePath))
                                         {
-                                            Plugin.PluginLog.Warning($"Could not find Penumbra collection: {npcData.PenumbraCollection}");
+                                            // Load MCDF file
+                                            try
+                                            {
+                                                AppearanceAccessUtils.AppearanceManager?.LoadAppearance(
+                                                    npcData.McdfFilePath, character, (int)AppearanceSwapType.EntireAppearance);
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                Plugin.PluginLog.Warning(ex, "Failed to load MCDF appearance: " + npcData.McdfFilePath);
+                                            }
                                         }
-                                    }
-                                }
+                                        else if (!string.IsNullOrEmpty(npcData.NpcGlamourerAppearanceString))
+                                        {
+                                            // Apply glamourer design by GUID
+                                            if (Guid.TryParse(npcData.NpcGlamourerAppearanceString, out var designGuid))
+                                            {
+                                                PenumbraAndGlamourerIpcWrapper.Instance.ApplyDesign.Invoke(designGuid, character.ObjectIndex);
+                                            }
+                                        }
 
-                                if (npcData.UseMonsterModel)
-                                {
-                                    unsafe
-                                    {
-                                        var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)character.Address;
-                                        native->ModelContainer.ModelCharaId = (int)npcData.MonsterModelId;
-                                    }
-                                    PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
-                                }
-                                else if (npcData.UseMcdfAppearance && !string.IsNullOrEmpty(npcData.McdfFilePath))
-                                {
-                                    // Load MCDF file
-                                    try
-                                    {
-                                        AppearanceAccessUtils.AppearanceManager?.LoadAppearance(
-                                            npcData.McdfFilePath, character, (int)AppearanceSwapType.EntireAppearance);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Plugin.PluginLog.Warning(ex, "Failed to load MCDF appearance: " + npcData.McdfFilePath);
-                                    }
-                                }
-                                else if (!string.IsNullOrEmpty(npcData.NpcGlamourerAppearanceString))
-                                {
-                                    // Apply glamourer design by GUID
-                                    if (Guid.TryParse(npcData.NpcGlamourerAppearanceString, out var designGuid))
-                                    {
-                                        PenumbraAndGlamourerIpcWrapper.Instance.ApplyDesign.Invoke(designGuid, character.ObjectIndex);
-                                    }
-                                }
+                                        Plugin.AnamcoreManager.SetVoice(character, 0);
 
-                                Plugin.AnamcoreManager.SetVoice(character, 0);
+                                        npc.TargetClassJobId = npcData.NpcClassJobId;
+                                        npc.TargetWeaponItemId = npcData.NpcEquippedWeaponItemId;
+                                        npc.ClassWeaponApplied = false;
+                                    });
+                                });
 
                                 // Restore follow/stay state from config
                                 if (npcData.IsFollowingPlayer)
@@ -1530,8 +1544,24 @@ namespace AQuestReborn
                                 }
                                 npc.IdleEmoteId = npcData.IdleEmoteId;
                                 if (npcData.RandomIdleEmotes != null) npc.RandomIdleEmotes = npcData.RandomIdleEmotes.ToList();
-                                npc.TargetClassJobId = npcData.NpcClassJobId;
-                                npc.ClassWeaponApplied = false;
+                                npc.VictoryPoseEmoteId = npcData.VictoryPoseEmoteId;
+
+                                // Trigger idle emote immediately for following NPCs as well to override battle stance
+                                ushort initialEmoteId = npcData.IdleEmoteId;
+                                if (npcData.RandomIdleEmotes != null && npcData.RandomIdleEmotes.Count > 0)
+                                {
+                                    initialEmoteId = npcData.RandomIdleEmotes[new System.Random().Next(npcData.RandomIdleEmotes.Count)];
+                                }
+
+                                if (initialEmoteId > 0)
+                                {
+                                    try
+                                    {
+                                        var emote = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(initialEmoteId);
+                                        Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
+                                    }
+                                    catch { }
+                                }
 
                                 // Create conversation manager
                                 string baseDir = Plugin.Configuration.QuestInstallFolder ?? Path.GetTempPath();
