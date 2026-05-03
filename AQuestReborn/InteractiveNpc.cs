@@ -297,6 +297,10 @@ namespace AQuestReborn
                                 // Freeze when player is directly facing the NPC
                                 if (!playerFacingNpc && distToTarget > 4) _isFollowMoving = true;
                                 if (distToTarget <= 2 || playerFacingNpc) _isFollowMoving = false;
+                                
+                                bool inCombat = Conditions.Instance()->InCombat;
+                                if (inCombat) _isFollowMoving = false;
+
                                 if (_isFollowMoving)
                                 {
                                     // Always reset idle timer while moving
@@ -345,7 +349,6 @@ namespace AQuestReborn
                                     float yLerp = Math.Clamp(_speed * delta * 10f, 0f, 1f);
                                     _currentPosition = new Vector3(_currentPosition.X, _currentPosition.Y + (groundY - _currentPosition.Y) * yLerp, _currentPosition.Z);
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
-                                    bool inCombat = Conditions.Instance()->InCombat;
 
                                     if (_wasMoving)
                                     {
