@@ -433,8 +433,8 @@ namespace AQuestReborn.CustomNpc
                                         SaveNPCCharacters();
                                     }
                                 }
-                                ImGui.EndChild();
                             }
+                            ImGui.EndChild();
 
                             ImGui.LabelText("##npcJobLabel", Translator.LocalizeUI("Profession/Job"));
                             ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + 
@@ -456,8 +456,8 @@ namespace AQuestReborn.CustomNpc
                                         SaveNPCCharacters();
                                     }
                                 }
-                                ImGui.EndChild();
                             }
+                            ImGui.EndChild();
 
                             ImGui.LabelText("##npcHobbiesLabel", Translator.LocalizeUI("Hobbies"));
                             ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
