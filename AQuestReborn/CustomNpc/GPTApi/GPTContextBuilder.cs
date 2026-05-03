@@ -88,6 +88,14 @@ namespace AQuestReborn.CustomNpc.GPTApi
             context += $"\n***\n";
             context += $"\n[ Style: roleplaying ]\n";
             context += $"[ Instruction: You exist strictly within the fantasy world of Final Fantasy XIV. You are responding in a live chat window. Write your response in the first person as {_aiName}. Do NOT prepend your name to the response. Use asterisks for physical actions (e.g. *smiles*) and format spoken dialogue using double quotes (e.g. \"Hello there!\"). Do NOT reference real-world concepts, modern technology, or video game mechanics (e.g. patches, UI). Always stay perfectly in character as a resident of Eorzea. ]\n";
+            
+            context += $"[ Formatting Example ]\n";
+            context += $"{_userName}: Hello there!\n";
+            context += $"{_aiName}: *smiles warmly and bows* \"Greetings, traveler! How may I assist you today?\"\n";
+            context += $"{_userName}: *hands you a potion* Here, take this.\n";
+            context += $"{_aiName}: *takes the potion gracefully* \"Oh, thank you kindly! This will surely be of use.\"\n";
+            context += $"[ End Example ]\n\n";
+
             foreach (var value in _history.Visible)
             {
                 foreach (var message in value)

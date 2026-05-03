@@ -41,7 +41,7 @@ namespace AQuestReborn.CustomNpc
             _histories[name].UpdateSetting(setting);
             string lastValue = _histories.ContainsKey(name) ? _histories[name].History.GetLastVisibleItem() : Guid.NewGuid().ToString();
             string response = await new GPTRequestSender().GetGPTResponse(name, _histories[name].ToString()
-                + name.Split(" ")[0] + DetectFormatting(message.Trim()) + "\n" + _personality, _personality, false);
+                + name.Split(" ")[0] + DetectFormatting(message.Trim()) + "\n" + _personality + ": ", _personality, false);
             AddToHistory(name, message, response);
             if (_persistenceCounter.ContainsKey(name))
             {
@@ -158,25 +158,7 @@ namespace AQuestReborn.CustomNpc
         }
         public string DetectFormatting(string value)
         {
-            if (value.StartsWith('"'))
-            {
-                if (value.Contains("?"))
-                {
-                    return " asks, " + value;
-                }
-                else if (value.Contains("!"))
-                {
-                    return " exclaims, " + value;
-                }
-                else
-                {
-                    return " says, " + value;
-                }
-            }
-            else
-            {
-                return " " + value;
-            }
+            return ": " + value;
         }
     }
 }
