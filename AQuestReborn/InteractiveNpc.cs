@@ -395,13 +395,24 @@ namespace AQuestReborn
                                                 {
                                                     float groundYTarget = _plugin.AQuestReborn.GroundMap.GetGroundY(
                                                         _currentPosition.X, _currentPosition.Z, tgtPos.Y);
-                                                    float xzLerp = _speed * delta * 2.0f; // Faster in combat!
-                                                    float yLerpTarget = Math.Clamp(_speed * delta * 10f, 0f, 1f);
                                                     
-                                                    _currentPosition = new Vector3(
-                                                        _currentPosition.X + (tgtPos.X - _currentPosition.X) * xzLerp,
-                                                        _currentPosition.Y + (groundYTarget - _currentPosition.Y) * yLerpTarget,
-                                                        _currentPosition.Z + (tgtPos.Z - _currentPosition.Z) * xzLerp);
+                                                    var diff = new Vector3(tgtPos.X - _currentPosition.X, 0, tgtPos.Z - _currentPosition.Z);
+                                                    var dir = Vector3.Normalize(diff);
+                                                    float moveSpeed = _speed * delta * 1.2f; // 6.0 yalms per second (normal run pace)
+                                                    
+                                                    if (diff.Length() < moveSpeed)
+                                                    {
+                                                        _currentPosition.X = tgtPos.X;
+                                                        _currentPosition.Z = tgtPos.Z;
+                                                    }
+                                                    else
+                                                    {
+                                                        _currentPosition.X += dir.X * moveSpeed;
+                                                        _currentPosition.Z += dir.Z * moveSpeed;
+                                                    }
+                                                    
+                                                    float yLerpTarget = Math.Clamp(_speed * delta * 10f, 0f, 1f);
+                                                    _currentPosition.Y += (groundYTarget - _currentPosition.Y) * yLerpTarget;
 
                                                     if (!_isCombatMoving)
                                                     {
