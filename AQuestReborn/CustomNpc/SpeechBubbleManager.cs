@@ -20,11 +20,57 @@ namespace AQuestReborn.CustomNpc
         private ConcurrentDictionary<string, string> _lastAmbientMessages = new ConcurrentDictionary<string, string>();
         private bool _isProcessingAmbient = false;
 
+        // Track when NPCs were summoned to enable the "chatty first minute" phase
+        private ConcurrentDictionary<string, Stopwatch> _npcSummonTimers = new ConcurrentDictionary<string, Stopwatch>();
+        private const int EARLY_INTERVAL_MIN_MS = 15000;  // 15 seconds
+        private const int EARLY_INTERVAL_MAX_MS = 30000;  // 30 seconds
+        private const int EARLY_PHASE_DURATION_MS = 60000; // first 60 seconds
+        private const int NORMAL_INTERVAL_MS = 300000;     // 5 minutes
+
         public SpeechBubbleManager(Plugin plugin)
         {
             _plugin = plugin;
-            _nextAmbientIntervalMs = 300000; // 5 minutes
+            _nextAmbientIntervalMs = EARLY_INTERVAL_MIN_MS; // Start chatty
             _ambientTimer.Start();
+        }
+
+        /// <summary>
+        /// Call when an NPC is summoned/spawned to start their "chatty" phase.
+        /// </summary>
+        public void NotifyNpcSummoned(string npcName)
+        {
+            var timer = new Stopwatch();
+            timer.Start();
+            _npcSummonTimers[npcName] = timer;
+
+            // If we're currently on the long 5-min timer, shorten it so the new NPC talks soon
+            if (_nextAmbientIntervalMs > EARLY_INTERVAL_MAX_MS)
+            {
+                _nextAmbientIntervalMs = _random.Next(EARLY_INTERVAL_MIN_MS, EARLY_INTERVAL_MAX_MS);
+                _ambientTimer.Restart();
+            }
+        }
+
+        /// <summary>
+        /// Call when an NPC is dismissed/removed.
+        /// </summary>
+        public void NotifyNpcDismissed(string npcName)
+        {
+            _npcSummonTimers.TryRemove(npcName, out _);
+            _lastAmbientMessages.TryRemove(npcName, out _);
+        }
+
+        /// <summary>
+        /// Returns true if any NPC is still in its "chatty" early phase (first minute).
+        /// </summary>
+        private bool IsAnyNpcInEarlyPhase()
+        {
+            foreach (var kvp in _npcSummonTimers)
+            {
+                if (kvp.Value.ElapsedMilliseconds < EARLY_PHASE_DURATION_MS)
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>
@@ -120,7 +166,12 @@ namespace AQuestReborn.CustomNpc
             {
                 _plugin.PluginLog.Information($"[SpeechBubble] Timer fired! NPCs={customNpcs.Count}, ConvMgrs={conversationManagers?.Count ?? 0}");
                 _ambientTimer.Restart();
-                _nextAmbientIntervalMs = 300000; // 5 minutes
+
+                // Use shorter intervals while any NPC is in its chatty first-minute phase
+                if (IsAnyNpcInEarlyPhase())
+                    _nextAmbientIntervalMs = _random.Next(EARLY_INTERVAL_MIN_MS, EARLY_INTERVAL_MAX_MS);
+                else
+                    _nextAmbientIntervalMs = NORMAL_INTERVAL_MS;
                 _isProcessingAmbient = true;
 
                 Task.Run(async () =>
@@ -353,6 +404,7 @@ namespace AQuestReborn.CustomNpc
             _ambientEnabled = false;
             _ambientTimer.Stop();
             _lastAmbientMessages.Clear();
+            _npcSummonTimers.Clear();
         }
     }
 }

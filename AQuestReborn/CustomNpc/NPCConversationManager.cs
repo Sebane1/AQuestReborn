@@ -67,9 +67,43 @@ namespace AQuestReborn.CustomNpc
                     }
                 }
             }
+            // Enrich the AI description with encounter history
+            string encounterContext = "";
+            string playerFullName = sendingCharacter.Name.TextValue;
+            
+            // Find the NPC data to pull encounter tracking from
+            CustomNpcCharacter npcDataRef = null;
+            foreach (var npc in _plugin.Configuration.CustomNpcCharacters)
+            {
+                if (npc.NpcName == _fullName || npc.NpcName.StartsWith(aiName + " "))
+                {
+                    npcDataRef = npc;
+                    break;
+                }
+            }
+
+            if (npcDataRef != null)
+            {
+                // Add player encounter context
+                encounterContext += npcDataRef.GetEncounterContext(playerFullName);
+
+                // Add encounter context for other summoned NPCs
+                if (_plugin.AQuestReborn?.InteractiveNpcDictionary != null)
+                {
+                    foreach (var otherNpcKvp in _plugin.AQuestReborn.InteractiveNpcDictionary)
+                    {
+                        if (otherNpcKvp.Key != _fullName)
+                        {
+                            encounterContext += npcDataRef.GetEncounterContext(otherNpcKvp.Key);
+                        }
+                    }
+                }
+            }
+
+            string enrichedDescription = aiDescription.Trim('.').Trim() + "." + encounterContext;
 
             string aiMessage = await _gptWrapper.SendMessage(senderName, message, $@" smiles. ""{aiGreeting}""",
-            GetPlayerDescription(sendingCharacter), aiDescription.Trim('.').Trim() + ". " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 2, modelChoice);
+            GetPlayerDescription(sendingCharacter), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 2, modelChoice);
             
             if (string.IsNullOrEmpty(aiMessage))
             {
@@ -89,7 +123,7 @@ namespace AQuestReborn.CustomNpc
                 
                 // Retry once with new model
                 aiMessage = await _gptWrapper.SendMessage(senderName, message, $@" smiles. ""{aiGreeting}""",
-                GetPlayerDescription(sendingCharacter), aiDescription.Trim('.').Trim() + ". " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 2, newModelChoice);
+                GetPlayerDescription(sendingCharacter), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 2, newModelChoice);
             }
             string correctedMessage = PenumbraAndGlamourerHelperFunctions.GetGender(sendingCharacter) == 1 ? GenderFix(aiMessage) : aiMessage;
             Task.Run(() =>

@@ -456,6 +456,34 @@ namespace AQuestReborn
                 _hasCheckedForPlayerAppearance = false;
                 GroundMap.SetTerritory(territory);
 
+                // Stamp last-seen for all custom NPCs before cleanup (zone departure)
+                try
+                {
+                    string playerName = Plugin.ObjectTable.LocalPlayer?.Name?.TextValue ?? "Adventurer";
+                    var activeNpcNames = new List<string>(_customNpcCharacters.Keys);
+                    foreach (var npcData in Plugin.Configuration.CustomNpcCharacters)
+                    {
+                        if (activeNpcNames.Contains(npcData.NpcName))
+                        {
+                            npcData.UpdateLastSeen(playerName);
+                            // Also stamp NPC-to-NPC last-seen for all co-present NPCs
+                            foreach (var otherName in activeNpcNames)
+                            {
+                                if (otherName != npcData.NpcName)
+                                    npcData.UpdateLastSeen(otherName);
+                            }
+
+                            // Staying NPCs are being left behind; following NPCs are travelling with you
+                            if (npcData.IsStaying && !npcData.IsFollowingPlayer)
+                                npcData.WasLeftBehind = true;
+                            else
+                                npcData.WasLeftBehind = false;
+                        }
+                    }
+                    Plugin.Configuration.Save();
+                }
+                catch { }
+
                 // Clean up custom NPC references (Brio actors are destroyed on zone change)
                 foreach (var kvp in _customNpcDictionary)
                 {
@@ -1467,6 +1495,44 @@ namespace AQuestReborn
 
         #region Custom NPC Management
         private const int MAX_CUSTOM_NPCS = 3;
+
+        /// <summary>
+        /// Records encounters for a newly spawned/returned NPC:
+        /// - The NPC meets the player
+        /// - The NPC meets all other currently summoned NPCs (bidirectional)
+        /// </summary>
+        public void RecordNpcEncounters(CustomNpcCharacter npcData)
+        {
+            try
+            {
+                // Record NPC meeting the player
+                string playerName = Plugin.ObjectTable.LocalPlayer?.Name?.TextValue ?? "Adventurer";
+                npcData.RecordEncounter(playerName);
+
+                // They're no longer left behind — the player has returned
+                npcData.WasLeftBehind = false;
+
+                // Start the "chatty first minute" phase for this NPC
+                Plugin.SpeechBubbleManager?.NotifyNpcSummoned(npcData.NpcName);
+
+                // Record NPC meeting all other co-summoned NPCs (bidirectional)
+                foreach (var otherNpc in Plugin.Configuration.CustomNpcCharacters)
+                {
+                    if (otherNpc.NpcName != npcData.NpcName && _customNpcCharacters.ContainsKey(otherNpc.NpcName))
+                    {
+                        npcData.RecordEncounter(otherNpc.NpcName);
+                        otherNpc.RecordEncounter(npcData.NpcName);
+                    }
+                }
+
+                Plugin.Configuration.Save();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Warning(ex, "Failed to record NPC encounters");
+            }
+        }
+
         public void SummonCustomNpc(CustomNpcCharacter npcData)
         {
             if (_actorSpawnService == null || Plugin.ObjectTable.LocalPlayer == null) return;
@@ -1566,6 +1632,9 @@ namespace AQuestReborn
                                         npc.TargetClassJobId = npcData.NpcClassJobId;
                                         npc.TargetWeaponItemId = npcData.NpcEquippedWeaponItemId;
                                         npc.ClassWeaponApplied = false;
+
+                                        // Record encounters (player + co-summoned NPCs)
+                                        RecordNpcEncounters(npcData);
 
                                 // Restore follow/stay state from config
                                 if (npcData.IsFollowingPlayer)
@@ -1711,6 +1780,9 @@ namespace AQuestReborn
                                         npc.TargetWeaponItemId = npcData.NpcEquippedWeaponItemId;
                                         npc.ClassWeaponApplied = false;
 
+                                        // Record encounters (player returning to zone with NPC)
+                                        RecordNpcEncounters(npcData);
+
                                 // Set to stay at the saved position/rotation
                                 npc.SetDefaults(position, rotation);
                                 npc.SetDefaultRotation(rotation);
@@ -1808,6 +1880,33 @@ namespace AQuestReborn
                     }
                 }
                 Plugin.ChatGui.Print("[A Quest Reborn] " + npcName + " has been dismissed.");
+                Plugin.SpeechBubbleManager?.NotifyNpcDismissed(npcName);
+
+                // Stamp last-seen for this NPC (player and other co-summoned NPCs)
+                try
+                {
+                    foreach (var npc in Plugin.Configuration.CustomNpcCharacters)
+                    {
+                        if (npc.NpcName == npcName)
+                        {
+                            string playerName = Plugin.ObjectTable.LocalPlayer?.Name?.TextValue ?? "Adventurer";
+                            npc.UpdateLastSeen(playerName);
+
+                            // Update last-seen with remaining NPCs
+                            foreach (var otherNpc in Plugin.Configuration.CustomNpcCharacters)
+                            {
+                                if (otherNpc.NpcName != npcName && _customNpcCharacters.ContainsKey(otherNpc.NpcName))
+                                {
+                                    npc.UpdateLastSeen(otherNpc.NpcName);
+                                    otherNpc.UpdateLastSeen(npcName);
+                                }
+                            }
+                            break;
+                        }
+                    }
+                    Plugin.Configuration.Save();
+                }
+                catch { }
             });
         }
 
@@ -2190,13 +2289,17 @@ namespace AQuestReborn
             if (Plugin.NpcChatWindow.IsConversationActive) return;
             if (Plugin.EventWindow.IsOpen || Plugin.ChoiceWindow.IsOpen) return;
 
+            // Don't consume screen clicks when quest NPCs are active — let QuestInputCheck handle those
+            bool useScreenClick = _screenButtonClicked && !_cutsceneNpcSpawned;
+
             // Check for confirm input (gamepad south or screen click)
             bool confirmPressed = (Plugin.Configuration.EnableControllerInteraction && Plugin.GamepadState.Raw(GamepadButtons.South) == 1)
-                || _screenButtonClicked;
+                || useScreenClick;
 
             if (confirmPressed && !_npcChatConfirmHeld)
             {
                 _npcChatConfirmHeld = true;
+                if (useScreenClick) _screenButtonClicked = false; // Consume the click so it doesn't persist
                 
                 // Get the player's current target
                 var target = Plugin.ObjectTable.LocalPlayer?.TargetObject;

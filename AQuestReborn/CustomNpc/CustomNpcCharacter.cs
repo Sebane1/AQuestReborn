@@ -50,6 +50,71 @@ namespace AQuestReborn.CustomNpc
         // Model Choice
         public string ModelChoice = "";
 
+        // Encounter tracking (keyed by player/NPC name)
+        // How many times this NPC has had a conversation with each person
+        public Dictionary<string, int> EncounterCounts = new Dictionary<string, int>();
+        // When this NPC last saw each person (UTC ticks for serialization)
+        public Dictionary<string, long> LastSeenTimestamps = new Dictionary<string, long>();
+        // Whether the player left this NPC behind at their stay location
+        public bool WasLeftBehind = false;
+
+        public void RecordEncounter(string personName)
+        {
+            if (EncounterCounts.ContainsKey(personName))
+                EncounterCounts[personName]++;
+            else
+                EncounterCounts[personName] = 1;
+
+            LastSeenTimestamps[personName] = DateTime.UtcNow.Ticks;
+        }
+
+        /// <summary>
+        /// Updates the last-seen timestamp without incrementing the encounter count.
+        /// Used for dismiss/zone-leave events.
+        /// </summary>
+        public void UpdateLastSeen(string personName)
+        {
+            LastSeenTimestamps[personName] = DateTime.UtcNow.Ticks;
+        }
+
+        public string GetEncounterContext(string personName)
+        {
+            string context = "";
+            if (EncounterCounts.TryGetValue(personName, out int count) && count > 0)
+            {
+                context += $" They have met {personName} {count} time{(count > 1 ? "s" : "")} before.";
+
+                if (LastSeenTimestamps.TryGetValue(personName, out long ticks))
+                {
+                    var lastSeen = new DateTime(ticks, DateTimeKind.Utc);
+                    var elapsed = DateTime.UtcNow - lastSeen;
+
+                    string timeAgo;
+                    if (elapsed.TotalMinutes < 2)
+                        timeAgo = "just moments ago";
+                    else if (elapsed.TotalMinutes < 60)
+                        timeAgo = $"about {(int)elapsed.TotalMinutes} minutes ago";
+                    else if (elapsed.TotalHours < 24)
+                        timeAgo = $"about {(int)elapsed.TotalHours} hour{((int)elapsed.TotalHours > 1 ? "s" : "")} ago";
+                    else
+                        timeAgo = $"about {(int)elapsed.TotalDays} day{((int)elapsed.TotalDays > 1 ? "s" : "")} ago";
+
+                    context += $" They last saw {personName} {timeAgo}.";
+                }
+
+                // Add emotional context if left behind
+                if (WasLeftBehind)
+                {
+                    context += $" {personName} left them behind at their current location when they departed.";
+                }
+            }
+            else
+            {
+                context += $" They have never met {personName} before — this is their first encounter.";
+            }
+            return context;
+        }
+
         public string GetFullLore()
         {
             string lore = NpcPersonality;
