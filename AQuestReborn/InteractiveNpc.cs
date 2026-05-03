@@ -162,7 +162,12 @@ namespace AQuestReborn
 
         public void ApplyClassWeapon()
         {
-            if (_character == null || TargetClassJobId == 0) return;
+            if (_character == null) return;
+            if (TargetClassJobId == 0)
+            {
+                _plugin.AnamcoreManager.SetWeapon(_character, 0, 0);
+                return;
+            }
 
             var cj = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.ClassJob>().GetRow(TargetClassJobId);
             if (cj.RowId == 0) return;
@@ -220,7 +225,7 @@ namespace AQuestReborn
                     {
                         if (_character != null)
                         {
-                            if (!ClassWeaponApplied && TargetClassJobId > 0)
+                            if (!ClassWeaponApplied)
                             {
                                 ApplyClassWeapon();
                                 ClassWeaponApplied = true;
