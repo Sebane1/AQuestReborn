@@ -14,6 +14,12 @@
         "resolved": "1.2.39",
         "contentHash": "fcFN01tDTIQqDuTwr1jUQK/geofiwjG5DycJQOnC72i1SsLAk1ELe+apBOuZ11UMQG8YKFZG1FgvjZPbqHyatg=="
       },
+      "Glamourer.Api": {
+        "type": "Direct",
+        "requested": "[2.8.1, )",
+        "resolved": "2.8.1",
+        "contentHash": "RCaAAd1hmRLiLAeAVFPi8GZKRIVYrh2m0vmGA+3yKZj3xemWr8/KU2vHlt1mUdMnyPlCX2zPK6zM4nFsMB+GYg=="
+      },
       "System.Drawing.Common": {
         "type": "Direct",
         "requested": "[9.0.8, )",
@@ -51,11 +57,6 @@
         "dependencies": {
           "Unosquare.Swan.Lite": "3.1.0"
         }
-      },
-      "Glamourer.Api": {
-        "type": "Transitive",
-        "resolved": "2.8.0",
-        "contentHash": "dCxycU+lA0qraE70ZoRvM4GQAPq/K+qL/bg6t/kxKPox5GWaiunKOTXNOG2hOvgEda5WtFy6e3c9OuIM6L3faQ=="
       },
       "LibVLCSharp": {
         "type": "Transitive",

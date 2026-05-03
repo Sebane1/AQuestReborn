@@ -576,7 +576,7 @@ namespace AQuestReborn.CustomNpc
                                                 SaveNPCCharacters();
 
                                                 // Re-apply appearance if NPC is currently spawned
-                                                if (_customNpcCharacters[_currentSelection].IsFollowingPlayer
+                                                if ((_customNpcCharacters[_currentSelection].IsFollowingPlayer || _customNpcCharacters[_currentSelection].IsStaying)
                                                     && _plugin != null && _plugin.AQuestReborn != null)
                                                 {
                                                     _plugin.AQuestReborn.ReapplyCustomNpcAppearance(
@@ -753,6 +753,7 @@ namespace AQuestReborn.CustomNpc
                                                         _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
                                                 {
                                                     liveNpc.TargetClassJobId = _classJobRowIds[i];
+                                                    _plugin.AnamcoreManager.SetWeapon(liveNpc.Character, 0, 0); // Clear current weapon
                                                     liveNpc.ClassWeaponApplied = false;
                                                 }
                                             }
@@ -775,9 +776,18 @@ namespace AQuestReborn.CustomNpc
 
                             // Idle pose selector with search
                             ImGui.LabelText("##idlePoseLabel", Translator.LocalizeUI("Idle Pose"));
-                            int currentEmoteIdx = Array.IndexOf(_idleEmoteRowIds, _customNpcCharacters[_currentSelection].IdleEmoteId);
-                            string currentEmoteName = currentEmoteIdx >= 0 && currentEmoteIdx < _idleEmoteNames.Length
-                                ? _idleEmoteNames[currentEmoteIdx] : Translator.LocalizeUI("None");
+                            _customNpcCharacters[_currentSelection].RandomIdleEmotes ??= new System.Collections.Generic.List<ushort>();
+                            string currentEmoteName = Translator.LocalizeUI("None");
+                            if (_customNpcCharacters[_currentSelection].RandomIdleEmotes.Count > 0)
+                            {
+                                currentEmoteName = Translator.LocalizeUI("Multiple (Random)");
+                            }
+                            else
+                            {
+                                int currentEmoteIdx = Array.IndexOf(_idleEmoteRowIds, _customNpcCharacters[_currentSelection].IdleEmoteId);
+                                currentEmoteName = currentEmoteIdx >= 0 && currentEmoteIdx < _idleEmoteNames.Length
+                                    ? _idleEmoteNames[currentEmoteIdx] : Translator.LocalizeUI("None");
+                            }
                             ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + currentEmoteName);
                             ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
                             ImGui.InputTextWithHint("##emoteSearch", Translator.LocalizeUI("Search emotes..."), ref _emoteSearchText, 100);
@@ -788,17 +798,52 @@ namespace AQuestReborn.CustomNpc
                                     if (!string.IsNullOrEmpty(_emoteSearchText)
                                         && !_idleEmoteNames[i].Contains(_emoteSearchText, StringComparison.OrdinalIgnoreCase))
                                         continue;
-                                    bool isSelected = _idleEmoteRowIds[i] == _customNpcCharacters[_currentSelection].IdleEmoteId;
+                                    
+                                    ushort currentId = _idleEmoteRowIds[i];
+                                    bool isSelected = _customNpcCharacters[_currentSelection].RandomIdleEmotes.Contains(currentId) 
+                                        || (_customNpcCharacters[_currentSelection].RandomIdleEmotes.Count == 0 && currentId == _customNpcCharacters[_currentSelection].IdleEmoteId);
+                                        
                                     if (ImGui.Selectable(_idleEmoteNames[i] + "##" + i, isSelected))
                                     {
-                                        _customNpcCharacters[_currentSelection].IdleEmoteId = _idleEmoteRowIds[i];
+                                        if (currentId == 0) // "None" clicked
+                                        {
+                                            _customNpcCharacters[_currentSelection].RandomIdleEmotes.Clear();
+                                            _customNpcCharacters[_currentSelection].IdleEmoteId = 0;
+                                        }
+                                        else
+                                        {
+                                            if (_customNpcCharacters[_currentSelection].RandomIdleEmotes.Contains(currentId))
+                                            {
+                                                _customNpcCharacters[_currentSelection].RandomIdleEmotes.Remove(currentId);
+                                                if (_customNpcCharacters[_currentSelection].RandomIdleEmotes.Count == 1)
+                                                {
+                                                    _customNpcCharacters[_currentSelection].IdleEmoteId = _customNpcCharacters[_currentSelection].RandomIdleEmotes[0];
+                                                    _customNpcCharacters[_currentSelection].RandomIdleEmotes.Clear();
+                                                }
+                                                else if (_customNpcCharacters[_currentSelection].RandomIdleEmotes.Count == 0)
+                                                {
+                                                    _customNpcCharacters[_currentSelection].IdleEmoteId = 0;
+                                                }
+                                            }
+                                            else
+                                            {
+                                                if (_customNpcCharacters[_currentSelection].RandomIdleEmotes.Count == 0 && _customNpcCharacters[_currentSelection].IdleEmoteId > 0 && _customNpcCharacters[_currentSelection].IdleEmoteId != currentId)
+                                                {
+                                                    _customNpcCharacters[_currentSelection].RandomIdleEmotes.Add(_customNpcCharacters[_currentSelection].IdleEmoteId);
+                                                }
+                                                _customNpcCharacters[_currentSelection].RandomIdleEmotes.Add(currentId);
+                                                _customNpcCharacters[_currentSelection].IdleEmoteId = 0; // Handled by RandomIdleEmotes now
+                                            }
+                                        }
+
                                         SaveNPCCharacters();
                                         // Push to live NPC immediately
                                         if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
                                             && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
                                                 _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
                                         {
-                                            liveNpc.IdleEmoteId = _idleEmoteRowIds[i];
+                                            liveNpc.RandomIdleEmotes = _customNpcCharacters[_currentSelection].RandomIdleEmotes.ToList();
+                                            liveNpc.IdleEmoteId = _customNpcCharacters[_currentSelection].IdleEmoteId;
                                         }
                                     }
                                 }

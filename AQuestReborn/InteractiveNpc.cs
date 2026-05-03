@@ -161,6 +161,7 @@ namespace AQuestReborn
         public ICharacter Character { get => _character; set => _character = value; }
         public EventMovementAnimation EventMovementAnimationType { get => _eventMovementAnimationType; set => _eventMovementAnimationType = value; }
         public ushort VictoryPoseEmoteId { get; set; }
+        public List<ushort> RandomIdleEmotes = new List<ushort>();
         public ushort IdleEmoteId
         {
             get => _idleEmoteId;
@@ -249,10 +250,15 @@ namespace AQuestReborn
 
             if (mainHandModel != 0)
             {
-                _plugin.AnamcoreManager.SetWeapon(_character, mainHandModel, offHandModel);
+                var chara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
+                var currentMainHand = chara->DrawData.Weapon(FFXIVClientStructs.FFXIV.Client.Game.Character.DrawDataContainer.WeaponSlot.MainHand).ModelId.Value;
+                
+                if (currentMainHand == 0)
+                {
+                    _plugin.AnamcoreManager.SetWeapon(_character, mainHandModel, offHandModel);
+                }
                 
                 // Force the NPC's class job to match so combat stances and animations are natively correct!
-                var chara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
                 chara->ClassJob = (byte)TargetClassJobId;
             }
         }
@@ -605,11 +611,17 @@ namespace AQuestReborn
                                         }
 
                                         // Trigger idle emote if standing still long enough
-                                        if (_idleEmoteId > 0 && !_idleEmotePlaying && _idleTimer.ElapsedMilliseconds > _idleThresholdMs)
+                                        ushort selectedEmoteId = _idleEmoteId;
+                                        if (RandomIdleEmotes != null && RandomIdleEmotes.Count > 0)
+                                        {
+                                            selectedEmoteId = RandomIdleEmotes[new System.Random().Next(RandomIdleEmotes.Count)];
+                                        }
+
+                                        if (selectedEmoteId > 0 && !_idleEmotePlaying && _idleTimer.ElapsedMilliseconds > _idleThresholdMs)
                                         {
                                             try
                                             {
-                                                var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(_idleEmoteId);
+                                                var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(selectedEmoteId);
                                                 _activeEmoteTimelineId = (ushort)emote.ActionTimeline[0].Value.RowId;
                                                 _plugin.AnamcoreManager.TriggerEmote(_character.Address, _activeEmoteTimelineId);
                                             }
@@ -689,11 +701,17 @@ namespace AQuestReborn
                                             _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
                                         }
                                         // Trigger idle emote after threshold
-                                        if (_idleEmoteId > 0 && !_idleEmotePlaying && _idleTimer.ElapsedMilliseconds > _idleThresholdMs)
+                                        ushort selectedEmoteId = _idleEmoteId;
+                                        if (RandomIdleEmotes != null && RandomIdleEmotes.Count > 0)
+                                        {
+                                            selectedEmoteId = RandomIdleEmotes[new System.Random().Next(RandomIdleEmotes.Count)];
+                                        }
+
+                                        if (selectedEmoteId > 0 && !_idleEmotePlaying && _idleTimer.ElapsedMilliseconds > _idleThresholdMs)
                                         {
                                             try
                                             {
-                                                var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(_idleEmoteId);
+                                                var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(selectedEmoteId);
                                                 _plugin.AnamcoreManager.TriggerEmote(_character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
                                             }
                                             catch { }

@@ -295,7 +295,7 @@ public sealed class Plugin : IDalamudPlugin
                 var customNpcNames = Configuration.CustomNpcCharacters.Select(n => n.NpcName).ToHashSet();
                 var nearbyObjects = new List<string>();
 
-                var objects = _objectTable.DalamudObjectTable
+                var objects = _objectTable
                     .Where(obj => obj != null 
                         && obj.Address != _objectTable?.LocalPlayer?.Address 
                         && !string.IsNullOrWhiteSpace(obj.Name.TextValue)

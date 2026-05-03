@@ -156,7 +156,58 @@ namespace AQuestReborn.CustomNpc
 
             return $"{name} is a {genderStr}. {pronounSingularAlternate} is a race of {raceStr}. " +
                 $"{GetPlayerExperience(player.Level, player.ClassJob.Value.NameEnglish.ToString(), pronounSingularAlternate)}." +
+                GetAppearanceData(player) +
                 combatMemory + recentCombatMemory + recentDialogueMemory + chatSummaries;
+        }
+        
+        private string GetAppearanceData(ICharacter player)
+        {
+            string appearanceData = "";
+            try
+            {
+                var cust = PenumbraAndGlamourerHelperFunctions.GetCustomization(player);
+                if (cust?.Equipment != null)
+                {
+                    List<string> items = new List<string>();
+                    var sheet = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Item>();
+                    
+                    void AddItem(long itemId, string slotName)
+                    {
+                        if (itemId > 0 && itemId < 1000000)
+                        {
+                            var item = sheet.GetRow((uint)itemId);
+                            if (!string.IsNullOrEmpty(item.Name.ToString()))
+                            {
+                                string name = item.Name.ToString();
+                                if (name.Contains("Emperor's New", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    items.Add("nothing on their " + slotName);
+                                }
+                                else
+                                {
+                                    items.Add(name);
+                                }
+                            }
+                        }
+                    }
+
+                    if (cust.Equipment.Head != null && cust.Equipment.Hat != null && cust.Equipment.Hat.Show) AddItem(cust.Equipment.Head.ItemId, "head");
+                    if (cust.Equipment.Body != null) AddItem(cust.Equipment.Body.ItemId, "torso");
+                    if (cust.Equipment.Hands != null) AddItem(cust.Equipment.Hands.ItemId, "hands");
+                    if (cust.Equipment.Legs != null) AddItem(cust.Equipment.Legs.ItemId, "legs");
+                    if (cust.Equipment.Feet != null) AddItem(cust.Equipment.Feet.ItemId, "feet");
+
+                    if (items.Count > 0)
+                    {
+                        appearanceData = " They are currently wearing: " + string.Join(", ", items) + ". ";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _plugin.PluginLog.Warning("Failed to read appearance: " + ex.Message);
+            }
+            return appearanceData;
         }
         private string GetRaceDescription(int race, string pronoun)
         {

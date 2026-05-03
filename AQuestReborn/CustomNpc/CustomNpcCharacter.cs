@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 
 namespace AQuestReborn.CustomNpc
@@ -32,6 +33,7 @@ namespace AQuestReborn.CustomNpc
 
         // Idle pose
         public ushort IdleEmoteId = 50; // Default: groundsit
+        public List<ushort> RandomIdleEmotes = new List<ushort>();
         public ushort VictoryPoseEmoteId = 0; // Default: none
 
         // Appearance mode

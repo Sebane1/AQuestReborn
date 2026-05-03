@@ -1372,6 +1372,11 @@ namespace AQuestReborn
                                 _interactiveNpcDictionary[npcData.NpcName] = npc;
 
                                 // Apply appearance
+                                if (!npcData.UseMcdfAppearance)
+                                {
+                                    AppearanceAccessUtils.AppearanceManager?.RemoveTemporaryCollection(character.Name.TextValue);
+                                }
+
                                 // Apply Penumbra Collection separately
                                 if (!npcData.UseMcdfAppearance && npcData.UsePenumbraCollection && !string.IsNullOrEmpty(npcData.PenumbraCollection))
                                 {
@@ -1437,6 +1442,7 @@ namespace AQuestReborn
                                     npc.SetDefaultRotation(stayRot);
                                 }
                                 npc.IdleEmoteId = npcData.IdleEmoteId;
+                                if (npcData.RandomIdleEmotes != null) npc.RandomIdleEmotes = npcData.RandomIdleEmotes.ToList();
                                 npc.TargetClassJobId = npcData.NpcClassJobId;
                                 npc.ClassWeaponApplied = false;
 
@@ -1489,6 +1495,11 @@ namespace AQuestReborn
                                 _interactiveNpcDictionary[npcData.NpcName] = npc;
 
                                 // Apply appearance
+                                if (!npcData.UseMcdfAppearance)
+                                {
+                                    AppearanceAccessUtils.AppearanceManager?.RemoveTemporaryCollection(character.Name.TextValue);
+                                }
+
                                 // Apply Penumbra Collection separately
                                 if (!npcData.UseMcdfAppearance && npcData.UsePenumbraCollection && !string.IsNullOrEmpty(npcData.PenumbraCollection))
                                 {
@@ -1543,16 +1554,23 @@ namespace AQuestReborn
                                 npc.SetDefaults(position, rotation);
                                 npc.SetDefaultRotation(rotation);
                                 npc.IdleEmoteId = npcData.IdleEmoteId;
+                                if (npcData.RandomIdleEmotes != null) npc.RandomIdleEmotes = npcData.RandomIdleEmotes.ToList();
                                 npc.VictoryPoseEmoteId = npcData.VictoryPoseEmoteId;
                                 npc.TargetClassJobId = npcData.NpcClassJobId;
                                 npc.ClassWeaponApplied = false;
 
                                 // Trigger idle emote immediately for staying NPCs
-                                if (npcData.IdleEmoteId > 0)
+                                ushort initialEmoteId = npcData.IdleEmoteId;
+                                if (npcData.RandomIdleEmotes != null && npcData.RandomIdleEmotes.Count > 0)
+                                {
+                                    initialEmoteId = npcData.RandomIdleEmotes[new System.Random().Next(npcData.RandomIdleEmotes.Count)];
+                                }
+
+                                if (initialEmoteId > 0)
                                 {
                                     try
                                     {
-                                        var emote = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(npcData.IdleEmoteId);
+                                        var emote = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(initialEmoteId);
                                         Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
                                     }
                                     catch { }
@@ -1603,7 +1621,13 @@ namespace AQuestReborn
                     {
                         if (_actorSpawnService != null && characterToDestroy != null)
                         {
-                            _actorSpawnService.DestroyObject(characterToDestroy);
+                            if (characterToDestroy.IsValid())
+                            {
+                                // Revert appearance first to avoid crashing
+                                PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke((int)characterToDestroy.ObjectIndex, Guid.Empty, true, true);
+                                PenumbraAndGlamourerIpcWrapper.Instance.RevertState.Invoke(characterToDestroy.ObjectIndex);
+                                _actorSpawnService.DestroyObject(characterToDestroy);
+                            }
                         }
                     }
                     catch (Exception ex)
@@ -1706,6 +1730,97 @@ namespace AQuestReborn
                             if (nextAiIndex != -1)
                             {
                                 cleanResponse = cleanResponse.Substring(0, nextAiIndex).Trim();
+                            }
+
+                            // Handle [glamour:Outfit] commands
+                            try
+                            {
+                                var glamourMatch = System.Text.RegularExpressions.Regex.Match(cleanResponse, @"\[glamour:(.*?)\]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                                if (glamourMatch.Success && _interactiveNpcDictionary.ContainsKey(npcData.NpcName))
+                                {
+                                    string requestedOutfit = glamourMatch.Groups[1].Value.Trim().ToLower();
+                                    
+                                    // Remove the command from the final output
+                                    cleanResponse = System.Text.RegularExpressions.Regex.Replace(cleanResponse, @"\[glamour:.*?\]", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+
+                                    var allDesigns = PenumbraAndGlamourerHelpers.PenumbraAndGlamourerHelperFunctions.GetGlamourerDesigns();
+                                    foreach (var design in allDesigns)
+                                    {
+                                        if (design.Value.ToLower().Contains(requestedOutfit))
+                                        {
+                                            var customNpc = _interactiveNpcDictionary[npcData.NpcName];
+                                            PenumbraAndGlamourerIpcWrapper.Instance.ApplyDesign.Invoke(design.Key, customNpc.Character.ObjectIndex);
+                                            break;
+                                        }
+                                    }
+                                }
+                                else if (_interactiveNpcDictionary.ContainsKey(npcData.NpcName))
+                                {
+                                    // Fallback: If AI didn't use the explicit command, parse conversational agreement
+                                    string userMessageLower = message.ToLower();
+                                    if (userMessageLower.Contains("change") || userMessageLower.Contains("wear") || userMessageLower.Contains("put on") || userMessageLower.Contains("outfit") || userMessageLower.Contains("clothes"))
+                                    {
+                                        var allDesigns = PenumbraAndGlamourerHelpers.PenumbraAndGlamourerHelperFunctions.GetGlamourerDesigns();
+                                        foreach (var design in allDesigns)
+                                        {
+                                            if (userMessageLower.Contains(design.Value.ToLower()))
+                                            {
+                                                string aiResponseLower = cleanResponse.ToLower();
+                                                bool agreed = aiResponseLower.Contains("sure") || aiResponseLower.Contains("okay") || aiResponseLower.Contains("of course") || aiResponseLower.Contains("right away") || aiResponseLower.Contains("*nods*") || aiResponseLower.Contains("*smiles*") || aiResponseLower.Contains("i will") || aiResponseLower.Contains("alright") || aiResponseLower.Contains("certainly") || aiResponseLower.Contains("give me a moment") || aiResponseLower.Contains("changing");
+                                                bool disagreed = aiResponseLower.Contains("no ") || aiResponseLower.Contains("don't") || aiResponseLower.Contains("won't") || aiResponseLower.Contains("*shakes head*") || aiResponseLower.Contains("cannot") || aiResponseLower.Contains("can't") || aiResponseLower.Contains("not right now");
+                                                
+                                                if (agreed && !disagreed)
+                                                {
+                                                    var customNpc = _interactiveNpcDictionary[npcData.NpcName];
+                                                    PenumbraAndGlamourerIpcWrapper.Instance.ApplyDesign.Invoke(design.Key, customNpc.Character.ObjectIndex);
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Plugin.PluginLog.Warning("Failed to apply glamour command: " + ex.Message);
+                            }
+
+                            // Trigger emotes if the LLM generated an action
+                            try
+                            {
+                                var emoteMatches = System.Text.RegularExpressions.Regex.Matches(cleanResponse, @"\*(.*?)\*");
+                                if (emoteMatches.Count > 0 && _interactiveNpcDictionary.ContainsKey(npcData.NpcName))
+                                {
+                                    string actionText = emoteMatches[0].Groups[1].Value.ToLower();
+                                    var emoteSheet = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>();
+                                    var emote = emoteSheet.FirstOrDefault(e => !string.IsNullOrEmpty(e.Name.ToString()) && actionText.Contains(e.Name.ToString().ToLower()));
+                                    
+                                    if (emote.RowId == 0)
+                                    {
+                                        if (actionText.Contains("smiles") || actionText.Contains("grins")) emote = emoteSheet.GetRow(50);
+                                        else if (actionText.Contains("laughs") || actionText.Contains("chuckles") || actionText.Contains("giggles")) emote = emoteSheet.GetRow(51);
+                                        else if (actionText.Contains("nods") || actionText.Contains("agrees")) emote = emoteSheet.GetRow(52);
+                                        else if (actionText.Contains("waves") || actionText.Contains("greets")) emote = emoteSheet.GetRow(53);
+                                        else if (actionText.Contains("bows")) emote = emoteSheet.GetRow(54);
+                                        else if (actionText.Contains("shrugs")) emote = emoteSheet.GetRow(64);
+                                        else if (actionText.Contains("cries") || actionText.Contains("weeps")) emote = emoteSheet.GetRow(56);
+                                        else if (actionText.Contains("points")) emote = emoteSheet.GetRow(62);
+                                        else if (actionText.Contains("thinks") || actionText.Contains("ponders")) emote = emoteSheet.GetRow(76);
+                                        else if (actionText.Contains("frowns") || actionText.Contains("angry")) emote = emoteSheet.GetRow(63);
+                                        else if (actionText.Contains("cheers") || actionText.Contains("celebrates")) emote = emoteSheet.GetRow(58);
+                                        else if (actionText.Contains("claps") || actionText.Contains("applauds")) emote = emoteSheet.GetRow(59);
+                                    }
+
+                                    if (emote.RowId > 0 && emote.ActionTimeline[0].Value.RowId > 0)
+                                    {
+                                        var customNpc = _interactiveNpcDictionary[npcData.NpcName];
+                                        Plugin.AnamcoreManager.TriggerEmote(customNpc.Character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Plugin.PluginLog.Warning("Failed to trigger emote: " + ex.Message);
                             }
 
                             // Strip actions for the chat log, similar to speech bubbles

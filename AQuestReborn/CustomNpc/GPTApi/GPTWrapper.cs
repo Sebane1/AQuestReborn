@@ -43,6 +43,9 @@ namespace AQuestReborn.CustomNpc
             string response = await new GPTRequestSender().GetGPTResponse(name, _histories[name].ToString()
                 + name.Split(" ")[0] + DetectFormatting(message.Trim()) + "\n" + _aiName + ": ", _aiName, false, modelChoice);
 
+            // If history was cleared while awaiting the response, bail out early
+            if (!_histories.ContainsKey(name)) return "";
+
             // Reject responses that lack both dialogue quotes and action asterisks
             /*if (!string.IsNullOrEmpty(response) && !response.Contains("\"") && !response.Contains("*"))
             {
@@ -115,7 +118,8 @@ namespace AQuestReborn.CustomNpc
         }
         public async Task<string> GetSummary(string name)
         {
-            string lastValue = _histories.ContainsKey(name) ? _histories[name].History.GetLastVisibleItem() : Guid.NewGuid().ToString();
+            if (!_histories.ContainsKey(name)) return "";
+            string lastValue = _histories[name].History.GetLastVisibleItem();
             string response = await new GPTRequestSender().GetGPTResponse(name, _histories[name].ToString()
                 + "[Chat Summary:", _aiName, false);
             return response.Replace("[Chat Summary:", null);
@@ -188,8 +192,11 @@ namespace AQuestReborn.CustomNpc
                 }
             }
 
-            // Failsafe to strip any leaked bracketed meta-instructions, even if unclosed
-            value = System.Text.RegularExpressions.Regex.Replace(value, @"\[.*?(?:\]|$)", "").Trim();
+            // Failsafe to strip any leaked bracketed meta-instructions, even if unclosed, but ignore glamour commands
+            value = System.Text.RegularExpressions.Regex.Replace(value, @"\[(?!glamour:).*?(?:\]|$)", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+
+            // Strip out garbage repeating asterisks (e.g. *****)
+            value = System.Text.RegularExpressions.Regex.Replace(value, @"\*{2,}", "").Trim();
 
             // Clean up leading colons or rogue spaces from name stripping
             value = value.TrimStart(':', ' ').Trim();

@@ -23,7 +23,7 @@ namespace AQuestReborn.CustomNpc
         public SpeechBubbleManager(Plugin plugin)
         {
             _plugin = plugin;
-            _nextAmbientIntervalMs = 30000; // 30 seconds (testing)
+            _nextAmbientIntervalMs = 300000; // 5 minutes
             _ambientTimer.Start();
         }
 
@@ -120,7 +120,7 @@ namespace AQuestReborn.CustomNpc
             {
                 _plugin.PluginLog.Information($"[SpeechBubble] Timer fired! NPCs={customNpcs.Count}, ConvMgrs={conversationManagers?.Count ?? 0}");
                 _ambientTimer.Restart();
-                _nextAmbientIntervalMs = 30000; // 30 seconds (testing)
+                _nextAmbientIntervalMs = 300000; // 5 minutes
                 _isProcessingAmbient = true;
 
                 Task.Run(async () =>
