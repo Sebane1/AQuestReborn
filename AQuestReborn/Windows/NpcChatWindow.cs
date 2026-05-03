@@ -352,7 +352,7 @@ public class NpcChatWindow : Window, IDisposable
                         }
                     }
 
-                    var quoteMatches = System.Text.RegularExpressions.Regex.Matches(cleanResponse, "\"([^\"]*)\"");
+                    var quoteMatches = System.Text.RegularExpressions.Regex.Matches(cleanResponse, "[\"“]([^\"”]+)[\"”]");
                     if (quoteMatches.Count > 0)
                     {
                         string dialogueOnly = "";
