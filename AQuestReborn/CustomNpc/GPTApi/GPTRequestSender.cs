@@ -26,7 +26,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
             {
                 using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
                 {
-                    string json = JsonConvert.SerializeObject(new GPTRequest(sender, message));
+                    string json = JsonConvert.SerializeObject(new GPTRequest(sender, message, personality));
                     streamWriter.Write(json);
                 }
                 var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
@@ -56,7 +56,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
             using (ClientWebSocket websocket = new ClientWebSocket())
             {
                 await websocket.ConnectAsync(new System.Uri("ws://localhost:5005/api/v1/stream"), default);
-                string json = JsonConvert.SerializeObject(new GPTRequest(sender, message));
+                string json = JsonConvert.SerializeObject(new GPTRequest(sender, message, personality));
                 await SendString(websocket, json, default);
                 while (true)
                 {
