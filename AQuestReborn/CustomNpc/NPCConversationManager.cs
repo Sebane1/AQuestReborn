@@ -12,6 +12,7 @@ namespace AQuestReborn.CustomNpc
 {
     public class NPCConversationManager
     {
+        public static List<string> RecentGameDialogue = new List<string>();
         private GPTWrapper _gptWrapper;
         private Plugin _plugin;
         private ICharacter _aiCharacter;
@@ -73,9 +74,19 @@ namespace AQuestReborn.CustomNpc
             {
                 combatMemory = $" The player recently fought a {InteractiveNpc.LastCombatTarget}. ";
             }
+
+            string recentDialogueMemory = "";
+            lock (RecentGameDialogue)
+            {
+                if (RecentGameDialogue.Count > 0)
+                {
+                    recentDialogueMemory = " Recently overheard dialogue in the area: " + string.Join(" ", RecentGameDialogue) + " ";
+                }
+            }
+
             return $"{name} is a {genderStr}. {pronounSingularAlternate} is a race of {raceStr}. " +
                 $"{GetPlayerExperience(player.Level, player.ClassJob.Value.NameEnglish.ToString(), pronounSingularAlternate)}." +
-                combatMemory + chatSummaries;
+                combatMemory + recentDialogueMemory + chatSummaries;
         }
         private string GetRaceDescription(int race, string pronoun)
         {

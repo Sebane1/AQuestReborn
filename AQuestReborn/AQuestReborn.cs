@@ -176,6 +176,22 @@ namespace AQuestReborn
             {
                 Plugin.PluginLog.Debug((int)chatMessage.LogKind + " " + chatMessage.Message);
                 var messageAsString = chatMessage.Message.ToString();
+                var chatType = (Dalamud.Game.Text.XivChatType)chatMessage.LogKind;
+                if (chatType == Dalamud.Game.Text.XivChatType.NPCDialogue || 
+                    chatType == Dalamud.Game.Text.XivChatType.NPCDialogueAnnouncements)
+                {
+                    lock (CustomNpc.NPCConversationManager.RecentGameDialogue)
+                    {
+                        string senderName = chatMessage.Sender?.ToString() ?? "Unknown";
+                        string formattedLine = $"{senderName}: \"{messageAsString}\"";
+                        CustomNpc.NPCConversationManager.RecentGameDialogue.Add(formattedLine);
+                        if (CustomNpc.NPCConversationManager.RecentGameDialogue.Count > 2)
+                        {
+                            CustomNpc.NPCConversationManager.RecentGameDialogue.RemoveAt(0);
+                        }
+                    }
+                }
+
                 switch ((int)chatMessage.LogKind)
                 {
                     case 2874:
