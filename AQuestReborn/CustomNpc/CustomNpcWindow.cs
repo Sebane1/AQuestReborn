@@ -170,6 +170,14 @@ namespace AQuestReborn.CustomNpc
                 {
                     RefreshEmoteList();
                 }
+                if (_placeNames.Length <= 1)
+                {
+                    RefreshPlaceNameList();
+                }
+                if (_classJobNames.Length <= 1)
+                {
+                    RefreshClassJobList();
+                }
                 RefreshNPCItemNames();
                 ImGui.BeginTable("##CustomNpcTable", 2);
                 ImGui.TableSetupColumn(Translator.LocalizeUI("Custom NPC"), ImGuiTableColumnFlags.WidthFixed, 200);
@@ -250,288 +258,307 @@ namespace AQuestReborn.CustomNpc
                         if (idx >= 0) _designListSelectedIndex = idx;
                     }
 
-                    ImGui.LabelText("##personalityLabel", Translator.LocalizeUI("NPC Name"));
-                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                    if (ImGui.InputText("##NPCName", ref _customNpcCharacters[_currentSelection].NpcName, 255))
+                    if (ImGui.BeginTabBar("NpcConfigTabs"))
                     {
-                        SaveNPCCharacters();
-                    }
-
-                    ImGui.Dummy(new Vector2(0, 5));
-
-                    // Appearance mode toggle
-                    if (ImGui.Checkbox(Translator.LocalizeUI("Use MCDF File"), ref _customNpcCharacters[_currentSelection].UseMcdfAppearance))
-                    {
-                        SaveNPCCharacters();
-                    }
-
-                    // Create MCDF from player appearance
-                    if (_isCreatingMcdf)
-                    {
-                        ImGui.BeginDisabled();
-                    }
-                    if (ImGui.Button(Translator.LocalizeUI(_isCreatingMcdf ? "Creating Appearance..." : "Create MCDF From Player Appearance##customnpc")))
-                    {
-                        Task.Run(() =>
+                        if (ImGui.BeginTabItem(Translator.LocalizeUI("General & Appearance")))
                         {
-                            _isCreatingMcdf = true;
-                            try
+                            ImGui.LabelText("##personalityLabel", Translator.LocalizeUI("NPC Name"));
+                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                            if (ImGui.InputText("##NPCName", ref _customNpcCharacters[_currentSelection].NpcName, 255))
                             {
-                                string npcName = _customNpcCharacters[_currentSelection].NpcName;
-                                string mcdfDir = Path.Combine(_plugin.Configuration.QuestInstallFolder, "CustomNpcs");
-                                Directory.CreateDirectory(mcdfDir);
-                                string mcdfName = npcName + "-" + Guid.NewGuid().ToString() + ".mcdf";
-                                string mcdfPath = Path.Combine(mcdfDir, mcdfName);
-                                AppearanceAccessUtils.AppearanceManager.CreateMCDF(mcdfPath);
-                                _customNpcCharacters[_currentSelection].McdfFilePath = mcdfPath;
-                                _customNpcCharacters[_currentSelection].UseMcdfAppearance = true;
                                 SaveNPCCharacters();
+                            }
 
-                                // Apply immediately if NPC is spawned
-                                if (_plugin?.AQuestReborn != null)
-                                {
-                                    _plugin.AQuestReborn.ReapplyCustomNpcMcdfAppearance(npcName, mcdfPath);
-                                }
-                            }
-                            catch (Exception e)
-                            {
-                                _plugin?.PluginLog?.Warning(e, "Failed to create MCDF");
-                            }
-                            finally
-                            {
-                                _isCreatingMcdf = false;
-                            }
-                        });
-                    }
-                    if (_isCreatingMcdf)
-                    {
-                        ImGui.EndDisabled();
-                    }
+                            ImGui.Dummy(new Vector2(0, 5));
 
-                    if (!_customNpcCharacters[_currentSelection].UseMcdfAppearance)
-                    {
-                        // Glamourer design dropdown
-                        ImGui.LabelText("##glamourerLabel", Translator.LocalizeUI("Glamourer Design Appearance"));
-                        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                        if (ImGui.Combo("##savedDesigns", ref _designListSelectedIndex, _designListContents, _designListContents.Length))
-                        {
-                            // Find the GUID that corresponds to the selected design name
-                            if (_designListSelectedIndex >= 0 && _designListSelectedIndex < _designListContents.Length)
+                            // Appearance mode toggle
+                            if (ImGui.Checkbox(Translator.LocalizeUI("Use MCDF File"), ref _customNpcCharacters[_currentSelection].UseMcdfAppearance))
                             {
-                                string selectedName = _designListContents[_designListSelectedIndex];
-                                foreach (var kvp in _currentGlamourerDesigns)
+                                SaveNPCCharacters();
+                            }
+
+                            // Create MCDF from player appearance
+                            if (_isCreatingMcdf)
+                            {
+                                ImGui.BeginDisabled();
+                            }
+                            if (ImGui.Button(Translator.LocalizeUI(_isCreatingMcdf ? "Creating Appearance..." : "Create MCDF From Player Appearance##customnpc")))
+                            {
+                                Task.Run(() =>
                                 {
-                                    if (kvp.Value == selectedName)
+                                    _isCreatingMcdf = true;
+                                    try
                                     {
-                                        _customNpcCharacters[_currentSelection].NpcGlamourerAppearanceString = kvp.Key.ToString();
+                                        string npcName = _customNpcCharacters[_currentSelection].NpcName;
+                                        string mcdfDir = Path.Combine(_plugin.Configuration.QuestInstallFolder, "CustomNpcs");
+                                        Directory.CreateDirectory(mcdfDir);
+                                        string mcdfName = npcName + "-" + Guid.NewGuid().ToString() + ".mcdf";
+                                        string mcdfPath = Path.Combine(mcdfDir, mcdfName);
+                                        AppearanceAccessUtils.AppearanceManager.CreateMCDF(mcdfPath);
+                                        _customNpcCharacters[_currentSelection].McdfFilePath = mcdfPath;
+                                        _customNpcCharacters[_currentSelection].UseMcdfAppearance = true;
                                         SaveNPCCharacters();
 
-                                        // Re-apply appearance if NPC is currently spawned
-                                        if (_customNpcCharacters[_currentSelection].IsFollowingPlayer
-                                            && _plugin != null && _plugin.AQuestReborn != null)
+                                        // Apply immediately if NPC is spawned
+                                        if (_plugin?.AQuestReborn != null)
                                         {
-                                            _plugin.AQuestReborn.ReapplyCustomNpcAppearance(
-                                                _customNpcCharacters[_currentSelection].NpcName, kvp.Key);
+                                            _plugin.AQuestReborn.ReapplyCustomNpcMcdfAppearance(npcName, mcdfPath);
                                         }
-                                        break;
                                     }
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // MCDF file path input
-                        ImGui.LabelText("##mcdfLabel", Translator.LocalizeUI("MCDF File Path"));
-                        ImGui.SetNextItemWidth(ImGui.GetColumnWidth() - 80);
-                        if (ImGui.InputText("##McdfPath", ref _customNpcCharacters[_currentSelection].McdfFilePath, 1024))
-                        {
-                            SaveNPCCharacters();
-                        }
-                        ImGui.SameLine();
-                        if (ImGui.Button(Translator.LocalizeUI("Browse"), new Vector2(70, 0)))
-                        {
-                            _fileDialogManager.Reset();
-                            ImGui.OpenPopup("OpenMcdfDialog##customnpc");
-                        }
-                        if (ImGui.BeginPopup("OpenMcdfDialog##customnpc"))
-                        {
-                            _fileDialogManager.OpenFileDialog(Translator.LocalizeUI("Select MCDF File"), ".mcdf", (isOk, file) =>
-                            {
-                                if (isOk && file.Count > 0)
-                                {
-                                    _customNpcCharacters[_currentSelection].McdfFilePath = file[0];
-                                    SaveNPCCharacters();
-
-                                    // Apply immediately if NPC is spawned
-                                    if (_customNpcCharacters[_currentSelection].IsFollowingPlayer
-                                        && _plugin != null && _plugin.AQuestReborn != null)
+                                    catch (Exception e)
                                     {
-                                        _plugin.AQuestReborn.ReapplyCustomNpcMcdfAppearance(
-                                            _customNpcCharacters[_currentSelection].NpcName, file[0]);
+                                        _plugin?.PluginLog?.Warning(e, "Failed to create MCDF");
+                                    }
+                                    finally
+                                    {
+                                        _isCreatingMcdf = false;
+                                    }
+                                });
+                            }
+                            if (_isCreatingMcdf)
+                            {
+                                ImGui.EndDisabled();
+                            }
+
+                            if (!_customNpcCharacters[_currentSelection].UseMcdfAppearance)
+                            {
+                                // Glamourer design dropdown
+                                ImGui.LabelText("##glamourerLabel", Translator.LocalizeUI("Glamourer Design Appearance"));
+                                ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                                if (ImGui.Combo("##savedDesigns", ref _designListSelectedIndex, _designListContents, _designListContents.Length))
+                                {
+                                    // Find the GUID that corresponds to the selected design name
+                                    if (_designListSelectedIndex >= 0 && _designListSelectedIndex < _designListContents.Length)
+                                    {
+                                        string selectedName = _designListContents[_designListSelectedIndex];
+                                        foreach (var kvp in _currentGlamourerDesigns)
+                                        {
+                                            if (kvp.Value == selectedName)
+                                            {
+                                                _customNpcCharacters[_currentSelection].NpcGlamourerAppearanceString = kvp.Key.ToString();
+                                                SaveNPCCharacters();
+
+                                                // Re-apply appearance if NPC is currently spawned
+                                                if (_customNpcCharacters[_currentSelection].IsFollowingPlayer
+                                                    && _plugin != null && _plugin.AQuestReborn != null)
+                                                {
+                                                    _plugin.AQuestReborn.ReapplyCustomNpcAppearance(
+                                                        _customNpcCharacters[_currentSelection].NpcName, kvp.Key);
+                                                }
+                                                break;
+                                            }
+                                        }
                                     }
                                 }
-                            }, 0, null, true);
-                            ImGui.EndPopup();
-                        }
-                    }
-
-                    ImGui.LabelText("##greetingLabel", Translator.LocalizeUI("NPC Greeting"));
-                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                    if (ImGui.InputText("##Greeting", ref _customNpcCharacters[_currentSelection].NPCGreeting, 500))
-                    {
-                        SaveNPCCharacters();
-                    }
-
-                    ImGui.LabelText("##personalityFieldLabel", Translator.LocalizeUI("NPC Personality"));
-                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                    if (ImGui.InputTextMultiline("##NpcPersonality", ref _customNpcCharacters[_currentSelection].NpcPersonality, 2000, new Vector2(ImGui.GetColumnWidth(), 100)))
-                    {
-                        SaveNPCCharacters();
-                    }
-
-                    ImGui.LabelText("##npcBirthDateLabel", Translator.LocalizeUI("Birth Date (Lore)"));
-                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                    if (ImGui.InputText("##NpcBirthDate", ref _customNpcCharacters[_currentSelection].NpcBirthDate, 100))
-                    {
-                        SaveNPCCharacters();
-                    }
-
-                    ImGui.LabelText("##npcBirthLocationLabel", Translator.LocalizeUI("Birth Location (Lore)"));
-                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + 
-                        (string.IsNullOrEmpty(_customNpcCharacters[_currentSelection].NpcBirthLocation) ? Translator.LocalizeUI("Unknown") : _customNpcCharacters[_currentSelection].NpcBirthLocation));
-                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                    ImGui.InputTextWithHint("##placeNameSearch", Translator.LocalizeUI("Search locations..."), ref _placeNameSearchText, 100);
-                    if (ImGui.BeginChild("##placeNameList", new Vector2(ImGui.GetColumnWidth(), 120), true))
-                    {
-                        for (int i = 0; i < _placeNames.Length; i++)
-                        {
-                            if (!string.IsNullOrEmpty(_placeNameSearchText)
-                                && !_placeNames[i].Contains(_placeNameSearchText, StringComparison.OrdinalIgnoreCase))
-                                continue;
-                            bool isSelected = _placeNames[i] == _customNpcCharacters[_currentSelection].NpcBirthLocation;
-                            if (ImGui.Selectable(_placeNames[i] + "##" + i, isSelected))
-                            {
-                                _customNpcCharacters[_currentSelection].NpcBirthLocation = _placeNames[i] == "Unknown" ? "" : _placeNames[i];
-                                SaveNPCCharacters();
                             }
-                        }
-                        ImGui.EndChild();
-                    }
-
-                    ImGui.LabelText("##npcJobLabel", Translator.LocalizeUI("Profession/Job"));
-                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + 
-                        (string.IsNullOrEmpty(_customNpcCharacters[_currentSelection].NpcJob) ? Translator.LocalizeUI("None") : _customNpcCharacters[_currentSelection].NpcJob));
-                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                    ImGui.InputTextWithHint("##classJobSearch", Translator.LocalizeUI("Search jobs..."), ref _classJobSearchText, 100);
-                    if (ImGui.BeginChild("##classJobList", new Vector2(ImGui.GetColumnWidth(), 120), true))
-                    {
-                        for (int i = 0; i < _classJobNames.Length; i++)
-                        {
-                            if (!string.IsNullOrEmpty(_classJobSearchText)
-                                && !_classJobNames[i].Contains(_classJobSearchText, StringComparison.OrdinalIgnoreCase))
-                                continue;
-                            bool isSelected = _classJobRowIds[i] == _customNpcCharacters[_currentSelection].NpcClassJobId;
-                            if (ImGui.Selectable(_classJobNames[i] + "##" + i, isSelected))
+                            else
                             {
-                                _customNpcCharacters[_currentSelection].NpcJob = _classJobNames[i] == "None" ? "" : _classJobNames[i];
-                                _customNpcCharacters[_currentSelection].NpcClassJobId = _classJobRowIds[i];
-                                SaveNPCCharacters();
-                            }
-                        }
-                        ImGui.EndChild();
-                    }
-
-                    ImGui.LabelText("##npcHobbiesLabel", Translator.LocalizeUI("Hobbies"));
-                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                    if (ImGui.InputText("##NpcHobbies", ref _customNpcCharacters[_currentSelection].NpcHobbies, 500))
-                    {
-                        SaveNPCCharacters();
-                    }
-
-                    ImGui.Dummy(new Vector2(0, 10));
-
-                    // Idle pose selector with search
-                    ImGui.LabelText("##idlePoseLabel", Translator.LocalizeUI("Idle Pose"));
-                    int currentEmoteIdx = Array.IndexOf(_idleEmoteRowIds, _customNpcCharacters[_currentSelection].IdleEmoteId);
-                    string currentEmoteName = currentEmoteIdx >= 0 && currentEmoteIdx < _idleEmoteNames.Length
-                        ? _idleEmoteNames[currentEmoteIdx] : Translator.LocalizeUI("None");
-                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + currentEmoteName);
-                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                    ImGui.InputTextWithHint("##emoteSearch", Translator.LocalizeUI("Search emotes..."), ref _emoteSearchText, 100);
-                    if (ImGui.BeginChild("##emoteList", new Vector2(ImGui.GetColumnWidth(), 120), true))
-                    {
-                        for (int i = 0; i < _idleEmoteNames.Length; i++)
-                        {
-                            if (!string.IsNullOrEmpty(_emoteSearchText)
-                                && !_idleEmoteNames[i].Contains(_emoteSearchText, StringComparison.OrdinalIgnoreCase))
-                                continue;
-                            bool isSelected = _idleEmoteRowIds[i] == _customNpcCharacters[_currentSelection].IdleEmoteId;
-                            if (ImGui.Selectable(_idleEmoteNames[i] + "##" + i, isSelected))
-                            {
-                                _customNpcCharacters[_currentSelection].IdleEmoteId = _idleEmoteRowIds[i];
-                                SaveNPCCharacters();
-                                // Push to live NPC immediately
-                                if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
-                                    && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
-                                        _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
+                                // MCDF file path input
+                                ImGui.LabelText("##mcdfLabel", Translator.LocalizeUI("MCDF File Path"));
+                                ImGui.SetNextItemWidth(ImGui.GetColumnWidth() - 80);
+                                if (ImGui.InputText("##McdfPath", ref _customNpcCharacters[_currentSelection].McdfFilePath, 1024))
                                 {
-                                    liveNpc.IdleEmoteId = _idleEmoteRowIds[i];
+                                    SaveNPCCharacters();
+                                }
+                                ImGui.SameLine();
+                                if (ImGui.Button(Translator.LocalizeUI("Browse"), new Vector2(70, 0)))
+                                {
+                                    _fileDialogManager.Reset();
+                                    ImGui.OpenPopup("OpenMcdfDialog##customnpc");
+                                }
+                                if (ImGui.BeginPopup("OpenMcdfDialog##customnpc"))
+                                {
+                                    _fileDialogManager.OpenFileDialog(Translator.LocalizeUI("Select MCDF File"), ".mcdf", (isOk, file) =>
+                                    {
+                                        if (isOk && file.Count > 0)
+                                        {
+                                            _customNpcCharacters[_currentSelection].McdfFilePath = file[0];
+                                            SaveNPCCharacters();
+
+                                            // Apply immediately if NPC is spawned
+                                            if (_customNpcCharacters[_currentSelection].IsFollowingPlayer
+                                                && _plugin != null && _plugin.AQuestReborn != null)
+                                            {
+                                                _plugin.AQuestReborn.ReapplyCustomNpcMcdfAppearance(
+                                                    _customNpcCharacters[_currentSelection].NpcName, file[0]);
+                                            }
+                                        }
+                                    }, 0, null, true);
+                                    ImGui.EndPopup();
                                 }
                             }
-                        }
-                    }
-                    ImGui.EndChild();
-
-                    ImGui.Dummy(new Vector2(0, 5));
-
-                    // Victory pose selector with search
-                    ImGui.LabelText("##victoryPoseLabel", Translator.LocalizeUI("Victory Pose"));
-                    int currentVicEmoteIdx = Array.IndexOf(_idleEmoteRowIds, _customNpcCharacters[_currentSelection].VictoryPoseEmoteId);
-                    string currentVicEmoteName = currentVicEmoteIdx >= 0 && currentVicEmoteIdx < _idleEmoteNames.Length
-                        ? _idleEmoteNames[currentVicEmoteIdx] : Translator.LocalizeUI("None");
-                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + currentVicEmoteName);
-                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                    ImGui.InputTextWithHint("##victoryEmoteSearch", Translator.LocalizeUI("Search emotes..."), ref _victoryEmoteSearchText, 100);
-                    if (ImGui.BeginChild("##victoryEmoteList", new Vector2(ImGui.GetColumnWidth(), 120), true))
-                    {
-                        // Add "None" option
-                        bool isVicNoneSelected = _customNpcCharacters[_currentSelection].VictoryPoseEmoteId == 0;
-                        if (ImGui.Selectable("None##vic_none", isVicNoneSelected))
-                        {
-                            _customNpcCharacters[_currentSelection].VictoryPoseEmoteId = 0;
-                            SaveNPCCharacters();
-                            if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
-                                && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
-                                    _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
-                            {
-                                liveNpc.VictoryPoseEmoteId = 0;
-                            }
+                            
+                            ImGui.EndTabItem();
                         }
 
-                        for (int i = 0; i < _idleEmoteNames.Length; i++)
+                        if (ImGui.BeginTabItem(Translator.LocalizeUI("Lore & Personality")))
                         {
-                            if (!string.IsNullOrEmpty(_victoryEmoteSearchText)
-                                && !_idleEmoteNames[i].Contains(_victoryEmoteSearchText, StringComparison.OrdinalIgnoreCase))
-                                continue;
-                            bool isSelected = _idleEmoteRowIds[i] == _customNpcCharacters[_currentSelection].VictoryPoseEmoteId;
-                            if (ImGui.Selectable(_idleEmoteNames[i] + "##vic_" + i, isSelected))
+                            ImGui.LabelText("##greetingLabel", Translator.LocalizeUI("NPC Greeting"));
+                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                            if (ImGui.InputText("##Greeting", ref _customNpcCharacters[_currentSelection].NPCGreeting, 500))
                             {
-                                _customNpcCharacters[_currentSelection].VictoryPoseEmoteId = _idleEmoteRowIds[i];
                                 SaveNPCCharacters();
-                                // Push to live NPC immediately
-                                if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
-                                    && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
-                                        _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
+                            }
+
+                            ImGui.LabelText("##personalityFieldLabel", Translator.LocalizeUI("NPC Personality"));
+                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                            if (ImGui.InputTextMultiline("##NpcPersonality", ref _customNpcCharacters[_currentSelection].NpcPersonality, 2000, new Vector2(ImGui.GetColumnWidth(), 100)))
+                            {
+                                SaveNPCCharacters();
+                            }
+
+                            ImGui.LabelText("##npcBirthDateLabel", Translator.LocalizeUI("Birth Date (Lore)"));
+                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                            if (ImGui.InputText("##NpcBirthDate", ref _customNpcCharacters[_currentSelection].NpcBirthDate, 100))
+                            {
+                                SaveNPCCharacters();
+                            }
+
+                            ImGui.LabelText("##npcBirthLocationLabel", Translator.LocalizeUI("Birth Location (Lore)"));
+                            ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + 
+                                (string.IsNullOrEmpty(_customNpcCharacters[_currentSelection].NpcBirthLocation) ? Translator.LocalizeUI("Unknown") : _customNpcCharacters[_currentSelection].NpcBirthLocation));
+                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                            ImGui.InputTextWithHint("##placeNameSearch", Translator.LocalizeUI("Search locations..."), ref _placeNameSearchText, 100);
+                            if (ImGui.BeginChild("##placeNameList", new Vector2(ImGui.GetColumnWidth(), 120), true))
+                            {
+                                for (int i = 0; i < _placeNames.Length; i++)
                                 {
-                                    liveNpc.VictoryPoseEmoteId = _idleEmoteRowIds[i];
+                                    if (!string.IsNullOrEmpty(_placeNameSearchText)
+                                        && !_placeNames[i].Contains(_placeNameSearchText, StringComparison.OrdinalIgnoreCase))
+                                        continue;
+                                    bool isSelected = _placeNames[i] == _customNpcCharacters[_currentSelection].NpcBirthLocation;
+                                    if (ImGui.Selectable(_placeNames[i] + "##" + i, isSelected))
+                                    {
+                                        _customNpcCharacters[_currentSelection].NpcBirthLocation = _placeNames[i] == "Unknown" ? "" : _placeNames[i];
+                                        SaveNPCCharacters();
+                                    }
+                                }
+                                ImGui.EndChild();
+                            }
+
+                            ImGui.LabelText("##npcJobLabel", Translator.LocalizeUI("Profession/Job"));
+                            ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + 
+                                (string.IsNullOrEmpty(_customNpcCharacters[_currentSelection].NpcJob) ? Translator.LocalizeUI("None") : _customNpcCharacters[_currentSelection].NpcJob));
+                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                            ImGui.InputTextWithHint("##classJobSearch", Translator.LocalizeUI("Search jobs..."), ref _classJobSearchText, 100);
+                            if (ImGui.BeginChild("##classJobList", new Vector2(ImGui.GetColumnWidth(), 120), true))
+                            {
+                                for (int i = 0; i < _classJobNames.Length; i++)
+                                {
+                                    if (!string.IsNullOrEmpty(_classJobSearchText)
+                                        && !_classJobNames[i].Contains(_classJobSearchText, StringComparison.OrdinalIgnoreCase))
+                                        continue;
+                                    bool isSelected = _classJobRowIds[i] == _customNpcCharacters[_currentSelection].NpcClassJobId;
+                                    if (ImGui.Selectable(_classJobNames[i] + "##" + i, isSelected))
+                                    {
+                                        _customNpcCharacters[_currentSelection].NpcJob = _classJobNames[i] == "None" ? "" : _classJobNames[i];
+                                        _customNpcCharacters[_currentSelection].NpcClassJobId = _classJobRowIds[i];
+                                        SaveNPCCharacters();
+                                    }
+                                }
+                                ImGui.EndChild();
+                            }
+
+                            ImGui.LabelText("##npcHobbiesLabel", Translator.LocalizeUI("Hobbies"));
+                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                            if (ImGui.InputText("##NpcHobbies", ref _customNpcCharacters[_currentSelection].NpcHobbies, 500))
+                            {
+                                SaveNPCCharacters();
+                            }
+                            
+                            ImGui.EndTabItem();
+                        }
+
+                        if (ImGui.BeginTabItem(Translator.LocalizeUI("Behavior & Animation")))
+                        {
+                            ImGui.Dummy(new Vector2(0, 10));
+
+                            // Idle pose selector with search
+                            ImGui.LabelText("##idlePoseLabel", Translator.LocalizeUI("Idle Pose"));
+                            int currentEmoteIdx = Array.IndexOf(_idleEmoteRowIds, _customNpcCharacters[_currentSelection].IdleEmoteId);
+                            string currentEmoteName = currentEmoteIdx >= 0 && currentEmoteIdx < _idleEmoteNames.Length
+                                ? _idleEmoteNames[currentEmoteIdx] : Translator.LocalizeUI("None");
+                            ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + currentEmoteName);
+                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                            ImGui.InputTextWithHint("##emoteSearch", Translator.LocalizeUI("Search emotes..."), ref _emoteSearchText, 100);
+                            if (ImGui.BeginChild("##emoteList", new Vector2(ImGui.GetColumnWidth(), 120), true))
+                            {
+                                for (int i = 0; i < _idleEmoteNames.Length; i++)
+                                {
+                                    if (!string.IsNullOrEmpty(_emoteSearchText)
+                                        && !_idleEmoteNames[i].Contains(_emoteSearchText, StringComparison.OrdinalIgnoreCase))
+                                        continue;
+                                    bool isSelected = _idleEmoteRowIds[i] == _customNpcCharacters[_currentSelection].IdleEmoteId;
+                                    if (ImGui.Selectable(_idleEmoteNames[i] + "##" + i, isSelected))
+                                    {
+                                        _customNpcCharacters[_currentSelection].IdleEmoteId = _idleEmoteRowIds[i];
+                                        SaveNPCCharacters();
+                                        // Push to live NPC immediately
+                                        if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
+                                            && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
+                                                _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
+                                        {
+                                            liveNpc.IdleEmoteId = _idleEmoteRowIds[i];
+                                        }
+                                    }
                                 }
                             }
-                        }
-                    }
-                    ImGui.EndChild();
+                            ImGui.EndChild();
 
-                    ImGui.Dummy(new Vector2(0, 5));
+                            ImGui.Dummy(new Vector2(0, 5));
+
+                            // Victory pose selector with search
+                            ImGui.LabelText("##victoryPoseLabel", Translator.LocalizeUI("Victory Pose"));
+                            int currentVicEmoteIdx = Array.IndexOf(_idleEmoteRowIds, _customNpcCharacters[_currentSelection].VictoryPoseEmoteId);
+                            string currentVicEmoteName = currentVicEmoteIdx >= 0 && currentVicEmoteIdx < _idleEmoteNames.Length
+                                ? _idleEmoteNames[currentVicEmoteIdx] : Translator.LocalizeUI("None");
+                            ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + currentVicEmoteName);
+                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                            ImGui.InputTextWithHint("##victoryEmoteSearch", Translator.LocalizeUI("Search emotes..."), ref _victoryEmoteSearchText, 100);
+                            if (ImGui.BeginChild("##victoryEmoteList", new Vector2(ImGui.GetColumnWidth(), 120), true))
+                            {
+                                // Add "None" option
+                                bool isVicNoneSelected = _customNpcCharacters[_currentSelection].VictoryPoseEmoteId == 0;
+                                if (ImGui.Selectable("None##vic_none", isVicNoneSelected))
+                                {
+                                    _customNpcCharacters[_currentSelection].VictoryPoseEmoteId = 0;
+                                    SaveNPCCharacters();
+                                    if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
+                                        && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
+                                            _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
+                                    {
+                                        liveNpc.VictoryPoseEmoteId = 0;
+                                    }
+                                }
+
+                                for (int i = 0; i < _idleEmoteNames.Length; i++)
+                                {
+                                    if (!string.IsNullOrEmpty(_victoryEmoteSearchText)
+                                        && !_idleEmoteNames[i].Contains(_victoryEmoteSearchText, StringComparison.OrdinalIgnoreCase))
+                                        continue;
+                                    bool isSelected = _idleEmoteRowIds[i] == _customNpcCharacters[_currentSelection].VictoryPoseEmoteId;
+                                    if (ImGui.Selectable(_idleEmoteNames[i] + "##vic_" + i, isSelected))
+                                    {
+                                        _customNpcCharacters[_currentSelection].VictoryPoseEmoteId = _idleEmoteRowIds[i];
+                                        SaveNPCCharacters();
+                                        // Push to live NPC immediately
+                                        if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
+                                            && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
+                                                _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
+                                        {
+                                            liveNpc.VictoryPoseEmoteId = _idleEmoteRowIds[i];
+                                        }
+                                    }
+                                }
+                            }
+                            ImGui.EndChild();
+                            
+                            ImGui.EndTabItem();
+                        }
+                        ImGui.EndTabBar();
+                    }
+
+                    ImGui.Dummy(new Vector2(0, 15));
 
                     // Show stay location if NPC is staying in another zone
                     var currentNpc = _customNpcCharacters[_currentSelection];

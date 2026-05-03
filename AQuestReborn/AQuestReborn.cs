@@ -172,12 +172,10 @@ namespace AQuestReborn
 
         public void TestActionSheet()
         {
-            var actions = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Action>();
-            foreach (var action in actions)
+            var places = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.PlaceName>();
+            foreach (var place in places)
             {
-                var a = action.ClassJob.RowId;
-                var b = action.AnimationStart.RowId;
-                var c = action.ActionCategory.RowId;
+                var n = place.Name;
             }
         }
 
