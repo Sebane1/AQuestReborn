@@ -1601,8 +1601,36 @@ namespace AQuestReborn
 
                         if (!string.IsNullOrEmpty(response))
                         {
+                            string cleanResponse = response.Trim();
+                            
+                            // Fix LLM hallucinating chat logs
+                            string aiNamePrefix = npcData.NpcName.Split(" ")[0] + ":";
+                            string senderNamePrefix = sender.Name.TextValue.Split(" ")[0] + ":";
+                            
+                            if (cleanResponse.StartsWith(senderNamePrefix))
+                            {
+                                int aiIndex = cleanResponse.IndexOf(aiNamePrefix);
+                                if (aiIndex != -1)
+                                {
+                                    cleanResponse = cleanResponse.Substring(aiIndex);
+                                }
+                            }
+                            if (cleanResponse.StartsWith(aiNamePrefix))
+                            {
+                                cleanResponse = cleanResponse.Substring(aiNamePrefix.Length).Trim();
+                            }
+                            int nextSenderIndex = cleanResponse.IndexOf(senderNamePrefix);
+                            if (nextSenderIndex != -1)
+                            {
+                                cleanResponse = cleanResponse.Substring(0, nextSenderIndex).Trim();
+                            }
+                            int nextAiIndex = cleanResponse.IndexOf(aiNamePrefix);
+                            if (nextAiIndex != -1)
+                            {
+                                cleanResponse = cleanResponse.Substring(0, nextAiIndex).Trim();
+                            }
+
                             // Strip actions for the chat log, similar to speech bubbles
-                            string cleanResponse = response;
                             foreach (var prefix in new[] { "says, ", "asks, ", "exclaims, " })
                             {
                                 if (cleanResponse.StartsWith(prefix))
@@ -1636,6 +1664,15 @@ namespace AQuestReborn
                                     cleanResponse = cleanResponse.Substring(1, cleanResponse.Length - 2);
                                 cleanResponse = cleanResponse.TrimEnd('"').Trim();
                             }
+
+                            // Anti-parroting filter: If the AI just echoed the user's message, reject it.
+                            string cleanUserMsg = message.Trim().ToLower();
+                            string finalCleanResp = cleanResponse.Trim().ToLower();
+                            if (finalCleanResp == cleanUserMsg || (cleanUserMsg.Length > 15 && finalCleanResp.Contains(cleanUserMsg)))
+                            {
+                                cleanResponse = "...";
+                            }
+
                             if (string.IsNullOrWhiteSpace(cleanResponse)) cleanResponse = "...";
 
                             Plugin.Framework.RunOnFrameworkThread(() =>
@@ -1749,44 +1786,68 @@ namespace AQuestReborn
             if (Plugin.EventWindow.IsOpen || Plugin.ChoiceWindow.IsOpen) return;
 
             // Check for confirm input (gamepad south or screen click)
-            bool confirmPressed = Plugin.GamepadState.Raw(GamepadButtons.South) == 1
+            bool confirmPressed = (Plugin.Configuration.EnableControllerInteraction && Plugin.GamepadState.Raw(GamepadButtons.South) == 1)
                 || _screenButtonClicked;
 
             if (confirmPressed && !_npcChatConfirmHeld)
             {
                 _npcChatConfirmHeld = true;
-
+                
                 // Get the player's current target
                 var target = Plugin.ObjectTable.LocalPlayer?.TargetObject;
-                if (target == null) return;
+                
+                // Custom NPCs cannot be targeted. If the player has a target, let FFXIV handle it natively.
+                if (target != null) return;
 
-                // Check if the target matches any custom NPC
-                foreach (var kvp in _customNpcCharacters)
+                string interactionName = null;
+                Dalamud.Game.ClientState.Objects.Types.ICharacter interactionCharacter = null;
+
+                // Check if we are facing a custom NPC in range
+                var player = Plugin.ObjectTable.LocalPlayer;
+                if (player != null)
                 {
-                    if (kvp.Value != null && kvp.Value.EntityId == target.EntityId)
+                    foreach (var kvp in _customNpcCharacters)
                     {
-                        string npcName = kvp.Key;
-
-                        // Find NPC config data
-                        CustomNpcCharacter npcData = null;
-                        foreach (var npc in Plugin.Configuration.CustomNpcCharacters)
-                        {
-                            if (npc.NpcName == npcName)
+                            if (kvp.Value == null) continue;
+                            var dist = System.Numerics.Vector3.Distance(player.Position, kvp.Value.Position);
+                            if (dist < 3.5f)
                             {
-                                npcData = npc;
-                                break;
+                                var toNpc = new System.Numerics.Vector2(kvp.Value.Position.X - player.Position.X, kvp.Value.Position.Z - player.Position.Z);
+                                toNpc = System.Numerics.Vector2.Normalize(toNpc);
+                                var playerForward = new System.Numerics.Vector2((float)Math.Sin(player.Rotation), (float)Math.Cos(player.Rotation));
+                                float dot = System.Numerics.Vector2.Dot(toNpc, playerForward);
+                                
+                                if (dot > 0.5f)
+                                {
+                                    interactionName = kvp.Key;
+                                    interactionCharacter = kvp.Value;
+                                    break;
+                                }
                             }
                         }
-                        if (npcData == null) return;
+                    }
 
-                        // Ensure conversation manager exists
-                        if (!_customNpcConversationManagers.ContainsKey(npcName)) return;
+                if (interactionName == null) return;
 
-                        var conversationManager = _customNpcConversationManagers[npcName];
-                        Plugin.NpcChatWindow.OpenConversation(npcName, conversationManager, kvp.Value, npcData);
+                // Find NPC config data
+                CustomNpcCharacter npcData = null;
+                foreach (var npc in Plugin.Configuration.CustomNpcCharacters)
+                {
+                    if (npc.NpcName == interactionName)
+                    {
+                        npcData = npc;
                         break;
                     }
                 }
+                if (npcData == null) return;
+
+                // Ensure conversation manager exists
+                if (!_customNpcConversationManagers.ContainsKey(interactionName)) return;
+
+                // Open the conversation window
+                Plugin.NpcChatWindow.OpenConversation(interactionName,
+                    _customNpcConversationManagers[interactionName],
+                    interactionCharacter, npcData);
             }
             else if (!confirmPressed)
             {

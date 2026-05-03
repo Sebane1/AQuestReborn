@@ -48,6 +48,17 @@ namespace AQuestReborn.CustomNpc
             {
                 return "";
             }
+            
+            // Reject parroting (where the AI echoes the user's message exactly)
+            if (!string.IsNullOrEmpty(response))
+            {
+                string cleanUserMsg = message.Trim().ToLower();
+                string finalCleanResp = response.Trim().ToLower();
+                if (finalCleanResp == cleanUserMsg || (cleanUserMsg.Length > 15 && finalCleanResp.Contains(cleanUserMsg)))
+                {
+                    return "";
+                }
+            }
 
             if (_histories.ContainsKey(name) && _histories[name].History.Visible.Count > 0)
             {

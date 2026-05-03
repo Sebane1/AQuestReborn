@@ -16,9 +16,11 @@ namespace AQuestReborn.CustomNpc
         private GPTWrapper _gptWrapper;
         private Plugin _plugin;
         private ICharacter _aiCharacter;
+        private string _fullName;
 
         public NPCConversationManager(string name, string baseDirectory, Plugin plugin, ICharacter receivingCharacter)
         {
+            _fullName = name;
             string aiName = name.Split(" ")[0];
             _gptWrapper = new GPTWrapper(aiName, Path.Combine(baseDirectory, name + "-memories.json"));
             _plugin = plugin;
@@ -48,6 +50,27 @@ namespace AQuestReborn.CustomNpc
 
             string aiMessage = await _gptWrapper.SendMessage(senderName, message, $@" smiles. ""{aiGreeting}""",
             GetPlayerDescription(sendingCharacter), aiDescription.Trim('.').Trim() + ". " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 2, modelChoice);
+            
+            if (string.IsNullOrEmpty(aiMessage))
+            {
+                var models = new System.Collections.Generic.List<string> { "cassandra-lit-6-9b", "convo-6b", "fairsqeq-6-7b", "gpt-j-6b" };
+                models.Remove(modelChoice);
+                string newModelChoice = models[System.Random.Shared.Next(models.Count)];
+                
+                foreach (var npc in _plugin.Configuration.CustomNpcCharacters)
+                {
+                    if (npc.NpcName == aiName || npc.NpcName.StartsWith(aiName + " "))
+                    {
+                        npc.ModelChoice = newModelChoice;
+                        _plugin.Configuration.Save();
+                        break;
+                    }
+                }
+                
+                // Retry once with new model
+                aiMessage = await _gptWrapper.SendMessage(senderName, message, $@" smiles. ""{aiGreeting}""",
+                GetPlayerDescription(sendingCharacter), aiDescription.Trim('.').Trim() + ". " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 2, newModelChoice);
+            }
             string correctedMessage = PenumbraAndGlamourerHelperFunctions.GetGender(sendingCharacter) == 1 ? GenderFix(aiMessage) : aiMessage;
             Task.Run(() =>
             {
@@ -214,7 +237,16 @@ namespace AQuestReborn.CustomNpc
                         {
                             if (_aiCharacter != null)
                             {
-                                _plugin.AnamcoreManager.TriggerEmoteTimed(_aiCharacter, (ushort)item.ActionTimeline[0].Value.RowId, 5000);
+                                bool canEmote = true;
+                                if (_plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(_fullName))
+                                {
+                                    canEmote = _plugin.AQuestReborn.InteractiveNpcDictionary[_fullName].IsStationary;
+                                }
+
+                                if (canEmote)
+                                {
+                                    _plugin.AnamcoreManager.TriggerEmoteTimed(_aiCharacter, (ushort)item.ActionTimeline[0].Value.RowId, 500);
+                                }
                             }
                             break;
                         }

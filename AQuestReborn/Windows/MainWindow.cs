@@ -147,6 +147,12 @@ public class MainWindow : Window, IDisposable
             Plugin.Configuration.ShowNpcHitboxes = showHitboxes;
             Plugin.Configuration.Save();
         }
+        bool enableController = Plugin.Configuration.EnableControllerInteraction;
+        if (ImGui.Checkbox(Translator.LocalizeUI("Enable Controller Interaction (Turn off if false triggers)"), ref enableController))
+        {
+            Plugin.Configuration.EnableControllerInteraction = enableController;
+            Plugin.Configuration.Save();
+        }
     }
 
     private void DrawQuestObjectives()

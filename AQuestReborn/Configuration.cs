@@ -44,6 +44,7 @@ public class Configuration : IPluginConfiguration
     private LanguageEnum _questLanguage = LanguageEnum.English;
     private List<CustomNpcCharacter> _customNpcCharacters = new List<CustomNpcCharacter>();
     private bool _showNpcHitboxes = false;
+    private bool _enableControllerInteraction = false;
 
     public Dictionary<string, int> QuestProgression { get => _questProgression; set => _questProgression = value; }
     public Dictionary<string, List<string>> CompletedObjectives { get { return _completedObjectives; } set { _completedObjectives = value; } }
@@ -53,6 +54,7 @@ public class Configuration : IPluginConfiguration
     public LanguageEnum QuestLanguage { get => _questLanguage; set => _questLanguage = value; }
     public List<CustomNpcCharacter> CustomNpcCharacters { get => _customNpcCharacters; set => _customNpcCharacters = value; }
     public bool ShowNpcHitboxes { get => _showNpcHitboxes; set => _showNpcHitboxes = value; }
+    public bool EnableControllerInteraction { get => _enableControllerInteraction; set => _enableControllerInteraction = value; }
 
     // the below exist just to make saving less cumbersome
     public void Save()
