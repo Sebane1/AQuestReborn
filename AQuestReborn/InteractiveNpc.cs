@@ -344,8 +344,13 @@ namespace AQuestReborn
                                 }
                                 else
                                 {
+                                    float fallbackY = _plugin.ObjectTable.LocalPlayer.Position.Y;
+                                    if (inCombat && _plugin.ObjectTable.LocalPlayer.TargetObject != null)
+                                    {
+                                        fallbackY = _plugin.ObjectTable.LocalPlayer.TargetObject.Position.Y;
+                                    }
                                     float groundY = _plugin.AQuestReborn.GroundMap.GetGroundY(
-                                        _currentPosition.X, _currentPosition.Z, _plugin.ObjectTable.LocalPlayer.Position.Y);
+                                        _currentPosition.X, _currentPosition.Z, fallbackY);
                                     float yLerp = Math.Clamp(_speed * delta * 10f, 0f, 1f);
                                     _currentPosition = new Vector3(_currentPosition.X, _currentPosition.Y + (groundY - _currentPosition.Y) * yLerp, _currentPosition.Z);
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
@@ -396,9 +401,6 @@ namespace AQuestReborn
                                                 float distToTgt = Vector3.Distance(_currentPosition, tgtPos);
                                                 if (distToTgt > 3.0f) // Move closer
                                                 {
-                                                    float groundYTarget = _plugin.AQuestReborn.GroundMap.GetGroundY(
-                                                        _currentPosition.X, _currentPosition.Z, tgtPos.Y);
-                                                    
                                                     var diff = new Vector3(tgtPos.X - _currentPosition.X, 0, tgtPos.Z - _currentPosition.Z);
                                                     var dir = Vector3.Normalize(diff);
                                                     float moveSpeed = _speed * delta * 2.4f; // 12.0 yalms per second (fast run/sprint pace)
@@ -413,9 +415,6 @@ namespace AQuestReborn
                                                         _currentPosition.X += dir.X * moveSpeed;
                                                         _currentPosition.Z += dir.Z * moveSpeed;
                                                     }
-                                                    
-                                                    float yLerpTarget = Math.Clamp(_speed * delta * 10f, 0f, 1f);
-                                                    _currentPosition.Y += (groundYTarget - _currentPosition.Y) * yLerpTarget;
 
                                                     if (!_isCombatMoving)
                                                     {
