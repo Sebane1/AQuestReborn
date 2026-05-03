@@ -78,10 +78,11 @@ public class ObjectiveWindow : Window, IDisposable
     }
     public override void Draw()
     {
-        bool mouseDown = ImGui.IsMouseClicked(ImGuiMouseButton.Left);
+        bool mouseDown = false;
         bool inCombat = false;
         unsafe
         {
+            mouseDown = UIInputData.Instance()->CursorInputs.MouseButtonPressedFlags.HasFlag(MouseButtonFlags.LBUTTON);
             inCombat = Conditions.Instance()->InCombat;
         }
         Size = new Vector2(ImGui.GetMainViewport().Size.X, ImGui.GetMainViewport().Size.Y);
@@ -244,7 +245,7 @@ public class ObjectiveWindow : Window, IDisposable
 
                         if (ellipseDist <= 1f && inRange)
                         {
-                            if (mouseDown)
+                            if (mouseDown && Plugin.GamepadState.Raw(Dalamud.Game.ClientState.GamePad.GamepadButtons.South) == 0)
                             {
                                 // Find NPC data and conversation manager
                                 string npcName = kvp.Key;
