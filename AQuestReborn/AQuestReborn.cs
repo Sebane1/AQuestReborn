@@ -122,6 +122,7 @@ namespace AQuestReborn
             Plugin.ClientState.TerritoryChanged += _clientState_TerritoryChanged;
             Plugin.ClientState.Logout += ClientState_Logout;
             Plugin.ChatGui.ChatMessage += ChatGui_ChatMessage;
+            Plugin.NamePlateGui.OnNamePlateUpdate += NamePlateGui_OnNamePlateUpdate;
             Plugin.EmoteReaderHook.OnEmote += (instigator, emoteId) => OnEmote(instigator as ICharacter, emoteId);
             Translator.LoadCache(Path.Combine(Plugin.Configuration.QuestInstallFolder, "languageCache.json"));
             Translator.UiLanguage = Plugin.Configuration.QuestLanguage;
@@ -140,6 +141,37 @@ namespace AQuestReborn
         private void Translator_OnTranslationEvent(object? sender, string e)
         {
             Plugin.PluginLog.Verbose(e);
+        }
+
+        private void NamePlateGui_OnNamePlateUpdate(Dalamud.Game.Gui.NamePlate.INamePlateUpdateContext context, System.Collections.Generic.IReadOnlyList<Dalamud.Game.Gui.NamePlate.INamePlateUpdateHandler> handlers)
+        {
+            foreach (var handler in handlers)
+            {
+                if (handler.GameObject == null) continue;
+
+                // Check Custom NPCs
+                foreach (var kvp in _customNpcCharacters)
+                {
+                    if (kvp.Value != null && kvp.Value.Address == handler.GameObject.Address)
+                    {
+                        handler.NameParts.Text = kvp.Key;
+                        break;
+                    }
+                }
+
+                // Check Spawned Quest NPCs
+                foreach (var questKvp in _spawnedNpcsDictionary)
+                {
+                    foreach (var npcKvp in questKvp.Value)
+                    {
+                        if (npcKvp.Value != null && npcKvp.Value.Address == handler.GameObject.Address)
+                        {
+                            handler.NameParts.Text = npcKvp.Key;
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         private void Translator_OnError(object? sender, string e)
@@ -636,8 +668,50 @@ namespace AQuestReborn
             });
         }
 
+        private HashSet<nint> _nameplateForcedActors = new HashSet<nint>();
         private unsafe void _framework_Update(IFramework framework)
         {
+            bool requestedRedraw = false;
+            foreach (var kvp in _customNpcCharacters)
+            {
+                if (kvp.Value != null && kvp.Value.Address != 0)
+                {
+                    var characterStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)kvp.Value.Address;
+                    characterStruct->NamePlateIconId = 71201; // Force Friendly NPC icon
+                    characterStruct->GameObject.ObjectKind = (FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind)2; // Force BattleNpc
+                    characterStruct->GameObject.RenderFlags = 0; // Clear all render flags (specifically HideNameplate)
+                    
+                    if (!_nameplateForcedActors.Contains(kvp.Value.Address))
+                    {
+                        _nameplateForcedActors.Add(kvp.Value.Address);
+                        requestedRedraw = true;
+                    }
+                }
+            }
+            foreach (var questKvp in _spawnedNpcsDictionary)
+            {
+                foreach (var npcKvp in questKvp.Value)
+                {
+                    if (npcKvp.Value != null && npcKvp.Value.Address != 0)
+                    {
+                        var characterStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)npcKvp.Value.Address;
+                        characterStruct->NamePlateIconId = 71201;
+                        characterStruct->GameObject.ObjectKind = (FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind)2;
+                        characterStruct->GameObject.RenderFlags = 0; // Clear HideNameplate flag
+                        
+                        if (!_nameplateForcedActors.Contains(npcKvp.Value.Address))
+                        {
+                            _nameplateForcedActors.Add(npcKvp.Value.Address);
+                            requestedRedraw = true;
+                        }
+                    }
+                }
+            }
+
+            if (requestedRedraw)
+            {
+                Plugin.NamePlateGui.RequestRedraw();
+            }
             if (!_disposed)
             {
                 try
@@ -1494,61 +1568,74 @@ namespace AQuestReborn
                                 _customNpcDictionary[npcData.NpcName] = npc;
                                 _interactiveNpcDictionary[npcData.NpcName] = npc;
 
-                                // Apply appearance
-                                if (!npcData.UseMcdfAppearance)
+                                // Allow engine to initialize the NPC fully before overriding appearance
+                                Task.Run(() =>
                                 {
-                                    AppearanceAccessUtils.AppearanceManager?.RemoveTemporaryCollection(character.Name.TextValue);
-                                }
-
-                                // Apply Penumbra Collection separately
-                                if (!npcData.UseMcdfAppearance && npcData.UsePenumbraCollection && !string.IsNullOrEmpty(npcData.PenumbraCollection))
-                                {
-                                    if (Brio.Brio.TryGetService<Brio.IPC.PenumbraService>(out var penumbraService))
+                                    Thread.Sleep(500); // 500ms delay to ensure copy-from-player is complete
+                                    Plugin.Framework.RunOnFrameworkThread(() =>
                                     {
-                                        var collections = penumbraService.GetCollections();
-                                        var collectionGuid = collections.FirstOrDefault(x => x.Value == npcData.PenumbraCollection).Key;
-                                        if (collectionGuid != Guid.Empty)
+                                        if (character == null || !character.IsValid()) return;
+
+                                        // Apply appearance
+                                        if (!npcData.UseMcdfAppearance)
                                         {
-                                            PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke(character.ObjectIndex, collectionGuid, true, true);
+                                            AppearanceAccessUtils.AppearanceManager?.RemoveTemporaryCollection(character.Name.TextValue);
+                                        }
+
+                                        // Apply Penumbra Collection separately
+                                        if (!npcData.UseMcdfAppearance && npcData.UsePenumbraCollection && !string.IsNullOrEmpty(npcData.PenumbraCollection))
+                                        {
+                                            if (Brio.Brio.TryGetService<Brio.IPC.PenumbraService>(out var penumbraService))
+                                            {
+                                                var collections = penumbraService.GetCollections();
+                                                var collectionGuid = collections.FirstOrDefault(x => x.Value == npcData.PenumbraCollection).Key;
+                                                if (collectionGuid != Guid.Empty)
+                                                {
+                                                    PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke(character.ObjectIndex, collectionGuid, true, true);
+                                                    PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                                                }
+                                                else
+                                                {
+                                                    Plugin.PluginLog.Warning($"Could not find Penumbra collection: {npcData.PenumbraCollection}");
+                                                }
+                                            }
+                                        }
+
+                                        if (npcData.UseMonsterModel)
+                                        {
+                                            unsafe
+                                            {
+                                                var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)character.Address;
+                                                native->ModelContainer.ModelCharaId = (int)npcData.MonsterModelId;
+                                            }
                                             PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
                                         }
-                                        else
+                                        else if (npcData.UseMcdfAppearance && !string.IsNullOrEmpty(npcData.McdfFilePath))
                                         {
-                                            Plugin.PluginLog.Warning($"Could not find Penumbra collection: {npcData.PenumbraCollection}");
+                                            try
+                                            {
+                                                AppearanceAccessUtils.AppearanceManager?.LoadAppearance(
+                                                    npcData.McdfFilePath, character, (int)AppearanceSwapType.EntireAppearance);
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                Plugin.PluginLog.Warning(ex, "Failed to load MCDF appearance: " + npcData.McdfFilePath);
+                                            }
                                         }
-                                    }
-                                }
+                                        else if (!string.IsNullOrEmpty(npcData.NpcGlamourerAppearanceString))
+                                        {
+                                            if (Guid.TryParse(npcData.NpcGlamourerAppearanceString, out var designGuid))
+                                            {
+                                                PenumbraAndGlamourerIpcWrapper.Instance.ApplyDesign.Invoke(designGuid, character.ObjectIndex);
+                                            }
+                                        }
 
-                                if (npcData.UseMonsterModel)
-                                {
-                                    unsafe
-                                    {
-                                        var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)character.Address;
-                                        native->ModelContainer.ModelCharaId = (int)npcData.MonsterModelId;
-                                    }
-                                    PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
-                                }
-                                else if (npcData.UseMcdfAppearance && !string.IsNullOrEmpty(npcData.McdfFilePath))
-                                {
-                                    try
-                                    {
-                                        AppearanceAccessUtils.AppearanceManager?.LoadAppearance(
-                                            npcData.McdfFilePath, character, (int)AppearanceSwapType.EntireAppearance);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Plugin.PluginLog.Warning(ex, "Failed to load MCDF appearance: " + npcData.McdfFilePath);
-                                    }
-                                }
-                                else if (!string.IsNullOrEmpty(npcData.NpcGlamourerAppearanceString))
-                                {
-                                    if (Guid.TryParse(npcData.NpcGlamourerAppearanceString, out var designGuid))
-                                    {
-                                        PenumbraAndGlamourerIpcWrapper.Instance.ApplyDesign.Invoke(designGuid, character.ObjectIndex);
-                                    }
-                                }
+                                        Plugin.AnamcoreManager.SetVoice(character, 0);
 
-                                Plugin.AnamcoreManager.SetVoice(character, 0);
+                                        npc.TargetClassJobId = npcData.NpcClassJobId;
+                                        npc.ClassWeaponApplied = false;
+                                    });
+                                });
 
                                 // Set to stay at the saved position/rotation
                                 npc.SetDefaults(position, rotation);
@@ -1556,8 +1643,6 @@ namespace AQuestReborn
                                 npc.IdleEmoteId = npcData.IdleEmoteId;
                                 if (npcData.RandomIdleEmotes != null) npc.RandomIdleEmotes = npcData.RandomIdleEmotes.ToList();
                                 npc.VictoryPoseEmoteId = npcData.VictoryPoseEmoteId;
-                                npc.TargetClassJobId = npcData.NpcClassJobId;
-                                npc.ClassWeaponApplied = false;
 
                                 // Trigger idle emote immediately for staying NPCs
                                 ushort initialEmoteId = npcData.IdleEmoteId;

@@ -97,6 +97,7 @@ public sealed class Plugin : IDalamudPlugin
     public ITextureProvider TextureProviderReference { get => _textureProvider; set => _textureProvider = value; }
     public MediaManager MediaManager { get => _mediaManager; set => _mediaManager = value; }
     public IDataManager DataManager { get => _dataManager; set => _dataManager = value; }
+    public INamePlateGui NamePlateGui { get; private set; }
     public IPluginLog PluginLog { get => _pluginLog; set => _pluginLog = value; }
     public IFramework Framework { get => _framework; set => _framework = value; }
     public EmoteReaderHooks EmoteReaderHook { get => _emoteReaderHook; set => _emoteReaderHook = value; }
@@ -123,10 +124,11 @@ public sealed class Plugin : IDalamudPlugin
         IGameInteropProvider gameInteropProvider, IObjectTable objectTable, IDataManager dataManager,
         IPluginLog pluginLog, IGameConfig gameConfig, IChatGui chatGui, IGamepadState gamepadState,
         ICommandManager commandManager, ICondition condition, IDtrBar dtrBar, ITargetManager targetManager,
-        INotificationManager notificationManager, IContextMenu contextMenu)
+            INotificationManager notificationManager, IContextMenu contextMenu, INamePlateGui namePlateGui)
     {
 
         Instance = this;
+        NamePlateGui = namePlateGui;
         DalamudApi.Initialize(dalamudPluginInterface);
         _clientState = clientState;
         _framework = framework;

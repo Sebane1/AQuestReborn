@@ -17,7 +17,7 @@ public class ConfigWindow : Window, IDisposable
         Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse;
 
-        Size = new Vector2(232, 90);
+        Size = new Vector2(232, 120);
         SizeCondition = ImGuiCond.Always;
 
         Configuration = plugin.Configuration;
@@ -27,6 +27,11 @@ public class ConfigWindow : Window, IDisposable
 
     public override void Draw()
     {
-
+        bool showNameplates = Configuration.ShowCustomNameplates;
+        if (ImGui.Checkbox("Show Custom NPC Nameplates", ref showNameplates))
+        {
+            Configuration.ShowCustomNameplates = showNameplates;
+            Configuration.Save();
+        }
     }
 }

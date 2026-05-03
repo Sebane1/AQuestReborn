@@ -45,6 +45,7 @@ public class Configuration : IPluginConfiguration
     private List<CustomNpcCharacter> _customNpcCharacters = new List<CustomNpcCharacter>();
     private bool _showNpcHitboxes = false;
     private bool _enableControllerInteraction = false;
+    private bool _showCustomNameplates = true;
 
     public Dictionary<string, int> QuestProgression { get => _questProgression; set => _questProgression = value; }
     public Dictionary<string, List<string>> CompletedObjectives { get { return _completedObjectives; } set { _completedObjectives = value; } }
@@ -55,6 +56,7 @@ public class Configuration : IPluginConfiguration
     public List<CustomNpcCharacter> CustomNpcCharacters { get => _customNpcCharacters; set => _customNpcCharacters = value; }
     public bool ShowNpcHitboxes { get => _showNpcHitboxes; set => _showNpcHitboxes = value; }
     public bool EnableControllerInteraction { get => _enableControllerInteraction; set => _enableControllerInteraction = value; }
+    public bool ShowCustomNameplates { get => _showCustomNameplates; set => _showCustomNameplates = value; }
 
     // the below exist just to make saving less cumbersome
     public void Save()

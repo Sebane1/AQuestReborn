@@ -274,8 +274,96 @@ public class ObjectiveWindow : Window, IDisposable
 
         // --- Draw ambient speech bubbles ---
         DrawSpeechBubbles();
+        DrawNameplates();
     }
 
+    private unsafe void DrawNameplates()
+    {
+        if (Plugin.AQuestReborn == null || Plugin.ObjectTable.LocalPlayer == null) return;
+        if (!Plugin.Configuration.ShowCustomNameplates) return;
+
+        var drawList = ImGui.GetWindowDrawList();
+
+        // Custom NPCs
+        foreach (var kvp in Plugin.AQuestReborn.CustomNpcCharacters)
+        {
+            if (kvp.Value == null || kvp.Value.Address == 0) continue;
+            float dist = Vector3.Distance(Plugin.ObjectTable.LocalPlayer.Position, kvp.Value.Position);
+            if (dist < 40f)
+            {
+                DrawNameplate(drawList, kvp.Key, kvp.Value, dist);
+            }
+        }
+
+        // Quest NPCs
+        foreach (var questKvp in Plugin.AQuestReborn.SpawnedNPCs)
+        {
+            foreach (var npcKvp in questKvp.Value)
+            {
+                if (npcKvp.Value == null || npcKvp.Value.Address == 0) continue;
+                float dist = Vector3.Distance(Plugin.ObjectTable.LocalPlayer.Position, npcKvp.Value.Position);
+                if (dist < 40f)
+                {
+                    DrawNameplate(drawList, npcKvp.Key, npcKvp.Value, dist);
+                }
+            }
+        }
+    }
+
+    private unsafe void DrawNameplate(ImDrawListPtr drawList, string name, ICharacter character, float distance)
+    {
+        Vector3 headPos;
+        try
+        {
+            headPos = Hypostasis.Game.Common.GetBoneWorldPosition((FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)character.Address, 6);
+        }
+        catch
+        {
+            headPos = character.Position + new Vector3(0, 1.6f, 0);
+        }
+
+        // Project to screen, offset slightly above head (but lower than speech bubbles)
+        bool inView;
+        Vector2 screenPos;
+        Plugin.GameGui.WorldToScreen(headPos + new Vector3(0, 0.2f, 0), out screenPos, out inView);
+        if (!inView) return;
+
+        // Push it at least 75 pixels up from the head projection
+        screenPos.Y -= 75f;
+
+        // Fade out at max distance
+        float alpha = 1f;
+        if (distance > 30f)
+        {
+            alpha = Math.Max(0f, 1f - ((distance - 30f) / 10f));
+        }
+
+        // FFXIV Friendly NPC style
+        uint textColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.8f, 1f, 0.9f, alpha));
+        uint outlineColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0f, 0f, 0f, 0.8f * alpha));
+
+        // Use larger font to emulate native nameplates
+        float fontSize = 36f; // significantly bigger
+        var font = ImGui.GetFont();
+        
+        // Calculate text size manually since ImGui.CalcTextSize uses current bound font size
+        var textSize = ImGui.CalcTextSize(name) * (fontSize / font.FontSize);
+        var textPos = new Vector2(screenPos.X - (textSize.X / 2), screenPos.Y - textSize.Y);
+
+        // Draw heavy outline for readability
+        drawList.AddText(font, fontSize, new Vector2(textPos.X - 2, textPos.Y), outlineColor, name);
+        drawList.AddText(font, fontSize, new Vector2(textPos.X + 2, textPos.Y), outlineColor, name);
+        drawList.AddText(font, fontSize, new Vector2(textPos.X, textPos.Y - 2), outlineColor, name);
+        drawList.AddText(font, fontSize, new Vector2(textPos.X, textPos.Y + 2), outlineColor, name);
+        
+        drawList.AddText(font, fontSize, new Vector2(textPos.X - 2, textPos.Y - 2), outlineColor, name);
+        drawList.AddText(font, fontSize, new Vector2(textPos.X + 2, textPos.Y + 2), outlineColor, name);
+        drawList.AddText(font, fontSize, new Vector2(textPos.X + 2, textPos.Y - 2), outlineColor, name);
+        drawList.AddText(font, fontSize, new Vector2(textPos.X - 2, textPos.Y + 2), outlineColor, name);
+
+        // Draw actual text
+        drawList.AddText(font, fontSize, textPos, textColor, name);
+    }
     private unsafe void DrawSpeechBubbles()
     {
         if (Plugin.SpeechBubbleManager == null) return;
