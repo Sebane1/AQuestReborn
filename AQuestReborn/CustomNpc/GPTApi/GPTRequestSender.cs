@@ -87,10 +87,10 @@ namespace AQuestReborn.CustomNpc.GPTApi
                     }
                 }
             }
-            string finalValue = newValue.TrimStart('\n').Split("\n")[0].Split("]")[0].Replace("----", @"shakes ""Appologies, I forget myself sometimes""");
+            string finalValue = newValue.TrimStart('\n', '~', '.', '-', ' ').Split("\n")[0].Split("]")[0].Replace("----", @"shakes ""Appologies, I forget myself sometimes""");
             
             // Failsafe: Hard truncate if the AI hallucinated ANY dialogue tag inline (e.g. Sasha:, Petunia:, Mita:)
-            var match = Regex.Match(finalValue, @"\b[A-Z][a-zA-Z]+:");
+            var match = Regex.Match(finalValue, @"[A-Z][a-zA-Z]+:");
             if (match.Success)
             {
                 finalValue = finalValue.Substring(0, match.Index).Trim();
