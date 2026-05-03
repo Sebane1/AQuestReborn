@@ -62,6 +62,7 @@ namespace AQuestReborn
         private bool _idleEmotePlaying;
         private ushort _idleEmoteId;
         private bool _wasMoving;
+        private bool _isCombatMoving;
         private bool _isFollowMoving;
         private ushort _activeEmoteTimelineId;
         private bool _waitingForEmoteExit;
@@ -376,6 +377,48 @@ namespace AQuestReborn
                                             LastCombatTarget = _plugin.ObjectTable.LocalPlayer.TargetObject.Name.TextValue;
                                             _plugin.AnamcoreManager.SetHeadTarget(_character.Address, _plugin.ObjectTable.LocalPlayer.TargetObject.EntityId);
                                             var tgtPos = _plugin.ObjectTable.LocalPlayer.TargetObject.Position;
+
+                                            bool isMelee = false;
+                                            if (TargetClassJobId > 0)
+                                            {
+                                                var cj = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.ClassJob>().GetRow(TargetClassJobId);
+                                                if (cj.RowId > 0 && (cj.Role == 1 || cj.Role == 2))
+                                                {
+                                                    isMelee = true;
+                                                }
+                                            }
+
+                                            if (isMelee)
+                                            {
+                                                float distToTgt = Vector3.Distance(_currentPosition, tgtPos);
+                                                if (distToTgt > 3.0f) // Move closer
+                                                {
+                                                    float groundYTarget = _plugin.AQuestReborn.GroundMap.GetGroundY(
+                                                        _currentPosition.X, _currentPosition.Z, tgtPos.Y);
+                                                    float xzLerp = _speed * delta * 2.0f; // Faster in combat!
+                                                    float yLerpTarget = Math.Clamp(_speed * delta * 10f, 0f, 1f);
+                                                    
+                                                    _currentPosition = new Vector3(
+                                                        _currentPosition.X + (tgtPos.X - _currentPosition.X) * xzLerp,
+                                                        _currentPosition.Y + (groundYTarget - _currentPosition.Y) * yLerpTarget,
+                                                        _currentPosition.Z + (tgtPos.Z - _currentPosition.Z) * xzLerp);
+
+                                                    if (!_isCombatMoving)
+                                                    {
+                                                        _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(true));
+                                                        _isCombatMoving = true;
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    if (_isCombatMoving)
+                                                    {
+                                                        _isCombatMoving = false;
+                                                        _plugin.AnamcoreManager.TriggerEmote(_character.Address, 34); // Resume combat stance
+                                                    }
+                                                }
+                                            }
+
                                             var desiredQuat = CoordinateUtility.LookAt(_currentPosition, tgtPos);
                                             var currentQuat = CoordinateUtility.ToQuaternion(_currentRotation);
                                             var smoothed = Quaternion.Slerp(currentQuat, desiredQuat, Math.Min(10f * delta, 1f));
@@ -421,6 +464,7 @@ namespace AQuestReborn
                                         if (_wasInCombat)
                                         {
                                             _wasInCombat = false;
+                                            _isCombatMoving = false;
                                             if (VictoryPoseEmoteId > 0)
                                             {
                                                 _queuedVictoryPose = VictoryPoseEmoteId;
