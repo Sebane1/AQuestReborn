@@ -292,7 +292,7 @@ public class ObjectiveWindow : Window, IDisposable
         {
             if (kvp.Value == null || kvp.Value.Address == 0) continue;
             var pos = kvp.Value.Position;
-            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(kvp.Key)) pos = Plugin.AQuestReborn.InteractiveNpcDictionary[kvp.Key].CurrentPosition;
+
             float dist = Vector3.Distance(Plugin.ObjectTable.LocalPlayer.Position, pos);
             if (dist < 40f)
             {
@@ -306,7 +306,7 @@ public class ObjectiveWindow : Window, IDisposable
             foreach (var npcKvp in questKvp.Value)
             {
                 var pos = npcKvp.Value.Position;
-                if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(npcKvp.Key)) pos = Plugin.AQuestReborn.InteractiveNpcDictionary[npcKvp.Key].CurrentPosition;
+
                 float dist = Vector3.Distance(Plugin.ObjectTable.LocalPlayer.Position, pos);
                 if (dist < 40f)
                 {

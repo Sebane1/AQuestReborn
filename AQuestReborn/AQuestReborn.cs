@@ -678,7 +678,7 @@ namespace AQuestReborn
                 {
                     var characterStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)kvp.Value.Address;
                     characterStruct->NamePlateIconId = 71201; // Force Friendly NPC icon
-                    characterStruct->GameObject.ObjectKind = (FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind)2; // Force BattleNpc
+                    characterStruct->GameObject.ObjectKind = (FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind)1; // Force PlayerCharacter so they aren't culled indoors
                     characterStruct->GameObject.RenderFlags = 0; // Clear all render flags (specifically HideNameplate)
                     
                     if (!_nameplateForcedActors.Contains(kvp.Value.Address))
@@ -696,7 +696,7 @@ namespace AQuestReborn
                     {
                         var characterStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)npcKvp.Value.Address;
                         characterStruct->NamePlateIconId = 71201;
-                        characterStruct->GameObject.ObjectKind = (FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind)2;
+                        characterStruct->GameObject.ObjectKind = (FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind)1;
                         characterStruct->GameObject.RenderFlags = 0; // Clear HideNameplate flag
                         
                         if (!_nameplateForcedActors.Contains(npcKvp.Value.Address))
@@ -1386,6 +1386,46 @@ namespace AQuestReborn
                 Plugin.Configuration.Save();
             }
             catch { }
+
+            // MUST DESTROY ACTORS TO PREVENT CRASHES ON GAME CLOSE/RELOAD!
+            try
+            {
+                if (_actorSpawnService != null)
+                {
+                    foreach (var kvp in _customNpcCharacters)
+                    {
+                        try
+                        {
+                            if (kvp.Value != null)
+                            {
+                                PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke((int)kvp.Value.ObjectIndex, Guid.Empty, true, true);
+                                PenumbraAndGlamourerIpcWrapper.Instance.RevertState.Invoke(kvp.Value.ObjectIndex);
+                                _actorSpawnService.DestroyObject(kvp.Value);
+                            }
+                        }
+                        catch { }
+                    }
+                    _customNpcCharacters.Clear();
+
+                    foreach (var questDict in _spawnedNpcsDictionary.Values)
+                    {
+                        foreach (var kvp in questDict)
+                        {
+                            try
+                            {
+                                if (kvp.Value != null)
+                                {
+                                    _actorSpawnService.DestroyObject(kvp.Value);
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+                    _spawnedNpcsDictionary.Clear();
+                }
+            }
+            catch { }
+
             CleanupCache();
         }
 
@@ -1735,8 +1775,8 @@ namespace AQuestReborn
                                 // Revert appearance first to avoid crashing
                                 PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke((int)characterToDestroy.ObjectIndex, Guid.Empty, true, true);
                                 PenumbraAndGlamourerIpcWrapper.Instance.RevertState.Invoke(characterToDestroy.ObjectIndex);
-                                _actorSpawnService.DestroyObject(characterToDestroy);
                             }
+                            _actorSpawnService.DestroyObject(characterToDestroy);
                         }
                     }
                     catch (Exception ex)
@@ -2165,7 +2205,7 @@ namespace AQuestReborn
                     {
                             if (kvp.Value == null) continue;
                             var pos = kvp.Value.Position;
-                            if (_interactiveNpcDictionary.ContainsKey(kvp.Key)) pos = _interactiveNpcDictionary[kvp.Key].CurrentPosition;
+
                             var dist = System.Numerics.Vector3.Distance(player.Position, pos);
                             if (dist < 3.5f)
                             {
