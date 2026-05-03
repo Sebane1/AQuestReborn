@@ -147,6 +147,12 @@ public class MainWindow : Window, IDisposable
             Plugin.Configuration.ShowNpcHitboxes = showHitboxes;
             Plugin.Configuration.Save();
         }
+        bool showNameplates = Plugin.Configuration.ShowCustomNameplates;
+        if (ImGui.Checkbox(Translator.LocalizeUI("Show Custom NPC Nameplates"), ref showNameplates))
+        {
+            Plugin.Configuration.ShowCustomNameplates = showNameplates;
+            Plugin.Configuration.Save();
+        }
         bool enableController = Plugin.Configuration.EnableControllerInteraction;
         if (ImGui.Checkbox(Translator.LocalizeUI("Enable Controller Interaction (Turn off if false triggers)"), ref enableController))
         {

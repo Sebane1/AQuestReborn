@@ -63,6 +63,32 @@ namespace AQuestReborn.CustomNpc
                 }
             }
 
+            // Before entering history, if the response is completely empty or just silence, bail out to trigger a retry
+            string lowerResponse = response?.Trim().ToLower() ?? "";
+            if (string.IsNullOrWhiteSpace(lowerResponse) || 
+                lowerResponse == "..." || 
+                lowerResponse == "…" || 
+                lowerResponse.Contains("*silence*") || 
+                lowerResponse.Contains("*silent*"))
+            {
+                return "";
+            }
+
+            // Reject if the AI is caught in a loop and parroting its own previous response
+            if (_histories.ContainsKey(name) && _histories[name].History.Visible.Count > 0)
+            {
+                var lastMessage = _histories[name].History.Visible[_histories[name].History.Visible.Count - 1];
+                if (lastMessage.Count > 1)
+                {
+                    string cleanLast = lastMessage[1].Replace(_aiName, "").Trim().ToLower();
+                    string formattedResponse = DetectFormatting(response.Trim()).Trim().ToLower();
+                    if (cleanLast == formattedResponse)
+                    {
+                        return ""; // Trigger a retry
+                    }
+                }
+            }
+
             if (_histories.ContainsKey(name) && _histories[name].History.Visible.Count > 0)
             {
                 var lastMessage = _histories[name].History.Visible[_histories[name].History.Visible.Count - 1];
@@ -156,25 +182,10 @@ namespace AQuestReborn.CustomNpc
                     lowerResponse.Contains("*silence*") || 
                     lowerResponse.Contains("*silent*"))
                 {
-                    ClearHistory(sender);
                     return;
                 }
 
                 string formattedResponse = DetectFormatting(trimmedBotResponse).Trim().ToLower();
-
-                if (_histories[sender].History.Visible.Count > 0)
-                {
-                    var lastMessage = _histories[sender].History.Visible[_histories[sender].History.Visible.Count - 1];
-                    if (lastMessage.Count > 1)
-                    {
-                        string cleanLast = lastMessage[1].Replace(_aiName, "").Trim().ToLower();
-                        if (cleanLast == formattedResponse)
-                        {
-                            ClearHistory(sender);
-                            return;
-                        }
-                    }
-                }
 
                 _histories[sender].History.Visible.Add(new List<string> {
                 sender.Split(" ")[0] + DetectFormatting(trimmedUserText), _aiName + DetectFormatting(trimmedBotResponse) });
