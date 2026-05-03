@@ -312,6 +312,19 @@ public class NpcChatWindow : Window, IDisposable
         var sender = _plugin.ObjectTable.LocalPlayer;
         if (sender == null) return;
 
+        // Echo player message to FFXIV green event text
+        try
+        {
+            string playerName = sender.Name.TextValue;
+            _plugin.ChatGui.Print(new Dalamud.Game.Text.XivChatEntry
+            {
+                Name = playerName,
+                Message = message,
+                Type = Dalamud.Game.Text.XivChatType.NPCDialogueAnnouncements,
+            });
+        }
+        catch { }
+
         _isWaitingForResponse = true;
 
         // Capture refs for the closure

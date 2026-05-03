@@ -803,81 +803,6 @@ namespace AQuestReborn.CustomNpc
                                         }
                                     }
                                     ImGui.EndChild();
-
-                                    ImGui.LabelText("##npcJobLabel", Translator.LocalizeUI("Profession/Job"));
-                                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + 
-                                        (string.IsNullOrEmpty(_customNpcCharacters[_currentSelection].NpcJob) ? Translator.LocalizeUI("None") : _customNpcCharacters[_currentSelection].NpcJob));
-                                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                    ImGui.InputTextWithHint("##classJobSearch", Translator.LocalizeUI("Search jobs..."), ref _classJobSearchText, 100);
-                                    if (ImGui.BeginChild("##classJobList", new Vector2(ImGui.GetColumnWidth(), 120), true))
-                                    {
-                                        for (int i = 0; i < _classJobNames.Length; i++)
-                                        {
-                                            if (!string.IsNullOrEmpty(_classJobSearchText)
-                                                && !_classJobNames[i].Contains(_classJobSearchText, StringComparison.OrdinalIgnoreCase))
-                                                continue;
-                                            bool isSelected = _classJobRowIds[i] == _customNpcCharacters[_currentSelection].NpcClassJobId;
-                                            if (ImGui.Selectable(_classJobNames[i] + "##" + i, isSelected))
-                                            {
-                                                _customNpcCharacters[_currentSelection].NpcJob = _classJobNames[i] == "None" ? "" : _classJobNames[i];
-                                                _customNpcCharacters[_currentSelection].NpcClassJobId = _classJobRowIds[i];
-                                                _customNpcCharacters[_currentSelection].NpcEquippedWeaponItemId = 0; // Reset weapon choice
-                                                SaveNPCCharacters();
-                                                if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
-                                                    && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
-                                                        _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
-                                                {
-                                                    liveNpc.TargetClassJobId = _classJobRowIds[i];
-                                                    liveNpc.TargetWeaponItemId = 0;
-                                                    _plugin.AnamcoreManager.SetWeapon(liveNpc.Character, 0, 0); // Clear current weapon
-                                                    liveNpc.ClassWeaponApplied = false;
-                                                }
-                                            }
-                                        }
-                                    }
-                                    ImGui.EndChild();
-
-                                    if (_customNpcCharacters[_currentSelection].NpcClassJobId > 0)
-                                    {
-                                        RefreshWeaponList(_customNpcCharacters[_currentSelection].NpcClassJobId);
-                                        
-                                        ImGui.LabelText("##npcWeaponLabel", Translator.LocalizeUI("Equipped Weapon"));
-                                        
-                                        int currentWeaponIdx = Array.IndexOf(_weaponItemIds, _customNpcCharacters[_currentSelection].NpcEquippedWeaponItemId);
-                                        string currentWeaponName = currentWeaponIdx >= 0 && currentWeaponIdx < _weaponNames.Length
-                                            ? _weaponNames[currentWeaponIdx] : Translator.LocalizeUI("Default (From Class)");
-                                            
-                                        ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + currentWeaponName);
-                                        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                        ImGui.InputTextWithHint("##weaponSearch", Translator.LocalizeUI("Search weapons..."), ref _weaponSearchText, 100);
-                                        if (ImGui.BeginChild("##weaponList", new Vector2(ImGui.GetColumnWidth(), 120), true))
-                                        {
-                                            for (int i = 0; i < _weaponNames.Length; i++)
-                                            {
-                                                if (!string.IsNullOrEmpty(_weaponSearchText)
-                                                    && !_weaponNames[i].Contains(_weaponSearchText, StringComparison.OrdinalIgnoreCase))
-                                                    continue;
-                                                    
-                                                bool isSelected = _weaponItemIds[i] == _customNpcCharacters[_currentSelection].NpcEquippedWeaponItemId;
-                                                if (ImGui.Selectable(_weaponNames[i] + "##wep_" + i, isSelected))
-                                                {
-                                                    _customNpcCharacters[_currentSelection].NpcEquippedWeaponItemId = _weaponItemIds[i];
-                                                    SaveNPCCharacters();
-                                                    
-                                                    // Immediately push the weapon update to the live NPC
-                                                    if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
-                                                        && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
-                                                            _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
-                                                    {
-                                                        liveNpc.TargetWeaponItemId = _weaponItemIds[i];
-                                                        _plugin.AnamcoreManager.SetWeapon(liveNpc.Character, 0, 0); // Clear current weapon to force redraw
-                                                        liveNpc.ClassWeaponApplied = false;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        ImGui.EndChild();
-                                    }
                                     
                                     ImGui.EndTabItem();
                                 }
@@ -1016,6 +941,88 @@ namespace AQuestReborn.CustomNpc
                             }
                             ImGui.EndChild();
                             
+                            ImGui.EndTabItem();
+                        }
+
+                        if (ImGui.BeginTabItem(Translator.LocalizeUI("Job & Weapon")))
+                        {
+                            ImGui.Dummy(new Vector2(0, 10));
+
+                            ImGui.LabelText("##npcJobLabel2", Translator.LocalizeUI("Profession/Job"));
+                            ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + 
+                                (string.IsNullOrEmpty(_customNpcCharacters[_currentSelection].NpcJob) ? Translator.LocalizeUI("None") : _customNpcCharacters[_currentSelection].NpcJob));
+                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                            ImGui.InputTextWithHint("##classJobSearch2", Translator.LocalizeUI("Search jobs..."), ref _classJobSearchText, 100);
+                            if (ImGui.BeginChild("##classJobList2", new Vector2(ImGui.GetColumnWidth(), 150), true))
+                            {
+                                for (int i = 0; i < _classJobNames.Length; i++)
+                                {
+                                    if (!string.IsNullOrEmpty(_classJobSearchText)
+                                        && !_classJobNames[i].Contains(_classJobSearchText, StringComparison.OrdinalIgnoreCase))
+                                        continue;
+                                    bool isSelected = _classJobRowIds[i] == _customNpcCharacters[_currentSelection].NpcClassJobId;
+                                    if (ImGui.Selectable(_classJobNames[i] + "##job2_" + i, isSelected))
+                                    {
+                                        _customNpcCharacters[_currentSelection].NpcJob = _classJobNames[i] == "None" ? "" : _classJobNames[i];
+                                        _customNpcCharacters[_currentSelection].NpcClassJobId = _classJobRowIds[i];
+                                        _customNpcCharacters[_currentSelection].NpcEquippedWeaponItemId = 0;
+                                        SaveNPCCharacters();
+                                        if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
+                                            && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
+                                                _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
+                                        {
+                                            liveNpc.TargetClassJobId = _classJobRowIds[i];
+                                            liveNpc.TargetWeaponItemId = 0;
+                                            _plugin.AnamcoreManager.SetWeapon(liveNpc.Character, 0, 0);
+                                            liveNpc.ClassWeaponApplied = false;
+                                        }
+                                    }
+                                }
+                            }
+                            ImGui.EndChild();
+
+                            if (_customNpcCharacters[_currentSelection].NpcClassJobId > 0)
+                            {
+                                ImGui.Dummy(new Vector2(0, 10));
+                                RefreshWeaponList(_customNpcCharacters[_currentSelection].NpcClassJobId);
+                                
+                                ImGui.LabelText("##npcWeaponLabel2", Translator.LocalizeUI("Equipped Weapon"));
+                                
+                                int currentWeaponIdx = Array.IndexOf(_weaponItemIds, _customNpcCharacters[_currentSelection].NpcEquippedWeaponItemId);
+                                string currentWeaponName = currentWeaponIdx >= 0 && currentWeaponIdx < _weaponNames.Length
+                                    ? _weaponNames[currentWeaponIdx] : Translator.LocalizeUI("Default (From Class)");
+                                    
+                                ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + currentWeaponName);
+                                ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                                ImGui.InputTextWithHint("##weaponSearch2", Translator.LocalizeUI("Search weapons..."), ref _weaponSearchText, 100);
+                                if (ImGui.BeginChild("##weaponList2", new Vector2(ImGui.GetColumnWidth(), 150), true))
+                                {
+                                    for (int i = 0; i < _weaponNames.Length; i++)
+                                    {
+                                        if (!string.IsNullOrEmpty(_weaponSearchText)
+                                            && !_weaponNames[i].Contains(_weaponSearchText, StringComparison.OrdinalIgnoreCase))
+                                            continue;
+                                            
+                                        bool isSelected = _weaponItemIds[i] == _customNpcCharacters[_currentSelection].NpcEquippedWeaponItemId;
+                                        if (ImGui.Selectable(_weaponNames[i] + "##wep2_" + i, isSelected))
+                                        {
+                                            _customNpcCharacters[_currentSelection].NpcEquippedWeaponItemId = _weaponItemIds[i];
+                                            SaveNPCCharacters();
+                                            
+                                            if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
+                                                && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
+                                                    _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
+                                            {
+                                                liveNpc.TargetWeaponItemId = _weaponItemIds[i];
+                                                _plugin.AnamcoreManager.SetWeapon(liveNpc.Character, 0, 0);
+                                                liveNpc.ClassWeaponApplied = false;
+                                            }
+                                        }
+                                    }
+                                }
+                                ImGui.EndChild();
+                            }
+
                             ImGui.EndTabItem();
                         }
                         ImGui.EndTabBar();

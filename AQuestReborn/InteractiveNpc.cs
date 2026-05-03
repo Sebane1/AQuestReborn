@@ -265,12 +265,9 @@ namespace AQuestReborn
             if (mainHandModel != 0)
             {
                 var chara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
-                var currentMainHand = chara->DrawData.Weapon(FFXIVClientStructs.FFXIV.Client.Game.Character.DrawDataContainer.WeaponSlot.MainHand).ModelId.Value;
                 
-                if (currentMainHand == 0)
-                {
-                    _plugin.AnamcoreManager.SetWeapon(_character, mainHandModel, offHandModel);
-                }
+                // Always force the weapon — Glamourer may have already set a different model
+                _plugin.AnamcoreManager.SetWeapon(_character, mainHandModel, offHandModel);
                 
                 // Force the NPC's class job to match so combat stances and animations are natively correct!
                 chara->ClassJob = (byte)TargetClassJobId;
@@ -469,6 +466,7 @@ namespace AQuestReborn
                                         if (!_wasInCombat)
                                         {
                                             _wasInCombat = true;
+                                            NotifyCombatStateChanged(true);
                                             var nChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
                                             nChara->DrawData.IsWeaponHidden = false;
                                             nChara->Timeline.TimelineSequencer.PlayTimeline(5616); // Draw weapon
@@ -599,6 +597,7 @@ namespace AQuestReborn
                                         {
                                             _wasInCombat = false;
                                             _isCombatMoving = false;
+                                            NotifyCombatStateChanged(false);
                                             if (VictoryPoseEmoteId > 0)
                                             {
                                                 _queuedVictoryPose = VictoryPoseEmoteId;
@@ -641,6 +640,7 @@ namespace AQuestReborn
                                             }
                                             catch { }
                                             _idleEmotePlaying = true;
+                                            NotifyIdleEmoteStarted(selectedEmoteId);
                                         }
                                         // Set head target to player if within range, otherwise look forward
                                         if (_plugin.ObjectTable.LocalPlayer != null
@@ -730,6 +730,7 @@ namespace AQuestReborn
                                             }
                                             catch { }
                                             _idleEmotePlaying = true;
+                                            NotifyIdleEmoteStarted(selectedEmoteId);
                                         }
                                         if ((_plugin.EventWindow.IsOpen || _plugin.ChoiceWindow.IsOpen) && LooksAtPlayer)
                                         {
@@ -993,6 +994,106 @@ namespace AQuestReborn
                 }
                 catch { }
             });
+        }
+
+        /// <summary>
+        /// Inject narrator context when combat starts or ends.
+        /// </summary>
+        private void NotifyCombatStateChanged(bool entered)
+        {
+            try
+            {
+                if (_character == null || _plugin?.AQuestReborn == null) return;
+
+                string npcName = null;
+                foreach (var kvp in _plugin.AQuestReborn.InteractiveNpcDictionary)
+                {
+                    if (kvp.Value == this) { npcName = kvp.Key; break; }
+                }
+                if (string.IsNullOrEmpty(npcName)) return;
+
+                var convManagers = _plugin.AQuestReborn.CustomNpcConversationManagers;
+                if (convManagers == null || !convManagers.ContainsKey(npcName)) return;
+
+                string playerName = _plugin.ObjectTable.LocalPlayer?.Name?.TextValue?.Split(" ")[0] ?? "the adventurer";
+                string firstName = npcName.Split(" ")[0];
+
+                // Gather all summoned NPC names
+                var allNames = new List<string>();
+                foreach (var kvp in _plugin.AQuestReborn.InteractiveNpcDictionary)
+                {
+                    string name = kvp.Key.Split(" ")[0];
+                    if (!allNames.Contains(name)) allNames.Add(name);
+                }
+                allNames.Add(playerName);
+                string partyList = string.Join(", ", allNames);
+
+                string contextLine;
+                if (entered)
+                {
+                    string target = !string.IsNullOrEmpty(LastCombatTarget) ? LastCombatTarget : "an enemy";
+                    contextLine = $"[Combat begins — {partyList} draw their weapons to fight {target}]";
+                }
+                else
+                {
+                    contextLine = $"[Combat ends — {partyList} sheathe their weapons after the battle]";
+                }
+
+                convManagers[npcName].InjectNarratorContext(contextLine);
+            }
+            catch (Exception e)
+            {
+                try { _plugin.PluginLog.Debug($"[CombatContext] {e.Message}"); } catch { }
+            }
+        }
+
+        /// <summary>
+        /// Inject narrator context when the NPC begins their idle emote.
+        /// This makes the NPC aware of what they're doing when the player next talks to them.
+        /// </summary>
+        private void NotifyIdleEmoteStarted(ushort emoteRowId)
+        {
+            try
+            {
+                if (_character == null || _plugin?.AQuestReborn == null) return;
+
+                // Find this NPC's name from the dictionary
+                string npcName = null;
+                foreach (var kvp in _plugin.AQuestReborn.InteractiveNpcDictionary)
+                {
+                    if (kvp.Value == this)
+                    {
+                        npcName = kvp.Key;
+                        break;
+                    }
+                }
+                if (string.IsNullOrEmpty(npcName)) return;
+
+                // Find the conversation manager for this NPC
+                var convManagers = _plugin.AQuestReborn.CustomNpcConversationManagers;
+                if (convManagers == null || !convManagers.ContainsKey(npcName)) return;
+
+                // Resolve emote name
+                string emoteName = "rest";
+                try
+                {
+                    var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(emoteRowId);
+                    string name = emote.Name.ToString();
+                    if (!string.IsNullOrEmpty(name)) emoteName = name.ToLower();
+                }
+                catch { }
+
+                // Build the context narration
+                string playerName = _plugin.ObjectTable.LocalPlayer?.Name?.TextValue?.Split(" ")[0] ?? "the adventurer";
+                string firstName = npcName.Split(" ")[0];
+                string contextLine = $"[{firstName} decides to {emoteName} while {playerName} takes a break]";
+
+                convManagers[npcName].InjectNarratorContext(contextLine);
+            }
+            catch (Exception e)
+            {
+                try { _plugin.PluginLog.Debug($"[IdleNarration] {e.Message}"); } catch { }
+            }
         }
 
         public void Dispose()

@@ -255,6 +255,19 @@ namespace AQuestReborn.CustomNpc
         {
             memoryContextManager.AddMemory(title, description);
         }
+
+        /// <summary>
+        /// Injects a narrator/context line into a specific NPC's conversation history.
+        /// This is not a user or bot message — it's an environmental note 
+        /// (e.g. "*Sasha decides to sit while the player takes a break*").
+        /// </summary>
+        public void InjectNarratorContext(string sender, string contextLine)
+        {
+            if (_histories.ContainsKey(sender))
+            {
+                _histories[sender].History.Visible.Add(new List<string> { contextLine });
+            }
+        }
         public string DetectFormatting(string value)
         {
             return ": " + value;

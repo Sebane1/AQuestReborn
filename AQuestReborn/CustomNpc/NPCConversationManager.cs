@@ -98,6 +98,15 @@ namespace AQuestReborn.CustomNpc
             });
             return correctedMessage;
         }
+
+        /// <summary>
+        /// Injects a narrator/environmental context line into this NPC's conversation history.
+        /// </summary>
+        public void InjectNarratorContext(string contextLine)
+        {
+            _gptWrapper?.InjectNarratorContext(_fullName, contextLine);
+        }
+
         public string GetPlayerDescription(ICharacter player, bool skipSummary = false, string alias = "")
         {
             int gender = PenumbraAndGlamourerHelperFunctions.GetGender(player);
