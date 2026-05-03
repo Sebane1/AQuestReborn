@@ -48,6 +48,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
             this.logprobs = 10;
             this.logit_bias = new LogitBias() { _187 = -0.5f };
             this.stopping_strings = new List<object> { "\n", name + ":", aiName + ":" };
+            this.stop = new List<object> { "\n", name + ":", aiName + ":" };
         }
 
         private string engine_id;
@@ -84,6 +85,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
 
         public int logprobs { get; private set; }
         public List<object> stopping_strings { get; set; }
+        public List<object> stop { get; set; }
 
     }
 }

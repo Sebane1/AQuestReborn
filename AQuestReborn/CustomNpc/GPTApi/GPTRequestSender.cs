@@ -34,7 +34,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
                 {
                     var result = streamReader.ReadToEnd();
                     var response = JsonConvert.DeserializeObject<GPTOpenAIResult>(result);
-                    return ResponseCleaner(response.choices[0].text);
+                    return ResponseCleaner(response.choices[0].text, sender, aiName);
                 }
             }
             catch (Exception e)
@@ -72,9 +72,9 @@ namespace AQuestReborn.CustomNpc.GPTApi
                 }
                 websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "closing", default);
             }
-            return ResponseCleaner(value).Replace("You", aiName);
+            return ResponseCleaner(value, sender, aiName).Replace("You", aiName);
         }
-        public string ResponseCleaner(string response)
+        public string ResponseCleaner(string response, string sender, string aiName)
         {
             string[] values = response.Split(". ");
             string newValue = values[0];
@@ -88,6 +88,22 @@ namespace AQuestReborn.CustomNpc.GPTApi
                 }
             }
             string finalValue = newValue.TrimStart('\n').Split("\n")[0].Split("]")[0].Replace("----", @"shakes ""Appologies, I forget myself sometimes""");
+            
+            // Failsafe: Hard truncate if the AI hallucinated a dialogue tag inline
+            int colonIndex = finalValue.IndexOf(":");
+            while (colonIndex > 0)
+            {
+                int spaceIndex = finalValue.LastIndexOf(' ', colonIndex);
+                string precedingWord = spaceIndex >= 0 ? finalValue.Substring(spaceIndex + 1, colonIndex - spaceIndex - 1).Trim() : finalValue.Substring(0, colonIndex).Trim();
+                
+                if (precedingWord.Equals(sender, StringComparison.OrdinalIgnoreCase) || precedingWord.Equals(aiName, StringComparison.OrdinalIgnoreCase))
+                {
+                    finalValue = spaceIndex >= 0 ? finalValue.Substring(0, spaceIndex).Trim() : "";
+                    break;
+                }
+                colonIndex = finalValue.IndexOf(":", colonIndex + 1);
+            }
+            
             return ScrubEarthTerms(finalValue);
         }
 
