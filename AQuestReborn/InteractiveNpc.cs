@@ -480,7 +480,11 @@ namespace AQuestReborn
                                                 var diff = new Vector3(meleeTgtPos.X - _currentPosition.X, 0, meleeTgtPos.Z - _currentPosition.Z);
                                                 float distToTgtXZ = diff.Length();
 
-                                                if (distToTgtXZ > 0.5f) // Move closer to assigned slot
+                                                bool shouldCombatMove = _isCombatMoving;
+                                                if (distToTgtXZ > 1.5f) shouldCombatMove = true;
+                                                if (distToTgtXZ <= 0.5f) shouldCombatMove = false;
+
+                                                if (shouldCombatMove)
                                                 {
                                                     float moveSpeed = _speed * delta * 2.4f; // 12.0 yalms per second (fast run/sprint pace)
                                                     
