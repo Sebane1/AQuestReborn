@@ -342,6 +342,14 @@ namespace AQuestReborn.CustomNpc
                     RefreshMonsterList();
                 }
                 RefreshNPCItemNames();
+
+                // === Conversational Provider Settings (global, shown above NPC list) ===
+                if (ImGui.CollapsingHeader("Conversational Provider Settings"))
+                {
+                    DrawAiProviderSettings();
+                }
+                ImGui.Spacing();
+
                 ImGui.BeginTable("##CustomNpcTable", 2);
                 ImGui.TableSetupColumn(Translator.LocalizeUI("Custom NPC"), ImGuiTableColumnFlags.WidthFixed, 200);
                 ImGui.TableSetupColumn(Translator.LocalizeUI("Custom NPC Configuration"), ImGuiTableColumnFlags.WidthStretch, 300);
@@ -1131,5 +1139,202 @@ namespace AQuestReborn.CustomNpc
                 npcItemNames = new string[0];
             }
         }
+
+        // === Conversational Provider Settings UI ===
+        private static readonly string[] _aiProviderNames = { "Default (Built-in)", "OpenAI Compatible (CosmoRP, LM Studio, etc.)", "NovelAI" };
+        private static readonly string[] _aiProviderKeys = { "default", "openai_compatible", "novelai" };
+        private string _testConnectionResult = "";
+        private bool _testingConnection = false;
+
+        private void DrawAiProviderSettings()
+        {
+            if (_plugin?.Configuration == null) return;
+            var config = _plugin.Configuration;
+
+            ImGui.Indent(10f);
+            ImGui.TextWrapped("Choose which conversational service powers your NPC conversations. The default server is free but uses smaller models. External providers may produce higher quality responses.");
+            ImGui.Spacing();
+
+            // Provider dropdown
+            int currentIndex = Array.IndexOf(_aiProviderKeys, config.AiProvider);
+            if (currentIndex < 0) currentIndex = 0;
+
+            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
+            if (ImGui.Combo("##AiProviderCombo", ref currentIndex, _aiProviderNames, _aiProviderNames.Length))
+            {
+                config.AiProvider = _aiProviderKeys[currentIndex];
+                config.Save();
+                _testConnectionResult = "";
+            }
+
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            switch (config.AiProvider)
+            {
+                case "openai_compatible":
+                    DrawOpenAiCompatibleSettings(config);
+                    break;
+                case "novelai":
+                    DrawNovelAiSettings(config);
+                    break;
+                default:
+                    ImGui.TextColored(new Vector4(0.6f, 0.8f, 0.6f, 1f), "Using the built-in conversational server. No configuration needed.");
+                    ImGui.TextWrapped("This is a free service using 6B parameter models. For higher quality conversations, try one of the other providers.");
+                    break;
+            }
+
+            // Test Connection button
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            if (config.AiProvider != "default")
+            {
+                if (_testingConnection)
+                {
+                    ImGui.TextColored(new Vector4(1f, 1f, 0f, 1f), "Testing connection...");
+                }
+                else
+                {
+                    if (ImGui.Button("Test Connection", new Vector2(150, 28)))
+                    {
+                        TestAiConnection();
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(_testConnectionResult))
+                {
+                    bool isSuccess = _testConnectionResult.StartsWith("Success");
+                    var color = isSuccess ? new Vector4(0.3f, 1f, 0.3f, 1f) : new Vector4(1f, 0.3f, 0.3f, 1f);
+                    ImGui.TextColored(color, _testConnectionResult);
+                }
+            }
+
+            ImGui.Unindent(10f);
+        }
+
+        private void DrawOpenAiCompatibleSettings(SamplePlugin.Configuration config)
+        {
+            ImGui.TextColored(new Vector4(0.7f, 0.85f, 1f, 1f), "OpenAI-Compatible Endpoint");
+            ImGui.TextWrapped("Works with CosmoRP, OpenRouter, LM Studio, Oobabooga, Ollama, or any service that implements the OpenAI chat completion API.");
+            ImGui.Spacing();
+
+            // Base URL
+            ImGui.Text("API Base URL:");
+            string url = config.OpenAiCompatibleUrl ?? "";
+            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
+            if (ImGui.InputText("##OpenAiUrl", ref url, 512))
+            {
+                config.OpenAiCompatibleUrl = url;
+                config.Save();
+            }
+            ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1f), "e.g. https://api.pawan.krd/cosmosrp/v1 or http://localhost:1234/v1");
+
+            ImGui.Spacing();
+
+            // API Key
+            ImGui.Text("API Key (optional for local servers):");
+            string apiKey = config.OpenAiCompatibleApiKey ?? "";
+            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
+            if (ImGui.InputText("##OpenAiKey", ref apiKey, 256, ImGuiInputTextFlags.Password))
+            {
+                config.OpenAiCompatibleApiKey = apiKey;
+                config.Save();
+            }
+
+            ImGui.Spacing();
+
+            // Model Name
+            ImGui.Text("Model Name (optional):");
+            string modelName = config.OpenAiCompatibleModelName ?? "";
+            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
+            if (ImGui.InputText("##OpenAiModel", ref modelName, 128))
+            {
+                config.OpenAiCompatibleModelName = modelName;
+                config.Save();
+            }
+            ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1f), "e.g. cosmosrp, gpt-4o-mini, local-model");
+        }
+
+        private void DrawNovelAiSettings(SamplePlugin.Configuration config)
+        {
+            ImGui.TextColored(new Vector4(1f, 0.85f, 0.5f, 1f), "NovelAI");
+            ImGui.TextWrapped("Uses NovelAI's high-quality text generation models (Kayra, Erato). Requires an active NovelAI subscription.");
+            ImGui.Spacing();
+
+            // API Token
+            ImGui.Text("Persistent API Token:");
+            string token = config.NovelAiApiToken ?? "";
+            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
+            if (ImGui.InputText("##NovelAiToken", ref token, 512, ImGuiInputTextFlags.Password))
+            {
+                config.NovelAiApiToken = token;
+                config.Save();
+            }
+            ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1f), "Found in NovelAI Account Settings > Get Persistent API Token");
+
+            ImGui.Spacing();
+
+            // Model selection
+            ImGui.Text("Model:");
+            string[] novelAiModels = { "kayra-v2", "erato-v1" };
+            int modelIdx = Array.IndexOf(novelAiModels, config.NovelAiModel);
+            if (modelIdx < 0) modelIdx = 0;
+            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
+            if (ImGui.Combo("##NovelAiModelCombo", ref modelIdx, novelAiModels, novelAiModels.Length))
+            {
+                config.NovelAiModel = novelAiModels[modelIdx];
+                config.Save();
+            }
+        }
+
+        private async void TestAiConnection()
+        {
+            _testingConnection = true;
+            _testConnectionResult = "";
+
+            try
+            {
+                var provider = GPTApi.AiProviderFactory.CreateProvider();
+                var stopSequences = new List<string> { "\n" };
+                string testPrompt = "You are a friendly NPC. Say hello in one sentence.\nNPC: ";
+
+                string result;
+                if (provider.UsesChatFormat)
+                {
+                    var messages = new List<GPTApi.AiChatMessage>
+                    {
+                        new GPTApi.AiChatMessage("system", "You are a friendly NPC in Final Fantasy XIV. Respond with a single short greeting."),
+                        new GPTApi.AiChatMessage("user", "Hello!")
+                    };
+                    result = await provider.GenerateResponseAsync(testPrompt, "TestNPC", "Player", stopSequences, null, messages);
+                }
+                else
+                {
+                    result = await provider.GenerateResponseAsync(testPrompt, "TestNPC", "Player", stopSequences);
+                }
+
+                if (!string.IsNullOrEmpty(result))
+                {
+                    string preview = result.Length > 80 ? result.Substring(0, 80) + "..." : result;
+                    _testConnectionResult = "Success! Response: " + preview;
+                }
+                else
+                {
+                    _testConnectionResult = "Failed: Empty response received. Check your settings.";
+                }
+            }
+            catch (Exception e)
+            {
+                _testConnectionResult = "Failed: " + e.Message;
+            }
+            finally
+            {
+                _testingConnection = false;
+            }
+        }
     }
 }
+

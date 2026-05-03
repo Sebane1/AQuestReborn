@@ -1,4 +1,5 @@
 using AQuestReborn.CustomNpc.GPTApi;
+using AQuestReborn.CustomNpc.GPTApi.Providers;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -40,8 +41,27 @@ namespace AQuestReborn.CustomNpc
             }
             _histories[name].UpdateSetting(setting);
             string lastValue = _histories.ContainsKey(name) ? _histories[name].History.GetLastVisibleItem() : Guid.NewGuid().ToString();
-            string response = await new GPTRequestSender().GetGPTResponse(name, _histories[name].ToString()
-                + name.Split(" ")[0] + DetectFormatting(message.Trim()) + "\n" + _aiName + ": ", _aiName, false, modelChoice);
+
+            // Build the prompt and dispatch through the configured AI provider
+            var stopSequences = new List<string> { "\n", name + ":", _aiName + ":" };
+            string fullPrompt = _histories[name].ToString()
+                + name.Split(" ")[0] + DetectFormatting(message.Trim()) + "\n" + _aiName + ": ";
+
+            var provider = AiProviderFactory.CreateProvider();
+            string response;
+            if (provider.UsesChatFormat)
+            {
+                // Chat-format providers (OpenAI-compatible) get structured messages
+                var chatMessages = _histories[name].ToChatMessages(message.Trim());
+                response = await provider.GenerateResponseAsync(fullPrompt, _aiName, name.Split(" ")[0],
+                    stopSequences, _histories[name].GetSystemPrompt(), chatMessages);
+            }
+            else
+            {
+                // Text-completion providers (Default, NovelAI) get the raw prompt
+                response = await provider.GenerateResponseAsync(fullPrompt, _aiName, name.Split(" ")[0],
+                    stopSequences);
+            }
 
             // If history was cleared while awaiting the response, bail out early
             if (!_histories.ContainsKey(name)) return "";
@@ -146,8 +166,25 @@ namespace AQuestReborn.CustomNpc
         {
             if (!_histories.ContainsKey(name)) return "";
             string lastValue = _histories[name].History.GetLastVisibleItem();
-            string response = await new GPTRequestSender().GetGPTResponse(name, _histories[name].ToString()
-                + "[Chat Summary:", _aiName, false);
+            string summaryPrompt = _histories[name].ToString() + "[Chat Summary:";
+            var stopSequences = new List<string> { "\n", "]" };
+            var provider = AiProviderFactory.CreateProvider();
+            string response;
+            if (provider.UsesChatFormat)
+            {
+                var summaryMessages = new List<AiChatMessage>
+                {
+                    new AiChatMessage("system", "Summarize the following conversation in 1-2 sentences."),
+                    new AiChatMessage("user", _histories[name].ToString())
+                };
+                response = await provider.GenerateResponseAsync(summaryPrompt, _aiName, name.Split(" ")[0],
+                    stopSequences, null, summaryMessages);
+            }
+            else
+            {
+                response = await provider.GenerateResponseAsync(summaryPrompt, _aiName, name.Split(" ")[0],
+                    stopSequences);
+            }
             return response.Replace("[Chat Summary:", null);
         }
 

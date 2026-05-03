@@ -109,5 +109,87 @@ namespace AQuestReborn.CustomNpc.GPTApi
             }
             return context;
         }
+
+        /// <summary>
+        /// Returns a system prompt containing all character knowledge and rules for chat-format providers.
+        /// </summary>
+        public string GetSystemPrompt()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"You are {_aiName}, a character in the fantasy world of Final Fantasy XIV.");
+            sb.AppendLine($"Genre: {_genre}. Setting: {_title} by {_author}.");
+
+            if (!string.IsNullOrEmpty(_setting))
+            {
+                sb.AppendLine($"\n[Current Setting]\n{_setting}");
+            }
+            if (!string.IsNullOrEmpty(_aiTraits))
+            {
+                sb.AppendLine($"\n[About {_aiName}]\n{_aiTraits}");
+            }
+            if (!string.IsNullOrEmpty(_userTraits))
+            {
+                sb.AppendLine($"\n[About {_userName}]\n{_userTraits}");
+            }
+            if (_memories != null && _memories.Count > 0)
+            {
+                foreach (var memory in _memories)
+                {
+                    sb.AppendLine($"\n[Knowledge: {memory.Key}]\n{memory.Value}");
+                }
+            }
+
+            sb.AppendLine("\n[Response Rules]");
+            sb.AppendLine($"- Write your response in first person as {_aiName}.");
+            sb.AppendLine("- Use asterisks for physical actions (e.g. *smiles*).");
+            sb.AppendLine("- Use double quotes for spoken dialogue (e.g. \"Hello there!\").");
+            sb.AppendLine("- Do NOT reference real-world concepts, modern technology, or video game mechanics.");
+            sb.AppendLine("- Stay perfectly in character as a resident of Eorzea.");
+            sb.AppendLine($"- NEVER narrate the actions, feelings, or dialogue of {_userName}.");
+            sb.AppendLine($"- Do NOT prefix your response with \"{_aiName}:\".");
+            sb.AppendLine($"- If the player asks you to change your outfit, output [glamour:Outfit Name] in your response.");
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Converts the conversation history into structured chat messages for OpenAI-compatible providers.
+        /// </summary>
+        public List<AiChatMessage> ToChatMessages(string latestUserMessage)
+        {
+            var messages = new List<AiChatMessage>();
+
+            // System prompt with all character knowledge and rules
+            messages.Add(new AiChatMessage("system", GetSystemPrompt()));
+
+            // Convert history entries into alternating user/assistant messages
+            foreach (var exchange in _history.Visible)
+            {
+                if (exchange.Count >= 2)
+                {
+                    // exchange[0] = "UserName: message", exchange[1] = "AiName: response"
+                    string userText = exchange[0];
+                    string aiText = exchange[1];
+
+                    // Strip the "Name: " prefix
+                    int userColon = userText.IndexOf(": ");
+                    if (userColon > 0) userText = userText.Substring(userColon + 2);
+
+                    int aiColon = aiText.IndexOf(": ");
+                    if (aiColon > 0) aiText = aiText.Substring(aiColon + 2);
+
+                    messages.Add(new AiChatMessage("user", userText));
+                    messages.Add(new AiChatMessage("assistant", aiText));
+                }
+            }
+
+            // Add the latest user message
+            if (!string.IsNullOrEmpty(latestUserMessage))
+            {
+                messages.Add(new AiChatMessage("user", latestUserMessage));
+            }
+
+            return messages;
+        }
     }
 }

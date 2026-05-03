@@ -47,6 +47,14 @@ public class Configuration : IPluginConfiguration
     private bool _enableControllerInteraction = false;
     private bool _showCustomNameplates = true;
 
+    // AI Provider settings (global for all NPCs)
+    private string _aiProvider = "default"; // "default", "openai_compatible", "novelai"
+    private string _openAiCompatibleUrl = ""; // Base URL for OpenAI-compatible endpoints
+    private string _openAiCompatibleApiKey = "";
+    private string _openAiCompatibleModelName = "";
+    private string _novelAiApiToken = "";
+    private string _novelAiModel = "kayra-v2";
+
     public Dictionary<string, int> QuestProgression { get => _questProgression; set => _questProgression = value; }
     public Dictionary<string, List<string>> CompletedObjectives { get { return _completedObjectives; } set { _completedObjectives = value; } }
     public Dictionary<string, RoleplayingQuest> QuestChains { get => _questChains; set => _questChains = value; }
@@ -57,6 +65,14 @@ public class Configuration : IPluginConfiguration
     public bool ShowNpcHitboxes { get => _showNpcHitboxes; set => _showNpcHitboxes = value; }
     public bool EnableControllerInteraction { get => _enableControllerInteraction; set => _enableControllerInteraction = value; }
     public bool ShowCustomNameplates { get => _showCustomNameplates; set => _showCustomNameplates = value; }
+
+    // AI Provider properties
+    public string AiProvider { get => _aiProvider; set => _aiProvider = value; }
+    public string OpenAiCompatibleUrl { get => _openAiCompatibleUrl; set => _openAiCompatibleUrl = value; }
+    public string OpenAiCompatibleApiKey { get => _openAiCompatibleApiKey; set => _openAiCompatibleApiKey = value; }
+    public string OpenAiCompatibleModelName { get => _openAiCompatibleModelName; set => _openAiCompatibleModelName = value; }
+    public string NovelAiApiToken { get => _novelAiApiToken; set => _novelAiApiToken = value; }
+    public string NovelAiModel { get => _novelAiModel; set => _novelAiModel = value; }
 
     // the below exist just to make saving less cumbersome
     public void Save()
