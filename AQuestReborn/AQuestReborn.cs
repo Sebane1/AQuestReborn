@@ -678,7 +678,7 @@ namespace AQuestReborn
                 {
                     var characterStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)kvp.Value.Address;
                     characterStruct->NamePlateIconId = 71201; // Force Friendly NPC icon
-                    characterStruct->GameObject.ObjectKind = (FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind)3; // Force EventNpc to fix housing instances
+                    characterStruct->GameObject.ObjectKind = (FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind)2; // Force BattleNpc
                     characterStruct->GameObject.RenderFlags = 0; // Clear all render flags (specifically HideNameplate)
                     
                     if (!_nameplateForcedActors.Contains(kvp.Value.Address))
@@ -696,7 +696,7 @@ namespace AQuestReborn
                     {
                         var characterStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)npcKvp.Value.Address;
                         characterStruct->NamePlateIconId = 71201;
-                        characterStruct->GameObject.ObjectKind = (FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind)3; // Force EventNpc
+                        characterStruct->GameObject.ObjectKind = (FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind)2;
                         characterStruct->GameObject.RenderFlags = 0; // Clear HideNameplate flag
                         
                         if (!_nameplateForcedActors.Contains(npcKvp.Value.Address))
@@ -1458,14 +1458,6 @@ namespace AQuestReborn
                                 _customNpcDictionary[npcData.NpcName] = npc;
                                 _interactiveNpcDictionary[npcData.NpcName] = npc;
 
-                                // Allow engine to initialize the NPC fully before overriding appearance
-                                Task.Run(() =>
-                                {
-                                    Thread.Sleep(500); // 500ms delay to ensure copy-from-player is complete
-                                    Plugin.Framework.RunOnFrameworkThread(() =>
-                                    {
-                                        if (character == null || !character.IsValid()) return;
-
                                         // Apply appearance
                                         if (!npcData.UseMcdfAppearance)
                                         {
@@ -1527,8 +1519,6 @@ namespace AQuestReborn
                                         npc.TargetClassJobId = npcData.NpcClassJobId;
                                         npc.TargetWeaponItemId = npcData.NpcEquippedWeaponItemId;
                                         npc.ClassWeaponApplied = false;
-                                    });
-                                });
 
                                 // Restore follow/stay state from config
                                 if (npcData.IsFollowingPlayer)
@@ -1611,14 +1601,6 @@ namespace AQuestReborn
                                 _customNpcDictionary[npcData.NpcName] = npc;
                                 _interactiveNpcDictionary[npcData.NpcName] = npc;
 
-                                // Allow engine to initialize the NPC fully before overriding appearance
-                                Task.Run(() =>
-                                {
-                                    Thread.Sleep(500); // 500ms delay to ensure copy-from-player is complete
-                                    Plugin.Framework.RunOnFrameworkThread(() =>
-                                    {
-                                        if (character == null || !character.IsValid()) return;
-
                                         // Apply appearance
                                         if (!npcData.UseMcdfAppearance)
                                         {
@@ -1678,8 +1660,6 @@ namespace AQuestReborn
                                         npc.TargetClassJobId = npcData.NpcClassJobId;
                                         npc.TargetWeaponItemId = npcData.NpcEquippedWeaponItemId;
                                         npc.ClassWeaponApplied = false;
-                                    });
-                                });
 
                                 // Set to stay at the saved position/rotation
                                 npc.SetDefaults(position, rotation);
@@ -2184,10 +2164,12 @@ namespace AQuestReborn
                     foreach (var kvp in _customNpcCharacters)
                     {
                             if (kvp.Value == null) continue;
-                            var dist = System.Numerics.Vector3.Distance(player.Position, kvp.Value.Position);
+                            var pos = kvp.Value.Position;
+                            if (_interactiveNpcDictionary.ContainsKey(kvp.Key)) pos = _interactiveNpcDictionary[kvp.Key].CurrentPosition;
+                            var dist = System.Numerics.Vector3.Distance(player.Position, pos);
                             if (dist < 3.5f)
                             {
-                                var toNpc = new System.Numerics.Vector2(kvp.Value.Position.X - player.Position.X, kvp.Value.Position.Z - player.Position.Z);
+                                var toNpc = new System.Numerics.Vector2(pos.X - player.Position.X, pos.Z - player.Position.Z);
                                 toNpc = System.Numerics.Vector2.Normalize(toNpc);
                                 var playerForward = new System.Numerics.Vector2((float)Math.Sin(player.Rotation), (float)Math.Cos(player.Rotation));
                                 float dot = System.Numerics.Vector2.Dot(toNpc, playerForward);

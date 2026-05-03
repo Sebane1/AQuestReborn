@@ -291,10 +291,12 @@ public class ObjectiveWindow : Window, IDisposable
         foreach (var kvp in Plugin.AQuestReborn.CustomNpcCharacters)
         {
             if (kvp.Value == null || kvp.Value.Address == 0) continue;
-            float dist = Vector3.Distance(Plugin.ObjectTable.LocalPlayer.Position, kvp.Value.Position);
+            var pos = kvp.Value.Position;
+            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(kvp.Key)) pos = Plugin.AQuestReborn.InteractiveNpcDictionary[kvp.Key].CurrentPosition;
+            float dist = Vector3.Distance(Plugin.ObjectTable.LocalPlayer.Position, pos);
             if (dist < 40f)
             {
-                DrawNameplate(drawList, kvp.Key, kvp.Value, dist);
+                DrawNameplate(drawList, kvp.Key, kvp.Value, dist, pos);
             }
         }
 
@@ -303,17 +305,18 @@ public class ObjectiveWindow : Window, IDisposable
         {
             foreach (var npcKvp in questKvp.Value)
             {
-                if (npcKvp.Value == null || npcKvp.Value.Address == 0) continue;
-                float dist = Vector3.Distance(Plugin.ObjectTable.LocalPlayer.Position, npcKvp.Value.Position);
+                var pos = npcKvp.Value.Position;
+                if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(npcKvp.Key)) pos = Plugin.AQuestReborn.InteractiveNpcDictionary[npcKvp.Key].CurrentPosition;
+                float dist = Vector3.Distance(Plugin.ObjectTable.LocalPlayer.Position, pos);
                 if (dist < 40f)
                 {
-                    DrawNameplate(drawList, npcKvp.Key, npcKvp.Value, dist);
+                    DrawNameplate(drawList, npcKvp.Key, npcKvp.Value, dist, pos);
                 }
             }
         }
     }
 
-    private unsafe void DrawNameplate(ImDrawListPtr drawList, string name, ICharacter character, float distance)
+    private unsafe void DrawNameplate(ImDrawListPtr drawList, string name, ICharacter character, float distance, Vector3 actualPos)
     {
         Vector3 headPos;
         try
@@ -322,11 +325,11 @@ public class ObjectiveWindow : Window, IDisposable
             var rawBonePos = Hypostasis.Game.Common.GetBoneWorldPosition((FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)character.Address, 6);
             
             // Lock X and Z to the character's root collision center so the nameplate doesn't sway horizontally during idle animations!
-            headPos = new Vector3(character.Position.X, rawBonePos.Y, character.Position.Z);
+            headPos = new Vector3(actualPos.X, rawBonePos.Y, actualPos.Z);
         }
         catch
         {
-            headPos = character.Position + new Vector3(0, 1.8f, 0);
+            headPos = actualPos + new Vector3(0, 1.8f, 0);
         }
 
         // Project to screen, offset slightly above head (but lower than speech bubbles)
