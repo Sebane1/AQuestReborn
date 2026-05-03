@@ -35,9 +35,14 @@ namespace AQuestReborn.CustomNpc
         public ushort VictoryPoseEmoteId = 0; // Default: none
 
         // Appearance mode
-        // Appearance mode
         public bool UseMcdfAppearance = false;
         public string McdfFilePath = "";
+
+        public bool UseMonsterModel = false;
+        public uint MonsterModelId = 0;
+
+        public bool UsePenumbraCollection = false;
+        public string PenumbraCollection = "";
 
         // Model Choice
         public string ModelChoice = "";

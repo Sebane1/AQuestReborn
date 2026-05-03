@@ -33,6 +33,7 @@ namespace AQuestReborn.CustomNpc
         private ushort[] _idleEmoteRowIds = new ushort[] { 0 };
         private string _emoteSearchText = "";
         private string _victoryEmoteSearchText = "";
+        private string _penumbraSearchText = "";
         
         // PlaceName list
         private string[] _placeNames = new string[] { "Unknown" };
@@ -42,6 +43,11 @@ namespace AQuestReborn.CustomNpc
         private string[] _classJobNames = new string[] { "None" };
         private uint[] _classJobRowIds = new uint[] { 0 };
         private string _classJobSearchText = "";
+
+        // Monster list
+        private string[] _monsterNames = new string[] { "None" };
+        private int[] _monsterModelIds = new int[] { 0 };
+        private string _monsterSearchText = "";
 
         public Plugin Plugin { get => _plugin; set => _plugin = value; }
         public List<CustomNpcCharacter> CustomNpcCharacters { get => _customNpcCharacters; set => _customNpcCharacters = value; }
@@ -67,6 +73,7 @@ namespace AQuestReborn.CustomNpc
             RefreshEmoteList();
             RefreshPlaceNameList();
             RefreshClassJobList();
+            RefreshMonsterList();
         }
         public override void OnClose()
         {
@@ -154,6 +161,59 @@ namespace AQuestReborn.CustomNpc
             catch (Exception e)
             {
                 _plugin?.PluginLog?.Warning(e, "Failed to load classjob list");
+            }
+        }
+
+        public void RefreshMonsterList()
+        {
+            if (_plugin == null) return;
+            try
+            {
+                var bNpcBases = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.BNpcBase>();
+                var bNpcNames = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.BNpcName>();
+
+                var names = new List<string> { "None" };
+                var modelIds = new List<int> { 0 };
+                var seenIds = new HashSet<int> { 0 };
+
+                if (bNpcBases != null && bNpcNames != null)
+                {
+                    foreach (var bnpc in bNpcBases)
+                    {
+                        if (bnpc.ModelChara.RowId > 0 && bnpc.ModelChara.RowId < 10000)
+                        {
+                            int modelId = (int)bnpc.ModelChara.RowId;
+                            if (seenIds.Contains(modelId)) continue;
+
+                            var nameRow = bNpcNames.GetRow(bnpc.RowId);
+                            string name = nameRow.Singular.ToString();
+
+                            if (!string.IsNullOrWhiteSpace(name))
+                            {
+                                names.Add($"{name} (ID: {modelId})");
+                                modelIds.Add(modelId);
+                                seenIds.Add(modelId);
+                            }
+                        }
+                    }
+                }
+
+                // Sort everything after "None"
+                var combined = names.Skip(1).Zip(modelIds.Skip(1), (n, i) => new { Name = n, Id = i })
+                    .OrderBy(x => x.Name).ToList();
+
+                names = new List<string> { "None" };
+                modelIds = new List<int> { 0 };
+
+                names.AddRange(combined.Select(x => x.Name));
+                modelIds.AddRange(combined.Select(x => x.Id));
+
+                _monsterNames = names.ToArray();
+                _monsterModelIds = modelIds.ToArray();
+            }
+            catch (Exception e)
+            {
+                _plugin?.PluginLog?.Warning(e, "Failed to load monster list");
             }
         }
 
@@ -271,58 +331,162 @@ namespace AQuestReborn.CustomNpc
 
                             ImGui.Dummy(new Vector2(0, 5));
 
-                            // Appearance mode toggle
-                            if (ImGui.Checkbox(Translator.LocalizeUI("Use MCDF File"), ref _customNpcCharacters[_currentSelection].UseMcdfAppearance))
+                            // Appearance mode combo
+                            string[] appearanceMethods = { Translator.LocalizeUI("MCDF File"), Translator.LocalizeUI("Monster Model"), Translator.LocalizeUI("Glamourer / Penumbra") };
+                            int appearanceMethod = 2;
+                            if (_customNpcCharacters[_currentSelection].UseMcdfAppearance) appearanceMethod = 0;
+                            else if (_customNpcCharacters[_currentSelection].UseMonsterModel) appearanceMethod = 1;
+
+                            ImGui.LabelText("##appearanceModeLabel", Translator.LocalizeUI("Appearance Method"));
+                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                            if (ImGui.Combo("##appearanceMode", ref appearanceMethod, appearanceMethods, appearanceMethods.Length))
                             {
+                                _customNpcCharacters[_currentSelection].UseMcdfAppearance = (appearanceMethod == 0);
+                                _customNpcCharacters[_currentSelection].UseMonsterModel = (appearanceMethod == 1);
+                                _customNpcCharacters[_currentSelection].UsePenumbraCollection = (appearanceMethod == 2);
                                 SaveNPCCharacters();
                             }
 
-                            // Create MCDF from player appearance
-                            if (_isCreatingMcdf)
+                            if (_customNpcCharacters[_currentSelection].UseMcdfAppearance)
                             {
-                                ImGui.BeginDisabled();
-                            }
-                            if (ImGui.Button(Translator.LocalizeUI(_isCreatingMcdf ? "Creating Appearance..." : "Create MCDF From Player Appearance##customnpc")))
-                            {
-                                Task.Run(() =>
+                                // Create MCDF from player appearance
+                                if (_isCreatingMcdf)
                                 {
-                                    _isCreatingMcdf = true;
-                                    try
+                                    ImGui.BeginDisabled();
+                                }
+                                if (ImGui.Button(Translator.LocalizeUI(_isCreatingMcdf ? "Creating Appearance..." : "Create MCDF From Player Appearance##customnpc")))
+                                {
+                                    Task.Run(() =>
                                     {
-                                        string npcName = _customNpcCharacters[_currentSelection].NpcName;
-                                        string mcdfDir = Path.Combine(_plugin.Configuration.QuestInstallFolder, "CustomNpcs");
-                                        Directory.CreateDirectory(mcdfDir);
-                                        string mcdfName = npcName + "-" + Guid.NewGuid().ToString() + ".mcdf";
-                                        string mcdfPath = Path.Combine(mcdfDir, mcdfName);
-                                        AppearanceAccessUtils.AppearanceManager.CreateMCDF(mcdfPath);
-                                        _customNpcCharacters[_currentSelection].McdfFilePath = mcdfPath;
-                                        _customNpcCharacters[_currentSelection].UseMcdfAppearance = true;
-                                        SaveNPCCharacters();
-
-                                        // Apply immediately if NPC is spawned
-                                        if (_plugin?.AQuestReborn != null)
+                                        _isCreatingMcdf = true;
+                                        try
                                         {
-                                            _plugin.AQuestReborn.ReapplyCustomNpcMcdfAppearance(npcName, mcdfPath);
-                                        }
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        _plugin?.PluginLog?.Warning(e, "Failed to create MCDF");
-                                    }
-                                    finally
-                                    {
-                                        _isCreatingMcdf = false;
-                                    }
-                                });
-                            }
-                            if (_isCreatingMcdf)
-                            {
-                                ImGui.EndDisabled();
-                            }
+                                            string npcName = _customNpcCharacters[_currentSelection].NpcName;
+                                            string mcdfDir = Path.Combine(_plugin.Configuration.QuestInstallFolder, "CustomNpcs");
+                                            Directory.CreateDirectory(mcdfDir);
+                                            string mcdfName = npcName + "-" + Guid.NewGuid().ToString() + ".mcdf";
+                                            string mcdfPath = Path.Combine(mcdfDir, mcdfName);
+                                            AppearanceAccessUtils.AppearanceManager.CreateMCDF(mcdfPath);
+                                            _customNpcCharacters[_currentSelection].McdfFilePath = mcdfPath;
+                                            _customNpcCharacters[_currentSelection].UseMcdfAppearance = true;
+                                            SaveNPCCharacters();
 
-                            if (!_customNpcCharacters[_currentSelection].UseMcdfAppearance)
+                                            // Apply immediately if NPC is spawned
+                                            if (_plugin?.AQuestReborn != null)
+                                            {
+                                                _plugin.AQuestReborn.ReapplyCustomNpcMcdfAppearance(npcName, mcdfPath);
+                                            }
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            _plugin?.PluginLog?.Warning(e, "Failed to create MCDF");
+                                        }
+                                        finally
+                                        {
+                                            _isCreatingMcdf = false;
+                                        }
+                                    });
+                                }
+                                if (_isCreatingMcdf)
+                                {
+                                    ImGui.EndDisabled();
+                                }
+
+                                // MCDF file path input
+                                ImGui.LabelText("##mcdfLabel", Translator.LocalizeUI("MCDF File Path"));
+                                ImGui.SetNextItemWidth(ImGui.GetColumnWidth() - 80);
+                                if (ImGui.InputText("##McdfPath", ref _customNpcCharacters[_currentSelection].McdfFilePath, 1024))
+                                {
+                                    SaveNPCCharacters();
+                                }
+                                ImGui.SameLine();
+                                if (ImGui.Button(Translator.LocalizeUI("Browse"), new Vector2(70, 0)))
+                                {
+                                    _fileDialogManager.Reset();
+                                    ImGui.OpenPopup("OpenMcdfDialog##customnpc");
+                                }
+                                if (ImGui.BeginPopup("OpenMcdfDialog##customnpc"))
+                                {
+                                    _fileDialogManager.OpenFileDialog(Translator.LocalizeUI("Select MCDF File"), ".mcdf", (isOk, file) =>
+                                    {
+                                        if (isOk && file.Count > 0)
+                                        {
+                                            _customNpcCharacters[_currentSelection].McdfFilePath = file[0];
+                                            SaveNPCCharacters();
+
+                                            // Apply immediately if NPC is spawned
+                                            if ((_customNpcCharacters[_currentSelection].IsFollowingPlayer || _customNpcCharacters[_currentSelection].IsStaying)
+                                                && _plugin != null && _plugin.AQuestReborn != null)
+                                            {
+                                                _plugin.AQuestReborn.ReapplyCustomNpcMcdfAppearance(
+                                                    _customNpcCharacters[_currentSelection].NpcName, file[0]);
+                                            }
+                                        }
+                                    }, 0, null, true);
+                                    ImGui.EndPopup();
+                                }
+                            }
+                            else if (_customNpcCharacters[_currentSelection].UseMonsterModel)
                             {
-                                // Glamourer design dropdown
+                                ImGui.LabelText("##monsterLabel", Translator.LocalizeUI("Monster Model"));
+                                ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                                
+                                int currentModelId = (int)_customNpcCharacters[_currentSelection].MonsterModelId;
+                                string previewValue = currentModelId.ToString();
+                                for (int i = 0; i < _monsterModelIds.Length; i++)
+                                {
+                                    if (_monsterModelIds[i] == currentModelId)
+                                    {
+                                        previewValue = _monsterNames[i];
+                                        break;
+                                    }
+                                }
+
+                                if (ImGui.BeginCombo("##MonsterModelCombo", previewValue))
+                                {
+                                    ImGui.InputTextWithHint("##monsterSearch", Translator.LocalizeUI("Search monsters..."), ref _monsterSearchText, 100);
+                                    
+                                    for (int i = 0; i < _monsterNames.Length; i++)
+                                    {
+                                        string name = _monsterNames[i];
+                                        int id = _monsterModelIds[i];
+
+                                        if (!string.IsNullOrEmpty(_monsterSearchText) && !name.Contains(_monsterSearchText, StringComparison.OrdinalIgnoreCase))
+                                            continue;
+
+                                        bool isSelected = (currentModelId == id);
+                                        if (ImGui.Selectable(name, isSelected))
+                                        {
+                                            _customNpcCharacters[_currentSelection].MonsterModelId = (uint)id;
+                                            SaveNPCCharacters();
+                                            
+                                            // Re-apply immediately if spawned
+                                            if (_customNpcCharacters[_currentSelection].IsFollowingPlayer || _customNpcCharacters[_currentSelection].IsStaying)
+                                            {
+                                                if (_plugin != null && _plugin.AQuestReborn != null)
+                                                {
+                                                    _plugin.AQuestReborn.ReapplyCustomNpcMonsterAppearance(
+                                                        _customNpcCharacters[_currentSelection].NpcName, _customNpcCharacters[_currentSelection].MonsterModelId);
+                                                }
+                                            }
+                                        }
+                                        if (isSelected)
+                                            ImGui.SetItemDefaultFocus();
+                                    }
+                                    ImGui.EndCombo();
+                                }
+
+                                // Keep manual entry as an option for raw IDs just in case
+                                ImGui.SetNextItemWidth(ImGui.GetColumnWidth() - 80);
+                                if (ImGui.InputInt("##MonsterModelIdRaw", ref currentModelId))
+                                {
+                                    _customNpcCharacters[_currentSelection].MonsterModelId = (uint)Math.Max(0, currentModelId);
+                                    SaveNPCCharacters();
+                                }
+                            }
+                            else
+                            {
+                                // Glamourer / Penumbra
                                 ImGui.LabelText("##glamourerLabel", Translator.LocalizeUI("Glamourer Design Appearance"));
                                 ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
                                 if (ImGui.Combo("##savedDesigns", ref _designListSelectedIndex, _designListContents, _designListContents.Length))
@@ -350,41 +514,47 @@ namespace AQuestReborn.CustomNpc
                                         }
                                     }
                                 }
-                            }
-                            else
-                            {
-                                // MCDF file path input
-                                ImGui.LabelText("##mcdfLabel", Translator.LocalizeUI("MCDF File Path"));
-                                ImGui.SetNextItemWidth(ImGui.GetColumnWidth() - 80);
-                                if (ImGui.InputText("##McdfPath", ref _customNpcCharacters[_currentSelection].McdfFilePath, 1024))
-                                {
-                                    SaveNPCCharacters();
-                                }
-                                ImGui.SameLine();
-                                if (ImGui.Button(Translator.LocalizeUI("Browse"), new Vector2(70, 0)))
-                                {
-                                    _fileDialogManager.Reset();
-                                    ImGui.OpenPopup("OpenMcdfDialog##customnpc");
-                                }
-                                if (ImGui.BeginPopup("OpenMcdfDialog##customnpc"))
-                                {
-                                    _fileDialogManager.OpenFileDialog(Translator.LocalizeUI("Select MCDF File"), ".mcdf", (isOk, file) =>
-                                    {
-                                        if (isOk && file.Count > 0)
-                                        {
-                                            _customNpcCharacters[_currentSelection].McdfFilePath = file[0];
-                                            SaveNPCCharacters();
 
-                                            // Apply immediately if NPC is spawned
-                                            if (_customNpcCharacters[_currentSelection].IsFollowingPlayer
-                                                && _plugin != null && _plugin.AQuestReborn != null)
+                                ImGui.LabelText("##penumbraLabel", Translator.LocalizeUI("Penumbra Collection Name"));
+                                ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                                if (Brio.Brio.TryGetService<Brio.IPC.PenumbraService>(out var penumbraService))
+                                {
+                                    var collections = penumbraService.GetCollections().Values.OrderBy(name => name).ToArray();
+                                    
+                                    if (ImGui.BeginCombo("##PenumbraCollectionCombo", _customNpcCharacters[_currentSelection].PenumbraCollection ?? ""))
+                                    {
+                                        ImGui.InputTextWithHint("##penumbraSearch", Translator.LocalizeUI("Search collections..."), ref _penumbraSearchText, 100);
+                                        
+                                        foreach (var collectionName in collections)
+                                        {
+                                            if (!string.IsNullOrEmpty(_penumbraSearchText) && !collectionName.Contains(_penumbraSearchText, StringComparison.OrdinalIgnoreCase))
+                                                continue;
+
+                                            bool isSelected = (_customNpcCharacters[_currentSelection].PenumbraCollection == collectionName);
+                                            if (ImGui.Selectable(collectionName, isSelected))
                                             {
-                                                _plugin.AQuestReborn.ReapplyCustomNpcMcdfAppearance(
-                                                    _customNpcCharacters[_currentSelection].NpcName, file[0]);
+                                                _customNpcCharacters[_currentSelection].PenumbraCollection = collectionName;
+                                                SaveNPCCharacters();
+                                                
+                                                // Auto apply if spawned
+                                                if (_customNpcCharacters[_currentSelection].IsFollowingPlayer || _customNpcCharacters[_currentSelection].IsStaying)
+                                                {
+                                                    if (_plugin != null && _plugin.AQuestReborn != null)
+                                                    {
+                                                        _plugin.AQuestReborn.ReapplyCustomNpcPenumbraAppearance(
+                                                            _customNpcCharacters[_currentSelection].NpcName, _customNpcCharacters[_currentSelection].PenumbraCollection);
+                                                    }
+                                                }
                                             }
+                                            if (isSelected)
+                                                ImGui.SetItemDefaultFocus();
                                         }
-                                    }, 0, null, true);
-                                    ImGui.EndPopup();
+                                        ImGui.EndCombo();
+                                    }
+                                }
+                                else
+                                {
+                                    ImGui.TextColored(new Vector4(1, 0, 0, 1), Translator.LocalizeUI("Penumbra is not installed or available."));
                                 }
                             }
                             

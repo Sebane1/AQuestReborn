@@ -74,6 +74,8 @@ namespace AQuestReborn
         private ushort _queuedVictoryPose;
         private Stopwatch _victoryPoseDelayTimer = new Stopwatch();
         private int _victoryPoseDelayMs;
+        private Stopwatch _autonomousAttackTimer = new Stopwatch();
+        private int _nextAutonomousAttackMs;
         EventMovementAnimation _eventMovementAnimationType = EventMovementAnimation.Automatic;
         public static Dictionary<uint, List<ushort>> JobCombatAnimations = null;
 
@@ -449,18 +451,35 @@ namespace AQuestReborn
 
                                         var pChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_plugin.ObjectTable.LocalPlayer.Address;
                                         ushort pTimeline = pChara->Timeline.TimelineSequencer.TimelineIds[1];
+                                        
+                                        bool shouldAttack = false;
                                         if (pTimeline != 0 && pTimeline != _lastPlayerTimelineId)
+                                        {
+                                            shouldAttack = true;
+                                        }
+
+                                        if (!_autonomousAttackTimer.IsRunning || _autonomousAttackTimer.ElapsedMilliseconds > _nextAutonomousAttackMs)
+                                        {
+                                            shouldAttack = true;
+                                            _autonomousAttackTimer.Restart();
+                                            _nextAutonomousAttackMs = new Random(Environment.TickCount + _index).Next(2500, 4500);
+                                        }
+
+                                        if (shouldAttack)
                                         {
                                             LoadJobAnimations(_plugin);
                                             
                                             if (TargetClassJobId > 0 && JobCombatAnimations != null && JobCombatAnimations.ContainsKey(TargetClassJobId))
                                             {
                                                 var jobAnims = JobCombatAnimations[TargetClassJobId];
-                                                _nextCombatAnimationToPlay = jobAnims[new Random(Environment.TickCount + _index).Next(jobAnims.Count)];
+                                                if (jobAnims.Count > 0)
+                                                {
+                                                    _nextCombatAnimationToPlay = jobAnims[new Random(Environment.TickCount + _index).Next(jobAnims.Count)];
+                                                }
                                             }
                                             else
                                             {
-                                                _nextCombatAnimationToPlay = pTimeline;
+                                                _nextCombatAnimationToPlay = pTimeline != 0 ? pTimeline : (ushort)0;
                                             }
 
                                             // Seed random differently for each NPC based on their index

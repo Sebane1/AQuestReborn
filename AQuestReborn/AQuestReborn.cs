@@ -1372,7 +1372,35 @@ namespace AQuestReborn
                                 _interactiveNpcDictionary[npcData.NpcName] = npc;
 
                                 // Apply appearance
-                                if (npcData.UseMcdfAppearance && !string.IsNullOrEmpty(npcData.McdfFilePath))
+                                // Apply Penumbra Collection separately
+                                if (!npcData.UseMcdfAppearance && npcData.UsePenumbraCollection && !string.IsNullOrEmpty(npcData.PenumbraCollection))
+                                {
+                                    if (Brio.Brio.TryGetService<Brio.IPC.PenumbraService>(out var penumbraService))
+                                    {
+                                        var collections = penumbraService.GetCollections();
+                                        var collectionGuid = collections.FirstOrDefault(x => x.Value == npcData.PenumbraCollection).Key;
+                                        if (collectionGuid != Guid.Empty)
+                                        {
+                                            PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke(character.ObjectIndex, collectionGuid, true, true);
+                                            PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                                        }
+                                        else
+                                        {
+                                            Plugin.PluginLog.Warning($"Could not find Penumbra collection: {npcData.PenumbraCollection}");
+                                        }
+                                    }
+                                }
+
+                                if (npcData.UseMonsterModel)
+                                {
+                                    unsafe
+                                    {
+                                        var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)character.Address;
+                                        native->ModelContainer.ModelCharaId = (int)npcData.MonsterModelId;
+                                    }
+                                    PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                                }
+                                else if (npcData.UseMcdfAppearance && !string.IsNullOrEmpty(npcData.McdfFilePath))
                                 {
                                     // Load MCDF file
                                     try
@@ -1461,7 +1489,35 @@ namespace AQuestReborn
                                 _interactiveNpcDictionary[npcData.NpcName] = npc;
 
                                 // Apply appearance
-                                if (npcData.UseMcdfAppearance && !string.IsNullOrEmpty(npcData.McdfFilePath))
+                                // Apply Penumbra Collection separately
+                                if (!npcData.UseMcdfAppearance && npcData.UsePenumbraCollection && !string.IsNullOrEmpty(npcData.PenumbraCollection))
+                                {
+                                    if (Brio.Brio.TryGetService<Brio.IPC.PenumbraService>(out var penumbraService))
+                                    {
+                                        var collections = penumbraService.GetCollections();
+                                        var collectionGuid = collections.FirstOrDefault(x => x.Value == npcData.PenumbraCollection).Key;
+                                        if (collectionGuid != Guid.Empty)
+                                        {
+                                            PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke(character.ObjectIndex, collectionGuid, true, true);
+                                            PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                                        }
+                                        else
+                                        {
+                                            Plugin.PluginLog.Warning($"Could not find Penumbra collection: {npcData.PenumbraCollection}");
+                                        }
+                                    }
+                                }
+
+                                if (npcData.UseMonsterModel)
+                                {
+                                    unsafe
+                                    {
+                                        var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)character.Address;
+                                        native->ModelContainer.ModelCharaId = (int)npcData.MonsterModelId;
+                                    }
+                                    PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                                }
+                                else if (npcData.UseMcdfAppearance && !string.IsNullOrEmpty(npcData.McdfFilePath))
                                 {
                                     try
                                     {
@@ -1736,6 +1792,35 @@ namespace AQuestReborn
                 });
             }
         }
+        public void ReapplyCustomNpcPenumbraAppearance(string npcName, string penumbraCollection)
+        {
+            if (_customNpcCharacters.ContainsKey(npcName))
+            {
+                var character = _customNpcCharacters[npcName];
+                try
+                {
+                    if (Brio.Brio.TryGetService<Brio.IPC.PenumbraService>(out var penumbraService))
+                    {
+                        var collections = penumbraService.GetCollections();
+                        var collectionGuid = collections.FirstOrDefault(x => x.Value == penumbraCollection).Key;
+                        if (collectionGuid != Guid.Empty)
+                        {
+                            PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke(character.ObjectIndex, collectionGuid, true, true);
+                            PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                        }
+                        else
+                        {
+                            Plugin.PluginLog.Warning($"Could not find Penumbra collection: {penumbraCollection}");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Warning(ex, $"Failed to reapply Penumbra Collection '{penumbraCollection}' to NPC {npcName}");
+                }
+            }
+        }
+
         public void ReapplyCustomNpcMcdfAppearance(string npcName, string mcdfPath)
         {
             if (_customNpcCharacters.ContainsKey(npcName))
@@ -1750,6 +1835,29 @@ namespace AQuestReborn
                 {
                     Plugin.PluginLog.Warning(ex, "Failed to reapply MCDF appearance: " + ex.Message);
                 }
+            }
+        }
+
+        public unsafe void ReapplyCustomNpcMonsterAppearance(string npcName, uint monsterModelId)
+        {
+            if (_customNpcCharacters.ContainsKey(npcName))
+            {
+                var character = _customNpcCharacters[npcName];
+                Plugin.Framework.RunOnFrameworkThread(() =>
+                {
+                    try
+                    {
+                        var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)character.Address;
+                        if (native != null)
+                        {
+                            native->ModelContainer.ModelCharaId = (int)monsterModelId;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.PluginLog.Warning(ex, "Failed to reapply Monster appearance: " + ex.Message);
+                    }
+                });
             }
         }
         public void ToggleCustomNpcFollow(string npcName, bool shouldFollow)
