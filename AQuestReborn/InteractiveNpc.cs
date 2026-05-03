@@ -405,7 +405,7 @@ namespace AQuestReborn
                                         newH = currentH + (dirH * maxMoveDist);
                                     }
 
-                                    float yLerp = Math.Clamp(_speed * delta * 10f, 0f, 1f);
+                                    float yLerp = Math.Clamp(10f * delta, 0f, 1f);
                                     var newPosition = new Vector3(
                                         newH.X,
                                         _currentPosition.Y + (groundY - _currentPosition.Y) * yLerp,
@@ -432,7 +432,7 @@ namespace AQuestReborn
                                     }
                                     float groundY = _plugin.AQuestReborn.GroundMap.GetGroundY(
                                         _currentPosition.X, _currentPosition.Z, fallbackY);
-                                    float yLerp = Math.Clamp(_speed * delta * 10f, 0f, 1f);
+                                    float yLerp = Math.Clamp(10f * delta, 0f, 1f);
                                     _currentPosition = new Vector3(_currentPosition.X, _currentPosition.Y + (groundY - _currentPosition.Y) * yLerp, _currentPosition.Z);
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
 

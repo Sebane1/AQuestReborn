@@ -315,11 +315,15 @@ public class ObjectiveWindow : Window, IDisposable
         Vector3 headPos;
         try
         {
-            headPos = Hypostasis.Game.Common.GetBoneWorldPosition((FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)character.Address, 6);
+            // Get the Y height from the head/neck bone to automatically adapt to Lalafell vs Roegadyn heights
+            var rawBonePos = Hypostasis.Game.Common.GetBoneWorldPosition((FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)character.Address, 6);
+            
+            // Lock X and Z to the character's root collision center so the nameplate doesn't sway horizontally during idle animations!
+            headPos = new Vector3(character.Position.X, rawBonePos.Y, character.Position.Z);
         }
         catch
         {
-            headPos = character.Position + new Vector3(0, 1.6f, 0);
+            headPos = character.Position + new Vector3(0, 1.8f, 0);
         }
 
         // Project to screen, offset slightly above head (but lower than speech bubbles)

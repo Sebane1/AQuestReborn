@@ -723,11 +723,24 @@ namespace AQuestReborn
                         if (Plugin.ObjectTable.LocalPlayer != null)
                         {
                             GroundMap.RecordPosition(Plugin.ObjectTable.LocalPlayer.Position);
-                            
+
                             foreach (var obj in Plugin.ObjectTable)
                             {
                                 if (obj != null && obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc)
                                 {
+                                    // Use memory address comparison to reliably filter out our Custom NPCs regardless of Name overrides
+                                    bool isCustomNpc = false;
+                                    foreach (var customNpc in _customNpcCharacters.Values)
+                                    {
+                                        if (customNpc.Address == obj.Address)
+                                        {
+                                            isCustomNpc = true;
+                                            break;
+                                        }
+                                    }
+                                    
+                                    if (isCustomNpc) continue;
+
                                     GroundMap.ForceRecordPosition(obj.Position);
                                 }
                             }
