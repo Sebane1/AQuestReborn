@@ -678,7 +678,7 @@ namespace AQuestReborn
                 {
                     var characterStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)kvp.Value.Address;
                     characterStruct->NamePlateIconId = 71201; // Force Friendly NPC icon
-                    characterStruct->GameObject.ObjectKind = (FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind)2; // Force BattleNpc
+                    characterStruct->GameObject.ObjectKind = (FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind)3; // Force EventNpc to fix housing instances
                     characterStruct->GameObject.RenderFlags = 0; // Clear all render flags (specifically HideNameplate)
                     
                     if (!_nameplateForcedActors.Contains(kvp.Value.Address))
@@ -696,7 +696,7 @@ namespace AQuestReborn
                     {
                         var characterStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)npcKvp.Value.Address;
                         characterStruct->NamePlateIconId = 71201;
-                        characterStruct->GameObject.ObjectKind = (FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind)2;
+                        characterStruct->GameObject.ObjectKind = (FFXIVClientStructs.FFXIV.Client.Game.Object.ObjectKind)3; // Force EventNpc
                         characterStruct->GameObject.RenderFlags = 0; // Clear HideNameplate flag
                         
                         if (!_nameplateForcedActors.Contains(npcKvp.Value.Address))
