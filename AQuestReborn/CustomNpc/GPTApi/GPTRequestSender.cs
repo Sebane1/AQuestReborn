@@ -90,18 +90,16 @@ namespace AQuestReborn.CustomNpc.GPTApi
             string finalValue = newValue.TrimStart('\n').Split("\n")[0].Split("]")[0].Replace("----", @"shakes ""Appologies, I forget myself sometimes""");
             
             // Failsafe: Hard truncate if the AI hallucinated a dialogue tag inline
-            int colonIndex = finalValue.IndexOf(":");
-            while (colonIndex > 0)
+            int senderIndex = finalValue.IndexOf(sender + ":", StringComparison.OrdinalIgnoreCase);
+            if (senderIndex > 0)
             {
-                int spaceIndex = finalValue.LastIndexOf(' ', colonIndex);
-                string precedingWord = spaceIndex >= 0 ? finalValue.Substring(spaceIndex + 1, colonIndex - spaceIndex - 1).Trim() : finalValue.Substring(0, colonIndex).Trim();
-                
-                if (precedingWord.Equals(sender, StringComparison.OrdinalIgnoreCase) || precedingWord.Equals(aiName, StringComparison.OrdinalIgnoreCase))
-                {
-                    finalValue = spaceIndex >= 0 ? finalValue.Substring(0, spaceIndex).Trim() : "";
-                    break;
-                }
-                colonIndex = finalValue.IndexOf(":", colonIndex + 1);
+                finalValue = finalValue.Substring(0, senderIndex).Trim();
+            }
+            
+            int aiIndex = finalValue.IndexOf(aiName + ":", StringComparison.OrdinalIgnoreCase);
+            if (aiIndex > 0)
+            {
+                finalValue = finalValue.Substring(0, aiIndex).Trim();
             }
             
             return ScrubEarthTerms(finalValue);
