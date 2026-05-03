@@ -327,6 +327,34 @@ namespace AQuestReborn.CustomNpc
                         SaveNPCCharacters();
                     }
 
+                    ImGui.LabelText("##npcBirthDateLabel", Translator.LocalizeUI("Birth Date (Lore)"));
+                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                    if (ImGui.InputText("##NpcBirthDate", ref _customNpcCharacters[_currentSelection].NpcBirthDate, 100))
+                    {
+                        SaveNPCCharacters();
+                    }
+
+                    ImGui.LabelText("##npcBirthLocationLabel", Translator.LocalizeUI("Birth Location (Lore)"));
+                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                    if (ImGui.InputText("##NpcBirthLocation", ref _customNpcCharacters[_currentSelection].NpcBirthLocation, 200))
+                    {
+                        SaveNPCCharacters();
+                    }
+
+                    ImGui.LabelText("##npcJobLabel", Translator.LocalizeUI("Profession/Job"));
+                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                    if (ImGui.InputText("##NpcJob", ref _customNpcCharacters[_currentSelection].NpcJob, 200))
+                    {
+                        SaveNPCCharacters();
+                    }
+
+                    ImGui.LabelText("##npcHobbiesLabel", Translator.LocalizeUI("Hobbies"));
+                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                    if (ImGui.InputText("##NpcHobbies", ref _customNpcCharacters[_currentSelection].NpcHobbies, 500))
+                    {
+                        SaveNPCCharacters();
+                    }
+
                     ImGui.Dummy(new Vector2(0, 10));
 
                     // Idle pose selector with search

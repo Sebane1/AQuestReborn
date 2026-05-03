@@ -1571,7 +1571,7 @@ namespace AQuestReborn
                             npcData.NPCGreeting,
                             message,
                             Plugin.GetEnvironmentContext(npcCharacter),
-                            npcData.NpcPersonality);
+                            npcData.GetFullLore());
 
                         if (!string.IsNullOrEmpty(response))
                         {
