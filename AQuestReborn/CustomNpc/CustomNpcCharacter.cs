@@ -14,6 +14,7 @@ namespace AQuestReborn.CustomNpc
         public string NpcBirthDate = "";
         public string NpcBirthLocation = "";
         public string NpcJob = "";
+        public uint NpcClassJobId = 0;
         public string NpcHobbies = "";
         
         public string NpcGlamourerAppearanceString = "";

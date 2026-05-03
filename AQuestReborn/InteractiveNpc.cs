@@ -74,6 +74,40 @@ namespace AQuestReborn
         private Stopwatch _victoryPoseDelayTimer = new Stopwatch();
         private int _victoryPoseDelayMs;
         EventMovementAnimation _eventMovementAnimationType = EventMovementAnimation.Automatic;
+        public static Dictionary<uint, List<ushort>> JobCombatAnimations = null;
+
+        public static void LoadJobAnimations(Plugin plugin)
+        {
+            if (JobCombatAnimations != null) return;
+            JobCombatAnimations = new Dictionary<uint, List<ushort>>();
+            try
+            {
+                var actions = plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Action>();
+                foreach (var action in actions)
+                {
+                    uint jobId = action.ClassJob.RowId;
+                    uint animId = action.AnimationStart.RowId;
+                    uint catId = action.ActionCategory.RowId;
+
+                    if (jobId > 0 && animId > 0 && catId >= 2 && catId <= 4)
+                    {
+                        if (!JobCombatAnimations.ContainsKey(jobId))
+                        {
+                            JobCombatAnimations[jobId] = new List<ushort>();
+                        }
+                        if (!JobCombatAnimations[jobId].Contains((ushort)animId))
+                        {
+                            JobCombatAnimations[jobId].Add((ushort)animId);
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                plugin.PluginLog.Warning(e, "Failed to load job combat animations");
+            }
+        }
+
         public string LastAppearance { get; internal set; }
         public bool LooksAtPlayer { get; internal set; }
         public bool ShouldBeMoving { get => _shouldBeMoving; set => _shouldBeMoving = value; }
@@ -264,7 +298,19 @@ namespace AQuestReborn
                                         ushort pTimeline = pChara->Timeline.TimelineSequencer.TimelineIds[1];
                                         if (pTimeline != 0 && pTimeline != _lastPlayerTimelineId)
                                         {
-                                            _nextCombatAnimationToPlay = pTimeline;
+                                            LoadJobAnimations(_plugin);
+                                            
+                                            var customNpc = _plugin.Configuration.CustomNpcCharacters.FirstOrDefault(c => c.NpcName == _character.Name.TextValue);
+                                            if (customNpc != null && customNpc.NpcClassJobId > 0 && JobCombatAnimations != null && JobCombatAnimations.ContainsKey(customNpc.NpcClassJobId))
+                                            {
+                                                var jobAnims = JobCombatAnimations[customNpc.NpcClassJobId];
+                                                _nextCombatAnimationToPlay = jobAnims[new Random(Environment.TickCount + _index).Next(jobAnims.Count)];
+                                            }
+                                            else
+                                            {
+                                                _nextCombatAnimationToPlay = pTimeline;
+                                            }
+
                                             // Seed random differently for each NPC based on their index
                                             _currentCombatDelayMs = new Random(Environment.TickCount + _index).Next(300, 1500);
                                             _combatAttackDelayTimer.Restart();

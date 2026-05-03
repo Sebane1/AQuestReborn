@@ -170,6 +170,17 @@ namespace AQuestReborn
             }
         }
 
+        public void TestActionSheet()
+        {
+            var actions = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Action>();
+            foreach (var action in actions)
+            {
+                var a = action.ClassJob.RowId;
+                var b = action.AnimationStart.RowId;
+                var c = action.ActionCategory.RowId;
+            }
+        }
+
         private unsafe void ChatGui_ChatMessage(Dalamud.Game.Chat.IChatMessage chatMessage)
         {
             try

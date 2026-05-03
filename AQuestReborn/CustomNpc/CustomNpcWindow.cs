@@ -37,6 +37,11 @@ namespace AQuestReborn.CustomNpc
         // PlaceName list
         private string[] _placeNames = new string[] { "Unknown" };
         private string _placeNameSearchText = "";
+        
+        // ClassJob list
+        private string[] _classJobNames = new string[] { "None" };
+        private uint[] _classJobRowIds = new uint[] { 0 };
+        private string _classJobSearchText = "";
 
         public Plugin Plugin { get => _plugin; set => _plugin = value; }
         public List<CustomNpcCharacter> CustomNpcCharacters { get => _customNpcCharacters; set => _customNpcCharacters = value; }
@@ -61,6 +66,7 @@ namespace AQuestReborn.CustomNpc
             RefreshDesignList();
             RefreshEmoteList();
             RefreshPlaceNameList();
+            RefreshClassJobList();
         }
         public override void OnClose()
         {
@@ -122,6 +128,32 @@ namespace AQuestReborn.CustomNpc
             catch (Exception e)
             {
                 _plugin?.PluginLog?.Warning(e, "Failed to load placename list");
+            }
+        }
+
+        public void RefreshClassJobList()
+        {
+            if (_plugin == null) return;
+            try
+            {
+                var jobs = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.ClassJob>();
+                var names = new List<string> { "None" };
+                var rowIds = new List<uint> { 0 };
+                foreach (var job in jobs)
+                {
+                    string name = job.Name.ToString();
+                    if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        names.Add(name);
+                        rowIds.Add(job.RowId);
+                    }
+                }
+                _classJobNames = names.ToArray();
+                _classJobRowIds = rowIds.ToArray();
+            }
+            catch (Exception e)
+            {
+                _plugin?.PluginLog?.Warning(e, "Failed to load classjob list");
             }
         }
 
@@ -388,10 +420,26 @@ namespace AQuestReborn.CustomNpc
                     }
 
                     ImGui.LabelText("##npcJobLabel", Translator.LocalizeUI("Profession/Job"));
+                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + 
+                        (string.IsNullOrEmpty(_customNpcCharacters[_currentSelection].NpcJob) ? Translator.LocalizeUI("None") : _customNpcCharacters[_currentSelection].NpcJob));
                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                    if (ImGui.InputText("##NpcJob", ref _customNpcCharacters[_currentSelection].NpcJob, 200))
+                    ImGui.InputTextWithHint("##classJobSearch", Translator.LocalizeUI("Search jobs..."), ref _classJobSearchText, 100);
+                    if (ImGui.BeginChild("##classJobList", new Vector2(ImGui.GetColumnWidth(), 120), true))
                     {
-                        SaveNPCCharacters();
+                        for (int i = 0; i < _classJobNames.Length; i++)
+                        {
+                            if (!string.IsNullOrEmpty(_classJobSearchText)
+                                && !_classJobNames[i].Contains(_classJobSearchText, StringComparison.OrdinalIgnoreCase))
+                                continue;
+                            bool isSelected = _classJobRowIds[i] == _customNpcCharacters[_currentSelection].NpcClassJobId;
+                            if (ImGui.Selectable(_classJobNames[i] + "##" + i, isSelected))
+                            {
+                                _customNpcCharacters[_currentSelection].NpcJob = _classJobNames[i] == "None" ? "" : _classJobNames[i];
+                                _customNpcCharacters[_currentSelection].NpcClassJobId = _classJobRowIds[i];
+                                SaveNPCCharacters();
+                            }
+                        }
+                        ImGui.EndChild();
                     }
 
                     ImGui.LabelText("##npcHobbiesLabel", Translator.LocalizeUI("Hobbies"));
