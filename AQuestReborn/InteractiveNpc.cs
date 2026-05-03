@@ -398,17 +398,21 @@ namespace AQuestReborn
 
                                             if (isMelee)
                                             {
-                                                float distToTgt = Vector3.Distance(_currentPosition, tgtPos);
-                                                if (distToTgt > 3.0f) // Move closer
+                                                int totalNpcs = Math.Max(1, _plugin.AQuestReborn.InteractiveNpcDictionary.Count);
+                                                float spreadAngle = (_index * (MathF.PI * 2f / totalNpcs));
+                                                Vector3 meleeTgtPos = tgtPos + new Vector3(MathF.Cos(spreadAngle) * 2.5f, 0, MathF.Sin(spreadAngle) * 2.5f);
+
+                                                float distToTgt = Vector3.Distance(_currentPosition, meleeTgtPos);
+                                                if (distToTgt > 0.5f) // Move closer to assigned slot
                                                 {
-                                                    var diff = new Vector3(tgtPos.X - _currentPosition.X, 0, tgtPos.Z - _currentPosition.Z);
+                                                    var diff = new Vector3(meleeTgtPos.X - _currentPosition.X, 0, meleeTgtPos.Z - _currentPosition.Z);
                                                     var dir = Vector3.Normalize(diff);
                                                     float moveSpeed = _speed * delta * 2.4f; // 12.0 yalms per second (fast run/sprint pace)
                                                     
                                                     if (diff.Length() < moveSpeed)
                                                     {
-                                                        _currentPosition.X = tgtPos.X;
-                                                        _currentPosition.Z = tgtPos.Z;
+                                                        _currentPosition.X = meleeTgtPos.X;
+                                                        _currentPosition.Z = meleeTgtPos.Z;
                                                     }
                                                     else
                                                     {
