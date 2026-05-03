@@ -122,6 +122,10 @@ public class ObjectiveWindow : Window, IDisposable
                     _alreadyLoadingQuestObjectiveIcon = false;
                 });
             }
+            
+            // Draw nameplates FIRST so they are rendered underneath the Quest Icons
+            DrawNameplates();
+            
             _mouseDistanceIsCloseToObjective = false;
             foreach (var item in questChainObjectives)
             {
@@ -274,7 +278,6 @@ public class ObjectiveWindow : Window, IDisposable
 
         // --- Draw ambient speech bubbles ---
         DrawSpeechBubbles();
-        DrawNameplates();
     }
 
     private unsafe void DrawNameplates()
@@ -332,8 +335,8 @@ public class ObjectiveWindow : Window, IDisposable
         Plugin.GameGui.WorldToScreen(headPos + new Vector3(0, 0.2f, 0), out screenPos, out inView);
         if (!inView) return;
 
-        // Push it at least 75 pixels up from the head projection
-        screenPos.Y -= 75f;
+        // Push it at least 25 pixels up from the head projection
+        screenPos.Y -= 25f;
 
         // Fade out at max distance
         float alpha = 1f;
