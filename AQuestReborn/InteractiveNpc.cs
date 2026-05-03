@@ -398,7 +398,7 @@ namespace AQuestReborn
                                                     
                                                     var diff = new Vector3(tgtPos.X - _currentPosition.X, 0, tgtPos.Z - _currentPosition.Z);
                                                     var dir = Vector3.Normalize(diff);
-                                                    float moveSpeed = _speed * delta * 1.2f; // 6.0 yalms per second (normal run pace)
+                                                    float moveSpeed = _speed * delta * 2.4f; // 12.0 yalms per second (fast run/sprint pace)
                                                     
                                                     if (diff.Length() < moveSpeed)
                                                     {
