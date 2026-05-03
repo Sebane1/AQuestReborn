@@ -1598,12 +1598,25 @@ namespace AQuestReborn
                                     break;
                                 }
                             }
-                            cleanResponse = System.Text.RegularExpressions.Regex.Replace(cleanResponse, @"\*[^*]+\*", "").Trim();
-                            cleanResponse = System.Text.RegularExpressions.Regex.Replace(cleanResponse, @"\[[^\]]+\]", "").Trim();
+                            var quoteMatches = System.Text.RegularExpressions.Regex.Matches(cleanResponse, "\"([^\"]*)\"");
+                            if (quoteMatches.Count > 0)
+                            {
+                                string dialogueOnly = "";
+                                foreach (System.Text.RegularExpressions.Match m in quoteMatches)
+                                {
+                                    dialogueOnly += m.Groups[1].Value.Trim() + " ";
+                                }
+                                cleanResponse = dialogueOnly.Trim();
+                            }
+                            else
+                            {
+                                cleanResponse = System.Text.RegularExpressions.Regex.Replace(cleanResponse, @"\*[^*]+\*", "").Trim();
+                                cleanResponse = System.Text.RegularExpressions.Regex.Replace(cleanResponse, @"\[[^\]]+\]", "").Trim();
+                                if (cleanResponse.StartsWith("\"") && cleanResponse.EndsWith("\"") && cleanResponse.Length > 2)
+                                    cleanResponse = cleanResponse.Substring(1, cleanResponse.Length - 2);
+                                cleanResponse = cleanResponse.TrimEnd('"').Trim();
+                            }
                             if (string.IsNullOrWhiteSpace(cleanResponse)) cleanResponse = "...";
-                            if (cleanResponse.StartsWith("\"") && cleanResponse.EndsWith("\"") && cleanResponse.Length > 2)
-                                cleanResponse = cleanResponse.Substring(1, cleanResponse.Length - 2);
-                            cleanResponse = cleanResponse.TrimEnd('"').Trim();
 
                             Plugin.Framework.RunOnFrameworkThread(() =>
                             {
