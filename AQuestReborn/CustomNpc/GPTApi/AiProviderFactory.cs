@@ -39,6 +39,15 @@ namespace AQuestReborn.CustomNpc.GPTApi
                         }
                         break;
 
+                    case "gemini":
+                        if (!string.IsNullOrEmpty(config.GeminiApiKey))
+                        {
+                            return new GeminiProvider(
+                                config.GeminiApiKey,
+                                config.GeminiModel);
+                        }
+                        break;
+
                     case "default":
                     default:
                         return new DefaultProvider();

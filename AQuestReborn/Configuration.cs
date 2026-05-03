@@ -54,6 +54,8 @@ public class Configuration : IPluginConfiguration
     private string _openAiCompatibleModelName = "";
     private string _novelAiApiToken = "";
     private string _novelAiModel = "kayra-v2";
+    private string _geminiApiKey = "";
+    private string _geminiModel = "gemini-2.0-flash";
 
     public Dictionary<string, int> QuestProgression { get => _questProgression; set => _questProgression = value; }
     public Dictionary<string, List<string>> CompletedObjectives { get { return _completedObjectives; } set { _completedObjectives = value; } }
@@ -73,6 +75,8 @@ public class Configuration : IPluginConfiguration
     public string OpenAiCompatibleModelName { get => _openAiCompatibleModelName; set => _openAiCompatibleModelName = value; }
     public string NovelAiApiToken { get => _novelAiApiToken; set => _novelAiApiToken = value; }
     public string NovelAiModel { get => _novelAiModel; set => _novelAiModel = value; }
+    public string GeminiApiKey { get => _geminiApiKey; set => _geminiApiKey = value; }
+    public string GeminiModel { get => _geminiModel; set => _geminiModel = value; }
 
     // the below exist just to make saving less cumbersome
     public void Save()

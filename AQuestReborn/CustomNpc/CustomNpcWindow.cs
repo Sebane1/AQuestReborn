@@ -1141,8 +1141,8 @@ namespace AQuestReborn.CustomNpc
         }
 
         // === Conversational Provider Settings UI ===
-        private static readonly string[] _aiProviderNames = { "Default (Built-in)", "OpenAI Compatible (CosmoRP, LM Studio, etc.)", "NovelAI" };
-        private static readonly string[] _aiProviderKeys = { "default", "openai_compatible", "novelai" };
+        private static readonly string[] _aiProviderNames = { "Default (Built-in)", "Google Gemini", "OpenAI Compatible (CosmoRP, LM Studio, etc.)", "NovelAI" };
+        private static readonly string[] _aiProviderKeys = { "default", "gemini", "openai_compatible", "novelai" };
         private string _testConnectionResult = "";
         private bool _testingConnection = false;
 
@@ -1173,6 +1173,9 @@ namespace AQuestReborn.CustomNpc
 
             switch (config.AiProvider)
             {
+                case "gemini":
+                    DrawGeminiSettings(config);
+                    break;
                 case "openai_compatible":
                     DrawOpenAiCompatibleSettings(config);
                     break;
@@ -1286,6 +1289,39 @@ namespace AQuestReborn.CustomNpc
             if (ImGui.Combo("##NovelAiModelCombo", ref modelIdx, novelAiModels, novelAiModels.Length))
             {
                 config.NovelAiModel = novelAiModels[modelIdx];
+                config.Save();
+            }
+        }
+
+        private void DrawGeminiSettings(SamplePlugin.Configuration config)
+        {
+            ImGui.TextColored(new Vector4(0.3f, 0.7f, 1f, 1f), "Google Gemini");
+            ImGui.TextWrapped("Uses Google's Gemini models for high-quality conversations. Requires a Google AI Studio API key.");
+            ImGui.Spacing();
+
+            // API Key
+            ImGui.Text("API Key:");
+            string apiKey = config.GeminiApiKey ?? "";
+            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
+            if (ImGui.InputText("##GeminiApiKey", ref apiKey, 256, ImGuiInputTextFlags.Password))
+            {
+                config.GeminiApiKey = apiKey;
+                config.Save();
+            }
+            ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1f), "Get your key at aistudio.google.com/apikey");
+
+            ImGui.Spacing();
+
+            // Model selection
+            ImGui.Text("Model:");
+            string[] geminiModels = { "gemini-2.0-flash", "gemini-2.5-flash-preview-05-20", "gemini-2.5-pro-preview-05-06" };
+            string[] geminiModelLabels = { "Gemini 2.0 Flash (Fast, Free Tier)", "Gemini 2.5 Flash (Balanced)", "Gemini 2.5 Pro (Highest Quality)" };
+            int modelIdx = Array.IndexOf(geminiModels, config.GeminiModel);
+            if (modelIdx < 0) modelIdx = 0;
+            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
+            if (ImGui.Combo("##GeminiModelCombo", ref modelIdx, geminiModelLabels, geminiModelLabels.Length))
+            {
+                config.GeminiModel = geminiModels[modelIdx];
                 config.Save();
             }
         }
