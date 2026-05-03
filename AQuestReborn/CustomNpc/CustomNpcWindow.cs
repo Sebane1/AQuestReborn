@@ -44,6 +44,12 @@ namespace AQuestReborn.CustomNpc
         private uint[] _classJobRowIds = new uint[] { 0 };
         private string _classJobSearchText = "";
 
+        // Weapon list
+        private string[] _weaponNames = new string[] { "None" };
+        private uint[] _weaponItemIds = new uint[] { 0 };
+        private string _weaponSearchText = "";
+        private uint _lastWeaponClassJobId = uint.MaxValue; // Force refresh on first open
+
         // Monster list
         private string[] _monsterNames = new string[] { "None" };
         private int[] _monsterModelIds = new int[] { 0 };
@@ -247,6 +253,66 @@ namespace AQuestReborn.CustomNpc
             catch (Exception e)
             {
                 _plugin?.PluginLog?.Warning(e, "Failed to load monster list");
+            }
+        }
+
+        public void RefreshWeaponList(uint classJobId)
+        {
+            if (_plugin?.DataManager == null) return;
+            if (_lastWeaponClassJobId == classJobId) return;
+
+            try
+            {
+                List<string> names = new List<string> { "Default (From Class)" };
+                List<uint> itemIds = new List<uint> { 0 };
+
+                if (classJobId > 0)
+                {
+                    var cj = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.ClassJob>().GetRow(classJobId);
+                    if (cj.RowId > 0)
+                    {
+                        string abrv = cj.Abbreviation.ToString();
+                        var prop = typeof(Lumina.Excel.Sheets.ClassJobCategory).GetProperty(abrv);
+                        if (prop != null)
+                        {
+                            var items = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Item>();
+                            foreach (var item in items)
+                            {
+                                if (item.EquipSlotCategory.RowId == 1 || item.EquipSlotCategory.RowId == 13) 
+                                {
+                                    var cjc = item.ClassJobCategory.Value;
+                                    if (cjc.RowId != 0 && (bool)prop.GetValue(cjc))
+                                    {
+                                        string itemName = item.Name.ToString();
+                                        if (!string.IsNullOrWhiteSpace(itemName) && item.ModelMain != 0)
+                                        {
+                                            names.Add(itemName);
+                                            itemIds.Add(item.RowId);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Sort everything after "Default"
+                var combined = names.Skip(1).Zip(itemIds.Skip(1), (n, i) => new { Name = n, Id = i })
+                    .OrderBy(x => x.Name).ToList();
+
+                names = new List<string> { "Default (From Class)" };
+                itemIds = new List<uint> { 0 };
+
+                names.AddRange(combined.Select(x => x.Name));
+                itemIds.AddRange(combined.Select(x => x.Id));
+
+                _weaponNames = names.ToArray();
+                _weaponItemIds = itemIds.ToArray();
+                _lastWeaponClassJobId = classJobId;
+            }
+            catch (Exception e)
+            {
+                _plugin?.PluginLog?.Warning(e, "Failed to load weapon list");
             }
         }
 
@@ -747,12 +813,14 @@ namespace AQuestReborn.CustomNpc
                                             {
                                                 _customNpcCharacters[_currentSelection].NpcJob = _classJobNames[i] == "None" ? "" : _classJobNames[i];
                                                 _customNpcCharacters[_currentSelection].NpcClassJobId = _classJobRowIds[i];
+                                                _customNpcCharacters[_currentSelection].NpcEquippedWeaponItemId = 0; // Reset weapon choice
                                                 SaveNPCCharacters();
                                                 if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
                                                     && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
                                                         _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
                                                 {
                                                     liveNpc.TargetClassJobId = _classJobRowIds[i];
+                                                    liveNpc.TargetWeaponItemId = 0;
                                                     _plugin.AnamcoreManager.SetWeapon(liveNpc.Character, 0, 0); // Clear current weapon
                                                     liveNpc.ClassWeaponApplied = false;
                                                 }
@@ -760,6 +828,48 @@ namespace AQuestReborn.CustomNpc
                                         }
                                     }
                                     ImGui.EndChild();
+
+                                    if (_customNpcCharacters[_currentSelection].NpcClassJobId > 0)
+                                    {
+                                        RefreshWeaponList(_customNpcCharacters[_currentSelection].NpcClassJobId);
+                                        
+                                        ImGui.LabelText("##npcWeaponLabel", Translator.LocalizeUI("Equipped Weapon"));
+                                        
+                                        int currentWeaponIdx = Array.IndexOf(_weaponItemIds, _customNpcCharacters[_currentSelection].NpcEquippedWeaponItemId);
+                                        string currentWeaponName = currentWeaponIdx >= 0 && currentWeaponIdx < _weaponNames.Length
+                                            ? _weaponNames[currentWeaponIdx] : Translator.LocalizeUI("Default (From Class)");
+                                            
+                                        ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + currentWeaponName);
+                                        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                                        ImGui.InputTextWithHint("##weaponSearch", Translator.LocalizeUI("Search weapons..."), ref _weaponSearchText, 100);
+                                        if (ImGui.BeginChild("##weaponList", new Vector2(ImGui.GetColumnWidth(), 120), true))
+                                        {
+                                            for (int i = 0; i < _weaponNames.Length; i++)
+                                            {
+                                                if (!string.IsNullOrEmpty(_weaponSearchText)
+                                                    && !_weaponNames[i].Contains(_weaponSearchText, StringComparison.OrdinalIgnoreCase))
+                                                    continue;
+                                                    
+                                                bool isSelected = _weaponItemIds[i] == _customNpcCharacters[_currentSelection].NpcEquippedWeaponItemId;
+                                                if (ImGui.Selectable(_weaponNames[i] + "##wep_" + i, isSelected))
+                                                {
+                                                    _customNpcCharacters[_currentSelection].NpcEquippedWeaponItemId = _weaponItemIds[i];
+                                                    SaveNPCCharacters();
+                                                    
+                                                    // Immediately push the weapon update to the live NPC
+                                                    if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
+                                                        && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
+                                                            _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
+                                                    {
+                                                        liveNpc.TargetWeaponItemId = _weaponItemIds[i];
+                                                        _plugin.AnamcoreManager.SetWeapon(liveNpc.Character, 0, 0); // Clear current weapon to force redraw
+                                                        liveNpc.ClassWeaponApplied = false;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        ImGui.EndChild();
+                                    }
                                     
                                     ImGui.EndTabItem();
                                 }

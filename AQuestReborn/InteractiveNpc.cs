@@ -175,6 +175,7 @@ namespace AQuestReborn
         }
         
         public uint TargetClassJobId { get; set; }
+        public uint TargetWeaponItemId { get; set; }
         public bool ClassWeaponApplied { get; set; }
 
         public InteractiveNpc(Plugin plugin, ICharacter character)
@@ -230,19 +231,32 @@ namespace AQuestReborn
             ulong mainHandModel = 0;
             ulong offHandModel = 0;
 
-            foreach (var item in items)
+            if (TargetWeaponItemId > 0)
             {
-                if (item.EquipSlotCategory.RowId == 1 || item.EquipSlotCategory.RowId == 13) 
+                var specificItem = items.GetRow(TargetWeaponItemId);
+                if (specificItem.RowId != 0 && specificItem.ModelMain != 0)
                 {
-                    var cjc = item.ClassJobCategory.Value;
-                    if (cjc.RowId != 0)
+                    mainHandModel = specificItem.ModelMain;
+                    offHandModel = specificItem.ModelSub;
+                }
+            }
+            
+            if (mainHandModel == 0)
+            {
+                foreach (var item in items)
+                {
+                    if (item.EquipSlotCategory.RowId == 1 || item.EquipSlotCategory.RowId == 13) 
                     {
-                        bool allowed = (bool)prop.GetValue(cjc);
-                        if (allowed && item.ModelMain != 0)
+                        var cjc = item.ClassJobCategory.Value;
+                        if (cjc.RowId != 0)
                         {
-                            mainHandModel = item.ModelMain;
-                            offHandModel = item.ModelSub;
-                            break; 
+                            bool allowed = (bool)prop.GetValue(cjc);
+                            if (allowed && item.ModelMain != 0)
+                            {
+                                mainHandModel = item.ModelMain;
+                                offHandModel = item.ModelSub;
+                                break; 
+                            }
                         }
                     }
                 }

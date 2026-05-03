@@ -17,6 +17,7 @@ namespace AQuestReborn.CustomNpc
         public string NpcJob = "";
         public uint NpcClassJobId = 0;
         public string NpcHobbies = "";
+        public uint NpcEquippedWeaponItemId = 0;
         
         public string NpcGlamourerAppearanceString = "";
         public bool IsFollowingPlayer = false;

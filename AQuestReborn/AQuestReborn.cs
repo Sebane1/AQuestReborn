@@ -1646,6 +1646,7 @@ namespace AQuestReborn
                                         Plugin.AnamcoreManager.SetVoice(character, 0);
 
                                         npc.TargetClassJobId = npcData.NpcClassJobId;
+                                        npc.TargetWeaponItemId = npcData.NpcEquippedWeaponItemId;
                                         npc.ClassWeaponApplied = false;
                                     });
                                 });
