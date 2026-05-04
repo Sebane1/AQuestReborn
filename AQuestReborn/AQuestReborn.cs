@@ -556,6 +556,15 @@ namespace AQuestReborn
                 Plugin.PluginLog.Information("[Custom NPC] No CustomNpcCharacters in config.");
                 return;
             }
+            // Don't spawn custom NPCs during duties
+            unsafe
+            {
+                if (Conditions.Instance()->BoundByDuty)
+                {
+                    Plugin.PluginLog.Information("[Custom NPC] Skipping respawn — currently in a duty.");
+                    return;
+                }
+            }
             // Wait for zone to be fully loaded before spawning
             Thread.Sleep(3000);
             uint currentTerritory = Plugin.ClientState.TerritoryType;
@@ -1682,6 +1691,8 @@ namespace AQuestReborn
         public void SummonCustomNpc(CustomNpcCharacter npcData)
         {
             if (_actorSpawnService == null || Plugin.ObjectTable.LocalPlayer == null) return;
+            // Don't spawn custom NPCs during duties
+            unsafe { if (Conditions.Instance()->BoundByDuty) return; }
             if (_customNpcDictionary.ContainsKey(npcData.NpcName))
             {
                 // Already summoned, dismiss instead
@@ -1914,6 +1925,8 @@ namespace AQuestReborn
         public void SummonCustomNpcAtPosition(CustomNpcCharacter npcData, System.Numerics.Vector3 position, System.Numerics.Vector3 rotation)
         {
             if (_actorSpawnService == null || Plugin.ObjectTable.LocalPlayer == null) return;
+            // Don't spawn custom NPCs during duties
+            unsafe { if (Conditions.Instance()->BoundByDuty) return; }
             if (_customNpcDictionary.ContainsKey(npcData.NpcName)) return;
             if (_customNpcDictionary.Count >= MAX_CUSTOM_NPCS) return;
 
