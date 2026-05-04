@@ -98,9 +98,13 @@ namespace AQuestReborn
         private static nint _playerAddress;
         private CutsceneCamera _cutsceneCamera;
         private bool _dummyNpcSpawned;
+        // Icon ID for custom NPC markers on the map/minimap. Change to any valid icon ID from /xldata.
+        private const uint NPC_MAP_ICON = 61483;
         private Dictionary<string, InteractiveNpc> _customNpcDictionary = new Dictionary<string, InteractiveNpc>();
         private Dictionary<string, ICharacter> _customNpcCharacters = new Dictionary<string, ICharacter>();
         private Dictionary<string, NPCConversationManager> _customNpcConversationManagers = new Dictionary<string, NPCConversationManager>();
+        // Hidden pool: dismissed NPCs are buried underground instead of destroyed, for instant re-summon
+        private Dictionary<string, (InteractiveNpc Npc, ICharacter Character)> _hiddenNpcPool = new Dictionary<string, (InteractiveNpc, ICharacter)>();
 
         public DateTime LastNpcChatTime { get; set; } = DateTime.MinValue;
 
@@ -507,6 +511,13 @@ namespace AQuestReborn
                 _customNpcCharacters.Clear();
                 _customNpcConversationManagers.Clear();
 
+                // Also clear the hidden pool — Brio actors don't survive zone changes
+                foreach (var kvp in _hiddenNpcPool)
+                {
+                    try { kvp.Value.Npc.Dispose(); } catch { }
+                }
+                _hiddenNpcPool.Clear();
+
                 Task.Run(() =>
                 {
                     try
@@ -604,6 +615,29 @@ namespace AQuestReborn
                                     AgentMap.Instance()->AddMiniMapMarker(item.Item2.Coordinates + offset, icon);
                                 }
                             }
+                        }
+
+                        // Add custom NPC markers to the map/minimap
+                        foreach (var kvp in _customNpcCharacters)
+                        {
+                            try
+                            {
+                                if (kvp.Value == null || !kvp.Value.IsValid()) continue;
+                                // Skip NPCs in the hidden pool (underground)
+                                if (_hiddenNpcPool.ContainsKey(kvp.Key)) continue;
+
+                                var map = Plugin.DataManager.GetExcelSheet<TerritoryType>().GetRow((ushort)Plugin.ClientState.TerritoryType).Map.Value;
+                                var offset = new Vector3(map.OffsetX, 0, map.OffsetY);
+                                var npcWorldPos = kvp.Value.Position;
+                                var npcMapPos = new Vector3(npcWorldPos.X, 0, npcWorldPos.Z) + offset;
+
+                                Utf8String* npcNameBuffer = Utf8String.CreateEmpty();
+                                npcNameBuffer->SetString(kvp.Key);
+
+                                AgentMap.Instance()->AddMapMarker(npcMapPos, NPC_MAP_ICON, 0, npcNameBuffer->StringPtr);
+                                AgentMap.Instance()->AddMiniMapMarker(npcMapPos, NPC_MAP_ICON);
+                            }
+                            catch { }
                         }
                     }
                 }
@@ -714,6 +748,11 @@ namespace AQuestReborn
         }
 
         private HashSet<nint> _nameplateForcedActors = new HashSet<nint>();
+        private Stopwatch _penumbraCollectionVerifyTimer = Stopwatch.StartNew();
+        // Cache the expected collection Guid per NPC name, set at apply time
+        private Dictionary<string, Guid> _expectedNpcCollections = new Dictionary<string, Guid>();
+        // Per-NPC cooldown to avoid spamming redraws when DrawObject disappears
+        private Dictionary<string, long> _npcRedrawCooldowns = new Dictionary<string, long>();
         private unsafe void _framework_Update(IFramework framework)
         {
             bool requestedRedraw = false;
@@ -723,7 +762,25 @@ namespace AQuestReborn
                 {
                     var characterStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)kvp.Value.Address;
                     characterStruct->NamePlateIconId = 71201; // Force Friendly NPC icon
-                    characterStruct->GameObject.RenderFlags = 0; // Clear all render flags (specifically HideNameplate)
+                    characterStruct->RenderFlags = 0; // Clear all render flags (specifically HideNameplate)
+
+                    // Re-enable draw if the engine culled this actor, then Penumbra redraw to restore visuals
+                    if (characterStruct->GameObject.DrawObject == null)
+                    {
+                        long now = Environment.TickCount64;
+                        _npcRedrawCooldowns.TryGetValue(kvp.Key, out long lastRedraw);
+                        if (now - lastRedraw > 3000) // Throttle: one redraw attempt per NPC every 3s
+                        {
+                            _npcRedrawCooldowns[kvp.Key] = now;
+                            characterStruct->GameObject.EnableDraw();
+                            try
+                            {
+                                PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(kvp.Value.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                                Plugin.PluginLog.Information($"NPC '{kvp.Key}' DrawObject was null — triggered Penumbra redraw.");
+                            }
+                            catch { }
+                        }
+                    }
                     
                     if (!_nameplateForcedActors.Contains(kvp.Value.Address))
                     {
@@ -754,6 +811,50 @@ namespace AQuestReborn
             if (requestedRedraw)
             {
                 Plugin.NamePlateGui.RequestRedraw();
+            }
+
+            // Periodically verify Penumbra collections are actually applied to custom NPCs
+            if (_penumbraCollectionVerifyTimer.ElapsedMilliseconds > 5000 && _customNpcCharacters.Count > 0)
+            {
+                _penumbraCollectionVerifyTimer.Restart();
+                try
+                {
+                    if (Brio.Brio.TryGetService<Brio.IPC.PenumbraService>(out var penumbraService))
+                    {
+                        var collections = penumbraService.GetCollections();
+                        foreach (var kvp in _customNpcCharacters)
+                        {
+                            if (kvp.Value == null || kvp.Value.Address == 0) continue;
+
+                            // Find the NPC config
+                            var npcData = Plugin.Configuration.CustomNpcCharacters.FirstOrDefault(n => n.NpcName == kvp.Key);
+                            if (npcData == null || !npcData.UsePenumbraCollection || string.IsNullOrEmpty(npcData.PenumbraCollection)) continue;
+
+                            // Resolve the expected Guid
+                            var expectedGuid = collections.FirstOrDefault(x => x.Value == npcData.PenumbraCollection).Key;
+                            if (expectedGuid == Guid.Empty) continue;
+
+                            // Query what Penumbra currently has assigned
+                            try
+                            {
+                                var currentCollection = PenumbraAndGlamourerIpcWrapper.Instance.GetCollectionForObject.Invoke(kvp.Value.ObjectIndex);
+                                var currentGuid = currentCollection.EffectiveCollection.Id;
+
+                                if (currentGuid != expectedGuid)
+                                {
+                                    Plugin.PluginLog.Information($"Penumbra collection mismatch on {kvp.Key}: expected {npcData.PenumbraCollection}, reapplying.");
+                                    PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke(kvp.Value.ObjectIndex, expectedGuid, true, true);
+                                    PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(kvp.Value.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Warning(ex, "Failed to verify Penumbra collections.");
+                }
             }
             if (!_disposed)
             {
@@ -1024,7 +1125,9 @@ namespace AQuestReborn
         }
         private void CheckForMapRefresh()
         {
-            if (_mapRefreshTimer.ElapsedMilliseconds > 10000)
+            // Refresh faster when custom NPCs are active so their minimap positions stay current
+            int refreshMs = _customNpcCharacters.Count > 0 ? 2000 : 10000;
+            if (_mapRefreshTimer.ElapsedMilliseconds > refreshMs)
             {
                 RefreshMapMarkers();
                 _mapRefreshTimer.Restart();
@@ -1456,6 +1559,21 @@ namespace AQuestReborn
                     }
                     _customNpcCharacters.Clear();
 
+                    // Also destroy hidden pool actors
+                    foreach (var kvp in _hiddenNpcPool)
+                    {
+                        try
+                        {
+                            if (kvp.Value.Character != null)
+                            {
+                                _actorSpawnService.DestroyObject(kvp.Value.Character);
+                            }
+                            kvp.Value.Npc.Dispose();
+                        }
+                        catch { }
+                    }
+                    _hiddenNpcPool.Clear();
+
                     foreach (var questDict in _spawnedNpcsDictionary.Values)
                     {
                         foreach (var kvp in questDict)
@@ -1570,12 +1688,88 @@ namespace AQuestReborn
                 DismissCustomNpc(npcData.NpcName);
                 return;
             }
+
+            // Check hidden pool first — instant re-summon without Brio create/destroy
+            if (_hiddenNpcPool.ContainsKey(npcData.NpcName))
+            {
+                Plugin.Framework.RunOnFrameworkThread(() =>
+                {
+                    try
+                    {
+                        var pooled = _hiddenNpcPool[npcData.NpcName];
+                        _hiddenNpcPool.Remove(npcData.NpcName);
+
+                        if (pooled.Character != null && pooled.Character.IsValid())
+                        {
+                            var playerPos = Plugin.ObjectTable.LocalPlayer.Position;
+                            float spawnX = playerPos.X + 2;
+                            float spawnZ = playerPos.Z + 2;
+                            float spawnY = GroundMap.GetGroundY(spawnX, spawnZ, playerPos.Y);
+                            var spawnPos = new Vector3(spawnX, spawnY, spawnZ);
+
+                            pooled.Npc.TeleportTo(spawnPos);
+                            pooled.Npc.ShowNPC();
+
+                            _customNpcCharacters[npcData.NpcName] = pooled.Character;
+                            _customNpcDictionary[npcData.NpcName] = pooled.Npc;
+                            _interactiveNpcDictionary[npcData.NpcName] = pooled.Npc;
+
+                            pooled.Npc.TargetClassJobId = npcData.NpcClassJobId;
+                            pooled.Npc.TargetWeaponItemId = npcData.NpcEquippedWeaponItemId;
+                            pooled.Npc.ClassWeaponApplied = false;
+
+                            // Restore follow/stay state
+                            if (npcData.IsFollowingPlayer)
+                            {
+                                pooled.Npc.FollowPlayer(2);
+                            }
+                            else if (npcData.IsStaying && npcData.StayTerritoryId == Plugin.ClientState.TerritoryType)
+                            {
+                                var stayPos = new Vector3(npcData.StayPositionX, npcData.StayPositionY, npcData.StayPositionZ);
+                                var stayRot = new Vector3(npcData.StayRotationX, npcData.StayRotationY, npcData.StayRotationZ);
+                                pooled.Npc.SetDefaults(stayPos, stayRot);
+                                pooled.Npc.SetDefaultRotation(stayRot);
+                            }
+                            pooled.Npc.IdleEmoteId = npcData.IdleEmoteId;
+                            if (npcData.RandomIdleEmotes != null) pooled.Npc.RandomIdleEmotes = npcData.RandomIdleEmotes.ToList();
+                            pooled.Npc.VictoryPoseEmoteId = npcData.VictoryPoseEmoteId;
+
+                            RecordNpcEncounters(npcData);
+
+                            // Re-create conversation manager
+                            string baseDir = Plugin.Configuration.QuestInstallFolder ?? Path.GetTempPath();
+                            string npcMemoryDir = Path.Combine(baseDir, "CustomNpcMemories");
+                            Directory.CreateDirectory(npcMemoryDir);
+                            var conversationManager = new NPCConversationManager(
+                                npcData.NpcName, npcMemoryDir, Plugin, pooled.Character);
+                            _customNpcConversationManagers[npcData.NpcName] = conversationManager;
+
+                            Plugin.ChatGui.Print("[A Quest Reborn] " + npcData.NpcName + " has been summoned!");
+                            return;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.PluginLog.Warning(ex, "Failed to re-summon pooled NPC, falling back to fresh spawn.");
+                    }
+
+                    // Pooled actor was invalid — fall through to fresh create
+                    FreshSpawnCustomNpc(npcData);
+                });
+                return;
+            }
+
             if (_customNpcDictionary.Count >= MAX_CUSTOM_NPCS)
             {
                 Plugin.ToastGui.ShowError("Custom NPC limit reached! Maximum of " + MAX_CUSTOM_NPCS + " NPCs allowed.");
                 return;
             }
 
+            FreshSpawnCustomNpc(npcData);
+        }
+
+        private void FreshSpawnCustomNpc(CustomNpcCharacter npcData)
+        {
             Task.Run(() =>
             {
                 try
@@ -1599,72 +1793,68 @@ namespace AQuestReborn
                                 _customNpcDictionary[npcData.NpcName] = npc;
                                 _interactiveNpcDictionary[npcData.NpcName] = npc;
 
-                                        // Apply appearance
-                                        if (!npcData.UseMcdfAppearance)
-                                        {
-                                            AppearanceAccessUtils.AppearanceManager?.RemoveTemporaryCollection(character.Name.TextValue);
-                                        }
+                                // Apply appearance
+                                if (!npcData.UseMcdfAppearance)
+                                {
+                                    AppearanceAccessUtils.AppearanceManager?.RemoveTemporaryCollection(character.Name.TextValue);
+                                }
 
-                                        // Apply Penumbra Collection separately
-                                        if (!npcData.UseMcdfAppearance && npcData.UsePenumbraCollection && !string.IsNullOrEmpty(npcData.PenumbraCollection))
+                                // Apply Penumbra Collection separately
+                                if (!npcData.UseMcdfAppearance && npcData.UsePenumbraCollection && !string.IsNullOrEmpty(npcData.PenumbraCollection))
+                                {
+                                    if (Brio.Brio.TryGetService<Brio.IPC.PenumbraService>(out var penumbraService))
+                                    {
+                                        var collections = penumbraService.GetCollections();
+                                        var collectionGuid = collections.FirstOrDefault(x => x.Value == npcData.PenumbraCollection).Key;
+                                        if (collectionGuid != Guid.Empty)
                                         {
-                                            if (Brio.Brio.TryGetService<Brio.IPC.PenumbraService>(out var penumbraService))
-                                            {
-                                                var collections = penumbraService.GetCollections();
-                                                var collectionGuid = collections.FirstOrDefault(x => x.Value == npcData.PenumbraCollection).Key;
-                                                if (collectionGuid != Guid.Empty)
-                                                {
-                                                    PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke(character.ObjectIndex, collectionGuid, true, true);
-                                                    PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
-                                                }
-                                                else
-                                                {
-                                                    Plugin.PluginLog.Warning($"Could not find Penumbra collection: {npcData.PenumbraCollection}");
-                                                }
-                                            }
-                                        }
-
-                                        if (npcData.UseMonsterModel)
-                                        {
-                                            unsafe
-                                            {
-                                                var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)character.Address;
-                                                native->ModelContainer.ModelCharaId = (int)npcData.MonsterModelId;
-                                            }
+                                            PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke(character.ObjectIndex, collectionGuid, true, true);
                                             PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
                                         }
-                                        else if (npcData.UseMcdfAppearance && !string.IsNullOrEmpty(npcData.McdfFilePath))
+                                        else
                                         {
-                                            // Load MCDF file
-                                            try
-                                            {
-                                                AppearanceAccessUtils.AppearanceManager?.LoadAppearance(
-                                                    npcData.McdfFilePath, character, (int)AppearanceSwapType.EntireAppearance);
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                Plugin.PluginLog.Warning(ex, "Failed to load MCDF appearance: " + npcData.McdfFilePath);
-                                            }
+                                            Plugin.PluginLog.Warning($"Could not find Penumbra collection: {npcData.PenumbraCollection}");
                                         }
-                                        else if (!string.IsNullOrEmpty(npcData.NpcGlamourerAppearanceString))
-                                        {
-                                            // Apply glamourer design by GUID
-                                            if (Guid.TryParse(npcData.NpcGlamourerAppearanceString, out var designGuid))
-                                            {
-                                                PenumbraAndGlamourerIpcWrapper.Instance.ApplyDesign.Invoke(designGuid, character.ObjectIndex);
-                                            }
-                                        }
+                                    }
+                                }
 
-                                        Plugin.AnamcoreManager.SetVoice(character, 0);
+                                if (npcData.UseMonsterModel)
+                                {
+                                    unsafe
+                                    {
+                                        var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)character.Address;
+                                        native->ModelContainer.ModelCharaId = (int)npcData.MonsterModelId;
+                                    }
+                                    PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(character.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                                }
+                                else if (npcData.UseMcdfAppearance && !string.IsNullOrEmpty(npcData.McdfFilePath))
+                                {
+                                    try
+                                    {
+                                        AppearanceAccessUtils.AppearanceManager?.LoadAppearance(
+                                            npcData.McdfFilePath, character, (int)AppearanceSwapType.EntireAppearance);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Plugin.PluginLog.Warning(ex, "Failed to load MCDF appearance: " + npcData.McdfFilePath);
+                                    }
+                                }
+                                else if (!string.IsNullOrEmpty(npcData.NpcGlamourerAppearanceString))
+                                {
+                                    if (Guid.TryParse(npcData.NpcGlamourerAppearanceString, out var designGuid))
+                                    {
+                                        PenumbraAndGlamourerIpcWrapper.Instance.ApplyDesign.Invoke(designGuid, character.ObjectIndex);
+                                    }
+                                }
 
-                                        npc.TargetClassJobId = npcData.NpcClassJobId;
-                                        npc.TargetWeaponItemId = npcData.NpcEquippedWeaponItemId;
-                                        npc.ClassWeaponApplied = false;
+                                Plugin.AnamcoreManager.SetVoice(character, 0);
 
-                                        // Record encounters (player + co-summoned NPCs)
-                                        RecordNpcEncounters(npcData);
+                                npc.TargetClassJobId = npcData.NpcClassJobId;
+                                npc.TargetWeaponItemId = npcData.NpcEquippedWeaponItemId;
+                                npc.ClassWeaponApplied = false;
 
-                                // Restore follow/stay state from config
+                                RecordNpcEncounters(npcData);
+
                                 if (npcData.IsFollowingPlayer)
                                 {
                                     npc.FollowPlayer(2);
@@ -1680,7 +1870,6 @@ namespace AQuestReborn
                                 if (npcData.RandomIdleEmotes != null) npc.RandomIdleEmotes = npcData.RandomIdleEmotes.ToList();
                                 npc.VictoryPoseEmoteId = npcData.VictoryPoseEmoteId;
 
-                                // Trigger idle emote immediately ONLY if not following the player
                                 if (!npcData.IsFollowingPlayer)
                                 {
                                     ushort initialEmoteId = npcData.IdleEmoteId;
@@ -1688,7 +1877,6 @@ namespace AQuestReborn
                                     {
                                         initialEmoteId = npcData.RandomIdleEmotes[new System.Random().Next(npcData.RandomIdleEmotes.Count)];
                                     }
-
                                     if (initialEmoteId > 0)
                                     {
                                         try
@@ -1700,7 +1888,6 @@ namespace AQuestReborn
                                     }
                                 }
 
-                                // Create conversation manager
                                 string baseDir = Plugin.Configuration.QuestInstallFolder ?? Path.GetTempPath();
                                 string npcMemoryDir = Path.Combine(baseDir, "CustomNpcMemories");
                                 Directory.CreateDirectory(npcMemoryDir);
@@ -1867,31 +2054,20 @@ namespace AQuestReborn
                 {
                     var npc = _customNpcDictionary[npcName];
                     npc.StopFollowingPlayer();
-                    npc.Dispose();
+
+                    // Hide the NPC and bury underground instead of destroying
+                    npc.HideNPC();
+                    npc.SetDefaults(new Vector3(0, -5000f, 0), Vector3.Zero);
+
                     _customNpcDictionary.Remove(npcName);
                     _interactiveNpcDictionary.Remove(npcName);
-                }
-                if (_customNpcCharacters.ContainsKey(npcName))
-                {
-                    var characterToDestroy = _customNpcCharacters[npcName];
-                    _customNpcCharacters.Remove(npcName);
-                    
-                    try
+
+                    // Move the actor into the hidden pool for re-use
+                    if (_customNpcCharacters.ContainsKey(npcName))
                     {
-                        if (_actorSpawnService != null && characterToDestroy != null)
-                        {
-                            if (characterToDestroy.IsValid())
-                            {
-                                // Revert appearance first to avoid crashing
-                                PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke((int)characterToDestroy.ObjectIndex, Guid.Empty, true, true);
-                                PenumbraAndGlamourerIpcWrapper.Instance.RevertState.Invoke(characterToDestroy.ObjectIndex);
-                            }
-                            _actorSpawnService.DestroyObject(characterToDestroy);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Plugin.PluginLog.Warning(ex, "Failed to destroy custom NPC character: " + ex.Message);
+                        var character = _customNpcCharacters[npcName];
+                        _customNpcCharacters.Remove(npcName);
+                        _hiddenNpcPool[npcName] = (npc, character);
                     }
                 }
                 if (_customNpcConversationManagers.ContainsKey(npcName))
@@ -1955,7 +2131,22 @@ namespace AQuestReborn
                 return;
             }
 
-            // Print the player's message
+            // If the player is dead, NPCs only hear murmurs
+            string npcHearsMessage = message;
+            if (sender.CurrentHp == 0)
+            {
+                string[] murmurs = new string[]
+                {
+                    "*barely audible, weak murmuring*",
+                    "*faint, incoherent groaning*",
+                    "*a pained whisper, too quiet to make out*",
+                    "*lips move slightly but no words come out*",
+                    "*a barely perceptible sigh escapes*",
+                };
+                npcHearsMessage = murmurs[new Random().Next(murmurs.Length)];
+            }
+
+            // Print the player's message (show what they typed)
             Plugin.SpeechBubbleManager.ShowBubble(sender, sender.Name.TextValue, message);
 
             Random random = new Random();
@@ -2009,7 +2200,7 @@ namespace AQuestReborn
                             sender, npcCharacter,
                             npcData.NpcName,
                             npcData.NPCGreeting,
-                            message,
+                            npcHearsMessage,
                             Plugin.GetEnvironmentContext(npcCharacter),
                             npcLore);
 
@@ -2340,6 +2531,7 @@ namespace AQuestReborn
         private unsafe void CustomNpcChatCheck()
         {
             if (Conditions.Instance()->InCombat) return;
+            if (Plugin.ObjectTable.LocalPlayer != null && Plugin.ObjectTable.LocalPlayer.CurrentHp == 0) return; // Can't talk while dead
             if (Plugin.NpcChatWindow.IsConversationActive) return;
             if (Plugin.EventWindow.IsOpen || Plugin.ChoiceWindow.IsOpen) return;
 

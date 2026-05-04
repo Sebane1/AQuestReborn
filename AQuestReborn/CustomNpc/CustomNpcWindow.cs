@@ -1369,6 +1369,105 @@ namespace AQuestReborn.CustomNpc
 
                             ImGui.EndTabItem();
                         }
+
+                        if (ImGui.BeginTabItem(Translator.LocalizeUI("Debug Context")))
+                        {
+                            var debugNpc = _customNpcCharacters[_currentSelection];
+                            string playerName = _plugin?.ObjectTable?.LocalPlayer?.Name?.TextValue ?? "Adventurer";
+
+                            ImGui.TextColored(new Vector4(1f, 0.85f, 0.4f, 1f), "Full AI Context Preview");
+                            ImGui.TextWrapped("This is what the AI sees when responding to you.");
+                            ImGui.Separator();
+                            ImGui.Dummy(new Vector2(0, 5));
+
+                            // Build the full context preview
+                            var sb = new System.Text.StringBuilder();
+
+                            // --- Lore ---
+                            sb.AppendLine("=== NPC LORE ===");
+                            sb.AppendLine(debugNpc.GetFullLore());
+
+                            // --- Mood Context ---
+                            sb.AppendLine("\n=== MOOD CONTEXT ===");
+                            string moodCtx = debugNpc.GetMoodContext(playerName);
+                            sb.AppendLine(string.IsNullOrEmpty(moodCtx) ? "(neutral — no modifier)" : moodCtx);
+
+                            // --- Relationship ---
+                            sb.AppendLine("\n=== RELATIONSHIP ===");
+                            var relInfo = debugNpc.GetRelationshipWith(playerName);
+                            sb.AppendLine($"Score: {relInfo.Score}/100  —  {relInfo.Label}");
+                            sb.AppendLine($"Description: {relInfo.Description}");
+                            sb.AppendLine($"Would refuse conversation: {debugNpc.ShouldRefuseConversation(playerName)}");;
+
+                            // --- Sentiment ---
+                            sb.AppendLine("\n=== SENTIMENT MODIFIERS ===");
+                            if (debugNpc.SentimentModifiers.Count == 0)
+                            {
+                                sb.AppendLine("(none)");
+                            }
+                            else
+                            {
+                                foreach (var kvp in debugNpc.SentimentModifiers)
+                                    sb.AppendLine($"  {kvp.Key}: {kvp.Value:+#;-#;0}");
+                            }
+
+                            // --- Environment ---
+                            sb.AppendLine("\n=== ENVIRONMENT ===");
+                            try
+                            {
+                                string envCtx = _plugin?.GetEnvironmentContext();
+                                sb.AppendLine(string.IsNullOrEmpty(envCtx) ? "(unavailable)" : envCtx);
+                            }
+                            catch { sb.AppendLine("(unavailable)"); }
+
+                            // --- Travel History ---
+                            sb.AppendLine("\n=== VISITED LOCATIONS ===");
+                            if (debugNpc.VisitedLocations.Count == 0)
+                                sb.AppendLine("(none)");
+                            else
+                                foreach (var loc in debugNpc.VisitedLocations)
+                                    sb.AppendLine($"  • {loc}");
+
+                            // --- Encounter Counts ---
+                            sb.AppendLine("\n=== ENCOUNTER HISTORY ===");
+                            if (debugNpc.EncounterCounts.Count == 0)
+                                sb.AppendLine("(none)");
+                            else
+                                foreach (var kvp in debugNpc.EncounterCounts)
+                                    sb.AppendLine($"  {kvp.Key}: {kvp.Value} encounters");
+
+                            // --- Memories ---
+                            sb.AppendLine("\n=== KEYWORD MEMORIES ===");
+                            if (_cachedKeywordMemories.Count == 0)
+                                sb.AppendLine("(none)");
+                            else
+                                foreach (var kvp in _cachedKeywordMemories)
+                                    sb.AppendLine($"  [{kvp.Key}]: {kvp.Value}");
+
+                            sb.AppendLine("\n=== CONVERSATION SUMMARIES ===");
+                            if (_cachedConversationSummaries.Count == 0)
+                                sb.AppendLine("(none)");
+                            else
+                                foreach (var kvp in _cachedConversationSummaries)
+                                    foreach (var s in kvp.Value)
+                                        sb.AppendLine($"  [{kvp.Key}]: {s}");
+
+                            string debugText = sb.ToString();
+                            if (ImGui.BeginChild("##debugContextScroll", new Vector2(ImGui.GetContentRegionAvail().X, ImGui.GetContentRegionAvail().Y - 35), true))
+                            {
+                                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.85f, 0.9f, 0.95f, 1f));
+                                ImGui.TextWrapped(debugText);
+                                ImGui.PopStyleColor();
+                            }
+                            ImGui.EndChild();
+
+                            if (ImGui.Button(Translator.LocalizeUI("Copy to Clipboard"), new Vector2(ImGui.GetContentRegionAvail().X, 28)))
+                            {
+                                ImGui.SetClipboardText(debugText);
+                            }
+
+                            ImGui.EndTabItem();
+                        }
                         ImGui.EndTabBar();
                     }
 

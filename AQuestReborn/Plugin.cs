@@ -302,6 +302,7 @@ public sealed class Plugin : IDalamudPlugin
                         && obj.Address != _objectTable?.LocalPlayer?.Address 
                         && !string.IsNullOrWhiteSpace(obj.Name.TextValue)
                         && !obj.Name.TextValue.StartsWith("Reborn", StringComparison.OrdinalIgnoreCase)
+                        && !obj.Name.TextValue.StartsWith("Cutscene", StringComparison.OrdinalIgnoreCase)
                         && !customNpcNames.Contains(obj.Name.TextValue))
                     .OrderBy(obj => System.Numerics.Vector3.Distance(origin.Value, obj.Position))
                     .Take(5);

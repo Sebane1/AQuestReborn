@@ -401,6 +401,93 @@ namespace AQuestReborn.CustomNpc
             return _lastAmbientMessages.TryGetValue(npcName, out var msg) ? msg : null;
         }
 
+        private bool _deathSpeechTriggered;
+
+        /// <summary>
+        /// Triggers an AI-generated grief speech bubble from a random active NPC when the player dies.
+        /// </summary>
+        public void NotifyPlayerDeath()
+        {
+            if (_deathSpeechTriggered || _isProcessingAmbient) return;
+            _deathSpeechTriggered = true;
+
+            var aq = _plugin.AQuestReborn;
+            if (aq == null) return;
+            var customNpcs = aq.CustomNpcCharacters;
+            var conversationManagers = aq.CustomNpcConversationManagers;
+            if (customNpcs == null || customNpcs.Count == 0) return;
+
+            var npcNames = customNpcs.Keys.ToList();
+            if (npcNames.Count == 0) return;
+
+            _isProcessingAmbient = true;
+            Task.Run(async () =>
+            {
+                try
+                {
+                    // Each NPC gets a chance to react (up to 3 for speed)
+                    var reactors = npcNames.OrderBy(_ => _random.Next()).Take(Math.Min(npcNames.Count, 3)).ToList();
+
+                    foreach (string npcName in reactors)
+                    {
+                        if (!customNpcs.ContainsKey(npcName) || !conversationManagers.ContainsKey(npcName)) continue;
+
+                        var npcChar = customNpcs[npcName];
+                        var convManager = conversationManagers[npcName];
+                        var sender = _plugin.ObjectTable.LocalPlayer;
+                        if (sender == null || npcChar == null) continue;
+
+                        CustomNpcCharacter npcData = null;
+                        foreach (var npc in _plugin.Configuration.CustomNpcCharacters)
+                        {
+                            if (npc.NpcName == npcName) { npcData = npc; break; }
+                        }
+                        if (npcData == null) continue;
+
+                        string deathPrompt = "*has just collapsed and is unconscious/dying! React with shock, grief, or urgency. This is a dramatic moment — cry out their name, rush to help, or beg them to hold on. Keep it brief and emotional (1-2 sentences).*";
+
+                        string response = await convManager.SendMessage(
+                            sender, npcChar,
+                            npcData.NpcName,
+                            npcData.NPCGreeting,
+                            deathPrompt,
+                            _plugin.GetEnvironmentContext(npcChar),
+                            npcData.GetFullLore());
+
+                        if (!string.IsNullOrEmpty(response))
+                        {
+                            string clean = CleanBubbleText(response);
+                            if (clean.Length > 450) clean = clean.Substring(0, 447) + "...";
+
+                            _plugin.Framework.RunOnFrameworkThread(() =>
+                            {
+                                ShowBubble(npcChar, npcName, clean);
+                            });
+                        }
+
+                        // Stagger NPCs by 2s so they don't all talk at once
+                        if (reactors.Count > 1) await Task.Delay(2000);
+                    }
+                }
+                catch (Exception e)
+                {
+                    _plugin.PluginLog.Warning(e, "Death speech error");
+                }
+                finally
+                {
+                    _isProcessingAmbient = false;
+                }
+            });
+        }
+
+        /// <summary>
+        /// Resets the death speech flag when the player revives.
+        /// </summary>
+        public void NotifyPlayerRevived()
+        {
+            _deathSpeechTriggered = false;
+        }
+
         public void Dispose()
         {
             _ambientEnabled = false;

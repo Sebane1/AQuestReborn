@@ -195,7 +195,8 @@ public class ObjectiveWindow : Window, IDisposable
             }
 
             // Custom NPC click-to-chat detection
-            if (!Plugin.NpcChatWindow.IsConversationActive && Plugin.AQuestReborn != null && !inCombat)
+            bool playerDead = Plugin.ObjectTable.LocalPlayer != null && Plugin.ObjectTable.LocalPlayer.CurrentHp == 0;
+            if (!Plugin.NpcChatWindow.IsConversationActive && Plugin.AQuestReborn != null && !inCombat && !playerDead)
             {
                 foreach (var kvp in Plugin.AQuestReborn.CustomNpcCharacters)
                 {

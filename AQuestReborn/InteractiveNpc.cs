@@ -79,6 +79,10 @@ namespace AQuestReborn
         private Vector3 _lastPlayerPos;
         private float _playerSpeedSmoothed;
         private float _stamina = 100f;
+        private bool _playerIsDead;
+        private bool _reactingToPlayerDeath;
+        private bool _deathEmotePlayed;
+        private float _deathSpreadAngle;
         EventMovementAnimation _eventMovementAnimationType = EventMovementAnimation.Automatic;
         public static Dictionary<uint, List<ushort>> JobCombatAnimations = null;
 
@@ -337,6 +341,109 @@ namespace AQuestReborn
                                 
                                 bool inCombat = Conditions.Instance()->InCombat;
                                 if (inCombat) _isFollowMoving = false;
+
+                                // --- Player Death Reaction ---
+                                bool playerDead = _plugin.ObjectTable.LocalPlayer.CurrentHp == 0;
+                                if (playerDead && !_reactingToPlayerDeath)
+                                {
+                                    _reactingToPlayerDeath = true;
+                                    _deathEmotePlayed = false;
+                                    _isFollowMoving = false;
+                                    // Compute spread angle once so it doesn't shift as NPC count changes
+                                    int totalNpcs = Math.Max(1, _plugin.AQuestReborn.InteractiveNpcDictionary.Count);
+                                    _deathSpreadAngle = ((_index - 1) * (MathF.PI * 2f / totalNpcs));
+                                    // Break idle emote if playing
+                                    if (_idleEmotePlaying)
+                                    {
+                                        _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
+                                        _idleEmotePlaying = false;
+                                    }
+                                    // Trigger speech bubble reaction (only one NPC triggers the call)
+                                    if (_index == 0)
+                                    {
+                                        _plugin.SpeechBubbleManager?.NotifyPlayerDeath();
+                                    }
+                                }
+                                else if (!playerDead && _reactingToPlayerDeath)
+                                {
+                                    // Player revived — clear state
+                                    _reactingToPlayerDeath = false;
+                                    _deathEmotePlayed = false;
+                                    _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
+                                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                                    if (_index == 0)
+                                    {
+                                        _plugin.SpeechBubbleManager?.NotifyPlayerRevived();
+                                    }
+                                }
+
+                                if (_reactingToPlayerDeath)
+                                {
+                                    var playerBody = _plugin.ObjectTable.LocalPlayer.Position;
+
+                                    // Use pre-computed spread angle (set once on death start)
+                                    var spreadTarget = playerBody + new Vector3(MathF.Cos(_deathSpreadAngle) * 1.2f, 0, MathF.Sin(_deathSpreadAngle) * 1.2f);
+
+                                    float distToSpot = Vector3.Distance(
+                                        new Vector3(_currentPosition.X, 0, _currentPosition.Z),
+                                        new Vector3(spreadTarget.X, 0, spreadTarget.Z));
+
+                                    if (distToSpot > 0.3f)
+                                    {
+                                        // Sprint to the spread position near the body
+                                        float rushSpeed = 7.8f;
+                                        var dirToSpot = Vector3.Normalize(new Vector3(spreadTarget.X - _currentPosition.X, 0, spreadTarget.Z - _currentPosition.Z));
+                                        float maxMove = rushSpeed * delta;
+                                        if (distToSpot <= maxMove)
+                                        {
+                                            _currentPosition.X = spreadTarget.X;
+                                            _currentPosition.Z = spreadTarget.Z;
+                                        }
+                                        else
+                                        {
+                                            _currentPosition.X += dirToSpot.X * maxMove;
+                                            _currentPosition.Z += dirToSpot.Z * maxMove;
+                                        }
+                                        float groundY = _plugin.AQuestReborn.GroundMap.GetGroundY(
+                                            _currentPosition.X, _currentPosition.Z, playerBody.Y);
+                                        float yLerp = Math.Clamp(10f * delta, 0f, 1f);
+                                        _currentPosition.Y += (groundY - _currentPosition.Y) * yLerp;
+
+                                        // Face the player body
+                                        var desiredQuat = CoordinateUtility.LookAt(_currentPosition, playerBody);
+                                        var currentQuat = CoordinateUtility.ToQuaternion(_currentRotation);
+                                        var smoothed = Quaternion.Slerp(currentQuat, desiredQuat, Math.Min(10f * delta, 1f));
+                                        _currentRotation = smoothed.QuaternionToEuler();
+
+                                        _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(true, rushSpeed));
+                                    }
+                                    else if (!_deathEmotePlayed)
+                                    {
+                                        // Arrived at spread position — stop run, play grief emote
+                                        _deathEmotePlayed = true;
+                                        _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
+                                        // Face the player body
+                                        var desiredQuat = CoordinateUtility.LookAt(_currentPosition, playerBody);
+                                        _currentRotation = desiredQuat.QuaternionToEuler();
+
+                                        // Pick a random grief emote: cry(24), kneel(19), comfort(57)
+                                        ushort[] griefEmotes = new ushort[] { 24, 19, 57 };
+                                        ushort chosen = griefEmotes[new Random(Environment.TickCount + _index).Next(griefEmotes.Length)];
+                                        try
+                                        {
+                                            var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(chosen);
+                                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
+                                        }
+                                        catch
+                                        {
+                                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                                        }
+                                    }
+
+                                    _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
+                                    SetTransform(_currentPosition, _currentRotation, _currentScale);
+                                    return; // Skip all normal follow/combat logic
+                                }
 
                                 if (_isFollowMoving)
                                 {
@@ -888,6 +995,18 @@ namespace AQuestReborn
 
         public Vector3 CurrentPosition => _currentPosition;
         public Vector3 CurrentRotation => _currentRotation;
+
+        /// <summary>
+        /// Instantly moves the NPC to a position, bypassing follow-state guards.
+        /// Use when re-summoning from pool or teleporting.
+        /// </summary>
+        public void TeleportTo(Vector3 position)
+        {
+            _currentPosition = position;
+            _defaultPosition = position;
+            _lastDefaultPosition = position;
+            SetTransform(_currentPosition, _currentRotation, _currentScale);
+        }
         public void SetDefaultRotation(Vector3 rotation)
         {
             _defaultRotation = rotation;
