@@ -590,6 +590,16 @@ namespace AQuestReborn
             }
             // Wait for zone to be fully loaded before spawning
             Thread.Sleep(3000);
+
+            // Wait for the cutscene player slot to be reserved.
+            // The cutscene player is now always spawned to reserve Brio slot 0.
+            int waitedMs = 0;
+            while (!_cutsceneNpcSpawned && waitedMs < 15000)
+            {
+                if (!Plugin.ClientState.IsLoggedIn) return;
+                Thread.Sleep(500);
+                waitedMs += 500;
+            }
             uint currentTerritory = Plugin.ClientState.TerritoryType;
             Plugin.PluginLog.Information("[Custom NPC] Checking " + Plugin.Configuration.CustomNpcCharacters.Count + " NPCs for respawn in territory " + currentTerritory);
             int spawned = 0;
@@ -791,6 +801,10 @@ namespace AQuestReborn
         private Dictionary<string, bool> _npcCameraClipped = new Dictionary<string, bool>();
         // Periodic safety redraw: catch invisible mesh states we can't detect
         private Stopwatch _safetyRedrawTimer = Stopwatch.StartNew();
+        // Track per-NPC redraw retry count for escalation to nuclear Glamourer re-apply
+        private Dictionary<string, int> _npcRedrawRetries = new Dictionary<string, int>();
+        // Track when each NPC's DrawObject first became broken for time-based respawn
+        private Dictionary<string, long> _npcBrokenTimestamp = new Dictionary<string, long>();
         private unsafe void _framework_Update(IFramework framework)
         {
             // Don't touch game objects during logout/loading/dispose — memory may be freed
@@ -803,77 +817,12 @@ namespace AQuestReborn
                 {
                     var characterStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)kvp.Value.Address;
                     characterStruct->NamePlateIconId = 71201; // Force Friendly NPC icon
-                    characterStruct->RenderFlags = 0; // Clear all render flags (specifically HideNameplate)
 
                     // --- Visibility protection ---
-                    // Case 1: DrawObject completely removed (engine culled the actor)
-                    if (characterStruct->GameObject.DrawObject == null)
-                    {
-                        long now = Environment.TickCount64;
-                        _npcRedrawCooldowns.TryGetValue(kvp.Key, out long lastRedraw);
-                        if (now - lastRedraw > 500) // Fast recovery from camera-clip culling
-                        {
-                            _npcRedrawCooldowns[kvp.Key] = now;
-                            characterStruct->GameObject.EnableDraw();
-                            try
-                            {
-                                PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(kvp.Value.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
-                                Plugin.PluginLog.Information($"[NPC Visibility] '{kvp.Key}' DrawObject was null — triggered EnableDraw + Penumbra redraw.");
-                            }
-                            catch { }
-                        }
-                    }
-                    // Case 2: DrawObject exists but has been hidden via its internal flags
-                    else if ((characterStruct->GameObject.DrawObject->Flags & 0x10) != 0)
-                    {
-                        long now = Environment.TickCount64;
-                        _npcRedrawCooldowns.TryGetValue(kvp.Key, out long lastRedraw);
-                        if (now - lastRedraw > 500) // Fast recovery from camera-clip culling
-                        {
-                            _npcRedrawCooldowns[kvp.Key] = now;
-                            characterStruct->GameObject.DrawObject->Flags &= unchecked((byte)~0x10);
-                            characterStruct->GameObject.EnableDraw();
-                            try
-                            {
-                                PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(kvp.Value.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
-                                Plugin.PluginLog.Information($"[NPC Visibility] '{kvp.Key}' DrawObject hidden flag was set — triggered Penumbra redraw.");
-                            }
-                            catch { }
-                        }
-                    }
-                    // Case 3: RenderFlags on the game object itself hide it
-                    else if (characterStruct->GameObject.RenderFlags != 0)
-                    {
-                        Plugin.PluginLog.Information($"[NPC Visibility] '{kvp.Key}' had GameObject.RenderFlags=0x{characterStruct->GameObject.RenderFlags:X} — clearing.");
-                        characterStruct->GameObject.RenderFlags = 0;
-                    }
-
-                    // Case 4: DrawObject pointer changed (engine destroyed and recreated it, e.g. camera clip)
-                    // Penumbra mods are tied to the old DrawObject, so we must re-apply
-                    if (characterStruct->GameObject.DrawObject != null)
-                    {
-                        nint currentDrawPtr = (nint)characterStruct->GameObject.DrawObject;
-                        _npcLastDrawObjectPtr.TryGetValue(kvp.Key, out nint lastDrawPtr);
-                        if (lastDrawPtr != 0 && currentDrawPtr != lastDrawPtr)
-                        {
-                            long now = Environment.TickCount64;
-                            _npcRedrawCooldowns.TryGetValue(kvp.Key, out long lastRedraw);
-                            if (now - lastRedraw > 500)
-                            {
-                                _npcRedrawCooldowns[kvp.Key] = now;
-                                try
-                                {
-                                    PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(kvp.Value.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
-                                    Plugin.PluginLog.Information($"[NPC Visibility] '{kvp.Key}' DrawObject pointer changed (0x{lastDrawPtr:X}→0x{currentDrawPtr:X}) — Penumbra redraw.");
-                                }
-                                catch { }
-                            }
-                        }
-                        _npcLastDrawObjectPtr[kvp.Key] = currentDrawPtr;
-                    }
-
-                    // Case 5: Camera clipped through NPC — engine silently hides mesh
-                    // On clip exit, do a Penumbra redraw; perma-poof is caught by head bone check
+                    // First: determine if camera is currently clipped into this NPC.
+                    // If so, the engine INTENTIONALLY hides the DrawObject — do NOT fight it.
+                    bool cameraIsClipped = false;
+                    bool cameraJustExited = false;
                     try
                     {
                         var camera = FFXIVClientStructs.FFXIV.Client.Game.Control.CameraManager.Instance()->GetActiveCamera();
@@ -886,27 +835,89 @@ namespace AQuestReborn
                                 new Vector3(npcPos.X, npcPos.Y, npcPos.Z));
 
                             _npcCameraClipped.TryGetValue(kvp.Key, out bool wasClipped);
-                            bool isClipped = camDist < 3.5f;
-
-                            if (wasClipped && !isClipped)
-                            {
-                                long now = Environment.TickCount64;
-                                _npcRedrawCooldowns.TryGetValue(kvp.Key, out long lastRedraw);
-                                if (now - lastRedraw > 500)
-                                {
-                                    _npcRedrawCooldowns[kvp.Key] = now;
-                                    try
-                                    {
-                                        PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(kvp.Value.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
-                                        Plugin.PluginLog.Information($"[NPC Visibility] '{kvp.Key}' camera exited clip zone — Penumbra redraw.");
-                                    }
-                                    catch { }
-                                }
-                            }
-                            _npcCameraClipped[kvp.Key] = isClipped;
+                            cameraIsClipped = camDist < 3.5f;
+                            cameraJustExited = wasClipped && !cameraIsClipped;
+                            _npcCameraClipped[kvp.Key] = cameraIsClipped;
                         }
                     }
                     catch { }
+
+                    // Check if DrawObject is broken (regardless of camera distance)
+                    bool drawObjectMissing = characterStruct->GameObject.DrawObject == null;
+                    bool drawObjectHidden = !drawObjectMissing && (characterStruct->GameObject.DrawObject->Flags & 0x10) != 0;
+                    bool renderFlagsSet = !drawObjectMissing && characterStruct->GameObject.RenderFlags != 0;
+                    // Check if model mesh is gone — DrawObject exists but skeleton is null
+                    bool modelBroken = false;
+                    if (!drawObjectMissing)
+                    {
+                        var charBase = (FFXIVClientStructs.FFXIV.Client.Graphics.Scene.CharacterBase*)characterStruct->GameObject.DrawObject;
+                        modelBroken = charBase->Skeleton == null;
+                    }
+
+                    // Track DrawObject pointer changes
+                    if (!drawObjectMissing)
+                    {
+                        nint currentDrawPtr = (nint)characterStruct->GameObject.DrawObject;
+                        _npcLastDrawObjectPtr[kvp.Key] = currentDrawPtr;
+                    }
+
+                    if (drawObjectMissing || drawObjectHidden || renderFlagsSet || modelBroken)
+                    {
+                        // Track when the DrawObject first became broken
+                        if (!_npcBrokenTimestamp.ContainsKey(kvp.Key))
+                            _npcBrokenTimestamp[kvp.Key] = Environment.TickCount64;
+
+                        long brokenDuration = Environment.TickCount64 - _npcBrokenTimestamp[kvp.Key];
+
+                        // Respawn fallback — fires regardless of camera distance
+                        if (brokenDuration > 10000)
+                        {
+                            _npcBrokenTimestamp.Remove(kvp.Key);
+                            _npcRedrawCooldowns.Remove(kvp.Key);
+                            _npcLastDrawObjectPtr.Remove(kvp.Key);
+                            _npcCameraClipped.Remove(kvp.Key);
+                            var npcConfig = Plugin.Configuration.CustomNpcCharacters.FirstOrDefault(n => n.NpcName == kvp.Key);
+                            if (npcConfig != null)
+                            {
+                                Plugin.PluginLog.Warning($"[NPC Visibility] '{kvp.Key}' DrawObject broken for {brokenDuration}ms — destroying and respawning.");
+                                try { _actorSpawnService?.DestroyObject(kvp.Value); } catch { }
+                                _customNpcCharacters.Remove(kvp.Key);
+                                _customNpcDictionary.Remove(kvp.Key);
+                                _interactiveNpcDictionary.Remove(kvp.Key);
+                                FreshSpawnCustomNpc(npcConfig);
+                            }
+                            break; // Dictionary modified — exit foreach
+                        }
+
+                        // Penumbra recovery — only when camera is NOT clipped (proven to work better)
+                        if (!cameraIsClipped)
+                        {
+                            long now = Environment.TickCount64;
+                            _npcRedrawCooldowns.TryGetValue(kvp.Key, out long lastRedraw);
+                            if (now - lastRedraw > 3000)
+                            {
+                                _npcRedrawCooldowns[kvp.Key] = now;
+
+                                if (drawObjectHidden)
+                                    characterStruct->GameObject.DrawObject->Flags &= unchecked((byte)~0x10);
+                                if (renderFlagsSet)
+                                    characterStruct->GameObject.RenderFlags = 0;
+                                characterStruct->GameObject.EnableDraw();
+
+                                try
+                                {
+                                    PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(kvp.Value.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                                    Plugin.PluginLog.Information($"[NPC Visibility] '{kvp.Key}' broken for {brokenDuration}ms — Penumbra redraw attempt.");
+                                }
+                                catch { }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Visible and healthy — reset broken timestamp
+                        _npcBrokenTimestamp.Remove(kvp.Key);
+                    }
 
                     // Case 6: Position corruption — NPC yeeted far from player
                     if (Plugin.ObjectTable.LocalPlayer != null)
@@ -1174,7 +1185,9 @@ namespace AQuestReborn
                             }
                             else
                             {
-                                if (!_cutsceneNpcSpawned && !_cutsceneNpcSpawnScheduled && Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone((int)Plugin.ClientState.TerritoryType, _discriminator).Count > 0)
+                                bool hasActiveQuests = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone((int)Plugin.ClientState.TerritoryType, _discriminator).Count > 0;
+                                bool hasActiveSummons = Plugin.Configuration.CustomNpcCharacters.Any(n => n.IsFollowingPlayer || (n.IsStaying && n.StayTerritoryId == Plugin.ClientState.TerritoryType));
+                                if (!_cutsceneNpcSpawned && !_cutsceneNpcSpawnScheduled && (hasActiveQuests || hasActiveSummons))
                                 {
                                     ScheduleCutsceneNpcSpawn();
                                 }
