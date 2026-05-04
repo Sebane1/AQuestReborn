@@ -12,6 +12,7 @@ using Dalamud.Game.Config;
 using Dalamud.Game.Gui.Toast;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
@@ -556,13 +557,19 @@ namespace AQuestReborn
                 Plugin.PluginLog.Information("[Custom NPC] No CustomNpcCharacters in config.");
                 return;
             }
-            // Don't spawn custom NPCs during duties
+            // Don't spawn custom NPCs during duties with other real players
             unsafe
             {
                 if (Conditions.Instance()->BoundByDuty)
                 {
-                    Plugin.PluginLog.Information("[Custom NPC] Skipping respawn — currently in a duty.");
-                    return;
+                    // Check if there are real players in the party (not solo/Trust)
+                    var groupManager = GroupManager.Instance();
+                    int memberCount = groupManager != null ? groupManager->MainGroup.MemberCount : 0;
+                    if (memberCount > 1)
+                    {
+                        Plugin.PluginLog.Information("[Custom NPC] Skipping respawn — in a duty with other players.");
+                        return;
+                    }
                 }
             }
             // Wait for zone to be fully loaded before spawning
@@ -1691,8 +1698,15 @@ namespace AQuestReborn
         public void SummonCustomNpc(CustomNpcCharacter npcData)
         {
             if (_actorSpawnService == null || Plugin.ObjectTable.LocalPlayer == null) return;
-            // Don't spawn custom NPCs during duties
-            unsafe { if (Conditions.Instance()->BoundByDuty) return; }
+            // Don't spawn custom NPCs during duties with other real players
+            unsafe
+            {
+                if (Conditions.Instance()->BoundByDuty)
+                {
+                    var groupManager = GroupManager.Instance();
+                    if (groupManager != null && groupManager->MainGroup.MemberCount > 1) return;
+                }
+            }
             if (_customNpcDictionary.ContainsKey(npcData.NpcName))
             {
                 // Already summoned, dismiss instead
@@ -1925,8 +1939,15 @@ namespace AQuestReborn
         public void SummonCustomNpcAtPosition(CustomNpcCharacter npcData, System.Numerics.Vector3 position, System.Numerics.Vector3 rotation)
         {
             if (_actorSpawnService == null || Plugin.ObjectTable.LocalPlayer == null) return;
-            // Don't spawn custom NPCs during duties
-            unsafe { if (Conditions.Instance()->BoundByDuty) return; }
+            // Don't spawn custom NPCs during duties with other real players
+            unsafe
+            {
+                if (Conditions.Instance()->BoundByDuty)
+                {
+                    var groupManager = GroupManager.Instance();
+                    if (groupManager != null && groupManager->MainGroup.MemberCount > 1) return;
+                }
+            }
             if (_customNpcDictionary.ContainsKey(npcData.NpcName)) return;
             if (_customNpcDictionary.Count >= MAX_CUSTOM_NPCS) return;
 
