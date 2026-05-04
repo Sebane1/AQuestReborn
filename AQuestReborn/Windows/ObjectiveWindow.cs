@@ -78,6 +78,9 @@ public class ObjectiveWindow : Window, IDisposable
     }
     public override void Draw()
     {
+        // Don't access any native memory during logout/loading
+        if (!Plugin.ClientState.IsLoggedIn) return;
+
         bool mouseDown = false;
         bool inCombat = false;
         unsafe
@@ -290,7 +293,7 @@ public class ObjectiveWindow : Window, IDisposable
 
     private unsafe void DrawNameplates()
     {
-        if (Plugin.AQuestReborn == null || Plugin.ObjectTable.LocalPlayer == null) return;
+        if (Plugin.AQuestReborn == null || !Plugin.ClientState.IsLoggedIn) return;
         if (!Plugin.Configuration.ShowCustomNameplates) return;
 
         var drawList = ImGui.GetWindowDrawList();
@@ -395,6 +398,8 @@ public class ObjectiveWindow : Window, IDisposable
     private unsafe void DrawSpeechBubbles()
     {
         if (Plugin.SpeechBubbleManager == null) return;
+        // Don't draw during logout/loading — character pointers may be freed but non-null
+        if (!Plugin.ClientState.IsLoggedIn) return;
         var bubbles = Plugin.SpeechBubbleManager.ActiveBubbles;
         if (bubbles.Count == 0) return;
 
@@ -403,17 +408,39 @@ public class ObjectiveWindow : Window, IDisposable
         foreach (var kvp in bubbles)
         {
             var bubble = kvp.Value;
-            if (bubble.Character == null) continue;
+            if (bubble.Character == null || bubble.Character.Address == 0) continue;
 
-            // Get head bone position
-            Vector3 headPos;
-            try
+            // Verify character is still alive in the object table before touching native memory
+            bool found = false;
+            foreach (var obj in Plugin.ObjectTable)
             {
-                headPos = Hypostasis.Game.Common.GetBoneWorldPosition((FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)bubble.Character.Address, 6);
+                if (obj != null && obj.Address == bubble.Character.Address)
+                {
+                    found = true;
+                    break;
+                }
             }
-            catch
+            if (!found) continue;
+
+            // Get head bone position — must validate native pointers to avoid AV during logout
+            Vector3 headPos;
+            var gameObj = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)bubble.Character.Address;
+            if (gameObj != null && gameObj->DrawObject != null)
             {
-                headPos = bubble.Character.Position + new Vector3(0, 1.6f, 0);
+                try
+                {
+                    headPos = Hypostasis.Game.Common.GetBoneWorldPosition(gameObj, 6);
+                    if (headPos == Vector3.Zero)
+                        headPos = bubble.Character.Position + new Vector3(0, 1.6f, 0);
+                }
+                catch
+                {
+                    headPos = bubble.Character.Position + new Vector3(0, 1.6f, 0);
+                }
+            }
+            else
+            {
+                continue; // Actor is being destroyed, skip this bubble
             }
 
             // Project to screen, offset above head

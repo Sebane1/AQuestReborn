@@ -259,7 +259,8 @@ public sealed class Plugin : IDalamudPlugin
             string placeName = territory?.PlaceName.Value.Name.ToString();
             context = $"Current Location: {placeName ?? "Eorzea"}";
 
-            var origin = observer != null ? observer.Position : _objectTable?.LocalPlayer?.Position;
+            System.Numerics.Vector3? origin = null;
+            try { origin = observer != null ? observer.Position : _objectTable?.LocalPlayer?.Position; } catch { }
             if (origin != null)
             {
                 try
@@ -291,8 +292,9 @@ public sealed class Plugin : IDalamudPlugin
 
         try
         {
-            var origin = observer != null ? observer.Position : _objectTable?.LocalPlayer?.Position;
-            if (origin != null && _objectTable != null)
+            System.Numerics.Vector3? origin2 = null;
+            try { origin2 = observer != null ? observer.Position : _objectTable?.LocalPlayer?.Position; } catch { }
+            if (origin2 != null && _objectTable != null)
             {
                 var customNpcNames = Configuration.CustomNpcCharacters.Select(n => n.NpcName).ToHashSet();
                 var nearbyObjects = new List<string>();
@@ -304,7 +306,7 @@ public sealed class Plugin : IDalamudPlugin
                         && !obj.Name.TextValue.StartsWith("Reborn", StringComparison.OrdinalIgnoreCase)
                         && !obj.Name.TextValue.StartsWith("Cutscene", StringComparison.OrdinalIgnoreCase)
                         && !customNpcNames.Contains(obj.Name.TextValue))
-                    .OrderBy(obj => System.Numerics.Vector3.Distance(origin.Value, obj.Position))
+                    .OrderBy(obj => System.Numerics.Vector3.Distance(origin2.Value, obj.Position))
                     .Take(5);
 
                 foreach (var obj in objects)

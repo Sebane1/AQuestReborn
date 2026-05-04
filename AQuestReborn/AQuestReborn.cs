@@ -186,6 +186,17 @@ namespace AQuestReborn
 
         private void ClientState_Logout(int type, int code)
         {
+            // Invalidate all native character references — they point at freed memory now
+            _customNpcCharacters.Clear();
+            _customNpcDictionary.Clear();
+            _hiddenNpcPool.Clear();
+            _nameplateForcedActors.Clear();
+            _spawnedNpcsDictionary.Clear();
+            _interactiveNpcDictionary.Clear();
+            _customNpcConversationManagers.Clear();
+            // Reset initialization flags so CheckInitialization re-runs on next login
+            _isInitialized = false;
+            _initializationStarted = false;
             CleanupCache();
         }
 
@@ -526,7 +537,12 @@ namespace AQuestReborn
                         bool stillLoading = true;
                         while (stillLoading)
                         {
-                            unsafe { stillLoading = Plugin.ObjectTable.LocalPlayer == null || _actorSpawnService == null || Conditions.Instance()->BetweenAreas; }
+                            if (!Plugin.ClientState.IsLoggedIn)
+                            {
+                                // Logged out while waiting — abort respawn
+                                return;
+                            }
+                            unsafe { stillLoading = _actorSpawnService == null || Conditions.Instance()->BetweenAreas; }
                             if (stillLoading) Thread.Sleep(3000);
                         }
                         _triggerRefresh = true;
@@ -773,8 +789,13 @@ namespace AQuestReborn
         private Dictionary<string, nint> _npcLastDrawObjectPtr = new Dictionary<string, nint>();
         // Track when the camera clips into an NPC so we can redraw when it exits
         private Dictionary<string, bool> _npcCameraClipped = new Dictionary<string, bool>();
+        // Periodic safety redraw: catch invisible mesh states we can't detect
+        private Stopwatch _safetyRedrawTimer = Stopwatch.StartNew();
         private unsafe void _framework_Update(IFramework framework)
         {
+            // Don't touch game objects during logout/loading/dispose — memory may be freed
+            if (_disposed || !Plugin.ClientState.IsLoggedIn) return;
+
             bool requestedRedraw = false;
             foreach (var kvp in _customNpcCharacters)
             {
@@ -852,7 +873,7 @@ namespace AQuestReborn
                     }
 
                     // Case 5: Camera clipped through NPC — engine silently hides mesh
-                    // When camera exits the clip zone, trigger a Penumbra redraw to restore visuals
+                    // On clip exit, do a Penumbra redraw; perma-poof is caught by head bone check
                     try
                     {
                         var camera = FFXIVClientStructs.FFXIV.Client.Game.Control.CameraManager.Instance()->GetActiveCamera();
@@ -869,7 +890,6 @@ namespace AQuestReborn
 
                             if (wasClipped && !isClipped)
                             {
-                                // Camera just exited clip zone — redraw to restore mesh
                                 long now = Environment.TickCount64;
                                 _npcRedrawCooldowns.TryGetValue(kvp.Key, out long lastRedraw);
                                 if (now - lastRedraw > 500)
@@ -887,6 +907,36 @@ namespace AQuestReborn
                         }
                     }
                     catch { }
+
+                    // Case 6: Position corruption — NPC yeeted far from player
+                    if (Plugin.ObjectTable.LocalPlayer != null)
+                    {
+                        var npcPos = characterStruct->GameObject.Position;
+                        var playerPos = Plugin.ObjectTable.LocalPlayer.Position;
+                        float distToPlayer = Vector3.Distance(
+                            new Vector3(npcPos.X, npcPos.Y, npcPos.Z),
+                            playerPos);
+
+                        if (distToPlayer > 100f)
+                        {
+                            // NPC is way too far — position got corrupted, snap back to player
+                            Plugin.PluginLog.Warning($"[NPC Visibility] '{kvp.Key}' is {distToPlayer:F0}y from player — position corrupted, snapping back.");
+                            characterStruct->GameObject.SetPosition(playerPos.X, playerPos.Y, playerPos.Z);
+
+                            // Also update the InteractiveNpc's tracked position if it exists
+                            if (_interactiveNpcDictionary.TryGetValue(kvp.Key, out var interactiveNpc))
+                            {
+                                interactiveNpc.TeleportTo(playerPos);
+                            }
+
+                            // Redraw after repositioning
+                            try
+                            {
+                                PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(kvp.Value.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                            }
+                            catch { }
+                        }
+                    }
                     
                     if (!_nameplateForcedActors.Contains(kvp.Value.Address))
                     {
@@ -947,7 +997,50 @@ namespace AQuestReborn
                                     break;
                                 }
                             }
-                            if (!foundInTable) isDead = true;
+                            if (!foundInTable)
+                            {
+                                isDead = true;
+                            }
+                            else
+                            {
+                                // Actor exists but check if model is irrecoverably broken
+                                var cs = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)kvp.Value.Address;
+                                if (cs->GameObject.DrawObject == null)
+                                {
+                                    // DrawObject gone — might recover, but if it persists it's broken
+                                    isDead = true;
+                                    Plugin.PluginLog.Warning($"[NPC Respawn] '{kvp.Key}' has null DrawObject — marking for respawn.");
+                                }
+                                else
+                                {
+                                    // Check if the CharacterBase skeleton is null (model destroyed)
+                                    var charBase = (FFXIVClientStructs.FFXIV.Client.Graphics.Scene.CharacterBase*)cs->GameObject.DrawObject;
+                                    if (charBase->Skeleton == null)
+                                    {
+                                        isDead = true;
+                                        Plugin.PluginLog.Warning($"[NPC Respawn] '{kvp.Key}' has null Skeleton — marking for respawn.");
+                                    }
+                                    else
+                                    {
+                                        // Check if head bone position is valid (bone 6 = head)
+                                        // If it returns Zero, the model's bone data is corrupt (nameplate detaches from head)
+                                        try
+                                        {
+                                            var headPos = Hypostasis.Game.Common.GetBoneWorldPosition(&cs->GameObject, 6);
+                                            if (headPos == Vector3.Zero)
+                                            {
+                                                isDead = true;
+                                                Plugin.PluginLog.Warning($"[NPC Respawn] '{kvp.Key}' head bone returned Zero — model corrupt, marking for respawn.");
+                                            }
+                                        }
+                                        catch
+                                        {
+                                            isDead = true;
+                                            Plugin.PluginLog.Warning($"[NPC Respawn] '{kvp.Key}' bone access threw — model corrupt, marking for respawn.");
+                                        }
+                                    }
+                                }
+                            }
                         }
                         if (isDead) deadNpcs.Add(kvp.Key);
                     }
@@ -955,13 +1048,21 @@ namespace AQuestReborn
                     if (deadNpcs.Count > 0)
                     {
                         Plugin.PluginLog.Warning($"[NPC Respawn] Detected {deadNpcs.Count} destroyed NPC(s): {string.Join(", ", deadNpcs)}. Scheduling re-spawn.");
-                        // Clean up stale tracking
+                        // Clean up stale tracking and destroy broken actors
                         foreach (var name in deadNpcs)
                         {
+                            // Try to destroy the broken actor so the object table slot is freed
+                            if (_customNpcCharacters.TryGetValue(name, out var brokenChar) && brokenChar != null)
+                            {
+                                try { _actorSpawnService?.DestroyObject(brokenChar); }
+                                catch { }
+                            }
                             _customNpcCharacters.Remove(name);
                             _customNpcDictionary.Remove(name);
                             _interactiveNpcDictionary.Remove(name);
                             _npcRedrawCooldowns.Remove(name);
+                            _npcLastDrawObjectPtr.Remove(name);
+                            _npcCameraClipped.Remove(name);
                         }
                         // Schedule re-spawns
                         Task.Run(() =>
@@ -1856,7 +1957,7 @@ namespace AQuestReborn
 
         public void SummonCustomNpc(CustomNpcCharacter npcData)
         {
-            if (_actorSpawnService == null || Plugin.ObjectTable.LocalPlayer == null) return;
+            if (_actorSpawnService == null || !Plugin.ClientState.IsLoggedIn) return;
             // Don't spawn custom NPCs during duties with other real players
             unsafe
             {
