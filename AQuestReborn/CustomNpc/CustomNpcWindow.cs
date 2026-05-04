@@ -60,6 +60,10 @@ namespace AQuestReborn.CustomNpc
         private Dictionary<string, string> _cachedKeywordMemories = new Dictionary<string, string>();
         private Dictionary<string, List<string>> _cachedConversationSummaries = new Dictionary<string, List<string>>();
         private bool _memoryNeedsRefresh = true;
+        private bool _showClearMemoryConfirm = false;
+        private string _clearMemoryConfirmText = "";
+        private bool _showDeleteNpcConfirm = false;
+        private string _deleteNpcConfirmText = "";
 
         public Plugin Plugin { get => _plugin; set => _plugin = value; }
         public List<CustomNpcCharacter> CustomNpcCharacters { get => _customNpcCharacters; set => _customNpcCharacters = value; }
@@ -402,19 +406,90 @@ namespace AQuestReborn.CustomNpc
             }
 
             ImGui.SameLine();
-            if (ImGui.Button("-", new Vector2(35)))
+
+            // Shift must be held to activate delete
+            bool deleteShiftHeld = ImGui.GetIO().KeyShift;
+            string deleteNpcName = (_customNpcCharacters.Count > 0 && _currentSelection < _customNpcCharacters.Count)
+                ? _customNpcCharacters[_currentSelection].NpcName : "";
+
+            if (!deleteShiftHeld || _customNpcCharacters.Count == 0)
             {
-                if (_customNpcCharacters.Count > 0)
+                ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.4f);
+                ImGui.Button("-", new Vector2(35));
+                ImGui.PopStyleVar();
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                    ImGui.SetTooltip("Hold Shift to delete this NPC.");
+            }
+            else
+            {
+                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.5f, 0.1f, 0.1f, 1f));
+                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.7f, 0.15f, 0.15f, 1f));
+                if (ImGui.Button("-", new Vector2(35)))
                 {
-                    // Dismiss the NPC if it's currently spawned
+                    _showDeleteNpcConfirm = true;
+                    _deleteNpcConfirmText = "";
+                    ImGui.OpenPopup("##DeleteNpcConfirm");
+                }
+                ImGui.PopStyleColor(2);
+            }
+
+            // --- Delete NPC Confirmation Popup ---
+            var deletePopupCenter = ImGui.GetMainViewport().Size / 2;
+            ImGui.SetNextWindowPos(deletePopupCenter, ImGuiCond.Appearing, new Vector2(0.5f, 0.5f));
+            ImGui.SetNextWindowSize(new Vector2(400, 0), ImGuiCond.Appearing);
+            if (ImGui.BeginPopupModal("##DeleteNpcConfirm", ref _showDeleteNpcConfirm,
+                ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoTitleBar))
+            {
+                ImGui.Dummy(new Vector2(0, 5));
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.3f, 0.3f, 1f));
+                ImGui.TextWrapped("\u26a0  WARNING: This will permanently delete \"" + deleteNpcName + "\" and ALL their data.");
+                ImGui.PopStyleColor();
+                ImGui.Dummy(new Vector2(0, 3));
+                ImGui.TextWrapped("This includes:\n\u2022 All configuration and appearance settings\n\u2022 Relationships, memories, and conversation history\n\u2022 Travel history, sentiment, and mood data");
+                ImGui.Dummy(new Vector2(0, 3));
+                ImGui.TextColored(new Vector4(1f, 0.85f, 0.4f, 1f), "This action cannot be undone.");
+                ImGui.Dummy(new Vector2(0, 8));
+
+                ImGui.TextWrapped("Type \"" + deleteNpcName + "\" to confirm:");
+                ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                ImGui.InputTextWithHint("##deleteConfirmInput", deleteNpcName, ref _deleteNpcConfirmText, 100);
+                ImGui.Dummy(new Vector2(0, 5));
+
+                bool deleteNameMatches = string.Equals(_deleteNpcConfirmText.Trim(), deleteNpcName, StringComparison.OrdinalIgnoreCase);
+                float deletePopupWidth = ImGui.GetContentRegionAvail().X;
+                float deleteBtnW = (deletePopupWidth - 8) / 2;
+
+                if (!deleteNameMatches)
+                    ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.35f);
+                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.7f, 0.1f, 0.1f, 1f));
+                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.9f, 0.2f, 0.2f, 1f));
+                if (ImGui.Button("Yes, Delete NPC", new Vector2(deleteBtnW, 30)) && deleteNameMatches)
+                {
                     if (_plugin != null && _plugin.AQuestReborn != null)
                     {
-                        _plugin.AQuestReborn.DismissCustomNpc(_customNpcCharacters[_currentSelection].NpcName);
+                        _plugin.AQuestReborn.DismissCustomNpc(deleteNpcName);
                     }
                     _customNpcCharacters.RemoveAt(_currentSelection);
                     _currentSelection = 0;
                     SaveNPCCharacters();
+                    _showDeleteNpcConfirm = false;
+                    _deleteNpcConfirmText = "";
+                    ImGui.CloseCurrentPopup();
                 }
+                ImGui.PopStyleColor(2);
+                if (!deleteNameMatches)
+                    ImGui.PopStyleVar();
+
+                ImGui.SameLine();
+                if (ImGui.Button("Cancel", new Vector2(deleteBtnW, 30)))
+                {
+                    _showDeleteNpcConfirm = false;
+                    _deleteNpcConfirmText = "";
+                    ImGui.CloseCurrentPopup();
+                }
+
+                ImGui.Dummy(new Vector2(0, 3));
+                ImGui.EndPopup();
             }
         }
 
@@ -742,38 +817,18 @@ namespace AQuestReborn.CustomNpc
                                     }
                                     
                                     ImGui.Dummy(new Vector2(0, 15));
-                                    if (ImGui.Button(Translator.LocalizeUI("Reset AI Brain (Wipes memory & model choice)"), new Vector2(ImGui.GetColumnWidth(), 30)))
-                                    {
-                                        // Wipe the assigned model choice
-                                        _customNpcCharacters[_currentSelection].ModelChoice = "";
-                                        SaveNPCCharacters();
-                                        
-                                        string npcName = _customNpcCharacters[_currentSelection].NpcName;
-                                        
-                                        // Dismiss the NPC to clear out any in-memory conversational history
-                                        if (_plugin != null && _plugin.AQuestReborn != null)
-                                        {
-                                            _plugin.AQuestReborn.DismissCustomNpc(npcName);
-                                            _customNpcCharacters[_currentSelection].IsFollowingPlayer = false;
-                                            _customNpcCharacters[_currentSelection].IsStaying = false;
-                                            _customNpcCharacters[_currentSelection].StayTerritoryId = 0;
-                                        }
 
-                                        // Wipe the memory JSON file
-                                        try
+                                    // Only show re-roll button when using the default built-in AI
+                                    string currentProvider = _plugin?.Configuration?.AiProvider ?? "default";
+                                    if (currentProvider == "default" || string.IsNullOrEmpty(currentProvider))
+                                    {
+                                        if (ImGui.Button(Translator.LocalizeUI("Re-Roll Brain"), new Vector2(ImGui.GetColumnWidth(), 30)))
                                         {
-                                            string baseDir = _plugin.Configuration.QuestInstallFolder ?? Path.GetTempPath();
-                                            string npcMemoryDir = Path.Combine(baseDir, "CustomNpcMemories");
-                                            string memPath = Path.Combine(npcMemoryDir, npcName.Split(" ")[0] + "-memories.json");
-                                            if (File.Exists(memPath))
-                                            {
-                                                File.Delete(memPath);
-                                            }
+                                            _customNpcCharacters[_currentSelection].ModelChoice = "";
+                                            SaveNPCCharacters();
                                         }
-                                        catch (Exception e)
-                                        {
-                                            _plugin?.PluginLog?.Warning(e, "Failed to delete NPC memory file.");
-                                        }
+                                        if (ImGui.IsItemHovered())
+                                            ImGui.SetTooltip("Randomly assigns a new default AI brain for this NPC.\nDoes not affect memories or relationships.");
                                     }
                                     
                                     ImGui.EndTabItem();
@@ -1216,28 +1271,100 @@ namespace AQuestReborn.CustomNpc
                                 _memoryNeedsRefresh = true;
                             }
                             ImGui.SameLine();
-                            if (ImGui.Button(Translator.LocalizeUI("Clear All Memory"), new Vector2(buttonWidth, 28)))
+
+                            // Shift must be held to activate the button
+                            bool shiftHeld = ImGui.GetIO().KeyShift;
+                            if (!shiftHeld)
                             {
-                                npc.EncounterCounts.Clear();
-                                npc.LastSeenTimestamps.Clear();
-                                npc.VisitedLocations.Clear();
-                                npc.SentimentModifiers.Clear();
-                                npc.WasLeftBehind = false;
-                                SaveNPCCharacters();
-
-                                // Also delete the memory files
-                                try
+                                ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.4f);
+                                ImGui.Button(Translator.LocalizeUI("Clear All Memory"), new Vector2(buttonWidth, 28));
+                                ImGui.PopStyleVar();
+                                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                                    ImGui.SetTooltip("Hold Shift to enable this button.");
+                            }
+                            else
+                            {
+                                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.5f, 0.1f, 0.1f, 1f));
+                                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.7f, 0.15f, 0.15f, 1f));
+                                if (ImGui.Button(Translator.LocalizeUI("Clear All Memory"), new Vector2(buttonWidth, 28)))
                                 {
-                                    string baseDir = _plugin.Configuration.QuestInstallFolder ?? Path.GetTempPath();
-                                    string npcMemoryDir = Path.Combine(baseDir, "CustomNpcMemories");
-                                    string memPath = Path.Combine(npcMemoryDir, npc.NpcName + "-memories.json");
-                                    string convPath = Path.Combine(npcMemoryDir, npc.NpcName + "-memories-conversation.json");
-                                    if (File.Exists(memPath)) File.Delete(memPath);
-                                    if (File.Exists(convPath)) File.Delete(convPath);
+                                    _showClearMemoryConfirm = true;
+                                    _clearMemoryConfirmText = "";
+                                    ImGui.OpenPopup("##ClearMemoryConfirm");
                                 }
-                                catch { }
+                                ImGui.PopStyleColor(2);
+                            }
 
-                                _memoryNeedsRefresh = true;
+                            // --- Confirmation Popup ---
+                            var popupCenter = ImGui.GetMainViewport().Size / 2;
+                            ImGui.SetNextWindowPos(popupCenter, ImGuiCond.Appearing, new Vector2(0.5f, 0.5f));
+                            ImGui.SetNextWindowSize(new Vector2(400, 0), ImGuiCond.Appearing);
+                            if (ImGui.BeginPopupModal("##ClearMemoryConfirm", ref _showClearMemoryConfirm,
+                                ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoTitleBar))
+                            {
+                                ImGui.Dummy(new Vector2(0, 5));
+                                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.3f, 0.3f, 1f));
+                                ImGui.TextWrapped("⚠  WARNING: This will permanently erase ALL memory data for " + npc.NpcName + ".");
+                                ImGui.PopStyleColor();
+                                ImGui.Dummy(new Vector2(0, 3));
+                                ImGui.TextWrapped("This includes:\n• All relationships and encounter history\n• Conversation summaries\n• Visited locations\n• Sentiment and mood data");
+                                ImGui.Dummy(new Vector2(0, 3));
+                                ImGui.TextColored(new Vector4(1f, 0.85f, 0.4f, 1f), "This action cannot be undone.");
+                                ImGui.Dummy(new Vector2(0, 8));
+
+                                ImGui.TextWrapped("Type \"" + npc.NpcName + "\" to confirm:");
+                                ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                                ImGui.InputTextWithHint("##clearConfirmInput", npc.NpcName, ref _clearMemoryConfirmText, 100);
+                                ImGui.Dummy(new Vector2(0, 5));
+
+                                bool nameMatches = string.Equals(_clearMemoryConfirmText.Trim(), npc.NpcName, StringComparison.OrdinalIgnoreCase);
+                                float popupWidth = ImGui.GetContentRegionAvail().X;
+                                float btnW = (popupWidth - 8) / 2;
+
+                                if (!nameMatches)
+                                    ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.35f);
+                                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.7f, 0.1f, 0.1f, 1f));
+                                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.9f, 0.2f, 0.2f, 1f));
+                                if (ImGui.Button("Yes, Erase Everything", new Vector2(btnW, 30)) && nameMatches)
+                                {
+                                    npc.EncounterCounts.Clear();
+                                    npc.LastSeenTimestamps.Clear();
+                                    npc.VisitedLocations.Clear();
+                                    npc.SentimentModifiers.Clear();
+                                    npc.WasLeftBehind = false;
+                                    SaveNPCCharacters();
+
+                                    // Also delete the memory files
+                                    try
+                                    {
+                                        string baseDir = _plugin.Configuration.QuestInstallFolder ?? Path.GetTempPath();
+                                        string npcMemoryDir = Path.Combine(baseDir, "CustomNpcMemories");
+                                        string memPath = Path.Combine(npcMemoryDir, npc.NpcName + "-memories.json");
+                                        string convPath = Path.Combine(npcMemoryDir, npc.NpcName + "-memories-conversation.json");
+                                        if (File.Exists(memPath)) File.Delete(memPath);
+                                        if (File.Exists(convPath)) File.Delete(convPath);
+                                    }
+                                    catch { }
+
+                                    _memoryNeedsRefresh = true;
+                                    _showClearMemoryConfirm = false;
+                                    _clearMemoryConfirmText = "";
+                                    ImGui.CloseCurrentPopup();
+                                }
+                                ImGui.PopStyleColor(2);
+                                if (!nameMatches)
+                                    ImGui.PopStyleVar();
+
+                                ImGui.SameLine();
+                                if (ImGui.Button("Cancel", new Vector2(btnW, 30)))
+                                {
+                                    _showClearMemoryConfirm = false;
+                                    _clearMemoryConfirmText = "";
+                                    ImGui.CloseCurrentPopup();
+                                }
+
+                                ImGui.Dummy(new Vector2(0, 3));
+                                ImGui.EndPopup();
                             }
 
                             ImGui.EndTabItem();
