@@ -308,7 +308,9 @@ namespace AQuestReborn
                             float delta = ((float)_plugin.Framework.UpdateDelta.Milliseconds / 1000f);
                             if (delta > 0)
                             {
-                                float playerSpeedThisFrame = Vector3.Distance(_plugin.ObjectTable.LocalPlayer.Position, _lastPlayerPos) / delta;
+                                float playerSpeedThisFrame = Vector2.Distance(
+                                    new Vector2(_plugin.ObjectTable.LocalPlayer.Position.X, _plugin.ObjectTable.LocalPlayer.Position.Z),
+                                    new Vector2(_lastPlayerPos.X, _lastPlayerPos.Z)) / delta;
                                 _lastPlayerPos = _plugin.ObjectTable.LocalPlayer.Position;
                                 _playerSpeedSmoothed = Math.Clamp(_playerSpeedSmoothed + (playerSpeedThisFrame - _playerSpeedSmoothed) * Math.Min(10f * delta, 1f), 0f, 15f);
                             }
