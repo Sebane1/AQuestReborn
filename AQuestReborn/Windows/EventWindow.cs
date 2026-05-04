@@ -716,15 +716,16 @@ public class EventWindow : Window, IDisposable
                         Plugin.DialogueBackgroundWindow.ClearBackground();
                     }
                 }
-                if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                var questNpcKey = AQuestReborn.AQuestReborn.QuestNpcKey(_questDisplayObject.RoleplayingQuest.QuestId, item.NpcName);
+                if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(questNpcKey))
                 {
-                    Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].LooksAtPlayer = item.LooksAtPlayerDuringEvent;
-                    Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].ShouldBeMoving = item.EventSetsNewNpcCoordinates;
+                    Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].LooksAtPlayer = item.LooksAtPlayerDuringEvent;
+                    Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].ShouldBeMoving = item.EventSetsNewNpcCoordinates;
                     if (item.EventSetsNewNpcCoordinates)
                     {
-                        Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].SetDefaults(item.NpcMovementPosition, item.NpcMovementRotation,
+                        Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].SetDefaults(item.NpcMovementPosition, item.NpcMovementRotation,
                         item.NpcEventMovementType == QuestEvent.EventMovementType.Lerp ? 5 : item.NpcMovementTime, item.NpcEventMovementType);
-                        Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].EventMovementAnimationType = item.NpcEventMovementAnimation;
+                        Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].EventMovementAnimationType = item.NpcEventMovementAnimation;
                     }
                 }
                 if (item.EventSetsNewCutscenePlayerCoordinates)
@@ -743,9 +744,9 @@ public class EventWindow : Window, IDisposable
                     {
 
                         case QuestEvent.EventBehaviourType.EventEndsEarlyWhenHitAndNPCFollowsPlayer:
-                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(questNpcKey))
                             {
-                                Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].FollowPlayer(2);
+                                Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].FollowPlayer(2);
                                 Plugin.RoleplayingQuestManager.AddPartyMember(new NpcPartyMember()
                                 {
                                     NpcName = item.NpcName,
@@ -756,18 +757,18 @@ public class EventWindow : Window, IDisposable
                             }
                             break;
                         case QuestEvent.EventBehaviourType.EventEndsEarlyWhenHitAndNPCStopsFollowingPlayer:
-                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(questNpcKey))
                             {
-                                Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].StopFollowingPlayer();
+                                Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].StopFollowingPlayer();
                                 Plugin.RoleplayingQuestManager.RemovePartyMember(
                                 Plugin.RoleplayingQuestManager.GetNpcPartyMember(_questDisplayObject.RoleplayingQuest.QuestId, item.NpcName));
                                 _questStopFollowing = true;
                             }
                             break;
                         case QuestEvent.EventBehaviourType.NPCFollowsPlayer:
-                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(questNpcKey))
                             {
-                                Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].FollowPlayer(2);
+                                Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].FollowPlayer(2);
                                 Plugin.RoleplayingQuestManager.AddPartyMember(new NpcPartyMember()
                                 {
                                     NpcName = item.NpcName,
@@ -778,9 +779,9 @@ public class EventWindow : Window, IDisposable
                             }
                             break;
                         case QuestEvent.EventBehaviourType.NPCStopsFollowingPlayer:
-                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(questNpcKey))
                             {
-                                Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].StopFollowingPlayer();
+                                Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].StopFollowingPlayer();
                                 Plugin.RoleplayingQuestManager.RemovePartyMember(
                                 Plugin.RoleplayingQuestManager.GetNpcPartyMember(_questDisplayObject.RoleplayingQuest.QuestId, item.NpcName));
                                 _questStopFollowing = true;
@@ -820,9 +821,9 @@ public class EventWindow : Window, IDisposable
                             break;
                         case QuestEvent.EventBehaviourType.EventEndsEarlyWhenHitAndNPCFollowsPlayer:
                             _index = _questDisplayObject.QuestObjective.QuestText.Count;
-                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(questNpcKey))
                             {
-                                Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].FollowPlayer(2);
+                                Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].FollowPlayer(2);
                                 Plugin.RoleplayingQuestManager.AddPartyMember(new NpcPartyMember()
                                 {
                                     NpcName = item.NpcName,
@@ -834,9 +835,9 @@ public class EventWindow : Window, IDisposable
                             break;
                         case QuestEvent.EventBehaviourType.EventEndsEarlyWhenHitAndNPCStopsFollowingPlayer:
                             _index = _questDisplayObject.QuestObjective.QuestText.Count;
-                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(questNpcKey))
                             {
-                                Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].StopFollowingPlayer();
+                                Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].StopFollowingPlayer();
                                 Plugin.RoleplayingQuestManager.RemovePartyMember(
                                 Plugin.RoleplayingQuestManager.GetNpcPartyMember(_questDisplayObject.RoleplayingQuest.QuestId, item.NpcName));
                                 _questStopFollowing = true;
@@ -844,9 +845,9 @@ public class EventWindow : Window, IDisposable
                             break;
                         case QuestEvent.EventBehaviourType.NPCFollowsPlayer:
                             _index++;
-                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(questNpcKey))
                             {
-                                Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].FollowPlayer(2);
+                                Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].FollowPlayer(2);
                                 Plugin.RoleplayingQuestManager.AddPartyMember(new NpcPartyMember()
                                 {
                                     NpcName = item.NpcName,
@@ -858,9 +859,9 @@ public class EventWindow : Window, IDisposable
                             break;
                         case QuestEvent.EventBehaviourType.NPCStopsFollowingPlayer:
                             _index++;
-                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(item.NpcName))
+                            if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(questNpcKey))
                             {
-                                Plugin.AQuestReborn.InteractiveNpcDictionary[item.NpcName].StopFollowingPlayer();
+                                Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].StopFollowingPlayer();
                                 var partyMember = Plugin.RoleplayingQuestManager.GetNpcPartyMember(_questDisplayObject.RoleplayingQuest.QuestId, item.NpcName);
                                 if (partyMember != null)
                                 {

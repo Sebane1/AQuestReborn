@@ -8,6 +8,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Brio;
+using Dalamud.Bindings.ImGui;
+using System.Runtime.InteropServices;
 using System.Numerics;
 using SamplePlugin;
 using System.Diagnostics;
@@ -43,6 +45,16 @@ namespace AQuestReborn
         static private float _endFov;
         static private float _startZoom;
         static private float _endZoom;
+        static private Vector3 _playerFreezePosition;
+        static private float _playerFreezeRotation;
+
+        [DllImport("user32.dll")]
+        private static extern short GetAsyncKeyState(int vKey);
+        private static bool IsPhysicalKeyDown(int vKey) => (GetAsyncKeyState(vKey) & 0x8000) != 0;
+
+        // Virtual key codes
+        private const int VK_W = 0x57, VK_A = 0x41, VK_S = 0x53, VK_D = 0x44;
+        private const int VK_Q = 0x51, VK_E = 0x45, VK_SHIFT = 0x10;
 
 
         // xor al, al
@@ -54,12 +66,12 @@ namespace AQuestReborn
 
         private static void SetCameraLookAtDetour(GameCamera* camera, Vector3* lookAtPosition, Vector3* cameraPosition, Vector3* a4) // a4 seems to be immediately overwritten and unused
         {
-            if (_isDoingCutScene) return;
+            if (_isDoingCutScene || _isCameraEditor) return;
             camera->VTable.setCameraLookAt.Original(camera, lookAtPosition, cameraPosition, a4);
         }
         private static void GetCameraPositionDetour(GameCamera* camera, GameObject* target, Vector3* position, Bool swapPerson)
         {
-            if (!_isDoingCutScene)
+            if (!_isDoingCutScene && !_isCameraEditor)
             {
                 camera->VTable.getCameraPosition.Original(camera, target, position, swapPerson);
                 _currentCameraPosition = new Vector3(position->X, position->Y, position->Z);
@@ -137,8 +149,8 @@ namespace AQuestReborn
             _plugin.Framework.Update += Framework_Update;
             RefreshCamera();
         }
-        private static byte GetCameraAutoRotateModeDetour(GameCamera* camera, Framework* framework) => (byte)(_isDoingCutScene ? 4 : GameCamera.getCameraAutoRotateMode.Original(camera, framework));
-        private static Bool CanChangePerspectiveDetour() => !_isDoingCutScene;
+        private static byte GetCameraAutoRotateModeDetour(GameCamera* camera, Framework* framework) => (byte)((_isDoingCutScene || _isCameraEditor) ? 4 : GameCamera.getCameraAutoRotateMode.Original(camera, framework));
+        private static Bool CanChangePerspectiveDetour() => !_isDoingCutScene && !_isCameraEditor;
         private static float GetCameraMaxMaintainDistanceDetour(GameCamera* camera) => GameCamera.getCameraMaxMaintainDistance.Original(camera) is var ret && ret < 10f ? ret : camera->maxZoom;
         public static Bool UpdateLookAtHeightOffsetDetour(GameCamera* camera, GameObject* o, Bool zero)
         {
@@ -166,12 +178,48 @@ namespace AQuestReborn
                     _camera.Camera->Camera.MaxDistance = zoom;
                     _camera.Camera->Camera.FoV = float.Lerp(_startFov, _endFov, dollyProgress);
                     _camera.Camera->Rotation = _currentRotation.Z.DegToRad();
-                    _camera.Camera->Angle = new Vector2(_currentRotation.Y.DegToRad(), _currentRotation.X.DegToRad());
+                    _camera.Camera->Angle = new Vector2(_currentRotation.Y.DegToRad(), -_currentRotation.X.DegToRad());
                 }
-                else
+                else if (_isCameraEditor)
                 {
-                    if (_isCameraEditor)
+                    // Free-cam editor: WASD + Q/E movement.
+                    // Uses Win32 GetAsyncKeyState to bypass game input consumption.
+                    float moveSpeed = 0.15f;
+                    if (IsPhysicalKeyDown(VK_SHIFT))
+                        moveSpeed *= 3f;
+
+                    // Compute forward/right vectors from the camera's current yaw/pitch.
+                    // Angle.X = yaw (horizontal), Angle.Y = pitch (vertical)
+                    float yaw = _camera.Camera->Angle.X;
+                    float pitch = _camera.Camera->Angle.Y;
+
+                    // Forward = direction the camera is looking (orbit camera looks toward pivot)
+                    var forward = new Vector3(
+                        -MathF.Sin(yaw) * MathF.Cos(pitch),
+                        MathF.Sin(pitch),
+                        -MathF.Cos(yaw) * MathF.Cos(pitch)
+                    );
+                    var right = new Vector3(MathF.Cos(yaw), 0, -MathF.Sin(yaw));
+
+                    if (IsPhysicalKeyDown(VK_W)) _currentCameraPosition += forward * moveSpeed;
+                    if (IsPhysicalKeyDown(VK_S)) _currentCameraPosition -= forward * moveSpeed;
+                    if (IsPhysicalKeyDown(VK_A)) _currentCameraPosition -= right * moveSpeed;
+                    if (IsPhysicalKeyDown(VK_D)) _currentCameraPosition += right * moveSpeed;
+                    if (IsPhysicalKeyDown(VK_E)) _currentCameraPosition += Vector3.UnitY * moveSpeed;
+                    if (IsPhysicalKeyDown(VK_Q)) _currentCameraPosition -= Vector3.UnitY * moveSpeed;
+
+                    // Keep zoom tight so the orbit doesn't offset the position from our controlled point
+                    _camera.Camera->Camera.MinDistance = 0;
+                    _camera.Camera->Camera.Distance = 0;
+                    _camera.Camera->Camera.MaxDistance = 0;
+
+                    // Freeze player in place
+                    var localPlayer = _plugin?.ObjectTable?.LocalPlayer;
+                    if (localPlayer != null && localPlayer.Address != 0)
                     {
+                        var charStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)localPlayer.Address;
+                        charStruct->GameObject.SetPosition(_playerFreezePosition.X, _playerFreezePosition.Y, _playerFreezePosition.Z);
+                        charStruct->GameObject.SetRotation(_playerFreezeRotation);
                     }
                 }
             }
@@ -213,9 +261,12 @@ namespace AQuestReborn
                 _isCameraEditor = value;
                 if (value)
                 {
-                    unsafe
+                    // Save player position to freeze them during editor mode
+                    var localPlayer = _plugin?.ObjectTable?.LocalPlayer;
+                    if (localPlayer != null)
                     {
-
+                        _playerFreezePosition = localPlayer.Position;
+                        _playerFreezeRotation = localPlayer.Rotation;
                     }
                 }
                 _cameraStartingEditPosition = Position;

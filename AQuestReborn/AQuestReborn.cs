@@ -62,6 +62,12 @@ namespace AQuestReborn
         public Dictionary<string, ICharacter> CustomNpcCharacters => _customNpcCharacters;
         public Dictionary<string, NPCConversationManager> CustomNpcConversationManagers => _customNpcConversationManagers;
 
+        /// <summary>
+        /// Generates a composite key for quest NPCs so that two quests can have
+        /// NPCs with the same name without colliding in _interactiveNpcDictionary.
+        /// </summary>
+        public static string QuestNpcKey(string questId, string npcName) => $"{questId}::{npcName}";
+
         private Stopwatch _pollingTimer;
         private Stopwatch _inputCooldown;
         private Stopwatch _mcdfRefreshTimer = new Stopwatch();
@@ -342,7 +348,7 @@ namespace AQuestReborn
         {
             QuestToastOptions questToastOptions = new QuestToastOptions();
             string path = Path.Combine(e.FoundPath, e.QuestEndTitleCard);
-            string soundPath = Path.Combine(e.FoundPath, e.QuestEndTitleCard);
+            string soundPath = Path.Combine(e.FoundPath, e.QuestEndTitleSound);
             Plugin.TitleCardWindow.DisplayCard(path, soundPath, true);
             Plugin.Configuration.Save();
         }
@@ -964,7 +970,7 @@ namespace AQuestReborn
                     {
                         var characterStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)npcKvp.Value.Address;
                         characterStruct->NamePlateIconId = 71201;
-                        characterStruct->GameObject.RenderFlags = 0; // Clear HideNameplate flag
+                        // RenderFlags left to engine — clearing every frame causes DrawObject corruption
                         
                         if (!_nameplateForcedActors.Contains(npcKvp.Value.Address))
                         {
@@ -1352,9 +1358,10 @@ namespace AQuestReborn
                             if (!string.IsNullOrEmpty(value.Item3) && !value.Item3.Contains("none"))
                             {
                                 ICharacter character = null;
+                                string npcKey = QuestNpcKey(value.Item6.QuestId, value.Item2);
                                 if (newNPC)
                                 {
-                                    if (!_interactiveNpcDictionary.ContainsKey(value.Item2))
+                                    if (!_interactiveNpcDictionary.ContainsKey(npcKey))
                                     {
                                         if (_actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
                                     value.Item1.Position + new Vector3(0, -20, 0), CoordinateUtility.ConvertDegreesToRadians(value.Item1.EulerRotation.Y))
@@ -1362,7 +1369,7 @@ namespace AQuestReborn
                                         {
                                             value.Item4[value.Item2] = character;
                                             var npc = new InteractiveNpc(Plugin, character);
-                                            _interactiveNpcDictionary.Add(value.Item2, npc);
+                                            _interactiveNpcDictionary.Add(npcKey, npc);
                                         }
                                     }
                                 }
@@ -1370,24 +1377,24 @@ namespace AQuestReborn
                                 {
                                     character = value.Item4[value.Item2];
                                 }
-                                if (_interactiveNpcDictionary.ContainsKey(value.Item2))
+                                if (_interactiveNpcDictionary.ContainsKey(npcKey))
                                 {
-                                    _interactiveNpcDictionary[value.Item2].SetDefaults(value.Item1.Position, value.Item1.EulerRotation);
-                                    _interactiveNpcDictionary[value.Item2].SetScale(value.Item1.TransformScale, 2);
+                                    _interactiveNpcDictionary[npcKey].SetDefaults(value.Item1.Position, value.Item1.EulerRotation);
+                                    _interactiveNpcDictionary[npcKey].SetScale(value.Item1.TransformScale, 2);
                                     if (character != null)
                                     {
-                                        if (_interactiveNpcDictionary[value.Item2].LastAppearance != value.Item3
+                                        if (_interactiveNpcDictionary[npcKey].LastAppearance != value.Item3
                                         || Plugin.RoleplayingQuestManager.QuestProgression[value.Item6.QuestId] == 0)
                                         {
                                             LoadAppearance(value.Item3, AppearanceSwapType.EntireAppearance, character);
-                                            _interactiveNpcDictionary[value.Item2].LastAppearance = value.Item3;
+                                            _interactiveNpcDictionary[npcKey].LastAppearance = value.Item3;
                                         }
                                         Plugin.AnamcoreManager.SetVoice(character, 0);
                                         Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)value.Item1.DefaultAnimationId);
                                     }
                                     if (value.Item7)
                                     {
-                                        _interactiveNpcDictionary[value.Item2].FollowPlayer(2, true);
+                                        _interactiveNpcDictionary[npcKey].FollowPlayer(2, true);
                                     }
                                 }
                             }
@@ -1582,6 +1589,8 @@ namespace AQuestReborn
 
                             }
                         }
+                        // Clean up the interactive NPC entry for this quest+name combo
+                        _interactiveNpcDictionary.Remove(QuestNpcKey(questId, item.Key));
                     }
                     _spawnedNpcsDictionary[questId].Clear();
                 }
@@ -1606,6 +1615,11 @@ namespace AQuestReborn
                     if (_actorSpawnService != null)
                     {
                         var questChains = Plugin.RoleplayingQuestManager.GetActiveQuestChainObjectivesInZone(territoryId, _discriminator);
+                        var playerPos = Plugin.ObjectTable?.LocalPlayer?.Position ?? Vector3.Zero;
+
+                        // Collect all NPC spawn candidates, keyed by (questId, npcName).
+                        // When multiple objectives want the same NPC, the closest objective to the player wins.
+                        var npcCandidates = new Dictionary<string, (float Distance, Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest, bool> SpawnData)>();
 
                         foreach (var item in questChains)
                         {
@@ -1649,13 +1663,27 @@ namespace AQuestReborn
                                             }
                                         }
                                         string customNpcAppearancePath = appearanceItems.ArrayToString();
-                                        var value = new Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest, bool>
+                                        var spawnValue = new Tuple<Transform, string, string, Dictionary<string, ICharacter>, bool, RoleplayingQuest, bool>
                                         (startingInfo, npcAppearance.Value.NpcName, Path.Combine(foundPath, customNpcAppearancePath), spawnedNpcsList, foundExistingNPC, item.Item3, false);
-                                        _npcActorSpawnQueue.Enqueue(value);
 
+                                        // Use composite key so same NPC from different quests are independent
+                                        string candidateKey = QuestNpcKey(item.Item3.QuestId, npcAppearance.Value.NpcName);
+                                        float distToObjective = Vector3.Distance(playerPos, item.Item2.Coordinates);
+
+                                        // Keep only the closest objective's position for each NPC
+                                        if (!npcCandidates.ContainsKey(candidateKey) || distToObjective < npcCandidates[candidateKey].Distance)
+                                        {
+                                            npcCandidates[candidateKey] = (distToObjective, spawnValue);
+                                        }
                                     }
                                 }
                             }
+                        }
+
+                        // Enqueue only the winning candidate per NPC
+                        foreach (var candidate in npcCandidates.Values)
+                        {
+                            _npcActorSpawnQueue.Enqueue(candidate.SpawnData);
                         }
                     }
                     else

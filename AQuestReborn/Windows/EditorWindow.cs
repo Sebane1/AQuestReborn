@@ -925,6 +925,11 @@ public class EditorWindow : Window, IDisposable
                                 {
                                     item.CameraUsesDolly = cameraUsesDolly;
                                 }
+                                bool isFreeCam = CutsceneCamera.IsCameraEditor;
+                                if (ImGui.Checkbox(Translator.LocalizeUI("Free Camera (WASD + Q/E, Shift = Fast, Right-Click = Rotate)"), ref isFreeCam))
+                                {
+                                    CutsceneCamera.IsCameraEditor = isFreeCam;
+                                }
                                 if (ImGui.Button(Translator.LocalizeUI("Set Camera Position From Current Camera##1")))
                                 {
                                     item.CameraStartPosition = CutsceneCamera.Position;
