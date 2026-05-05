@@ -1394,7 +1394,8 @@ namespace AQuestReborn
             // Show success toast
             try
             {
-                Plugin.ToastGui.ShowNormal("The NPC has arrived. Approach and speak to them.");
+                string nameToDisplay = _tailObjectiveRef?.TailData?.NpcName ?? "The NPC";
+                Plugin.ToastGui.ShowNormal($"{nameToDisplay} has arrived to their destination. Approach and speak to them.");
             }
             catch { }
 
