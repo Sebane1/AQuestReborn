@@ -59,6 +59,10 @@ namespace AQuestReborn
         public void ForceRecordPosition(Vector3 position)
         {
             long key = QuantizeKey(position.X, position.Z);
+            if (_activeMap.TryGetValue(key, out float existingY))
+            {
+                if (System.Math.Abs(existingY - position.Y) < 0.05f) return;
+            }
             _activeMap[key] = position.Y;
         }
 
@@ -85,33 +89,40 @@ namespace AQuestReborn
             const int maxRadius = 10;
             for (int r = 1; r <= maxRadius; r++)
             {
+                // Top and bottom edges
                 for (int dx = -r; dx <= r; dx++)
                 {
-                    for (int dz = -r; dz <= r; dz++)
-                    {
-                        // Only check the outer ring of each radius to avoid redundant checks
-                        if (System.Math.Abs(dx) != r && System.Math.Abs(dz) != r) continue;
-
-                        long neighborKey = PackKey(gx + dx, gz + dz);
-                        if (_activeMap.TryGetValue(neighborKey, out float ny))
-                        {
-                            float nx = (gx + dx) * GridResolution;
-                            float nz = (gz + dz) * GridResolution;
-                            float distSq = (nx - x) * (nx - x) + (nz - z) * (nz - z);
-                            if (distSq < closestDistSq)
-                            {
-                                closestDistSq = distSq;
-                                closestY = ny;
-                            }
-                        }
-                    }
+                    CheckKey(gx + dx, gz - r, x, z, ref closestDistSq, ref closestY);
+                    CheckKey(gx + dx, gz + r, x, z, ref closestDistSq, ref closestY);
                 }
+                // Left and right edges (excluding corners)
+                for (int dz = -r + 1; dz < r; dz++)
+                {
+                    CheckKey(gx - r, gz + dz, x, z, ref closestDistSq, ref closestY);
+                    CheckKey(gx + r, gz + dz, x, z, ref closestDistSq, ref closestY);
+                }
+
                 // If we found something in this ring, no need to go further
                 if (closestDistSq < float.MaxValue) break;
             }
             return closestY;
         }
 
+        private void CheckKey(int cx, int cz, float originX, float originZ, ref float closestDistSq, ref float closestY)
+        {
+            long neighborKey = PackKey(cx, cz);
+            if (_activeMap.TryGetValue(neighborKey, out float ny))
+            {
+                float nx = cx * GridResolution;
+                float nz = cz * GridResolution;
+                float distSq = (nx - originX) * (nx - originX) + (nz - originZ) * (nz - originZ);
+                if (distSq < closestDistSq)
+                {
+                    closestDistSq = distSq;
+                    closestY = ny;
+                }
+            }
+        }
         private int Quantize(float value)
         {
             return (int)System.Math.Floor(value / GridResolution);

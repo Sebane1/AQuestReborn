@@ -113,6 +113,7 @@ namespace AQuestReborn
         // Hidden pool: dismissed NPCs are buried underground instead of destroyed, for instant re-summon
         private Dictionary<string, (InteractiveNpc Npc, ICharacter Character)> _hiddenNpcPool = new Dictionary<string, (InteractiveNpc, ICharacter)>();
         private Dictionary<string, int> _penumbraRetryCounts = new Dictionary<string, int>();
+        private Stopwatch _groundMapTimer = Stopwatch.StartNew();
 
         // Tail objective state
         private bool _tailObjectiveActive;
@@ -1180,25 +1181,24 @@ namespace AQuestReborn
                         {
                             GroundMap.RecordPosition(Plugin.ObjectTable.LocalPlayer.Position);
 
-                            foreach (var obj in Plugin.ObjectTable)
+                            if (_groundMapTimer.ElapsedMilliseconds > 250)
                             {
-                                if (obj != null && obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc)
+                                // Precompute the addresses of custom NPCs into a HashSet for O(1) lookup
+                                HashSet<nint> customNpcAddresses = new HashSet<nint>();
+                                foreach (var customNpc in _customNpcCharacters.Values)
                                 {
-                                    // Use memory address comparison to reliably filter out our Custom NPCs regardless of Name overrides
-                                    bool isCustomNpc = false;
-                                    foreach (var customNpc in _customNpcCharacters.Values)
-                                    {
-                                        if (customNpc.Address == obj.Address)
-                                        {
-                                            isCustomNpc = true;
-                                            break;
-                                        }
-                                    }
-                                    
-                                    if (isCustomNpc) continue;
-
-                                    GroundMap.ForceRecordPosition(obj.Position);
+                                    if (customNpc != null) customNpcAddresses.Add(customNpc.Address);
                                 }
+
+                                foreach (var obj in Plugin.ObjectTable)
+                                {
+                                    if (obj != null && obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc)
+                                    {
+                                        if (customNpcAddresses.Contains(obj.Address)) continue;
+                                        GroundMap.ForceRecordPosition(obj.Position);
+                                    }
+                                }
+                                _groundMapTimer.Restart();
                             }
                         }
                         // Hopefully waiting prevents crashing on zone changes?
