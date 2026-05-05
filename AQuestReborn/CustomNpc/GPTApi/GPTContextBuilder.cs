@@ -87,7 +87,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
             }
             context += $"\n***\n";
             context += $"\n[ Style: roleplaying ]\n";
-            context += $"[ Instruction: You exist strictly within the fantasy world of Final Fantasy XIV. You are responding in a live chat window. Write your response in the first person as {_aiName}. Do NOT prepend your name to the response. Use asterisks for physical actions (e.g. *smiles*) and format spoken dialogue using double quotes (e.g. \"Hello there!\"). Do NOT reference real-world concepts, modern technology, or video game mechanics (e.g. patches, UI). Always stay perfectly in character as a resident of Eorzea. ]\n";
+            context += $"[ Instruction: You exist strictly within the fantasy world of Final Fantasy XIV. You are responding in a live chat window. Write your response in the first person as {_aiName}. Do NOT prepend your name to the response. Use asterisks for physical actions (e.g. *smiles*) and format spoken dialogue using double quotes (e.g. \"Hello there!\"). Do NOT reference real-world concepts, modern technology, or video game mechanics (e.g. patches, UI). Always stay perfectly in character as a resident of Eorzea. Keep your responses conversational and brief (maximum of 4 sentences). Respond immediately with your dialogue and actions. Do NOT output a 'Thinking Process', 'Internal Monologue', or any chain of thought. ]\n";
             
             context += $"[ Formatting Example ]\n";
             context += $"{_userName}: Hello there!\n";
@@ -146,6 +146,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
             sb.AppendLine("- Do NOT reference real-world concepts, modern technology, or video game mechanics.");
             sb.AppendLine("- Stay perfectly in character as a resident of Eorzea.");
             sb.AppendLine("- Keep your responses conversational and brief (maximum of 4 sentences).");
+            sb.AppendLine("- Respond immediately with your dialogue and actions. Do NOT output a 'Thinking Process', 'Internal Monologue', or any chain of thought.");
             sb.AppendLine($"- NEVER narrate the actions, feelings, or dialogue of {_userName}.");
             sb.AppendLine($"- Do NOT prefix your response with \"{_aiName}:\".");
             sb.AppendLine($"- If the player asks you to change your outfit, output [glamour:Outfit Name] in your response.");

@@ -38,6 +38,7 @@ namespace AQuestReborn
         private Vector3 _targetScale = new Vector3(1, 1, 1);
         private float _scaleSpeed = 10;
         private bool _followPlayer;
+        public bool IsFollowingPlayer => _followPlayer;
         private Vector3 _currentPosition;
         private Vector3 _followStart;
         private Vector3 _defaultPosition;
@@ -347,8 +348,12 @@ namespace AQuestReborn
                                 && _plugin.EventWindow.TimeSinceLastDialogueDisplayed.ElapsedMilliseconds > 200
                                 && _plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 200 && !Conditions.Instance()->Mounted)
                             {
+                                var followingNpcs = _plugin.AQuestReborn.InteractiveNpcDictionary.Values.Where(n => n.IsFollowingPlayer).ToList();
+                                int followerCount = Math.Max(1, followingNpcs.Count);
+                                int followerIndex = Math.Max(0, followingNpcs.IndexOf(this));
+
                                 var targetPosition = _plugin.ObjectTable.LocalPlayer.Position
-                                        + GetVerticalOffsetFromPlayer((_index) - ((float)(_plugin.AQuestReborn.InteractiveNpcDictionary.Count - 1) / 2f))
+                                        + GetVerticalOffsetFromPlayer((followerIndex) - ((float)(followerCount - 1) / 2f))
                                         + GetHorizontalOffsetFromPlayer(_horizontalOffset);
                                 float distToTarget = Vector3.Distance(_currentPosition, targetPosition);
                                 // Check if player is facing the NPC (within ~45° cone)
@@ -392,8 +397,7 @@ namespace AQuestReborn
                                     _deathEmotePlayed = false;
                                     _isFollowMoving = false;
                                     // Compute spread angle once so it doesn't shift as NPC count changes
-                                    int totalNpcs = Math.Max(1, _plugin.AQuestReborn.InteractiveNpcDictionary.Count);
-                                    _deathSpreadAngle = ((_index - 1) * (MathF.PI * 2f / totalNpcs));
+                                    _deathSpreadAngle = ((followerIndex - 1) * (MathF.PI * 2f / followerCount));
                                     // Break idle emote if playing
                                     if (_idleEmotePlaying)
                                     {
@@ -401,7 +405,7 @@ namespace AQuestReborn
                                         _idleEmotePlaying = false;
                                     }
                                     // Trigger speech bubble reaction (only one NPC triggers the call)
-                                    if (_index == 0)
+                                    if (followerIndex == 0)
                                     {
                                         _plugin.SpeechBubbleManager?.NotifyPlayerDeath();
                                     }
@@ -413,7 +417,7 @@ namespace AQuestReborn
                                     _deathEmotePlayed = false;
                                     _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
                                     TriggerEmoteIfChanged(ContextBasedMovementId(false));
-                                    if (_index == 0)
+                                    if (followerIndex == 0)
                                     {
                                         _plugin.SpeechBubbleManager?.NotifyPlayerRevived();
                                     }
@@ -672,8 +676,10 @@ namespace AQuestReborn
 
                                             if (isMelee)
                                             {
-                                                int totalNpcs = Math.Max(1, _plugin.AQuestReborn.InteractiveNpcDictionary.Count);
-                                                float spreadAngle = (_index * (MathF.PI * 2f / totalNpcs));
+                                                var combatFollowing = _plugin.AQuestReborn.InteractiveNpcDictionary.Values.Where(n => n.IsFollowingPlayer).ToList();
+                                                int fCount = Math.Max(1, combatFollowing.Count);
+                                                int fIndex = Math.Max(0, combatFollowing.IndexOf(this));
+                                                float spreadAngle = (fIndex * (MathF.PI * 2f / fCount));
                                                 Vector3 meleeTgtPos = tgtPos + new Vector3(MathF.Cos(spreadAngle) * 2.5f, 0, MathF.Sin(spreadAngle) * 2.5f);
 
                                                 var diff = new Vector3(meleeTgtPos.X - _currentPosition.X, 0, meleeTgtPos.Z - _currentPosition.Z);

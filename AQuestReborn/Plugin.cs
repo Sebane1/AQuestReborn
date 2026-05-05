@@ -338,7 +338,9 @@ public sealed class Plugin : IDalamudPlugin
                 foreach (var obj in objects)
                 {
                     string type = obj.ObjectKind.ToString().ToLower();
-                    nearbyObjects.Add($"{obj.Name.TextValue} ({type})");
+                    string cleanName = System.Text.RegularExpressions.Regex.Replace(obj.Name.TextValue, @"_+[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+                    cleanName = System.Text.RegularExpressions.Regex.Replace(cleanName, @"\b[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+                    nearbyObjects.Add($"{cleanName} ({type})");
                 }
 
                 if (nearbyObjects.Count > 0)

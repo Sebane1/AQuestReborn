@@ -47,6 +47,8 @@ namespace AQuestReborn.CustomNpc
         {
             // Use the override name if provided (for NPC-to-NPC chat where Brio actors are named "Reborn")
             string senderFullName = !string.IsNullOrEmpty(senderNameOverride) ? senderNameOverride : sendingCharacter.Name.TextValue;
+            senderFullName = System.Text.RegularExpressions.Regex.Replace(senderFullName, @"_+[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+            senderFullName = System.Text.RegularExpressions.Regex.Replace(senderFullName, @"\b[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
             string senderName = senderFullName.Split(" ")[0];
             if (string.IsNullOrEmpty(modelChoice))
             {
@@ -141,6 +143,8 @@ namespace AQuestReborn.CustomNpc
             string aiGreeting, string message, string setting, string aiDescription)
         {
             string senderFullName = sendingCharacter.Name.TextValue;
+            senderFullName = System.Text.RegularExpressions.Regex.Replace(senderFullName, @"_+[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+            senderFullName = System.Text.RegularExpressions.Regex.Replace(senderFullName, @"\b[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
             string senderName = senderFullName.Split(" ")[0];
             string encounterContext = "";
             string playerFullName = senderFullName;
@@ -206,6 +210,8 @@ namespace AQuestReborn.CustomNpc
             string pronounSingularAlternate = gender == 1 ? "She" : "He";
             string raceStr = GetRaceDescription(race, tribe, pronounSingularAlternate);
             string playerNameFull = !string.IsNullOrEmpty(nameOverride) ? nameOverride : player.Name.TextValue;
+            playerNameFull = System.Text.RegularExpressions.Regex.Replace(playerNameFull, @"_+[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+            playerNameFull = System.Text.RegularExpressions.Regex.Replace(playerNameFull, @"\b[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
             string firstName = playerNameFull.Split(" ")[0];
             var summaries = !skipSummary ? _gptWrapper.GetConversationalMemory(firstName) : new List<string>();
             string chatSummaries = "\n\nIn the past " + _gptWrapper.Personality

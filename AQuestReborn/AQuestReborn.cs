@@ -265,6 +265,8 @@ namespace AQuestReborn
                     lock (CustomNpc.NPCConversationManager.RecentGameDialogue)
                     {
                         string senderName = chatMessage.Sender?.ToString() ?? "Unknown";
+                        senderName = System.Text.RegularExpressions.Regex.Replace(senderName, @"_+[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+                        senderName = System.Text.RegularExpressions.Regex.Replace(senderName, @"\b[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
                         string formattedLine = $"{senderName}: \"{messageAsString}\"";
                         CustomNpc.NPCConversationManager.RecentGameDialogue.Add(formattedLine);
                         if (CustomNpc.NPCConversationManager.RecentGameDialogue.Count > 2)
@@ -623,18 +625,18 @@ namespace AQuestReborn
             }
             uint currentTerritory = Plugin.ClientState.TerritoryType;
             Plugin.PluginLog.Information("[Custom NPC] Checking " + Plugin.Configuration.CustomNpcCharacters.Count + " NPCs for respawn in territory " + currentTerritory);
-            int spawned = 0;
+            int followingSpawned = 0;
+            int interactiveSpawned = 0;
             foreach (var npcData in Plugin.Configuration.CustomNpcCharacters)
             {
-                if (spawned >= MAX_CUSTOM_NPCS) break;
-
                 if (npcData.IsFollowingPlayer && !npcData.IsStaying)
                 {
                     // Following NPCs spawn in any zone
                     Plugin.PluginLog.Information("[Custom NPC] Respawning follower: " + npcData.NpcName);
                     Thread.Sleep(1000);
                     SummonCustomNpc(npcData);
-                    spawned++;
+                    followingSpawned++;
+                    interactiveSpawned++;
                 }
                 else if (npcData.IsStaying && npcData.StayTerritoryId == currentTerritory)
                 {
@@ -644,7 +646,7 @@ namespace AQuestReborn
                     SummonCustomNpcAtPosition(npcData,
                         new System.Numerics.Vector3(npcData.StayPositionX, npcData.StayPositionY, npcData.StayPositionZ),
                         new System.Numerics.Vector3(npcData.StayRotationX, npcData.StayRotationY, npcData.StayRotationZ));
-                    spawned++;
+                    interactiveSpawned++;
                 }
             }
         }
@@ -1187,7 +1189,13 @@ namespace AQuestReborn
                         // Record player position for NPC ground height map
                         if (Plugin.ObjectTable.LocalPlayer != null)
                         {
-                            GroundMap.RecordPosition(Plugin.ObjectTable.LocalPlayer.Position);
+                            bool isAirborne = Plugin.Condition[Dalamud.Game.ClientState.Conditions.ConditionFlag.Jumping] ||
+                                              Plugin.Condition[Dalamud.Game.ClientState.Conditions.ConditionFlag.InFlight];
+
+                            if (!isAirborne)
+                            {
+                                GroundMap.RecordPosition(Plugin.ObjectTable.LocalPlayer.Position);
+                            }
 
                             if (_groundMapTimer.ElapsedMilliseconds > 250)
                             {
@@ -2155,7 +2163,6 @@ namespace AQuestReborn
         }
 
         #region Custom NPC Management
-        private const int MAX_CUSTOM_NPCS = 3;
 
         /// <summary>
         /// Records encounters for a newly spawned/returned NPC:
@@ -2321,11 +2328,7 @@ namespace AQuestReborn
                 return;
             }
 
-            if (_customNpcDictionary.Count >= MAX_CUSTOM_NPCS)
-            {
-                Plugin.ToastGui.ShowError("Custom NPC limit reached! Maximum of " + MAX_CUSTOM_NPCS + " NPCs allowed.");
-                return;
-            }
+            int followingCount = Plugin.Configuration.CustomNpcCharacters.Count(n => n.IsFollowingPlayer && !n.IsStaying && _customNpcDictionary.ContainsKey(n.NpcName));
 
             FreshSpawnCustomNpc(npcData);
         }
@@ -2507,8 +2510,6 @@ namespace AQuestReborn
                     try { existingNpc.Dispose(); } catch { }
                 }
             }
-            if (_customNpcDictionary.Count >= MAX_CUSTOM_NPCS) return;
-
             Task.Run(() =>
             {
                 try
