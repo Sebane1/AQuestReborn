@@ -999,6 +999,17 @@ namespace AQuestReborn
         public Vector3 CurrentRotation => _currentRotation;
 
         /// <summary>
+        /// Updates the default position/rotation to the NPC's current actual position.
+        /// Used when entering dialogue to prevent NPCs from running back to a stale
+        /// default position set by a previous objective/event.
+        /// </summary>
+        public void SnapDefaultsToCurrent()
+        {
+            _defaultPosition = _currentPosition;
+            _defaultRotation = _currentRotation;
+        }
+
+        /// <summary>
         /// Instantly moves the NPC to a position, bypassing follow-state guards.
         /// Use when re-summoning from pool or teleporting.
         /// </summary>

@@ -2112,7 +2112,7 @@ namespace AQuestReborn
                             var spawnPos = new Vector3(spawnX, spawnY, spawnZ);
                             ICharacter character = null;
                             if (_actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
-                                spawnPos, 0) && character != null)
+                                spawnPos, 0, customName: npcData.UseMcdfAppearance ? null : npcData.NpcName.Split(' ')[0] + " Cnpc") && character != null)
                             {
                                 _customNpcCharacters[npcData.NpcName] = character;
                                 var npc = new InteractiveNpc(Plugin, character);
@@ -2263,7 +2263,7 @@ namespace AQuestReborn
                         {
                             ICharacter character = null;
                             if (_actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
-                                position, 0) && character != null)
+                                position, 0, customName: npcData.UseMcdfAppearance ? null : npcData.NpcName.Split(' ')[0] + " Cnpc") && character != null)
                             {
                                 _customNpcCharacters[npcData.NpcName] = character;
                                 var npc = new InteractiveNpc(Plugin, character);

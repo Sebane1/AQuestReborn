@@ -798,6 +798,22 @@ public class EventWindow : Window, IDisposable
                         item.NpcEventMovementType == QuestEvent.EventMovementType.Lerp ? 5 : item.NpcMovementTime, item.NpcEventMovementType);
                         Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].EventMovementAnimationType = item.NpcEventMovementAnimation;
                     }
+                    else
+                    {
+                        // This event doesn't set new coordinates for the speaking NPC,
+                        // so snap its default to current position to prevent it running
+                        // back to a stale position from a previous objective.
+                        Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].SnapDefaultsToCurrent();
+                    }
+                }
+                // Snap all other quest NPCs (not the speaker) to their current positions
+                // so they don't run back to stale defaults when dialogue opens.
+                foreach (var kvp in Plugin.AQuestReborn.InteractiveNpcDictionary)
+                {
+                    if (kvp.Key != questNpcKey && kvp.Key.StartsWith(questPrefix))
+                    {
+                        kvp.Value.SnapDefaultsToCurrent();
+                    }
                 }
                 // Enable look-at for any additional NPCs the creator specified
                 foreach (var additionalName in item.AdditionalNpcsLookAtPlayer)
