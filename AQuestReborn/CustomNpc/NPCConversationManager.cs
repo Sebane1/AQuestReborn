@@ -206,7 +206,8 @@ namespace AQuestReborn.CustomNpc
             string pronounSingularAlternate = gender == 1 ? "She" : "He";
             string raceStr = GetRaceDescription(race, tribe, pronounSingularAlternate);
             string playerNameFull = !string.IsNullOrEmpty(nameOverride) ? nameOverride : player.Name.TextValue;
-            var summaries = !skipSummary ? _gptWrapper.GetConversationalMemory(playerNameFull) : new List<string>();
+            string firstName = playerNameFull.Split(" ")[0];
+            var summaries = !skipSummary ? _gptWrapper.GetConversationalMemory(firstName) : new List<string>();
             string chatSummaries = "\n\nIn the past " + _gptWrapper.Personality
             + " and " + playerNameFull + " had the following situations:";
             if (summaries.Count == 0)

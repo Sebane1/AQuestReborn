@@ -145,6 +145,7 @@ namespace AQuestReborn.CustomNpc.GPTApi
             sb.AppendLine("- Use double quotes for spoken dialogue (e.g. \"Hello there!\").");
             sb.AppendLine("- Do NOT reference real-world concepts, modern technology, or video game mechanics.");
             sb.AppendLine("- Stay perfectly in character as a resident of Eorzea.");
+            sb.AppendLine("- Keep your responses conversational and brief (maximum of 4 sentences).");
             sb.AppendLine($"- NEVER narrate the actions, feelings, or dialogue of {_userName}.");
             sb.AppendLine($"- Do NOT prefix your response with \"{_aiName}:\".");
             sb.AppendLine($"- If the player asks you to change your outfit, output [glamour:Outfit Name] in your response.");

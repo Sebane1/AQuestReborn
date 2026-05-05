@@ -249,7 +249,7 @@ namespace AQuestReborn.CustomNpc
                 sender, npcChar,
                 npcData.NpcName,
                 npcData.NPCGreeting,
-                "*is standing nearby, looking around idly*",
+                "*is standing nearby, looking around idly* (Make a short, passing observation. Keep it brief, 1-2 sentences max!)",
                 _plugin.GetEnvironmentContext(npcChar),
                 npcData.GetFullLore());
 
@@ -300,7 +300,7 @@ namespace AQuestReborn.CustomNpc
                 charB, charA,
                 dataA.NpcName,
                 dataA.NPCGreeting,
-                $"You notice {npcB} nearby. Make casual conversation with them.",
+                $"You notice {npcB} nearby. Make casual conversation with them. (Keep your response brief, 1-2 sentences max!)",
                 _plugin.GetEnvironmentContext(charA),
                 dataA.GetFullLore(),
                 senderNameOverride: npcB);
@@ -331,7 +331,7 @@ namespace AQuestReborn.CustomNpc
                     charA, charB,
                     dataB.NpcName,
                     dataB.NPCGreeting,
-                    cleanA,
+                    cleanA + " (Respond to them. Keep your response brief, 1-2 sentences max!)",
                     _plugin.GetEnvironmentContext(charB),
                     dataB.GetFullLore(),
                     senderNameOverride: npcA);
