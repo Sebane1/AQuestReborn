@@ -557,8 +557,14 @@ namespace AQuestReborn
                                 // Logged out while waiting — abort respawn
                                 return;
                             }
-                            unsafe { stillLoading = _actorSpawnService == null || Conditions.Instance()->BetweenAreas; }
-                            if (stillLoading) Thread.Sleep(3000);
+                            unsafe 
+                            { 
+                                stillLoading = _actorSpawnService == null || 
+                                               Conditions.Instance()->BetweenAreas || 
+                                               Plugin.ObjectTable.LocalPlayer == null || 
+                                               !Plugin.ObjectTable.LocalPlayer.IsValid(); 
+                            }
+                            if (stillLoading) Thread.Sleep(1000);
                         }
                         _triggerRefresh = true;
                         _gotZoneDiscriminator = false;
@@ -2205,6 +2211,11 @@ namespace AQuestReborn
         public void SummonCustomNpc(CustomNpcCharacter npcData)
         {
             if (_actorSpawnService == null || !Plugin.ClientState.IsLoggedIn) return;
+            if (Plugin.ObjectTable.LocalPlayer == null || !Plugin.ObjectTable.LocalPlayer.IsValid())
+            {
+                Plugin.ToastGui.ShowError("Player not fully loaded. Try again in a moment.");
+                return;
+            }
             if (Plugin.ClientState.IsGPosing)
             {
                 Plugin.ToastGui.ShowError("Cannot summon NPCs while GPose is active.");
@@ -2223,11 +2234,21 @@ namespace AQuestReborn
                     if (groupManager != null && groupManager->MainGroup.MemberCount > 1) return;
                 }
             }
-            if (_customNpcDictionary.ContainsKey(npcData.NpcName))
+            if (_customNpcDictionary.TryGetValue(npcData.NpcName, out var existingNpc))
             {
-                // Already summoned, dismiss instead
-                DismissCustomNpc(npcData.NpcName);
-                return;
+                if (existingNpc.Character != null && existingNpc.Character.IsValid())
+                {
+                    // Already summoned and valid, dismiss instead
+                    DismissCustomNpc(npcData.NpcName);
+                    return;
+                }
+                else
+                {
+                    // Actor was destroyed by game/Brio without our knowledge, clean up and respawn
+                    _customNpcDictionary.Remove(npcData.NpcName);
+                    _customNpcCharacters.Remove(npcData.NpcName);
+                    try { existingNpc.Dispose(); } catch { }
+                }
             }
 
             // Check hidden pool first — instant re-summon without Brio create/destroy
@@ -2454,7 +2475,7 @@ namespace AQuestReborn
 
         public void SummonCustomNpcAtPosition(CustomNpcCharacter npcData, System.Numerics.Vector3 position, System.Numerics.Vector3 rotation)
         {
-            if (_actorSpawnService == null || Plugin.ObjectTable.LocalPlayer == null) return;
+            if (_actorSpawnService == null || Plugin.ObjectTable.LocalPlayer == null || !Plugin.ObjectTable.LocalPlayer.IsValid()) return;
             if (Plugin.ClientState.IsGPosing)
             {
                 Plugin.ToastGui.ShowError("Cannot summon NPCs while GPose is active.");
@@ -2473,7 +2494,19 @@ namespace AQuestReborn
                     if (groupManager != null && groupManager->MainGroup.MemberCount > 1) return;
                 }
             }
-            if (_customNpcDictionary.ContainsKey(npcData.NpcName)) return;
+            if (_customNpcDictionary.TryGetValue(npcData.NpcName, out var existingNpc))
+            {
+                if (existingNpc.Character != null && existingNpc.Character.IsValid())
+                {
+                    return;
+                }
+                else
+                {
+                    _customNpcDictionary.Remove(npcData.NpcName);
+                    _customNpcCharacters.Remove(npcData.NpcName);
+                    try { existingNpc.Dispose(); } catch { }
+                }
+            }
             if (_customNpcDictionary.Count >= MAX_CUSTOM_NPCS) return;
 
             Task.Run(() =>
