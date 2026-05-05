@@ -201,7 +201,8 @@ public class ObjectiveWindow : Window, IDisposable
                                     if (_questStartIconTextureWrap != null && _questObjectiveIconTextureWrap != null
                                         && item.Item2.TypeOfObjectiveTrigger != RoleplayingQuestCore.QuestObjective.ObjectiveTriggerType.BoundingTrigger)
                                     {
-                                        ImGui.Image(item.Item1 == 0 ? _questStartIconTextureWrap.Handle : _questObjectiveIconTextureWrap.Handle, iconDimensions);
+                                        bool isStartIcon = item.Item1 == 0 && item.Item3.HasQuestAcceptancePopup;
+                                        ImGui.Image(isStartIcon ? _questStartIconTextureWrap.Handle : _questObjectiveIconTextureWrap.Handle, iconDimensions);
                                     }
                                 }
                             }

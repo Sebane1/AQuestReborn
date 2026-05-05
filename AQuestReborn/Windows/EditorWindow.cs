@@ -556,6 +556,55 @@ public class EditorWindow : Window, IDisposable
                     {
                         tailData.LookBackDuration = lbDur;
                     }
+                    var minDist = tailData.MinimumTailDistance;
+                    if (ImGui.SliderFloat("Min Fail Distance (too close)##tail", ref minDist, 1f, 15f))
+                    {
+                        tailData.MinimumTailDistance = minDist;
+                    }
+                    var maxDist = tailData.MaximumTailDistance;
+                    if (ImGui.SliderFloat("Max Fail Distance (too far)##tail", ref maxDist, 10f, 100f))
+                    {
+                        tailData.MaximumTailDistance = maxDist;
+                    }
+
+                    ImGui.Separator();
+                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1, 1), "-- Dialogue & Reactions --");
+                    
+                    if (tailData.LookAroundBlurbs == null) tailData.LookAroundBlurbs = new List<string>();
+                    if (ImGui.TreeNode("Look Around Blurbs"))
+                    {
+                        for (int i = 0; i < tailData.LookAroundBlurbs.Count; i++)
+                        {
+                            string blurb = tailData.LookAroundBlurbs[i];
+                            if (ImGui.InputText($"##lookblurb_{i}", ref blurb, 200)) tailData.LookAroundBlurbs[i] = blurb;
+                            ImGui.SameLine();
+                            if (ImGui.Button($"X##removelookblurb_{i}"))
+                            {
+                                tailData.LookAroundBlurbs.RemoveAt(i);
+                                break;
+                            }
+                        }
+                        if (ImGui.Button("Add Look Around Blurb")) tailData.LookAroundBlurbs.Add("New Blurb");
+                        ImGui.TreePop();
+                    }
+
+                    if (tailData.CaughtBlurbs == null) tailData.CaughtBlurbs = new List<string>();
+                    if (ImGui.TreeNode("Spotted / Caught Blurbs"))
+                    {
+                        for (int i = 0; i < tailData.CaughtBlurbs.Count; i++)
+                        {
+                            string blurb = tailData.CaughtBlurbs[i];
+                            if (ImGui.InputText($"##caughtblurb_{i}", ref blurb, 200)) tailData.CaughtBlurbs[i] = blurb;
+                            ImGui.SameLine();
+                            if (ImGui.Button($"X##removecaughtblurb_{i}"))
+                            {
+                                tailData.CaughtBlurbs.RemoveAt(i);
+                                break;
+                            }
+                        }
+                        if (ImGui.Button("Add Caught Blurb")) tailData.CaughtBlurbs.Add("New Blurb");
+                        ImGui.TreePop();
+                    }
                     break;
             }
             if (ImGui.Button(Translator.LocalizeUI("Edit NPC Transform Data##")))

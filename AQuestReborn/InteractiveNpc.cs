@@ -1248,11 +1248,15 @@ namespace AQuestReborn
         private bool _tailPathCompleted;
         private Random _tailRng = new Random();
         private ushort _tailLastEmoteId;
+        private float _dynamicMaxTailDistance;
 
         /// <summary>
         /// Fired when the NPC detects the player during a look-back.
         /// </summary>
-        public event EventHandler OnPlayerDetected;
+        public enum TailFailureReason { Spotted, TooClose, TooFar }
+        public class TailFailureEventArgs : EventArgs { public TailFailureReason Reason { get; set; } }
+
+        public event EventHandler<TailFailureEventArgs> OnPlayerDetected;
 
         /// <summary>
         /// Fired when the NPC reaches the end of the recorded path.
@@ -1289,6 +1293,17 @@ namespace AQuestReborn
                 (int)(_tailData.LookBackMinInterval * 1000),
                 (int)(_tailData.LookBackMaxInterval * 1000));
 
+            // Calculate dynamic max distance based on initial player position
+            if (_plugin.ObjectTable.LocalPlayer != null)
+            {
+                float initialDistance = Vector3.Distance(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position);
+                _dynamicMaxTailDistance = Math.Max(initialDistance * 1.1f, _tailData.MaximumTailDistance);
+            }
+            else
+            {
+                _dynamicMaxTailDistance = _tailData.MaximumTailDistance;
+            }
+
             _tailPlaybackTimer.Restart();
             _tailLookBackTimer.Reset();
         }
@@ -1296,13 +1311,50 @@ namespace AQuestReborn
         /// <summary>
         /// Stop tail playback and reset state.
         /// </summary>
-        public void StopTailPlayback()
+        public void StopTailPlayback(bool updateDefaultPosition = false)
         {
             _isTailPlayback = false;
             _tailPlaybackTimer.Stop();
             _tailLookBackTimer.Stop();
             _tailIsLookingBack = false;
+
+            if (updateDefaultPosition)
+            {
+                _defaultPosition = _currentPosition;
+                _defaultRotation = _currentRotation;
+            }
         }
+
+        /// <summary>
+        /// Pauses the tail playback and shows a failure reaction.
+        /// Call ResetTailToStart() a few seconds after this to actually restart the objective.
+        /// </summary>
+        public void ShowTailFailure(TailFailureReason reason)
+        {
+            if (!_isTailPlayback) return;
+            
+            _tailPlaybackTimer.Stop();
+            _tailLookBackTimer.Stop();
+
+            // Play caught blurb if they spotted the player or the player got too close
+            if ((reason == TailFailureReason.Spotted || reason == TailFailureReason.TooClose) 
+                && _tailData != null && _tailData.CaughtBlurbs != null && _tailData.CaughtBlurbs.Count > 0)
+            {
+                _tailIsFailed = true;
+                string blurb = _tailData.CaughtBlurbs[_tailRng.Next(_tailData.CaughtBlurbs.Count)];
+                _plugin.SpeechBubbleManager?.ShowBubble(_character, _tailData.NpcName, blurb);
+
+                // Face the player
+                if (_plugin.ObjectTable.LocalPlayer != null)
+                {
+                    var desiredQuat = CoordinateUtility.LookAt(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position);
+                    _tailFailedTargetRotation = desiredQuat.QuaternionToEuler();
+                }
+            }
+        }
+
+        private bool _tailIsFailed = false;
+        private Vector3 _tailFailedTargetRotation = Vector3.Zero;
 
         /// <summary>
         /// Reset the NPC to the start of the tail path (after player detection / fail).
@@ -1314,6 +1366,7 @@ namespace AQuestReborn
             _tailWaypointIndex = 0;
             _tailPathCompleted = false;
             _tailIsLookingBack = false;
+            _tailIsFailed = false;
             _tailLastEmoteId = 0;
 
             var firstWp = _tailData.Waypoints[0];
@@ -1337,7 +1390,38 @@ namespace AQuestReborn
         {
             if (_tailData == null || _tailPathCompleted) return;
 
+            if (_tailIsFailed)
+            {
+                // Smoothly rotate to face the player after failing
+                var desiredQuat = CoordinateUtility.ToQuaternion(_tailFailedTargetRotation);
+                var currentQuat = CoordinateUtility.ToQuaternion(_currentRotation);
+                var smoothed = Quaternion.Slerp(currentQuat, desiredQuat, Math.Min(5f * delta, 1f));
+                _currentRotation = smoothed.QuaternionToEuler();
+                
+                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                SetTransform(_currentPosition, _currentRotation, _currentScale);
+                return;
+            }
+
             float elapsed = (float)_tailPlaybackTimer.Elapsed.TotalSeconds;
+
+            // --- Check fail conditions (too close or too far) ---
+            if (_plugin.ObjectTable.LocalPlayer != null)
+            {
+                var playerPos = _plugin.ObjectTable.LocalPlayer.Position;
+                float distanceToPlayer = Vector3.Distance(_currentPosition, playerPos);
+                
+                if (distanceToPlayer < _tailData.MinimumTailDistance)
+                {
+                    OnPlayerDetected?.Invoke(this, new TailFailureEventArgs { Reason = TailFailureReason.TooClose });
+                    return;
+                }
+                else if (distanceToPlayer > _dynamicMaxTailDistance)
+                {
+                    OnPlayerDetected?.Invoke(this, new TailFailureEventArgs { Reason = TailFailureReason.TooFar });
+                    return;
+                }
+            }
 
             // --- Look-back interjection ---
             if (_tailIsLookingBack)
@@ -1358,16 +1442,23 @@ namespace AQuestReborn
                 }
                 else
                 {
-                    // Currently looking back — check if player is detected
+                    // Currently looking back — check if player is detected in cone
                     if (_plugin.ObjectTable.LocalPlayer != null)
                     {
                         var playerPos = _plugin.ObjectTable.LocalPlayer.Position;
                         if (IsPlayerInDetectionCone(_currentPosition, _tailForwardDirection, playerPos,
                             _tailData.DetectionRadius, _tailData.DetectionConeAngle))
                         {
-                            OnPlayerDetected?.Invoke(this, EventArgs.Empty);
+                            OnPlayerDetected?.Invoke(this, new TailFailureEventArgs { Reason = TailFailureReason.Spotted });
+                            return;
                         }
                     }
+
+                    // Smoothly rotate to look behind
+                    var desiredQuat = CoordinateUtility.ToQuaternion(CoordinateUtility.DirectionToEuler(_tailForwardDirection));
+                    var currentQuat = CoordinateUtility.ToQuaternion(_currentRotation);
+                    var smoothed = Quaternion.Slerp(currentQuat, desiredQuat, Math.Min(5f * delta, 1f));
+                    _currentRotation = smoothed.QuaternionToEuler();
                 }
 
                 // Play idle animation while looking
@@ -1383,10 +1474,15 @@ namespace AQuestReborn
                 _tailPlaybackTimer.Stop(); // Pause path advancement
                 _tailLookBackTimer.Restart();
 
-                // Turn 180° — face backward
+                // Set the target backward direction, but don't snap rotation immediately
                 var currentFacing = CoordinateUtility.EulerToDirection(_currentRotation);
-                _tailForwardDirection = -currentFacing; // The direction NPC is now looking (behind them)
-                _currentRotation = CoordinateUtility.DirectionToEuler(_tailForwardDirection);
+                _tailForwardDirection = -currentFacing; 
+
+                if (_tailData.LookAroundBlurbs != null && _tailData.LookAroundBlurbs.Count > 0)
+                {
+                    string blurb = _tailData.LookAroundBlurbs[_tailRng.Next(_tailData.LookAroundBlurbs.Count)];
+                    _plugin.SpeechBubbleManager?.ShowBubble(_character, _tailData.NpcName, blurb);
+                }
 
                 // Play idle/look animation
                 _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
@@ -1432,7 +1528,13 @@ namespace AQuestReborn
             float t = segmentDuration > 0 ? Math.Clamp(segmentElapsed / segmentDuration, 0f, 1f) : 1f;
 
             _currentPosition = Vector3.Lerp(wpCurrent.Position, wpNext.Position, t);
-            _currentRotation = Vector3.Lerp(wpCurrent.Rotation, wpNext.Rotation, t);
+            
+            // Smoothly interpolate rotation to prevent snapping when turning back from a look-back
+            var targetRotation = Vector3.Lerp(wpCurrent.Rotation, wpNext.Rotation, t);
+            var pathTargetQuat = CoordinateUtility.ToQuaternion(targetRotation);
+            var pathCurrentQuat = CoordinateUtility.ToQuaternion(_currentRotation);
+            var pathSmoothed = Quaternion.Slerp(pathCurrentQuat, pathTargetQuat, Math.Min(10f * delta, 1f));
+            _currentRotation = pathSmoothed.QuaternionToEuler();
 
             // Determine speed between waypoints for animation
             float waypointDistance = Vector3.Distance(wpCurrent.Position, wpNext.Position);

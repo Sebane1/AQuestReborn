@@ -1326,25 +1326,54 @@ namespace AQuestReborn
             }
         }
 
-        private void TailObjective_OnPlayerDetected(object sender, EventArgs e)
+        private void TailObjective_OnPlayerDetected(object sender, InteractiveNpc.TailFailureEventArgs e)
         {
             // Prevent spam — only trigger once per 3 seconds
             if (_tailDetectionCooldown.IsRunning && _tailDetectionCooldown.ElapsedMilliseconds < 3000) return;
             _tailDetectionCooldown.Restart();
 
-            Plugin.PluginLog.Information("[TailObjective] Player detected! Resetting tail objective.");
+            Plugin.PluginLog.Information($"[TailObjective] Tail failed! Reason: {e.Reason}");
 
             // Show fail toast
             try
             {
-                Plugin.ToastGui.ShowError("You've been spotted! The NPC is returning to the start.");
+                string message = e.Reason switch
+                {
+                    InteractiveNpc.TailFailureReason.TooClose => "You got too close to the target! Objective failed.",
+                    InteractiveNpc.TailFailureReason.TooFar => "You lost sight of the target! Objective failed.",
+                    InteractiveNpc.TailFailureReason.Spotted => "You've been spotted! The NPC is returning to the start.",
+                    _ => "Objective failed."
+                };
+                Plugin.ToastGui.ShowError(message);
             }
             catch { }
 
             // Reset the NPC to the start of the path
-            if (_interactiveNpcDictionary.ContainsKey(_tailObjectiveNpcName))
+            if (_interactiveNpcDictionary.TryGetValue(_tailObjectiveNpcName, out var npc))
             {
-                _interactiveNpcDictionary[_tailObjectiveNpcName].ResetTailToStart();
+                // Pause and show reaction
+                npc.ShowTailFailure(e.Reason);
+
+                Task.Run(async () =>
+                {
+                    // Delay reset if they were spotted or player got too close
+                    if (e.Reason == InteractiveNpc.TailFailureReason.Spotted || e.Reason == InteractiveNpc.TailFailureReason.TooClose)
+                    {
+                        await Task.Delay(3000);
+                    }
+
+                    Plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        npc.ResetTailToStart();
+                        
+                        // Clear the active state so the player has to click the bubble again
+                        if (_tailObjectiveRef != null)
+                        {
+                            Plugin.RoleplayingQuestManager.DeactivateTailObjective(_tailObjectiveRef.Id);
+                        }
+                        CleanupTailObjective();
+                    });
+                });
             }
         }
 
@@ -1373,7 +1402,7 @@ namespace AQuestReborn
             if (_interactiveNpcDictionary.ContainsKey(_tailObjectiveNpcName))
             {
                 var npc = _interactiveNpcDictionary[_tailObjectiveNpcName];
-                npc.StopTailPlayback();
+                npc.StopTailPlayback(true);
                 npc.OnPlayerDetected -= TailObjective_OnPlayerDetected;
                 npc.OnTailPathCompleted -= TailObjective_OnPathCompleted;
             }
@@ -1769,13 +1798,18 @@ namespace AQuestReborn
                                         && npcAppearance.Value.NpcName == item.Item2.TailData.NpcName
                                         && !item.Item2.NpcStartingPositions.ContainsKey(npcAppearance.Value.NpcName))
                                     {
-                                        var firstWp = item.Item2.TailData.Waypoints[0];
+                                        // If the objective was already completed, spawn the NPC at the end of the path.
+                                        // Otherwise, spawn them at the start of the path.
+                                        var targetWp = item.Item2.ObjectiveCompleted 
+                                            ? item.Item2.TailData.Waypoints[item.Item2.TailData.Waypoints.Count - 1] 
+                                            : item.Item2.TailData.Waypoints[0];
+                                            
                                         item.Item2.NpcStartingPositions[npcAppearance.Value.NpcName] = new Transform
                                         {
-                                            Position = firstWp.Position,
-                                            EulerRotation = firstWp.Rotation
+                                            Position = targetWp.Position,
+                                            EulerRotation = targetWp.Rotation
                                         };
-                                        Plugin.PluginLog.Information($"[TailNpc] Auto-injected starting position for '{npcAppearance.Value.NpcName}' at {firstWp.Position}");
+                                        Plugin.PluginLog.Information($"[TailNpc] Auto-injected position for '{npcAppearance.Value.NpcName}' at {targetWp.Position} (Completed: {item.Item2.ObjectiveCompleted})");
                                     }
                                     else if (item.Item2.TypeOfObjectiveTrigger == QuestObjective.ObjectiveTriggerType.TailNpc)
                                     {
