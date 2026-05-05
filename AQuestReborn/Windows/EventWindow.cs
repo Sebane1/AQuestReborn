@@ -128,19 +128,43 @@ public class EventWindow : Window, IDisposable
             _dialogueBoxStyles.Add(ImageToBytes(item));
         }
     }
+    /// <summary>
+    /// Validate a jump target and emit a quest-creator-facing error if it's out of range.
+    /// Returns the clamped (safe) value.
+    /// </summary>
+    private int ValidateJumpTarget(int target, int maxEvent, string context)
+    {
+        if (target < 0 || target >= maxEvent)
+        {
+            string questName = _questDisplayObject?.RoleplayingQuest?.QuestId ?? "Unknown Quest";
+            string msg = $"[Quest Error] \"{questName}\": {context} references dialogue #{target}, but only {maxEvent} dialogue entries exist (valid range: 0–{maxEvent - 1}). Ending dialogue to prevent soft-lock.";
+            Plugin.PluginLog?.Warning(msg);
+            try
+            {
+                Plugin.ChatGui.PrintError(msg);
+                Plugin.ToastGui.ShowError(msg);
+            }
+            catch { }
+            return maxEvent; // end dialogue gracefully
+        }
+        return target;
+    }
+
     private void ChoiceWindow_OnChoiceMade(object? sender, int e)
     {
         IsOpen = true;
         var questText = _questDisplayObject.QuestObjective.QuestText[_index];
+        int maxEvent = _questDisplayObject.QuestObjective.QuestText.Count;
         if (questText.BranchingChoices.Count > 0)
         {
             if (e < questText.BranchingChoices.Count)
             {
                 var branchingChoice = questText.BranchingChoices[e];
+                string choiceLabel = $"Branching Choice \"{branchingChoice.ChoiceText}\" (dialogue #{_index}, choice #{e})";
                 switch (branchingChoice.ChoiceType)
                 {
                     case BranchingChoice.BranchingChoiceType.SkipToEventNumber:
-                        SetEvent(branchingChoice.EventToJumpTo);
+                        SetEvent(ValidateJumpTarget(branchingChoice.EventToJumpTo, maxEvent, choiceLabel));
                         break;
                     case BranchingChoice.BranchingChoiceType.BranchingQuestline:
                         Plugin.RoleplayingQuestManager.ReplaceQuest(branchingChoice.RoleplayingQuest);
@@ -149,7 +173,7 @@ public class EventWindow : Window, IDisposable
                         var roll = new Random().Next(0, 20);
                         if (roll >= branchingChoice.MinimumDiceRoll)
                         {
-                            SetEvent(branchingChoice.EventToJumpTo);
+                            SetEvent(ValidateJumpTarget(branchingChoice.EventToJumpTo, maxEvent, choiceLabel + " (success)"));
                             Task.Run(async () =>
                             {
                                 var toast = await Translator.LocalizeText("You roll a " + roll + "/" + branchingChoice.MinimumDiceRoll + " and succeed.", Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
@@ -164,7 +188,7 @@ public class EventWindow : Window, IDisposable
                         }
                         else
                         {
-                            SetEvent(branchingChoice.EventToJumpToFailure);
+                            SetEvent(ValidateJumpTarget(branchingChoice.EventToJumpToFailure, maxEvent, choiceLabel + " (failure)"));
                             Task.Run(async () =>
                             {
                                 var toast = await Translator.LocalizeText("You roll a " + roll + "/" + branchingChoice.MinimumDiceRoll + " and fail.", Plugin.Configuration.QuestLanguage, _questDisplayObject.RoleplayingQuest.QuestLanguage);
@@ -179,8 +203,19 @@ public class EventWindow : Window, IDisposable
                         }
                         break;
                     case BranchingChoice.BranchingChoiceType.SkipToEventNumberRandomized:
-                        roll = new Random().Next(0, branchingChoice.RandomizedEventToSkipTo.Count);
-                        SetEvent(branchingChoice.RandomizedEventToSkipTo[roll]);
+                        if (branchingChoice.RandomizedEventToSkipTo.Count > 0)
+                        {
+                            roll = new Random().Next(0, branchingChoice.RandomizedEventToSkipTo.Count);
+                            SetEvent(ValidateJumpTarget(branchingChoice.RandomizedEventToSkipTo[roll], maxEvent, choiceLabel + " (randomized)"));
+                        }
+                        else
+                        {
+                            string questName = _questDisplayObject?.RoleplayingQuest?.QuestId ?? "Unknown Quest";
+                            string msg = $"[Quest Error] \"{questName}\": {choiceLabel} uses randomized skip but has no target entries configured. Ending dialogue.";
+                            Plugin.PluginLog?.Warning(msg);
+                            try { Plugin.ChatGui.PrintError(msg); Plugin.ToastGui.ShowError(msg); } catch { }
+                            SetEvent(maxEvent);
+                        }
                         break;
                 }
             }
@@ -342,7 +377,12 @@ public class EventWindow : Window, IDisposable
                 {
                     names = new string[2] { "", "" };
                 }
-                return value.Replace(@"<fn>", names[0]).Replace("<ln>", names[1]).Replace("<n>", names[0] + " " + names[1]).Replace("<r>", customization != null ? Race(customization.Customize.Race.Value) : "");
+                return value
+                    .Replace(@"<fn>", names[0])
+                    .Replace("<ln>", names[1])
+                    .Replace("<n>", names[0] + " " + names[1])
+                    .Replace("<r>", customization != null ? Race(customization.Customize.Race.Value) : "")
+                    .Replace("<t>", customization != null ? Tribe(customization.Customize.Clan.Value) : "");
             }
         }
         return value;
@@ -352,24 +392,39 @@ public class EventWindow : Window, IDisposable
     {
         switch (value)
         {
-            case 0:
-                return "Hyur";
-            case 1:
-                return "Elezen";
-            case 2:
-                return "Hyur";
-            case 3:
-                return "Lalafel";
-            case 4:
-                return "Miqo'te";
-            case 5:
-                return "Au Ra";
-            case 6:
-                return "Hrothgar";
-            case 7:
-                return "Viera";
-            default:
-                return "";
+            case 1: return "Hyur";
+            case 2: return "Elezen";
+            case 3: return "Lalafell";
+            case 4: return "Miqo'te";
+            case 5: return "Roegadyn";
+            case 6: return "Au Ra";
+            case 7: return "Hrothgar";
+            case 8: return "Viera";
+            default: return "";
+        }
+    }
+
+    public string Tribe(int value)
+    {
+        switch (value)
+        {
+            case 1: return "Midlander";
+            case 2: return "Highlander";
+            case 3: return "Wildwood";
+            case 4: return "Duskwight";
+            case 5: return "Plainsfolk";
+            case 6: return "Dunesfolk";
+            case 7: return "Seeker of the Sun";
+            case 8: return "Keeper of the Moon";
+            case 9: return "Sea Wolf";
+            case 10: return "Hellsguard";
+            case 11: return "Raen";
+            case 12: return "Xaela";
+            case 13: return "Helions";
+            case 14: return "The Lost";
+            case 15: return "Rava";
+            case 16: return "Veena";
+            default: return "";
         }
     }
 
@@ -717,6 +772,22 @@ public class EventWindow : Window, IDisposable
                     }
                 }
                 var questNpcKey = AQuestReborn.AQuestReborn.QuestNpcKey(_questDisplayObject.RoleplayingQuest.QuestId, item.NpcName);
+                // Build set of NPCs that should look at the player: the speaker + any explicitly listed extras
+                var npcsAllowedToLook = new HashSet<string> { questNpcKey };
+                foreach (var additionalName in item.AdditionalNpcsLookAtPlayer)
+                {
+                    npcsAllowedToLook.Add(AQuestReborn.AQuestReborn.QuestNpcKey(_questDisplayObject.RoleplayingQuest.QuestId, additionalName));
+                }
+                // Clear LooksAtPlayer on all other quest NPCs not in the allowed set
+                string questPrefix = _questDisplayObject.RoleplayingQuest.QuestId + "::";
+                foreach (var kvp in Plugin.AQuestReborn.InteractiveNpcDictionary)
+                {
+                    if (kvp.Key.StartsWith(questPrefix) && !npcsAllowedToLook.Contains(kvp.Key))
+                    {
+                        kvp.Value.LooksAtPlayer = false;
+                    }
+                }
+                // Set look-at for the speaking NPC
                 if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(questNpcKey))
                 {
                     Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].LooksAtPlayer = item.LooksAtPlayerDuringEvent;
@@ -726,6 +797,15 @@ public class EventWindow : Window, IDisposable
                         Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].SetDefaults(item.NpcMovementPosition, item.NpcMovementRotation,
                         item.NpcEventMovementType == QuestEvent.EventMovementType.Lerp ? 5 : item.NpcMovementTime, item.NpcEventMovementType);
                         Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].EventMovementAnimationType = item.NpcEventMovementAnimation;
+                    }
+                }
+                // Enable look-at for any additional NPCs the creator specified
+                foreach (var additionalName in item.AdditionalNpcsLookAtPlayer)
+                {
+                    var addKey = AQuestReborn.AQuestReborn.QuestNpcKey(_questDisplayObject.RoleplayingQuest.QuestId, additionalName);
+                    if (Plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(addKey))
+                    {
+                        Plugin.AQuestReborn.InteractiveNpcDictionary[addKey].LooksAtPlayer = true;
                     }
                 }
                 if (item.EventSetsNewCutscenePlayerCoordinates)
@@ -801,7 +881,8 @@ public class EventWindow : Window, IDisposable
                     switch (item.EventEndBehaviour)
                     {
                         case QuestEvent.EventBehaviourType.EventSkipsToDialogueNumber:
-                            _index = item.EventNumberToSkipTo;
+                            _index = ValidateJumpTarget(item.EventNumberToSkipTo, _questDisplayObject.QuestObjective.QuestText.Count,
+                                $"Event End Behaviour \"Skip To Dialogue\" (dialogue #{_index})");
                             break;
                         case QuestEvent.EventBehaviourType.EventEndsEarlyWhenHit:
                             _index = _questDisplayObject.QuestObjective.QuestText.Count;
@@ -908,6 +989,8 @@ public class EventWindow : Window, IDisposable
             _dontUnblockMovement = false;
             Plugin.DialogueBackgroundWindow.IsOpen = false;
             IsOpen = false;
+            // Safety net: always unlock movement when dialogue ends, regardless of flag state
+            Plugin.Movement.DisableMovementLock();
             Plugin.MediaManager.StopAudio(_backgroundMusic);
             try
             {

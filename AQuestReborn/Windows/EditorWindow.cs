@@ -826,6 +826,30 @@ public class EditorWindow : Window, IDisposable
                         {
                             item.LooksAtPlayerDuringEvent = looksAtPlayerDuringEvent;
                         }
+                        // Additional NPCs that should also look at the player during this event
+                        if (ImGui.TreeNode(Translator.LocalizeUI("Additional NPCs Look At Player##addlook")))
+                        {
+                            for (int addIdx = 0; addIdx < item.AdditionalNpcsLookAtPlayer.Count; addIdx++)
+                            {
+                                var addNpcName = item.AdditionalNpcsLookAtPlayer[addIdx];
+                                ImGui.SetNextItemWidth(200);
+                                if (ImGui.InputText(Translator.LocalizeUI($"NPC Name##{addIdx}addlook"), ref addNpcName, 40))
+                                {
+                                    item.AdditionalNpcsLookAtPlayer[addIdx] = addNpcName;
+                                }
+                                ImGui.SameLine();
+                                if (ImGui.Button(Translator.LocalizeUI($"Remove##{addIdx}addlook")))
+                                {
+                                    item.AdditionalNpcsLookAtPlayer.RemoveAt(addIdx);
+                                    break;
+                                }
+                            }
+                            if (ImGui.Button(Translator.LocalizeUI("Add NPC##addlooknpc")))
+                            {
+                                item.AdditionalNpcsLookAtPlayer.Add("");
+                            }
+                            ImGui.TreePop();
+                        }
                         if (ImGui.Checkbox(Translator.LocalizeUI("Event Sets New NPC Position"), ref eventSetsNewNpcPosition))
                         {
                             item.EventSetsNewNpcCoordinates = eventSetsNewNpcPosition;
