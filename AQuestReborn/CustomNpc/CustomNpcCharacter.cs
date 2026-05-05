@@ -98,7 +98,8 @@ namespace AQuestReborn.CustomNpc
             string context = "";
             if (EncounterCounts.TryGetValue(personName, out int count) && count > 0)
             {
-                context += $" They have met {personName} {count} time{(count > 1 ? "s" : "")} before.";
+                string familiarity = count >= 10 ? "extremely well" : "already";
+                context += $" They {familiarity} know {personName} (having met {count} time{(count > 1 ? "s" : "")} before). DO NOT act like this is a first meeting or introduce yourself. Acknowledge them familiarly.";
 
                 if (LastSeenTimestamps.TryGetValue(personName, out long ticks))
                 {
@@ -121,12 +122,12 @@ namespace AQuestReborn.CustomNpc
                 // Add emotional context if left behind
                 if (WasLeftBehind)
                 {
-                    context += $" {personName} left them behind at their current location when they departed.";
+                    context += $" {personName} abruptly left them behind at their current location when they departed.";
                 }
             }
             else
             {
-                context += $" They have never met {personName} before — this is their first encounter.";
+                context += $" They have never met {personName} before — this is their first encounter. They should introduce themselves.";
             }
             return context;
         }

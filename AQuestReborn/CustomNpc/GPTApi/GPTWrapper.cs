@@ -68,12 +68,10 @@ namespace AQuestReborn.CustomNpc
             {
                 var sb = new System.Text.StringBuilder();
                 sb.AppendLine("=== OPENAI/CHAT FORMAT ===");
-                sb.AppendLine("[System Prompt]:\n" + _histories[name].GetSystemPrompt());
-                sb.AppendLine("\n[Chat History]:");
                 var chatMessages = _histories[name].ToChatMessages(message.Trim());
                 foreach (var msg in chatMessages)
                 {
-                    sb.AppendLine($"{msg.Role}: {msg.Content}");
+                    sb.AppendLine($"[{msg.Role.ToUpper()}]:\n{msg.Content}\n");
                 }
                 LastRawPrompt = sb.ToString();
             }
@@ -297,6 +295,12 @@ namespace AQuestReborn.CustomNpc
             // Clean up leading colons or rogue spaces from name stripping
             value = value.TrimStart(':', ' ').Trim();
 
+            // Replace newlines with spaces to prevent breaking chat bubbles and logs
+            value = value.Replace("\r\n", " ").Replace("\n", " ").Replace("\r", " ");
+
+            // Collapse multiple spaces into a single space that might result from newline replacement
+            value = System.Text.RegularExpressions.Regex.Replace(value, @"\s+", " ").Trim();
+
             return value;
         }
         public void AddMemory(string title, string description)
@@ -335,8 +339,6 @@ namespace AQuestReborn.CustomNpc
             {
                 var sb = new System.Text.StringBuilder();
                 sb.AppendLine("=== OPENAI/CHAT FORMAT ===");
-                sb.AppendLine("[System Prompt]:\n" + targetHistory.GetSystemPrompt());
-                sb.AppendLine("\n[Chat History]:");
                 var chatMessages = targetHistory.ToChatMessages(message.Trim());
                 foreach (var msg in chatMessages)
                 {

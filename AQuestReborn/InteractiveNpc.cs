@@ -586,10 +586,41 @@ namespace AQuestReborn
                                 }
                                 else
                                 {
-                                    float fallbackY = _plugin.ObjectTable.LocalPlayer.Position.Y;
-                                    if (inCombat && _plugin.ObjectTable.LocalPlayer.TargetObject != null)
+                                    Dalamud.Game.ClientState.Objects.Types.IGameObject activeTarget = _plugin.ObjectTable.LocalPlayer.TargetObject;
+                                    if (inCombat && activeTarget == null)
                                     {
-                                        fallbackY = _plugin.ObjectTable.LocalPlayer.TargetObject.Position.Y;
+                                        float closestDist = 100f; // Limit to 100 yalms
+                                        foreach (var obj in _plugin.ObjectTable)
+                                        {
+                                            if (obj is Dalamud.Game.ClientState.Objects.Types.IBattleNpc bnpc && bnpc.SubKind == 5 && bnpc.CurrentHp > 0)
+                                            {
+                                                bool isTargetingUs = bnpc.TargetObjectId == _plugin.ObjectTable.LocalPlayer.GameObjectId || bnpc.TargetObjectId == _character.GameObjectId;
+                                                
+                                                if (!isTargetingUs && bnpc.TargetObjectId != 0 && bnpc.TargetObjectId != 0xE0000000)
+                                                {
+                                                    if (Vector3.Distance(_plugin.ObjectTable.LocalPlayer.Position, bnpc.Position) < 30f)
+                                                    {
+                                                        isTargetingUs = true;
+                                                    }
+                                                }
+
+                                                if (isTargetingUs)
+                                                {
+                                                    float dist = Vector3.Distance(_currentPosition, bnpc.Position);
+                                                    if (dist < closestDist)
+                                                    {
+                                                        closestDist = dist;
+                                                        activeTarget = bnpc;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    float fallbackY = _plugin.ObjectTable.LocalPlayer.Position.Y;
+                                    if (inCombat && activeTarget != null)
+                                    {
+                                        fallbackY = activeTarget.Position.Y;
                                     }
                                     float groundY = _plugin.AQuestReborn.GroundMap.GetGroundY(
                                         _currentPosition.X, _currentPosition.Z, fallbackY);
@@ -623,11 +654,11 @@ namespace AQuestReborn
                                             TriggerEmoteIfChanged(34); // Draw Weapon / Combat Stance
                                         }
 
-                                        if (_plugin.ObjectTable.LocalPlayer.TargetObject != null)
+                                        if (activeTarget != null)
                                         {
-                                            LastCombatTarget = _plugin.ObjectTable.LocalPlayer.TargetObject.Name.TextValue;
-                                            _plugin.AnamcoreManager.SetHeadTarget(_character.Address, _plugin.ObjectTable.LocalPlayer.TargetObject.EntityId);
-                                            var tgtPos = _plugin.ObjectTable.LocalPlayer.TargetObject.Position;
+                                            LastCombatTarget = activeTarget.Name.TextValue;
+                                            _plugin.AnamcoreManager.SetHeadTarget(_character.Address, activeTarget.EntityId);
+                                            var tgtPos = activeTarget.Position;
 
                                             bool isMelee = false;
                                             if (TargetClassJobId > 0)
@@ -788,7 +819,7 @@ namespace AQuestReborn
                                             {
                                                 var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(selectedEmoteId);
                                                 _activeEmoteTimelineId = (ushort)emote.ActionTimeline[0].Value.RowId;
-                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, _activeEmoteTimelineId);
+                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, _activeEmoteTimelineId, true);
                                             }
                                             catch { }
                                             _idleEmotePlaying = true;
@@ -878,7 +909,7 @@ namespace AQuestReborn
                                             try
                                             {
                                                 var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(selectedEmoteId);
-                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
+                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, (ushort)emote.ActionTimeline[0].Value.RowId, true);
                                             }
                                             catch { }
                                             _idleEmotePlaying = true;

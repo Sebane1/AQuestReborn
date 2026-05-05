@@ -104,9 +104,10 @@ namespace AQuestReborn.CustomNpc
             }
 
             string enrichedDescription = aiDescription.Trim('.').Trim() + "." + encounterContext;
+            string finalSetting = setting + GetEnvironmentMemory();
 
             string aiMessage = await _gptWrapper.SendMessage(senderName, message, $@" smiles. ""{aiGreeting}""",
-            GetPlayerDescription(sendingCharacter, false, "", senderFullName), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 5, modelChoice);
+            GetPlayerDescription(sendingCharacter, false, "", senderFullName), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), finalSetting, 5, modelChoice);
             
             if (string.IsNullOrEmpty(aiMessage))
             {
@@ -126,7 +127,7 @@ namespace AQuestReborn.CustomNpc
                 
                 // Retry once with new model
                 aiMessage = await _gptWrapper.SendMessage(senderName, message, $@" smiles. ""{aiGreeting}""",
-                GetPlayerDescription(sendingCharacter, false, "", senderFullName), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 5, newModelChoice);
+                GetPlayerDescription(sendingCharacter, false, "", senderFullName), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), finalSetting, 5, newModelChoice);
             }
             string correctedMessage = PenumbraAndGlamourerHelperFunctions.GetGender(sendingCharacter) == 1 ? GenderFix(aiMessage) : aiMessage;
             Task.Run(() =>
@@ -170,9 +171,10 @@ namespace AQuestReborn.CustomNpc
             }
 
             string enrichedDescription = aiDescription.Trim('.').Trim() + "." + encounterContext;
+            string finalSetting = setting + GetEnvironmentMemory();
 
             return _gptWrapper.GetPreviewPrompt(senderName, message, $@" smiles. ""{aiGreeting}""",
-            GetPlayerDescription(sendingCharacter, false, "", senderFullName), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), setting);
+            GetPlayerDescription(sendingCharacter, false, "", senderFullName), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), finalSetting);
         }
 
         /// <summary>
@@ -227,6 +229,14 @@ namespace AQuestReborn.CustomNpc
                 }
             }
             string name = !string.IsNullOrEmpty(alias) ? alias : playerNameFull.Split(" ")[0];
+
+            return $"{name} is a {genderStr}. {pronounSingularAlternate} is a race of {raceStr}. " +
+                $"{GetPlayerExperience(player.Level, player.ClassJob.Value.NameEnglish.ToString(), pronounSingularAlternate)}." +
+                GetAppearanceData(player) + chatSummaries;
+        }
+        
+        private string GetEnvironmentMemory()
+        {
             string combatMemory = "";
             if (!string.IsNullOrEmpty(InteractiveNpc.LastCombatTarget))
             {
@@ -251,10 +261,7 @@ namespace AQuestReborn.CustomNpc
                 }
             }
 
-            return $"{name} is a {genderStr}. {pronounSingularAlternate} is a race of {raceStr}. " +
-                $"{GetPlayerExperience(player.Level, player.ClassJob.Value.NameEnglish.ToString(), pronounSingularAlternate)}." +
-                GetAppearanceData(player) +
-                combatMemory + recentCombatMemory + recentDialogueMemory + chatSummaries;
+            return combatMemory + recentCombatMemory + recentDialogueMemory;
         }
         
         private string GetAppearanceData(ICharacter player)

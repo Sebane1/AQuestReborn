@@ -262,6 +262,28 @@ public sealed class Plugin : IDalamudPlugin
             string placeName = territory?.PlaceName.Value.Name.ToString();
             context = $"Current Location: {placeName ?? "Eorzea"}";
 
+            try
+            {
+                unsafe
+                {
+                    var envManager = FFXIVClientStructs.FFXIV.Client.Graphics.Environment.EnvManager.Instance();
+                    if (envManager != null)
+                    {
+                        byte weatherId = envManager->ActiveWeather;
+                        var weatherRow = DataManager.GetExcelSheet<Lumina.Excel.Sheets.Weather>()?.GetRow(weatherId);
+                        if (weatherRow.HasValue)
+                        {
+                            string weatherName = weatherRow.Value.Name.ToString();
+                            if (!string.IsNullOrEmpty(weatherName))
+                            {
+                                context += $". Weather: {weatherName}";
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+
             System.Numerics.Vector3? origin = null;
             try { origin = observer != null ? observer.Position : _objectTable?.LocalPlayer?.Position; } catch { }
             if (origin != null)
