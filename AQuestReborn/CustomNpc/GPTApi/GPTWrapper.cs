@@ -16,6 +16,7 @@ namespace AQuestReborn.CustomNpc
         MemoryContextManager memoryContextManager;
 
         public string Personality { get => _aiName; }
+        public string LastRawPrompt { get; private set; } = "(No messages sent yet. Chat with the NPC to view the raw prompt here!)";
 
         public GPTWrapper(string aiName, string memoryPath)
         {
@@ -42,8 +43,7 @@ namespace AQuestReborn.CustomNpc
             _histories[name].UpdateSetting(setting);
             string lastValue = _histories.ContainsKey(name) ? _histories[name].History.GetLastVisibleItem() : Guid.NewGuid().ToString();
 
-            // Build the prompt and dispatch through the configured AI provider
-            var stopSequences = new List<string> { "\n", name + ":", _aiName + ":" };
+            var stopSequences = new List<string>();
             string fullPrompt = _histories[name].ToString()
                 + name.Split(" ")[0] + DetectFormatting(message.Trim()) + "\n" + _aiName + ": ";
 
@@ -61,6 +61,25 @@ namespace AQuestReborn.CustomNpc
                 // Text-completion providers (Default, NovelAI) get the raw prompt
                 response = await provider.GenerateResponseAsync(fullPrompt, _aiName, name.Split(" ")[0],
                     stopSequences);
+            }
+            
+            // Format LastRawPrompt based on what we actually sent
+            if (provider.UsesChatFormat)
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("=== OPENAI/CHAT FORMAT ===");
+                sb.AppendLine("[System Prompt]:\n" + _histories[name].GetSystemPrompt());
+                sb.AppendLine("\n[Chat History]:");
+                var chatMessages = _histories[name].ToChatMessages(message.Trim());
+                foreach (var msg in chatMessages)
+                {
+                    sb.AppendLine($"{msg.Role}: {msg.Content}");
+                }
+                LastRawPrompt = sb.ToString();
+            }
+            else
+            {
+                LastRawPrompt = "=== RAW TEXT COMPLETION PROMPT ===\n" + fullPrompt;
             }
 
             // If history was cleared while awaiting the response, bail out early
@@ -167,7 +186,7 @@ namespace AQuestReborn.CustomNpc
             if (!_histories.ContainsKey(name)) return "";
             string lastValue = _histories[name].History.GetLastVisibleItem();
             string summaryPrompt = _histories[name].ToString() + "[Chat Summary:";
-            var stopSequences = new List<string> { "\n", "]" };
+            var stopSequences = new List<string> { "]" };
             var provider = AiProviderFactory.CreateProvider();
             string response;
             if (provider.UsesChatFormat)
@@ -269,6 +288,9 @@ namespace AQuestReborn.CustomNpc
             // Failsafe to strip any leaked bracketed meta-instructions, even if unclosed, but ignore glamour commands
             value = System.Text.RegularExpressions.Regex.Replace(value, @"\[(?!glamour:).*?(?:\]|$)", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
 
+            // Strip out <think>...</think> blocks that reasoning models (like DeepSeek/Qwen) sometimes output inside the content block
+            value = System.Text.RegularExpressions.Regex.Replace(value, @"<think>.*?</think>", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline).Trim();
+
             // Strip out garbage repeating asterisks (e.g. *****)
             value = System.Text.RegularExpressions.Regex.Replace(value, @"\*{2,}", "").Trim();
 
@@ -297,6 +319,37 @@ namespace AQuestReborn.CustomNpc
         public string DetectFormatting(string value)
         {
             return ": " + value;
+        }
+
+        public string GetPreviewPrompt(string name, string message, string aiGreeting, string userDetails, string aiDetails, string setting)
+        {
+            var tempHistory = new GPTContextBuilder("Square Enix", "Final Fantasy XIV", "fantasy",
+                _aiName, name, aiDetails, userDetails, new GPTHistory(name, userDetails,
+                _aiName + ":" + aiGreeting, $"{name} said hello, and {_aiName} responded back with their own greeting."));
+            tempHistory.UpdateSetting(setting);
+            
+            var targetHistory = _histories.ContainsKey(name) ? _histories[name] : tempHistory;
+
+            var provider = AiProviderFactory.CreateProvider();
+            if (provider.UsesChatFormat)
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("=== OPENAI/CHAT FORMAT ===");
+                sb.AppendLine("[System Prompt]:\n" + targetHistory.GetSystemPrompt());
+                sb.AppendLine("\n[Chat History]:");
+                var chatMessages = targetHistory.ToChatMessages(message.Trim());
+                foreach (var msg in chatMessages)
+                {
+                    sb.AppendLine($"[{msg.Role.ToUpper()}]:\n{msg.Content}\n");
+                }
+                return sb.ToString();
+            }
+            else
+            {
+                string fullPrompt = targetHistory.ToString()
+                + name.Split(" ")[0] + DetectFormatting(message.Trim()) + "\n" + _aiName + ": ";
+                return "=== RAW TEXT COMPLETION PROMPT ===\n" + fullPrompt;
+            }
         }
     }
 }

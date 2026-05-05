@@ -308,7 +308,7 @@ public sealed class Plugin : IDalamudPlugin
                         && !string.IsNullOrWhiteSpace(obj.Name.TextValue)
                         && !obj.Name.TextValue.StartsWith("Reborn", StringComparison.OrdinalIgnoreCase)
                         && !obj.Name.TextValue.StartsWith("Cutscene", StringComparison.OrdinalIgnoreCase)
-                        && !obj.Name.TextValue.EndsWith("Cnpc", StringComparison.OrdinalIgnoreCase)
+                        && !obj.Name.TextValue.Contains("Cnpc", StringComparison.OrdinalIgnoreCase)
                         && !customNpcNames.Contains(obj.Name.TextValue))
                     .OrderBy(obj => System.Numerics.Vector3.Distance(origin2.Value, obj.Position))
                     .Take(5);
@@ -328,6 +328,53 @@ public sealed class Plugin : IDalamudPlugin
         catch (Exception ex)
         {
             PluginLog.Warning(ex, "Failed to get nearby objects");
+        }
+
+        try
+        {
+            if (global::AQuestReborn.AQuestReborn.PlayerAppearanceData != null)
+            {
+                var customize = global::AQuestReborn.AQuestReborn.PlayerAppearanceData.Customize;
+                string race = EventWindow != null ? EventWindow.Race((int)customize.Race.Value) : "";
+                string tribe = EventWindow != null ? EventWindow.Tribe((int)customize.Clan.Value) : "";
+                string gender = customize.Gender.Value == 0 ? "Male" : "Female";
+                string job = global::AQuestReborn.AQuestReborn.PlayerClassJob;
+                if (!string.IsNullOrEmpty(race) && !string.IsNullOrEmpty(tribe))
+                {
+                    context += $". Player Appearance: {gender} {tribe} {race}";
+                    if (!string.IsNullOrEmpty(job))
+                    {
+                        context += $" ({job})";
+                    }
+                }
+            }
+
+            if (observer is Dalamud.Game.ClientState.Objects.Types.ICharacter characterObserver)
+            {
+                var observerCustomize = global::AQuestReborn.AppearanceHelper.GetCustomization(characterObserver);
+                if (observerCustomize != null)
+                {
+                    string obsRace = EventWindow != null ? EventWindow.Race((int)observerCustomize.Customize.Race.Value) : "";
+                    string obsTribe = EventWindow != null ? EventWindow.Tribe((int)observerCustomize.Customize.Clan.Value) : "";
+                    string obsGender = observerCustomize.Customize.Gender.Value == 0 ? "Male" : "Female";
+                    if (!string.IsNullOrEmpty(obsRace) && !string.IsNullOrEmpty(obsTribe))
+                    {
+                        string objName = string.IsNullOrEmpty(characterObserver.Name.TextValue) ? "The NPC" : characterObserver.Name.TextValue;
+                        
+                        // Custom NPCs have their appearances dictated by their bio in the GPTContextBuilder.
+                        // Since Brio spawns them as base models before applying Glamourer, reading the 
+                        // underlying memory will result in conflicting race/tribe data (e.g. Xaela Au Ra vs Miqo'te).
+                        if (!objName.Contains("Cnpc", StringComparison.OrdinalIgnoreCase))
+                        {
+                            context += $". {objName} Appearance: {obsGender} {obsTribe} {obsRace}";
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            PluginLog.Warning(ex, "Failed to get player/npc appearance context");
         }
 
         return context;

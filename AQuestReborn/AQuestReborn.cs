@@ -878,6 +878,7 @@ namespace AQuestReborn
 
                     if (drawObjectMissing || drawObjectHidden || renderFlagsSet || modelBroken)
                     {
+                        /* 
                         // Track when the DrawObject first became broken
                         if (!_npcBrokenTimestamp.ContainsKey(kvp.Key))
                             _npcBrokenTimestamp[kvp.Key] = Environment.TickCount64;
@@ -927,6 +928,7 @@ namespace AQuestReborn
                                 catch { }
                             }
                         }
+                        */
                     }
                     else
                     {

@@ -19,6 +19,7 @@ namespace AQuestReborn.CustomNpc
         private Plugin _plugin;
         private ICharacter _aiCharacter;
         private string _fullName;
+        public GPTWrapper GptWrapper { get => _gptWrapper; }
 
         public NPCConversationManager(string name, string baseDirectory, Plugin plugin, ICharacter receivingCharacter)
         {
@@ -105,7 +106,7 @@ namespace AQuestReborn.CustomNpc
             string enrichedDescription = aiDescription.Trim('.').Trim() + "." + encounterContext;
 
             string aiMessage = await _gptWrapper.SendMessage(senderName, message, $@" smiles. ""{aiGreeting}""",
-            GetPlayerDescription(sendingCharacter, false, "", senderFullName), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 2, modelChoice);
+            GetPlayerDescription(sendingCharacter, false, "", senderFullName), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 5, modelChoice);
             
             if (string.IsNullOrEmpty(aiMessage))
             {
@@ -125,7 +126,7 @@ namespace AQuestReborn.CustomNpc
                 
                 // Retry once with new model
                 aiMessage = await _gptWrapper.SendMessage(senderName, message, $@" smiles. ""{aiGreeting}""",
-                GetPlayerDescription(sendingCharacter, false, "", senderFullName), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 2, newModelChoice);
+                GetPlayerDescription(sendingCharacter, false, "", senderFullName), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), setting, 5, newModelChoice);
             }
             string correctedMessage = PenumbraAndGlamourerHelperFunctions.GetGender(sendingCharacter) == 1 ? GenderFix(aiMessage) : aiMessage;
             Task.Run(() =>
@@ -133,6 +134,45 @@ namespace AQuestReborn.CustomNpc
                 EmoteReaction(correctedMessage);
             });
             return correctedMessage;
+        }
+
+        public string GetPromptPreview(ICharacter sendingCharacter, ICharacter receivingCharacter, string aiName,
+            string aiGreeting, string message, string setting, string aiDescription)
+        {
+            string senderFullName = sendingCharacter.Name.TextValue;
+            string senderName = senderFullName.Split(" ")[0];
+            string encounterContext = "";
+            string playerFullName = senderFullName;
+            
+            CustomNpcCharacter npcDataRef = null;
+            foreach (var npc in _plugin.Configuration.CustomNpcCharacters)
+            {
+                if (npc.NpcName == _fullName || npc.NpcName.StartsWith(aiName + " "))
+                {
+                    npcDataRef = npc;
+                    break;
+                }
+            }
+
+            if (npcDataRef != null)
+            {
+                encounterContext += npcDataRef.GetEncounterContext(playerFullName);
+                if (_plugin.AQuestReborn?.InteractiveNpcDictionary != null)
+                {
+                    foreach (var otherNpcKvp in _plugin.AQuestReborn.InteractiveNpcDictionary)
+                    {
+                        if (otherNpcKvp.Key != _fullName)
+                        {
+                            encounterContext += npcDataRef.GetEncounterContext(otherNpcKvp.Key);
+                        }
+                    }
+                }
+            }
+
+            string enrichedDescription = aiDescription.Trim('.').Trim() + "." + encounterContext;
+
+            return _gptWrapper.GetPreviewPrompt(senderName, message, $@" smiles. ""{aiGreeting}""",
+            GetPlayerDescription(sendingCharacter, false, "", senderFullName), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), setting);
         }
 
         /// <summary>
@@ -157,11 +197,12 @@ namespace AQuestReborn.CustomNpc
         {
             int gender = PenumbraAndGlamourerHelperFunctions.GetGender(player);
             int race = PenumbraAndGlamourerHelperFunctions.GetRace(player);
+            int tribe = PenumbraAndGlamourerHelperFunctions.GetTribe(player);
             string genderStr = gender == 1 ? "female" : "male";
             string pronouns = gender == 1 ? "she/her" : "he/him";
             string pronounSingular = gender == 1 ? "her" : "his";
             string pronounSingularAlternate = gender == 1 ? "She" : "He";
-            string raceStr = GetRaceDescription(race, pronounSingularAlternate);
+            string raceStr = GetRaceDescription(race, tribe, pronounSingularAlternate);
             string playerNameFull = !string.IsNullOrEmpty(nameOverride) ? nameOverride : player.Name.TextValue;
             var summaries = !skipSummary ? _gptWrapper.GetConversationalMemory(playerNameFull) : new List<string>();
             string chatSummaries = "\n\nIn the past " + _gptWrapper.Personality
@@ -265,28 +306,29 @@ namespace AQuestReborn.CustomNpc
             }
             return appearanceData;
         }
-        private string GetRaceDescription(int race, string pronoun)
+        private string GetRaceDescription(int race, int tribe, string pronoun)
         {
+            string tribeStr = _plugin?.EventWindow != null ? _plugin.EventWindow.Tribe(tribe) : "";
+            string tribePrefix = string.IsNullOrEmpty(tribeStr) ? "" : tribeStr + " ";
+
             switch (race)
             {
-                case 0:
-                    return $"Hyur. {pronoun} looks like an average person.";
-                case 1:
-                    return $"Highlander. {pronoun} looks muscular, tough";
-                case 2:
-                    return $"Elezen. {pronoun} looks like a tall elf with pointy ears";
-                case 4:
-                    return $"Miqo'te. {pronoun} has cat ears, a tail, and likes to meow.";
-                case 3:
-                    return $"Roegadyn. {pronoun} a tall and muscular sea faring race.";
-                case 5:
-                    return $"Lalafel. {pronoun} looks like a short stubby person.";
-                case 6:
-                    return $"Au'Ra. {pronoun} has dragonlike scales, horns, a scaley tail";
-                case 7:
-                    return $"Hrothgar. {pronoun} looks like a furry humanoid cat.";
-                case 8:
-                    return $"Viera. {pronoun} is tall, and has cute bunny ears";
+                case 1: // Hyur
+                    return $"{tribePrefix}Hyur. {pronoun} looks like an average person.";
+                case 2: // Elezen
+                    return $"{tribePrefix}Elezen. {pronoun} looks like a tall elf with pointy ears";
+                case 3: // Lalafell
+                    return $"{tribePrefix}Lalafell. {pronoun} looks like a short stubby person.";
+                case 4: // Miqo'te
+                    return $"{tribePrefix}Miqo'te. {pronoun} has cat ears, a tail, and likes to meow.";
+                case 5: // Roegadyn
+                    return $"{tribePrefix}Roegadyn. {pronoun} is a tall and muscular sea faring race.";
+                case 6: // Au Ra
+                    return $"{tribePrefix}Au Ra. {pronoun} has dragonlike scales, horns, a scaley tail";
+                case 7: // Hrothgar
+                    return $"{tribePrefix}Hrothgar. {pronoun} looks like a furry humanoid cat.";
+                case 8: // Viera
+                    return $"{tribePrefix}Viera. {pronoun} is tall, and has cute bunny ears";
             }
             return "Unidentified";
         }

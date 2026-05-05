@@ -1383,74 +1383,33 @@ namespace AQuestReborn.CustomNpc
                             // Build the full context preview
                             var sb = new System.Text.StringBuilder();
 
-                            // --- Lore ---
-                            sb.AppendLine("=== NPC LORE ===");
-                            sb.AppendLine(debugNpc.GetFullLore());
-
-                            // --- Mood Context ---
-                            sb.AppendLine("\n=== MOOD CONTEXT ===");
-                            string moodCtx = debugNpc.GetMoodContext(playerName);
-                            sb.AppendLine(string.IsNullOrEmpty(moodCtx) ? "(neutral — no modifier)" : moodCtx);
-
-                            // --- Relationship ---
-                            sb.AppendLine("\n=== RELATIONSHIP ===");
-                            var relInfo = debugNpc.GetRelationshipWith(playerName);
-                            sb.AppendLine($"Score: {relInfo.Score}/100  —  {relInfo.Label}");
-                            sb.AppendLine($"Description: {relInfo.Description}");
-                            sb.AppendLine($"Would refuse conversation: {debugNpc.ShouldRefuseConversation(playerName)}");;
-
-                            // --- Sentiment ---
-                            sb.AppendLine("\n=== SENTIMENT MODIFIERS ===");
-                            if (debugNpc.SentimentModifiers.Count == 0)
+                            // --- EXACT PROMPT PREVIEW ---
+                            if (_plugin?.ObjectTable?.LocalPlayer != null
+                                && _plugin.AQuestReborn?.CustomNpcConversationManagers != null
+                                && _plugin.AQuestReborn.CustomNpcConversationManagers.TryGetValue(debugNpc.NpcName, out var manager))
                             {
-                                sb.AppendLine("(none)");
+                                if (_plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(debugNpc.NpcName, out var liveNpc))
+                                {
+                                    string preview = manager.GetPromptPreview(
+                                        _plugin.ObjectTable.LocalPlayer,
+                                        liveNpc.Character,
+                                        debugNpc.NpcName,
+                                        "Hello!",
+                                        "(Your message here)",
+                                        _plugin.GetEnvironmentContext(liveNpc.Character),
+                                        debugNpc.GetFullLore() + debugNpc.GetMoodContext(playerName)
+                                    );
+                                    sb.AppendLine(preview);
+                                }
+                                else
+                                {
+                                    sb.AppendLine("(NPC is not currently spawned. Spawn them to generate an accurate prompt preview.)");
+                                }
                             }
                             else
                             {
-                                foreach (var kvp in debugNpc.SentimentModifiers)
-                                    sb.AppendLine($"  {kvp.Key}: {kvp.Value:+#;-#;0}");
+                                sb.AppendLine("(Conversation Manager not active. Spawn the NPC to initialize memory and generate an accurate prompt preview.)");
                             }
-
-                            // --- Environment ---
-                            sb.AppendLine("\n=== ENVIRONMENT ===");
-                            try
-                            {
-                                string envCtx = _plugin?.GetEnvironmentContext();
-                                sb.AppendLine(string.IsNullOrEmpty(envCtx) ? "(unavailable)" : envCtx);
-                            }
-                            catch { sb.AppendLine("(unavailable)"); }
-
-                            // --- Travel History ---
-                            sb.AppendLine("\n=== VISITED LOCATIONS ===");
-                            if (debugNpc.VisitedLocations.Count == 0)
-                                sb.AppendLine("(none)");
-                            else
-                                foreach (var loc in debugNpc.VisitedLocations)
-                                    sb.AppendLine($"  • {loc}");
-
-                            // --- Encounter Counts ---
-                            sb.AppendLine("\n=== ENCOUNTER HISTORY ===");
-                            if (debugNpc.EncounterCounts.Count == 0)
-                                sb.AppendLine("(none)");
-                            else
-                                foreach (var kvp in debugNpc.EncounterCounts)
-                                    sb.AppendLine($"  {kvp.Key}: {kvp.Value} encounters");
-
-                            // --- Memories ---
-                            sb.AppendLine("\n=== KEYWORD MEMORIES ===");
-                            if (_cachedKeywordMemories.Count == 0)
-                                sb.AppendLine("(none)");
-                            else
-                                foreach (var kvp in _cachedKeywordMemories)
-                                    sb.AppendLine($"  [{kvp.Key}]: {kvp.Value}");
-
-                            sb.AppendLine("\n=== CONVERSATION SUMMARIES ===");
-                            if (_cachedConversationSummaries.Count == 0)
-                                sb.AppendLine("(none)");
-                            else
-                                foreach (var kvp in _cachedConversationSummaries)
-                                    foreach (var s in kvp.Value)
-                                        sb.AppendLine($"  [{kvp.Key}]: {s}");
 
                             string debugText = sb.ToString();
                             if (ImGui.BeginChild("##debugContextScroll", new Vector2(ImGui.GetContentRegionAvail().X, ImGui.GetContentRegionAvail().Y - 35), true))
@@ -1784,7 +1743,8 @@ namespace AQuestReborn.CustomNpc
             try
             {
                 var provider = GPTApi.AiProviderFactory.CreateProvider();
-                var stopSequences = new List<string> { "\n" };
+                // Avoid using "\n" as a stop sequence for tests because many local LLMs start responses with a newline
+                var stopSequences = new List<string>(); 
                 string testPrompt = "You are a friendly NPC. Say hello in one sentence.\nNPC: ";
 
                 string result;
@@ -1792,7 +1752,7 @@ namespace AQuestReborn.CustomNpc
                 {
                     var messages = new List<GPTApi.AiChatMessage>
                     {
-                        new GPTApi.AiChatMessage("system", "You are a friendly NPC in Final Fantasy XIV. Respond with a single short greeting."),
+                        new GPTApi.AiChatMessage("system", "You are a friendly NPC in Final Fantasy XIV. Respond with a single short greeting. Do NOT use newlines."),
                         new GPTApi.AiChatMessage("user", "Hello!")
                     };
                     result = await provider.GenerateResponseAsync(testPrompt, "TestNPC", "Player", stopSequences, null, messages);
@@ -1802,14 +1762,14 @@ namespace AQuestReborn.CustomNpc
                     result = await provider.GenerateResponseAsync(testPrompt, "TestNPC", "Player", stopSequences);
                 }
 
-                if (!string.IsNullOrEmpty(result))
+                if (!string.IsNullOrEmpty(result) && !string.IsNullOrWhiteSpace(result))
                 {
-                    string preview = result.Length > 80 ? result.Substring(0, 80) + "..." : result;
+                    string preview = result.Length > 80 ? result.Substring(0, 80).Replace("\n", " ").Trim() + "..." : result.Replace("\n", " ").Trim();
                     _testConnectionResult = "Success! Response: " + preview;
                 }
                 else
                 {
-                    _testConnectionResult = "Failed: Empty response received. Check your settings.";
+                    _testConnectionResult = "Failed: Empty response received. The model may have generated nothing or timed out.";
                 }
             }
             catch (Exception e)

@@ -67,7 +67,6 @@ namespace AQuestReborn.CustomNpc.GPTApi.Providers
             {
                 model = _modelName,
                 messages = messages,
-                max_tokens = 200,
                 temperature = 0.85,
                 top_p = 0.9,
                 stop = stopSequences ?? new List<string>(),
@@ -75,10 +74,10 @@ namespace AQuestReborn.CustomNpc.GPTApi.Providers
                 frequency_penalty = 0.4
             };
 
-            return await SendRequest(requestBody, 0);
+            return await SendRequest(requestBody, 0, aiName);
         }
 
-        private async Task<string> SendRequest(object requestBody, int failure)
+        private async Task<string> SendRequest(object requestBody, int failure, string aiName)
         {
             try
             {
@@ -86,7 +85,7 @@ namespace AQuestReborn.CustomNpc.GPTApi.Providers
                 var httpWebRequest = (HttpWebRequest)WebRequest.Create(endpoint);
                 httpWebRequest.ContentType = "application/json";
                 httpWebRequest.Method = "POST";
-                httpWebRequest.Timeout = 30000;
+                httpWebRequest.Timeout = 120000; // Increased to 120s for extremely slow local reasoning models
 
                 if (!string.IsNullOrEmpty(_apiKey))
                 {
@@ -106,7 +105,19 @@ namespace AQuestReborn.CustomNpc.GPTApi.Providers
                     try { SamplePlugin.Plugin.Instance.PluginLog.Debug($"[OpenAI Provider] Raw Response: {result}"); } catch { }
 
                     var response = JsonConvert.DeserializeObject<OpenAIChatResult>(result);
-                    return response?.choices?[0]?.message?.content ?? "";
+                    var msg = response?.choices?[0]?.message;
+                    
+                    if (msg != null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(msg.content))
+                            return msg.content;
+                            
+                        // If this is just a connection test, return the thoughts so the user knows it worked
+                        if (aiName == "TestNPC" && !string.IsNullOrWhiteSpace(msg.reasoning_content))
+                            return "[Reasoning Only]: " + msg.reasoning_content;
+                    }
+                    
+                    return "";
                 }
             }
             catch (Exception e)
@@ -118,7 +129,7 @@ namespace AQuestReborn.CustomNpc.GPTApi.Providers
                 if (failure < 3)
                 {
                     await Task.Delay(1000);
-                    return await SendRequest(requestBody, failure + 1);
+                    return await SendRequest(requestBody, failure + 1, aiName);
                 }
                 return "";
             }
@@ -137,6 +148,7 @@ namespace AQuestReborn.CustomNpc.GPTApi.Providers
         {
             public string role { get; set; }
             public string content { get; set; }
+            public string reasoning_content { get; set; }
         }
     }
 }
