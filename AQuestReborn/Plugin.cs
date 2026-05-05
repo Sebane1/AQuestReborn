@@ -111,12 +111,14 @@ public sealed class Plugin : IDalamudPlugin
     public EntryPoint McdfEntryPoint { get => _mcdfEntryPoint; set => _mcdfEntryPoint = value; }
     public MoveController Movement { get => _movement; set => _movement = value; }
     public ThreadSafeGameObjectManager ObjectTable { get => _objectTable; set => _objectTable = value; }
+    public ICondition Condition { get => _condition; set => _condition = value; }
 
     private EmoteReaderHooks _emoteReaderHook;
     private IPluginLog _pluginLog;
     private IGameConfig _gameConfig;
     private IChatGui _chatGui;
     private IGamepadState _gamepadState;
+    private ICondition _condition;
     private bool _alreadyInitialized;
 
     public Plugin(IClientState clientState, IFramework framework, IToastGui toastGui,
@@ -131,6 +133,7 @@ public sealed class Plugin : IDalamudPlugin
         NamePlateGui = namePlateGui;
         DalamudApi.Initialize(dalamudPluginInterface);
         _clientState = clientState;
+        _condition = condition;
         _framework = framework;
         _toastGui = toastGui;
         _gameGui = gameGui;

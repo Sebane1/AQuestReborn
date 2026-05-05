@@ -2208,6 +2208,10 @@ namespace AQuestReborn
                 Plugin.ToastGui.ShowError("Cannot summon NPCs while GPose is active.");
                 return;
             }
+            if (Plugin.Condition[Dalamud.Game.ClientState.Conditions.ConditionFlag.InDeepDungeon])
+            {
+                return;
+            }
             // Don't spawn custom NPCs during duties with other real players
             unsafe
             {
@@ -2452,6 +2456,10 @@ namespace AQuestReborn
             if (Plugin.ClientState.IsGPosing)
             {
                 Plugin.ToastGui.ShowError("Cannot summon NPCs while GPose is active.");
+                return;
+            }
+            if (Plugin.Condition[Dalamud.Game.ClientState.Conditions.ConditionFlag.InDeepDungeon])
+            {
                 return;
             }
             // Don't spawn custom NPCs during duties with other real players
