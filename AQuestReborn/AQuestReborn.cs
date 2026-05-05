@@ -2203,6 +2203,11 @@ namespace AQuestReborn
         public void SummonCustomNpc(CustomNpcCharacter npcData)
         {
             if (_actorSpawnService == null || !Plugin.ClientState.IsLoggedIn) return;
+            if (Plugin.ClientState.IsGPosing)
+            {
+                Plugin.ToastGui.ShowError("Cannot summon NPCs while GPose is active.");
+                return;
+            }
             // Don't spawn custom NPCs during duties with other real players
             unsafe
             {
@@ -2444,6 +2449,11 @@ namespace AQuestReborn
         public void SummonCustomNpcAtPosition(CustomNpcCharacter npcData, System.Numerics.Vector3 position, System.Numerics.Vector3 rotation)
         {
             if (_actorSpawnService == null || Plugin.ObjectTable.LocalPlayer == null) return;
+            if (Plugin.ClientState.IsGPosing)
+            {
+                Plugin.ToastGui.ShowError("Cannot summon NPCs while GPose is active.");
+                return;
+            }
             // Don't spawn custom NPCs during duties with other real players
             unsafe
             {

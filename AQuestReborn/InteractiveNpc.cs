@@ -287,6 +287,16 @@ namespace AQuestReborn
             else
             {
                 if (!isMoving) return 0u;
+
+                // Check if the local player is currently sprinting (Status 50)
+                if (speed >= 4.5f && _plugin.ObjectTable != null && _plugin.ObjectTable.LocalPlayer != null)
+                {
+                    foreach (var status in _plugin.ObjectTable.LocalPlayer.StatusList)
+                    {
+                        if (status.StatusId == 50) return 30u;
+                    }
+                }
+
                 return speed < 3.5f ? 13u : 22u;
             }
         }
