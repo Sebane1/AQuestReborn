@@ -314,6 +314,12 @@ namespace AQuestReborn
                                 _lastPlayerPos = _plugin.ObjectTable.LocalPlayer.Position;
                                 _playerSpeedSmoothed = Math.Clamp(_playerSpeedSmoothed + (playerSpeedThisFrame - _playerSpeedSmoothed) * Math.Min(10f * delta, 1f), 0f, 15f);
                             }
+                            // Tail playback takes over the entire update loop
+                            if (_isTailPlayback)
+                            {
+                                UpdateTailPlayback(delta);
+                                return;
+                            }
                             if (_followPlayer && !_plugin.EventWindow.IsOpen && !_plugin.ChoiceWindow.IsOpen
                                 && _plugin.EventWindow.TimeSinceLastDialogueDisplayed.ElapsedMilliseconds > 200
                                 && _plugin.ChoiceWindow.TimeSinceLastChoiceMade.ElapsedMilliseconds > 200 && !Conditions.Instance()->Mounted)
@@ -1228,8 +1234,268 @@ namespace AQuestReborn
             }
         }
 
+        #region Tail Objective Playback
+
+        // Tail playback state
+        private bool _isTailPlayback;
+        private TailObjectiveData _tailData;
+        private int _tailWaypointIndex;
+        private Stopwatch _tailPlaybackTimer = new Stopwatch();
+        private bool _tailIsLookingBack;
+        private float _tailNextLookBackTime;
+        private Stopwatch _tailLookBackTimer = new Stopwatch();
+        private Vector3 _tailForwardDirection;
+        private bool _tailPathCompleted;
+        private Random _tailRng = new Random();
+        private ushort _tailLastEmoteId;
+
+        /// <summary>
+        /// Fired when the NPC detects the player during a look-back.
+        /// </summary>
+        public event EventHandler OnPlayerDetected;
+
+        /// <summary>
+        /// Fired when the NPC reaches the end of the recorded path.
+        /// </summary>
+        public event EventHandler OnTailPathCompleted;
+
+        public bool IsTailPlayback => _isTailPlayback;
+        public bool TailPathCompleted => _tailPathCompleted;
+
+        /// <summary>
+        /// Start tail objective playback. The NPC will walk the recorded path
+        /// and periodically look behind to check for the player.
+        /// </summary>
+        public void StartTailPlayback(TailObjectiveData tailData)
+        {
+            if (tailData == null || tailData.Waypoints.Count < 2) return;
+
+            _tailData = tailData;
+            _isTailPlayback = true;
+            _tailPathCompleted = false;
+            _tailWaypointIndex = 0;
+            _tailIsLookingBack = false;
+            _tailLastEmoteId = 0;
+
+            // Position NPC at the first waypoint
+            var firstWp = tailData.Waypoints[0];
+            _currentPosition = firstWp.Position;
+            _currentRotation = firstWp.Rotation;
+            _defaultPosition = firstWp.Position;
+            _defaultRotation = firstWp.Rotation;
+
+            // Schedule first look-back
+            _tailNextLookBackTime = _tailRng.Next(
+                (int)(_tailData.LookBackMinInterval * 1000),
+                (int)(_tailData.LookBackMaxInterval * 1000));
+
+            _tailPlaybackTimer.Restart();
+            _tailLookBackTimer.Reset();
+        }
+
+        /// <summary>
+        /// Stop tail playback and reset state.
+        /// </summary>
+        public void StopTailPlayback()
+        {
+            _isTailPlayback = false;
+            _tailPlaybackTimer.Stop();
+            _tailLookBackTimer.Stop();
+            _tailIsLookingBack = false;
+        }
+
+        /// <summary>
+        /// Reset the NPC to the start of the tail path (after player detection / fail).
+        /// </summary>
+        public void ResetTailToStart()
+        {
+            if (_tailData == null || _tailData.Waypoints.Count == 0) return;
+
+            _tailWaypointIndex = 0;
+            _tailPathCompleted = false;
+            _tailIsLookingBack = false;
+            _tailLastEmoteId = 0;
+
+            var firstWp = _tailData.Waypoints[0];
+            _currentPosition = firstWp.Position;
+            _currentRotation = firstWp.Rotation;
+            _defaultPosition = firstWp.Position;
+            _defaultRotation = firstWp.Rotation;
+
+            _tailNextLookBackTime = _tailRng.Next(
+                (int)(_tailData.LookBackMinInterval * 1000),
+                (int)(_tailData.LookBackMaxInterval * 1000));
+
+            _tailPlaybackTimer.Restart();
+            _tailLookBackTimer.Reset();
+        }
+
+        /// <summary>
+        /// Called each frame from Framework_Update when _isTailPlayback is true.
+        /// </summary>
+        private void UpdateTailPlayback(float delta)
+        {
+            if (_tailData == null || _tailPathCompleted) return;
+
+            float elapsed = (float)_tailPlaybackTimer.Elapsed.TotalSeconds;
+
+            // --- Look-back interjection ---
+            if (_tailIsLookingBack)
+            {
+                float lookElapsed = (float)_tailLookBackTimer.Elapsed.TotalSeconds;
+                if (lookElapsed >= _tailData.LookBackDuration)
+                {
+                    // Finished looking back — resume path
+                    _tailIsLookingBack = false;
+                    _tailLookBackTimer.Reset();
+                    _tailPlaybackTimer.Start(); // Resume path timer
+
+                    // Schedule next look-back
+                    _tailNextLookBackTime = (float)_tailPlaybackTimer.Elapsed.TotalMilliseconds +
+                        _tailRng.Next(
+                            (int)(_tailData.LookBackMinInterval * 1000),
+                            (int)(_tailData.LookBackMaxInterval * 1000));
+                }
+                else
+                {
+                    // Currently looking back — check if player is detected
+                    if (_plugin.ObjectTable.LocalPlayer != null)
+                    {
+                        var playerPos = _plugin.ObjectTable.LocalPlayer.Position;
+                        if (IsPlayerInDetectionCone(_currentPosition, _tailForwardDirection, playerPos,
+                            _tailData.DetectionRadius, _tailData.DetectionConeAngle))
+                        {
+                            OnPlayerDetected?.Invoke(this, EventArgs.Empty);
+                        }
+                    }
+                }
+
+                // Play idle animation while looking
+                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                SetTransform(_currentPosition, _currentRotation, _currentScale);
+                return;
+            }
+
+            // --- Check if it's time for a look-back ---
+            if (_tailPlaybackTimer.ElapsedMilliseconds >= _tailNextLookBackTime)
+            {
+                _tailIsLookingBack = true;
+                _tailPlaybackTimer.Stop(); // Pause path advancement
+                _tailLookBackTimer.Restart();
+
+                // Turn 180° — face backward
+                var currentFacing = CoordinateUtility.EulerToDirection(_currentRotation);
+                _tailForwardDirection = -currentFacing; // The direction NPC is now looking (behind them)
+                _currentRotation = CoordinateUtility.DirectionToEuler(_tailForwardDirection);
+
+                // Play idle/look animation
+                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                SetTransform(_currentPosition, _currentRotation, _currentScale);
+                return;
+            }
+
+            // --- Normal path playback ---
+            if (_tailWaypointIndex >= _tailData.Waypoints.Count - 1)
+            {
+                // Reached end of path
+                _tailPathCompleted = true;
+                _tailPlaybackTimer.Stop();
+                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                SetTransform(_currentPosition, _currentRotation, _currentScale);
+                OnTailPathCompleted?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+
+            // Find the correct waypoint pair based on elapsed time
+            while (_tailWaypointIndex < _tailData.Waypoints.Count - 1 &&
+                   _tailData.Waypoints[_tailWaypointIndex + 1].Timestamp <= elapsed)
+            {
+                _tailWaypointIndex++;
+            }
+
+            if (_tailWaypointIndex >= _tailData.Waypoints.Count - 1)
+            {
+                _tailPathCompleted = true;
+                _tailPlaybackTimer.Stop();
+                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                SetTransform(_currentPosition, _currentRotation, _currentScale);
+                OnTailPathCompleted?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+
+            var wpCurrent = _tailData.Waypoints[_tailWaypointIndex];
+            var wpNext = _tailData.Waypoints[_tailWaypointIndex + 1];
+
+            // Lerp between waypoints
+            float segmentDuration = wpNext.Timestamp - wpCurrent.Timestamp;
+            float segmentElapsed = elapsed - wpCurrent.Timestamp;
+            float t = segmentDuration > 0 ? Math.Clamp(segmentElapsed / segmentDuration, 0f, 1f) : 1f;
+
+            _currentPosition = Vector3.Lerp(wpCurrent.Position, wpNext.Position, t);
+            _currentRotation = Vector3.Lerp(wpCurrent.Rotation, wpNext.Rotation, t);
+
+            // Determine speed between waypoints for animation
+            float waypointDistance = Vector3.Distance(wpCurrent.Position, wpNext.Position);
+            float waypointSpeed = segmentDuration > 0 ? waypointDistance / segmentDuration : 0;
+
+            if (waypointSpeed > 0.1f)
+            {
+                // Moving — play walk or run animation
+                if (waypointSpeed > 3.5f)
+                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22); // Run
+                else
+                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, 13); // Walk
+            }
+            else
+            {
+                // Paused/idle
+                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+            }
+
+            // Trigger recorded emotes
+            if (wpCurrent.EmoteId > 0 && wpCurrent.EmoteId != _tailLastEmoteId)
+            {
+                try
+                {
+                    var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(wpCurrent.EmoteId);
+                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
+                    _tailLastEmoteId = wpCurrent.EmoteId;
+                }
+                catch { }
+            }
+
+            SetTransform(_currentPosition, _currentRotation, _currentScale);
+        }
+
+        /// <summary>
+        /// Check if the player is within the NPC's detection cone.
+        /// </summary>
+        public static bool IsPlayerInDetectionCone(Vector3 npcPosition, Vector3 lookDirection,
+            Vector3 playerPosition, float detectionRadius, float coneAngleDeg)
+        {
+            // Distance check
+            float distance = Vector3.Distance(npcPosition, playerPosition);
+            if (distance > detectionRadius) return false;
+
+            // Cone check — angle between look direction and direction to player
+            var toPlayer = Vector3.Normalize(playerPosition - npcPosition);
+            var lookDir = Vector3.Normalize(lookDirection);
+
+            // Use only XZ plane (horizontal)
+            var toPlayerXZ = Vector3.Normalize(new Vector3(toPlayer.X, 0, toPlayer.Z));
+            var lookDirXZ = Vector3.Normalize(new Vector3(lookDir.X, 0, lookDir.Z));
+
+            float dot = Vector3.Dot(lookDirXZ, toPlayerXZ);
+            float angleDeg = (float)(Math.Acos(Math.Clamp(dot, -1f, 1f)) * (180.0 / Math.PI));
+
+            return angleDeg <= (coneAngleDeg / 2f);
+        }
+
+        #endregion
+
         public void Dispose()
         {
+            StopTailPlayback();
             _disposed = true;
             _plugin.Framework.Update -= Framework_Update;
             _plugin.ClientState.TerritoryChanged -= ClientState_TerritoryChanged;

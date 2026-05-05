@@ -134,15 +134,31 @@ public class ObjectiveWindow : Window, IDisposable
             {
                 if (!item.Item2.ObjectiveCompleted)
                 {
+                    // Hide the indicator while the tail playback is actively running
+                    if (item.Item2.TypeOfObjectiveTrigger == RoleplayingQuestCore.QuestObjective.ObjectiveTriggerType.TailNpc
+                        && Plugin.AQuestReborn != null
+                        && Plugin.AQuestReborn.IsTailObjectiveActive)
+                    {
+                        continue;
+                    }
                     Vector2 screenPosition = new Vector2();
                     bool inView = false;
                     Vector3 offset = new Vector3();
                     switch (item.Item2.TypeOfQuestPoint)
                     {
                         case RoleplayingQuestCore.QuestObjective.QuestPointType.NPC:
-                            // Use actual head bone position — marker goes slightly above
-                            var headWorldPos = GetNpcHeadPosition(item.Item2.Coordinates);
-                            Plugin.GameGui.WorldToScreen(headWorldPos + new Vector3(0, 0.3f, 0), out screenPosition, out inView);
+                            // TailNpc objectives: always use raw coordinates so the indicator
+                            // stays at the player's interaction point, not the NPC's head
+                            if (item.Item2.TypeOfObjectiveTrigger == RoleplayingQuestCore.QuestObjective.ObjectiveTriggerType.TailNpc)
+                            {
+                                Plugin.GameGui.WorldToScreen(item.Item2.Coordinates + new Vector3(0, 1.6f, 0), out screenPosition, out inView);
+                            }
+                            else
+                            {
+                                // Use actual head bone position — marker goes slightly above
+                                var headWorldPos = GetNpcHeadPosition(item.Item2.Coordinates);
+                                Plugin.GameGui.WorldToScreen(headWorldPos + new Vector3(0, 0.3f, 0), out screenPosition, out inView);
+                            }
                             break;
                         case RoleplayingQuestCore.QuestObjective.QuestPointType.GroundItem:
                             // To do: Display something unique?
@@ -167,7 +183,8 @@ public class ObjectiveWindow : Window, IDisposable
                                     new Vector2(value.X / Size.Value.X, 0));
                                 var playerDistance = Vector3.Distance(Plugin.ObjectTable.LocalPlayer.Position, item.Item2.Coordinates);
                                 if (distance < 0.02f && playerDistance < Plugin.RoleplayingQuestManager.MinimumDistance
-                                    && item.Item2.TypeOfObjectiveTrigger == RoleplayingQuestCore.QuestObjective.ObjectiveTriggerType.NormalInteraction)
+                                    && (item.Item2.TypeOfObjectiveTrigger == RoleplayingQuestCore.QuestObjective.ObjectiveTriggerType.NormalInteraction
+                                        || item.Item2.TypeOfObjectiveTrigger == RoleplayingQuestCore.QuestObjective.ObjectiveTriggerType.TailNpc))
                                 {
                                     _mouseDistanceIsCloseToObjective = true;
                                     if (mouseDown)

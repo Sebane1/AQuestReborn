@@ -51,6 +51,14 @@ public class EditorWindow : Window, IDisposable
     private bool _shiftModifierHeld;
     private bool _isCreatingAppearance;
 
+    // Tail objective path recording state
+    private bool _isRecordingTailPath;
+    private Stopwatch _tailRecordTimer = new Stopwatch();
+    private Stopwatch _tailRecordCaptureTimer = new Stopwatch();
+    private List<PathWaypoint> _tailRecordedWaypoints = new List<PathWaypoint>();
+    private QuestObjective _tailRecordingObjective;
+    private ushort _tailPendingEmoteId;
+
     public RoleplayingQuestCreator RoleplayingQuestCreator { get => _roleplayingQuestCreator; set => _roleplayingQuestCreator = value; }
 
     // We give this window a hidden ID using ##
@@ -97,11 +105,45 @@ public class EditorWindow : Window, IDisposable
             _npcTransformEditorWindow.Dispose();
         }
     }
+
+    /// <summary>
+    /// Called externally (e.g. from EmoteReaderHooks) to capture an emote during tail path recording.
+    /// </summary>
+    public void RecordTailEmote(ushort emoteId)
+    {
+        if (_isRecordingTailPath && emoteId > 0)
+        {
+            _tailPendingEmoteId = emoteId;
+        }
+    }
+
+    public bool IsRecordingTailPath => _isRecordingTailPath;
+
     public override void Draw()
     {
         _globalScale = ImGuiHelpers.GlobalScale;
         _shiftModifierHeld = ImGui.GetIO().KeyShift;
         _fileDialogManager.Draw();
+
+        // Capture tail path waypoints while recording
+        if (_isRecordingTailPath && Plugin.ObjectTable.LocalPlayer != null)
+        {
+            if (_tailRecordCaptureTimer.ElapsedMilliseconds >= 150)
+            {
+                _tailRecordCaptureTimer.Restart();
+                var wp = new PathWaypoint
+                {
+                    Timestamp = (float)_tailRecordTimer.Elapsed.TotalSeconds,
+                    Position = Plugin.ObjectTable.LocalPlayer.Position,
+                    Rotation = new Vector3(0,
+                        CoordinateUtility.ConvertRadiansToDegrees(Plugin.ObjectTable.LocalPlayer.Rotation), 0),
+                    EmoteId = _tailPendingEmoteId
+                };
+                _tailRecordedWaypoints.Add(wp);
+                _tailPendingEmoteId = 0; // Only capture each emote once
+            }
+        }
+
         if (!_roleplayingQuestCreator.CurrentQuest.IsSubQuest)
         {
             if (ImGui.Button(Translator.LocalizeUI("Save Quest")))
@@ -440,6 +482,79 @@ public class EditorWindow : Window, IDisposable
                     if (ImGui.Button(Translator.LocalizeUI("Set Max") + " Y##"))
                     {
                         questObjective.Collider.MaximumY = Plugin.ObjectTable.LocalPlayer.Position.Y;
+                    }
+                    break;
+                case ObjectiveTriggerType.TailNpc:
+                    var tailData = questObjective.TailData;
+                    ImGui.Separator();
+                    ImGui.TextColored(new Vector4(1, 0.8f, 0.2f, 1), "-- Tail Objective Path Recording --");
+
+                    // NPC Name
+                    var tailNpcName = tailData.NpcName;
+                    if (ImGui.InputText("NPC Name##tail", ref tailNpcName, 200))
+                    {
+                        tailData.NpcName = tailNpcName;
+                    }
+
+                    // Recording controls
+                    if (!_isRecordingTailPath)
+                    {
+                        if (ImGui.Button("Record Path##tail"))
+                        {
+                            _tailRecordedWaypoints.Clear();
+                            _tailRecordingObjective = questObjective;
+                            _isRecordingTailPath = true;
+                            _tailRecordTimer.Restart();
+                            _tailRecordCaptureTimer.Restart();
+                            _tailPendingEmoteId = 0;
+                        }
+                    }
+                    else
+                    {
+                        ImGui.TextColored(new Vector4(1, 0.2f, 0.2f, 1), "RECORDING... Walk the path!");
+                        ImGui.Text($"Time: {_tailRecordTimer.Elapsed.TotalSeconds:F1}s  |  Waypoints: {_tailRecordedWaypoints.Count}");
+                        if (ImGui.Button("Stop Recording##tail"))
+                        {
+                            _isRecordingTailPath = false;
+                            _tailRecordTimer.Stop();
+                            _tailRecordCaptureTimer.Stop();
+                            tailData.Waypoints = new List<PathWaypoint>(_tailRecordedWaypoints);
+                        }
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button("Clear Path##tail"))
+                    {
+                        tailData.Waypoints.Clear();
+                        _tailRecordedWaypoints.Clear();
+                    }
+                    ImGui.Text($"Recorded Waypoints: {tailData.Waypoints.Count}");
+
+                    ImGui.Separator();
+                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1, 1), "-- Detection Settings --");
+                    var detRadius = tailData.DetectionRadius;
+                    if (ImGui.SliderFloat("Detection Radius##tail", ref detRadius, 3f, 50f))
+                    {
+                        tailData.DetectionRadius = detRadius;
+                    }
+                    var detCone = tailData.DetectionConeAngle;
+                    if (ImGui.SliderFloat("Detection Cone (deg)##tail", ref detCone, 30f, 360f))
+                    {
+                        tailData.DetectionConeAngle = detCone;
+                    }
+                    var lbMin = tailData.LookBackMinInterval;
+                    if (ImGui.SliderFloat("Look-Back Min (sec)##tail", ref lbMin, 2f, 30f))
+                    {
+                        tailData.LookBackMinInterval = lbMin;
+                    }
+                    var lbMax = tailData.LookBackMaxInterval;
+                    if (ImGui.SliderFloat("Look-Back Max (sec)##tail", ref lbMax, lbMin, 60f))
+                    {
+                        tailData.LookBackMaxInterval = lbMax;
+                    }
+                    var lbDur = tailData.LookBackDuration;
+                    if (ImGui.SliderFloat("Look-Back Duration (sec)##tail", ref lbDur, 1f, 10f))
+                    {
+                        tailData.LookBackDuration = lbDur;
                     }
                     break;
             }
