@@ -61,6 +61,7 @@ namespace AQuestReborn
         Stopwatch _emoteExitCooldown = new Stopwatch();
         private int _idleThresholdMs = 20000;
         private bool _idleEmotePlaying;
+        private bool _victoryPosePlaying;
         private ushort _idleEmoteId;
         private bool _wasMoving;
         private bool _isCombatMoving;
@@ -75,6 +76,7 @@ namespace AQuestReborn
         private ushort _queuedVictoryPose;
         private Stopwatch _victoryPoseDelayTimer = new Stopwatch();
         private int _victoryPoseDelayMs;
+        private Stopwatch _victoryPoseLockTimer = new Stopwatch();
         private Stopwatch _autonomousAttackTimer = new Stopwatch();
         private int _nextAutonomousAttackMs;
         private Vector3 _lastPlayerPos;
@@ -365,7 +367,18 @@ namespace AQuestReborn
                                 }
                                 // Hysteresis: start moving at 2.5y, keep moving until within 1.5y
                                 // Freeze when player is directly facing the NPC
-                                if (!playerFacingNpc && distToTarget > 2.5f) _isFollowMoving = true;
+                                if (!playerFacingNpc && distToTarget > 2.5f)
+                                {
+                                    if (_queuedVictoryPose > 0 || (_victoryPoseLockTimer.IsRunning && _victoryPoseLockTimer.ElapsedMilliseconds < 3000))
+                                    {
+                                        // Do not move while victory pose is queued or playing
+                                        _isFollowMoving = false;
+                                    }
+                                    else
+                                    {
+                                        _isFollowMoving = true;
+                                    }
+                                }
                                 if (distToTarget <= 1.5f || playerFacingNpc) _isFollowMoving = false;
                                 
                                 bool inCombat = Conditions.Instance()->InCombat;
@@ -479,10 +492,11 @@ namespace AQuestReborn
                                     // Always reset idle timer while moving
                                     _idleTimer.Restart();
                                     // Clear emote state - give StopEmote one frame to process
-                                    if (_idleEmotePlaying)
+                                    if (_idleEmotePlaying || _victoryPosePlaying)
                                     {
                                         _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
                                         _idleEmotePlaying = false;
+                                        _victoryPosePlaying = false;
                                         SetTransform(_currentPosition, _currentRotation, _currentScale);
                                         return;
                                     }
@@ -753,10 +767,12 @@ namespace AQuestReborn
                                             try
                                             {
                                                 var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(_queuedVictoryPose);
-                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
+                                                TriggerEmoteIfChanged((ushort)emote.ActionTimeline[0].Value.RowId);
+                                                _victoryPosePlaying = true;
                                             }
                                             catch { }
                                             _queuedVictoryPose = 0;
+                                            _victoryPoseLockTimer.Restart();
                                         }
 
                                         // Trigger idle emote if standing still long enough
