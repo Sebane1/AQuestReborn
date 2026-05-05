@@ -112,6 +112,7 @@ namespace AQuestReborn
         private Dictionary<string, NPCConversationManager> _customNpcConversationManagers = new Dictionary<string, NPCConversationManager>();
         // Hidden pool: dismissed NPCs are buried underground instead of destroyed, for instant re-summon
         private Dictionary<string, (InteractiveNpc Npc, ICharacter Character)> _hiddenNpcPool = new Dictionary<string, (InteractiveNpc, ICharacter)>();
+        private Dictionary<string, int> _penumbraRetryCounts = new Dictionary<string, int>();
 
         // Tail objective state
         private bool _tailObjectiveActive;
@@ -1142,9 +1143,20 @@ namespace AQuestReborn
 
                                 if (currentGuid != expectedGuid)
                                 {
-                                    Plugin.PluginLog.Information($"Penumbra collection mismatch on {kvp.Key}: expected {npcData.PenumbraCollection}, reapplying.");
-                                    PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke(kvp.Value.ObjectIndex, expectedGuid, true, true);
-                                    PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(kvp.Value.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                                    int retries = _penumbraRetryCounts.TryGetValue(kvp.Key, out int current) ? current : 0;
+                                    
+                                    if (retries < 5)
+                                    {
+                                        _penumbraRetryCounts[kvp.Key] = retries + 1;
+                                        Plugin.PluginLog.Information($"Penumbra collection mismatch on {kvp.Key}: expected {npcData.PenumbraCollection}, reapplying (Attempt {retries + 1}/5).");
+                                        PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke(kvp.Value.ObjectIndex, expectedGuid, true, true);
+                                        PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(kvp.Value.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                                    }
+                                }
+                                else if (_penumbraRetryCounts.ContainsKey(kvp.Key))
+                                {
+                                    // Successfully applied, reset the counter
+                                    _penumbraRetryCounts.Remove(kvp.Key);
                                 }
                             }
                             catch { }
