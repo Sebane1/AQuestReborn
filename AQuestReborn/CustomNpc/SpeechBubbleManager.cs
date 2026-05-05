@@ -16,7 +16,7 @@ namespace AQuestReborn.CustomNpc
         private readonly Random _random = new Random();
         private Stopwatch _ambientTimer = new Stopwatch();
         private int _nextAmbientIntervalMs;
-        private bool _ambientEnabled = true;
+        private bool _ambientEnabled => _plugin.Configuration.EnableAmbientChatter;
         private ConcurrentDictionary<string, string> _lastAmbientMessages = new ConcurrentDictionary<string, string>();
         private bool _isProcessingAmbient = false;
 
@@ -490,7 +490,6 @@ namespace AQuestReborn.CustomNpc
 
         public void Dispose()
         {
-            _ambientEnabled = false;
             _ambientTimer.Stop();
             _lastAmbientMessages.Clear();
             _npcSummonTimers.Clear();

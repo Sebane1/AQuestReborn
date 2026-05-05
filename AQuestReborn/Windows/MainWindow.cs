@@ -153,6 +153,12 @@ public class MainWindow : Window, IDisposable
             Plugin.Configuration.ShowCustomNameplates = showNameplates;
             Plugin.Configuration.Save();
         }
+        bool enableAmbient = Plugin.Configuration.EnableAmbientChatter;
+        if (ImGui.Checkbox(Translator.LocalizeUI("Enable NPC Ambient Chatter"), ref enableAmbient))
+        {
+            Plugin.Configuration.EnableAmbientChatter = enableAmbient;
+            Plugin.Configuration.Save();
+        }
         bool enableController = Plugin.Configuration.EnableControllerInteraction;
         if (ImGui.Checkbox(Translator.LocalizeUI("Enable Controller Interaction (Turn off if false triggers)"), ref enableController))
         {

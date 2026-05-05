@@ -46,6 +46,7 @@ public class Configuration : IPluginConfiguration
     private bool _showNpcHitboxes = false;
     private bool _enableControllerInteraction = false;
     private bool _showCustomNameplates = true;
+    private bool _enableAmbientChatter = true;
 
     // AI Provider settings (global for all NPCs)
     private string _aiProvider = "default"; // "default", "openai_compatible", "novelai"
@@ -67,6 +68,7 @@ public class Configuration : IPluginConfiguration
     public bool ShowNpcHitboxes { get => _showNpcHitboxes; set => _showNpcHitboxes = value; }
     public bool EnableControllerInteraction { get => _enableControllerInteraction; set => _enableControllerInteraction = value; }
     public bool ShowCustomNameplates { get => _showCustomNameplates; set => _showCustomNameplates = value; }
+    public bool EnableAmbientChatter { get => _enableAmbientChatter; set => _enableAmbientChatter = value; }
 
     // AI Provider properties
     public string AiProvider { get => _aiProvider; set => _aiProvider = value; }
