@@ -51,6 +51,7 @@ namespace AQuestReborn
         public string Discriminator { get => _discriminator; set => _discriminator = value; }
         public Dictionary<string, InteractiveNpc> InteractiveNpcDictionary { get => _interactiveNpcDictionary; set => _interactiveNpcDictionary = value; }
         public PlayerGroundMap GroundMap { get; } = new PlayerGroundMap();
+        public PlayerBreadcrumbMap BreadcrumbMap { get; } = new PlayerBreadcrumbMap();
         public bool WaitingForMcdfLoad { get => _waitingForAppearanceLoad; set => _waitingForAppearanceLoad = value; }
         public static MediaGameObject PlayerObject { get => _playerObject; set => _playerObject = value; }
         public static nint PlayerAddress { get => _playerAddress; set => _playerAddress = value; }
@@ -488,6 +489,7 @@ namespace AQuestReborn
                 _nameplateForcedActors.Clear();
                 _hasCheckedForPlayerAppearance = false;
                 GroundMap.SetTerritory(territory);
+                BreadcrumbMap.SetTerritory(territory);
 
                 // Stamp last-seen for all custom NPCs before cleanup (zone departure)
                 try
@@ -953,9 +955,15 @@ namespace AQuestReborn
                             new Vector3(npcPos.X, npcPos.Y, npcPos.Z),
                             playerPos);
 
-                        if (distToPlayer > 100f)
+                        bool isFollowing = false;
+                        if (_interactiveNpcDictionary.TryGetValue(kvp.Key, out var checkNpc))
                         {
-                            // NPC is way too far — position got corrupted, snap back to player
+                            isFollowing = checkNpc.IsFollowingPlayer;
+                        }
+
+                        if (distToPlayer > 1000f && isFollowing)
+                        {
+                            // NPC is way too far and should be following — position got corrupted, snap back to player
                             Plugin.PluginLog.Warning($"[NPC Visibility] '{kvp.Key}' is {distToPlayer:F0}y from player — position corrupted, snapping back.");
                             characterStruct->GameObject.SetPosition(playerPos.X, playerPos.Y, playerPos.Z);
 
@@ -1195,6 +1203,7 @@ namespace AQuestReborn
                             if (!isAirborne)
                             {
                                 GroundMap.RecordPosition(Plugin.ObjectTable.LocalPlayer.Position);
+                                BreadcrumbMap.RecordPosition(Plugin.ObjectTable.LocalPlayer.Position);
                             }
 
                             if (_groundMapTimer.ElapsedMilliseconds > 250)
@@ -1211,7 +1220,7 @@ namespace AQuestReborn
                                     if (obj != null && obj.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.BattleNpc)
                                     {
                                         if (customNpcAddresses.Contains(obj.Address)) continue;
-                                        GroundMap.ForceRecordPosition(obj.Position);
+                                        GroundMap.ForceRecordPosition(obj.Position, requireAdjacentGround: true);
                                     }
                                 }
                                 _groundMapTimer.Restart();

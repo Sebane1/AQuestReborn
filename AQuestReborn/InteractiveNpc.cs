@@ -39,6 +39,8 @@ namespace AQuestReborn
         private float _scaleSpeed = 10;
         private bool _followPlayer;
         public bool IsFollowingPlayer => _followPlayer;
+        private List<Vector3> _currentBreadcrumbPath = new List<Vector3>();
+        private int _currentBreadcrumbTargetIndex = 0;
         private Vector3 _currentPosition;
         private Vector3 _followStart;
         private Vector3 _defaultPosition;
@@ -48,6 +50,7 @@ namespace AQuestReborn
         private Vector3 _currentScale;
         private PosingCapability? _posing;
         private uint _lastMovementAnimationId = uint.MaxValue;
+        private float _lastDistanceToPlayerForCulling;
         private int _index;
         private bool _followDataLock;
         private bool firstPositionSet;
@@ -352,13 +355,56 @@ namespace AQuestReborn
                                 int followerCount = Math.Max(1, followingNpcs.Count);
                                 int followerIndex = Math.Max(0, followingNpcs.IndexOf(this));
 
-                                var targetPosition = _plugin.ObjectTable.LocalPlayer.Position
+                                var playerPos = _plugin.ObjectTable.LocalPlayer.Position;
+                                var targetPosition = playerPos
                                         + GetVerticalOffsetFromPlayer((followerIndex) - ((float)(followerCount - 1) / 2f))
                                         + GetHorizontalOffsetFromPlayer(_horizontalOffset);
+                                
+                                float distToPlayer = Vector3.Distance(_currentPosition, playerPos);
+
+                                // Force re-trigger animations if the NPC pops back into render distance
+                                if ((_lastDistanceToPlayerForCulling >= 35.0f && distToPlayer < 35.0f) ||
+                                    (_lastDistanceToPlayerForCulling >= 20.0f && distToPlayer < 20.0f))
+                                {
+                                    _lastMovementAnimationId = uint.MaxValue;
+                                }
+                                _lastDistanceToPlayerForCulling = distToPlayer;
+
+                                // If the player is far away, attempt to use the breadcrumb path
+                                if (distToPlayer > 10.0f)
+                                {
+                                    if (_currentBreadcrumbPath.Count == 0 || Vector3.DistanceSquared(_currentBreadcrumbPath.Last(), playerPos) > 100.0f)
+                                    {
+                                        _currentBreadcrumbPath = _plugin.AQuestReborn.BreadcrumbMap.GetPath(_currentPosition, playerPos, out _);
+                                        _currentBreadcrumbTargetIndex = 0;
+                                    }
+                                }
+                                else if (distToPlayer < 5.0f)
+                                {
+                                    _currentBreadcrumbPath.Clear();
+                                }
+
+                                if (_currentBreadcrumbPath.Count > 0 && _currentBreadcrumbTargetIndex < _currentBreadcrumbPath.Count)
+                                {
+                                    targetPosition = _currentBreadcrumbPath[_currentBreadcrumbTargetIndex];
+                                    
+                                    // If we are close to the current breadcrumb, move to the next one
+                                    float dxNode = _currentPosition.X - targetPosition.X;
+                                    float dzNode = _currentPosition.Z - targetPosition.Z;
+                                    if (dxNode * dxNode + dzNode * dzNode < 2.0f * 2.0f)
+                                    {
+                                        _currentBreadcrumbTargetIndex++;
+                                        if (_currentBreadcrumbTargetIndex < _currentBreadcrumbPath.Count)
+                                            targetPosition = _currentBreadcrumbPath[_currentBreadcrumbTargetIndex];
+                                    }
+                                }
+
                                 float distToTarget = Vector3.Distance(_currentPosition, targetPosition);
-                                // Check if player is facing the NPC (within ~45° cone)
+                                float distToFinalTarget = _currentBreadcrumbPath.Count > 0 ? distToPlayer : distToTarget;
+
+                                // Check if player is facing the NPC
                                 bool playerFacingNpc = false;
-                                if (distToTarget > 0.5f)
+                                if (distToFinalTarget > 0.5f)
                                 {
                                     float playerRot = _plugin.ObjectTable.LocalPlayer.Rotation; // radians, yaw
                                     float dx = _currentPosition.X - _plugin.ObjectTable.LocalPlayer.Position.X;
@@ -372,7 +418,7 @@ namespace AQuestReborn
                                 }
                                 // Hysteresis: start moving at 2.5y, keep moving until within 1.5y
                                 // Freeze when player is directly facing the NPC
-                                if (!playerFacingNpc && distToTarget > 2.5f)
+                                if (!playerFacingNpc && distToFinalTarget > 2.5f)
                                 {
                                     if (_queuedVictoryPose > 0 || (_victoryPoseLockTimer.IsRunning && _victoryPoseLockTimer.ElapsedMilliseconds < 3000))
                                     {
@@ -384,7 +430,7 @@ namespace AQuestReborn
                                         _isFollowMoving = true;
                                     }
                                 }
-                                if (distToTarget <= 1.5f || playerFacingNpc) _isFollowMoving = false;
+                                if (distToFinalTarget <= 1.5f || playerFacingNpc) _isFollowMoving = false;
                                 
                                 bool inCombat = Conditions.Instance()->InCombat;
                                 if (inCombat) _isFollowMoving = false;
@@ -525,7 +571,7 @@ namespace AQuestReborn
                                         targetSpeed = 6.0f; // Run
                                         if (_playerSpeedSmoothed > 7.0f) targetSpeed = 7.8f; // Sprint
                                     } else {
-                                        targetSpeed = distToTarget > 5f ? 6.0f : 2.4f; // Player stopped
+                                        targetSpeed = distToFinalTarget > 5f ? 6.0f : 2.4f; // Player stopped
                                     }
                                     
                                     // Stamina System
@@ -544,7 +590,7 @@ namespace AQuestReborn
                                     }
                                     
                                     // Catch up logic
-                                    if (distToTarget > 2.0f) {
+                                    if (distToFinalTarget > 2.0f) {
                                         if (_playerSpeedSmoothed >= 4.5f) {
                                             // Player is running, sprint to catch up
                                             targetSpeed = Math.Max(targetSpeed, _playerSpeedSmoothed) * 1.35f;
@@ -553,7 +599,7 @@ namespace AQuestReborn
                                             targetSpeed = Math.Max(targetSpeed, _playerSpeedSmoothed) * 1.1f;
                                         }
                                     }
-                                    if (distToTarget > 6.0f) {
+                                    if (distToFinalTarget > 6.0f) {
                                         // Panic burst if extremely far behind
                                         targetSpeed = Math.Max(targetSpeed, 7.8f); 
                                     }
@@ -849,7 +895,7 @@ namespace AQuestReborn
                             {
                                 if (!_followPlayer || _plugin.EventWindow.IsOpen || _plugin.ChoiceWindow.IsOpen)
                                 {
-                                    if (Vector3.Distance(new Vector3(_currentPosition.X, 0, _currentPosition.X), new Vector3(_defaultPosition.X, 0, _defaultPosition.X)) > 0.2)
+                                    if (Vector3.Distance(new Vector3(_currentPosition.X, 0, _currentPosition.Z), new Vector3(_defaultPosition.X, 0, _defaultPosition.Z)) > 0.2)
                                     {
                                         switch (_eventMovementType)
                                         {
