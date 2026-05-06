@@ -1582,9 +1582,13 @@ namespace AQuestReborn
             }
         }
 
+        private Stopwatch _customNpcSpawnThrottle = Stopwatch.StartNew();
+
         private void CheckForCustomNpcCreationLoad()
         {
             if (_customNpcActorSpawnQueue.Count == 0 && _customNpcPositionSpawnQueue.Count == 0) return;
+
+            if (_customNpcSpawnThrottle.ElapsedMilliseconds < 250) return;
 
             if (Plugin.ObjectTable.LocalPlayer == null || !Plugin.ObjectTable.LocalPlayer.IsValid()) return;
             unsafe
@@ -1595,6 +1599,7 @@ namespace AQuestReborn
 
             if (_customNpcActorSpawnQueue.Count > 0)
             {
+                _customNpcSpawnThrottle.Restart();
                 var npcData = _customNpcActorSpawnQueue.Dequeue();
                 try
                 {
@@ -1721,6 +1726,7 @@ namespace AQuestReborn
 
             if (_customNpcPositionSpawnQueue.Count > 0)
             {
+                _customNpcSpawnThrottle.Restart();
                 var spawnReq = _customNpcPositionSpawnQueue.Dequeue();
                 var npcData = spawnReq.Item1;
                 var position = spawnReq.Item2;
