@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 
 namespace AQuestReborn.CustomNpc
@@ -93,13 +94,22 @@ namespace AQuestReborn.CustomNpc
             LastSeenTimestamps[personName] = DateTime.UtcNow.Ticks;
         }
 
+        private string CleanName(string personName)
+        {
+            if (string.IsNullOrEmpty(personName)) return "";
+            if (personName.Contains("::")) return personName.Split(new[] { "::" }, StringSplitOptions.None).Last();
+            return personName;
+        }
+
         public string GetEncounterContext(string personName)
         {
             string context = "";
+            string cleanName = CleanName(personName);
+            
             if (EncounterCounts.TryGetValue(personName, out int count) && count > 0)
             {
                 string familiarity = count >= 10 ? "extremely well" : "already";
-                context += $" They {familiarity} know {personName} (having met {count} time{(count > 1 ? "s" : "")} before). DO NOT act like this is a first meeting or introduce yourself. Acknowledge them familiarly.";
+                context += $" They {familiarity} know {cleanName} (having met {count} time{(count > 1 ? "s" : "")} before). DO NOT act like this is a first meeting or introduce yourself. Acknowledge them familiarly.";
 
                 if (LastSeenTimestamps.TryGetValue(personName, out long ticks))
                 {
@@ -116,18 +126,18 @@ namespace AQuestReborn.CustomNpc
                     else
                         timeAgo = $"about {(int)elapsed.TotalDays} day{((int)elapsed.TotalDays > 1 ? "s" : "")} ago";
 
-                    context += $" They last saw {personName} {timeAgo}.";
+                    context += $" They last saw {cleanName} {timeAgo}.";
                 }
 
                 // Add emotional context if left behind
                 if (WasLeftBehind)
                 {
-                    context += $" {personName} abruptly left them behind at their current location when they departed.";
+                    context += $" {cleanName} abruptly left them behind at their current location when they departed.";
                 }
             }
             else
             {
-                context += $" They have never met {personName} before — this is their first encounter. They should introduce themselves.";
+                context += $" They have never met {cleanName} before — this is their first encounter. They should introduce themselves.";
             }
             return context;
         }
@@ -358,17 +368,18 @@ namespace AQuestReborn.CustomNpc
         public string GetMoodContext(string personName)
         {
             var rel = GetRelationshipWith(personName);
+            string cleanName = CleanName(personName);
 
             if (rel.Score <= 5)
-                return $" {NpcName} deeply resents {personName.Split(" ")[0]} and wants nothing to do with them. They are cold, hostile, and dismissive.";
+                return $" {NpcName} deeply resents {cleanName.Split(" ")[0]} and wants nothing to do with them. They are cold, hostile, and dismissive.";
             else if (rel.Score <= 15)
-                return $" {NpcName} is upset and hurt by how {personName.Split(" ")[0]} has treated them. They are guarded and short-tempered.";
+                return $" {NpcName} is upset and hurt by how {cleanName.Split(" ")[0]} has treated them. They are guarded and short-tempered.";
             else if (rel.Score <= 25)
-                return $" {NpcName} is somewhat wary of {personName.Split(" ")[0]}. They're cautious and not fully comfortable.";
+                return $" {NpcName} is somewhat wary of {cleanName.Split(" ")[0]}. They're cautious and not fully comfortable.";
             else if (rel.Score >= 80)
-                return $" {NpcName} adores {personName.Split(" ")[0]} and considers them a soulmate. They are warm, affectionate, and deeply trusting.";
+                return $" {NpcName} adores {cleanName.Split(" ")[0]} and considers them a soulmate. They are warm, affectionate, and deeply trusting.";
             else if (rel.Score >= 60)
-                return $" {NpcName} considers {personName.Split(" ")[0]} a close friend. They are open, cheerful, and supportive.";
+                return $" {NpcName} considers {cleanName.Split(" ")[0]} a close friend. They are open, cheerful, and supportive.";
             else
                 return ""; // Neutral — no special mood injection
         }

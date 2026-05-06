@@ -24,7 +24,8 @@ namespace AQuestReborn.CustomNpc
         public NPCConversationManager(string name, string baseDirectory, Plugin plugin, ICharacter receivingCharacter)
         {
             _fullName = name;
-            string aiName = name.Split(" ")[0];
+            string cleanName = name.Contains("::") ? name.Split(new[] { "::" }, StringSplitOptions.None).Last() : name;
+            string aiName = cleanName.Split(" ")[0];
             _gptWrapper = new GPTWrapper(aiName, Path.Combine(baseDirectory, name + "-memories.json"));
             _plugin = plugin;
             _aiCharacter = receivingCharacter;
@@ -47,6 +48,7 @@ namespace AQuestReborn.CustomNpc
         {
             // Use the override name if provided (for NPC-to-NPC chat where Brio actors are named "Reborn")
             string senderFullName = !string.IsNullOrEmpty(senderNameOverride) ? senderNameOverride : sendingCharacter.Name.TextValue;
+            if (senderFullName.Contains("::")) senderFullName = senderFullName.Split(new[] { "::" }, StringSplitOptions.None).Last();
             senderFullName = System.Text.RegularExpressions.Regex.Replace(senderFullName, @"_+[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
             senderFullName = System.Text.RegularExpressions.Regex.Replace(senderFullName, @"\b[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
             string senderName = senderFullName.Split(" ")[0];
@@ -143,6 +145,7 @@ namespace AQuestReborn.CustomNpc
             string aiGreeting, string message, string setting, string aiDescription)
         {
             string senderFullName = sendingCharacter.Name.TextValue;
+            if (senderFullName.Contains("::")) senderFullName = senderFullName.Split(new[] { "::" }, StringSplitOptions.None).Last();
             senderFullName = System.Text.RegularExpressions.Regex.Replace(senderFullName, @"_+[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
             senderFullName = System.Text.RegularExpressions.Regex.Replace(senderFullName, @"\b[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
             string senderName = senderFullName.Split(" ")[0];
@@ -236,6 +239,7 @@ namespace AQuestReborn.CustomNpc
                 }
             }
             string name = !string.IsNullOrEmpty(alias) ? alias : playerNameFull.Split(" ")[0];
+            if (name.Contains("::")) name = name.Split(new[] { "::" }, StringSplitOptions.None).Last();
 
             return $"{name} is a {genderStr}. {pronounSingularAlternate} is a race of {raceStr}. " +
                 $"{GetPlayerExperience(player.Level, player.ClassJob.Value.NameEnglish.ToString(), pronounSingularAlternate)}." +

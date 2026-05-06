@@ -90,6 +90,12 @@ namespace AQuestReborn
         private bool _reactingToPlayerDeath;
         private bool _deathEmotePlayed;
         private float _deathSpreadAngle;
+        private bool _wasSwimming;
+        /// <summary>
+        /// Vertical offset applied when swim BaseOverride is active.
+        /// The swim animation shifts the model up, so we push the position down to compensate.
+        /// </summary>
+        private const float SwimYOffset = -0.65f;
         EventMovementAnimation _eventMovementAnimationType = EventMovementAnimation.Automatic;
         public static Dictionary<uint, List<ushort>> JobCombatAnimations = null;
 
@@ -289,7 +295,18 @@ namespace AQuestReborn
         {
             if (Conditions.Instance()->Swimming || Conditions.Instance()->Diving)
             {
-                return isMoving ? 4954u : 4947u;
+                if (!isMoving) return 4947u; // Swim idle (treading water)
+
+                // Check if the local player is currently sprinting (Status 50)
+                if (speed >= 4.5f && _plugin.ObjectTable != null && _plugin.ObjectTable.LocalPlayer != null)
+                {
+                    foreach (var status in _plugin.ObjectTable.LocalPlayer.StatusList)
+                    {
+                        if (status.StatusId == 50) return 4958u; // Swim sprint
+                    }
+                }
+
+                return speed < 3.5f ? 4950u : 4954u; // Swim walk : Swim run
             }
             else
             {
@@ -346,6 +363,19 @@ namespace AQuestReborn
                             {
                                 UpdateTailPlayback(delta);
                                 return;
+                            }
+                            // Detect swimming state changes and force-reset animations
+                            bool isSwimming = Conditions.Instance()->Swimming || Conditions.Instance()->Diving;
+                            if (isSwimming != _wasSwimming)
+                            {
+                                _wasSwimming = isSwimming;
+                                _lastMovementAnimationId = uint.MaxValue; // Force re-trigger
+                                if (_idleEmotePlaying)
+                                {
+                                    _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
+                                    _idleEmotePlaying = false;
+                                }
+                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
                             }
                             if (_followPlayer && !_plugin.EventWindow.IsOpen && !_plugin.ChoiceWindow.IsOpen
                                 && _plugin.EventWindow.TimeSinceLastDialogueDisplayed.ElapsedMilliseconds > 200
@@ -499,7 +529,7 @@ namespace AQuestReborn
                                         float groundY = _plugin.AQuestReborn.GroundMap.GetGroundY(
                                             _currentPosition.X, _currentPosition.Z, playerBody.Y);
                                         float yLerp = Math.Clamp(10f * delta, 0f, 1f);
-                                        _currentPosition.Y += (groundY - _currentPosition.Y) * yLerp;
+                                        _currentPosition.Y += (groundY + (_wasSwimming ? SwimYOffset : 0f) - _currentPosition.Y) * yLerp;
 
                                         // Face the player body
                                         var desiredQuat = CoordinateUtility.LookAt(_currentPosition, playerBody);
@@ -619,7 +649,7 @@ namespace AQuestReborn
                                     float yLerp = Math.Clamp(10f * delta, 0f, 1f);
                                     var newPosition = new Vector3(
                                         newH.X,
-                                        _currentPosition.Y + (groundY - _currentPosition.Y) * yLerp,
+                                        _currentPosition.Y + (groundY + (_wasSwimming ? SwimYOffset : 0f) - _currentPosition.Y) * yLerp,
                                         newH.Z);
                                         
                                     float speedThisFrame = targetSpeed;
@@ -675,7 +705,7 @@ namespace AQuestReborn
                                     float groundY = _plugin.AQuestReborn.GroundMap.GetGroundY(
                                         _currentPosition.X, _currentPosition.Z, fallbackY);
                                     float yLerp = Math.Clamp(10f * delta, 0f, 1f);
-                                    _currentPosition = new Vector3(_currentPosition.X, _currentPosition.Y + (groundY - _currentPosition.Y) * yLerp, _currentPosition.Z);
+                                    _currentPosition = new Vector3(_currentPosition.X, _currentPosition.Y + (groundY + (_wasSwimming ? SwimYOffset : 0f) - _currentPosition.Y) * yLerp, _currentPosition.Z);
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
 
                                     if (_wasMoving)
@@ -865,7 +895,7 @@ namespace AQuestReborn
                                             selectedEmoteId = RandomIdleEmotes[new System.Random().Next(RandomIdleEmotes.Count)];
                                         }
 
-                                        if (selectedEmoteId > 0 && !_idleEmotePlaying && _idleTimer.ElapsedMilliseconds > _idleThresholdMs)
+                                        if (selectedEmoteId > 0 && !_idleEmotePlaying && _idleTimer.ElapsedMilliseconds > _idleThresholdMs && !Conditions.Instance()->Swimming && !Conditions.Instance()->Diving)
                                         {
                                             try
                                             {
@@ -961,7 +991,7 @@ namespace AQuestReborn
                                             selectedEmoteId = RandomIdleEmotes[new System.Random().Next(RandomIdleEmotes.Count)];
                                         }
 
-                                        if (selectedEmoteId > 0 && !_idleEmotePlaying && _idleTimer.ElapsedMilliseconds > _idleThresholdMs)
+                                        if (selectedEmoteId > 0 && !_idleEmotePlaying && _idleTimer.ElapsedMilliseconds > _idleThresholdMs && !Conditions.Instance()->Swimming && !Conditions.Instance()->Diving)
                                         {
                                             try
                                             {
@@ -1049,7 +1079,16 @@ namespace AQuestReborn
                     unsafe
                     {
                         var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
-                        native->GameObject.Position = position;
+                        if (_wasSwimming)
+                        {
+                            // When swimming, only update XZ natively — the game engine fights our Y
+                            // due to the swim BaseOverride. Brio handles the actual rendered Y.
+                            native->GameObject.Position = new Vector3(position.X, native->GameObject.Position.Y, position.Z);
+                        }
+                        else
+                        {
+                            native->GameObject.Position = position;
+                        }
                         native->GameObject.Rotation = rotation.Y; // FFXIV uses radians on Y-axis for basic rotation
                     }
                 }
