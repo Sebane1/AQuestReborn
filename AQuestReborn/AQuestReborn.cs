@@ -460,6 +460,7 @@ namespace AQuestReborn
         {
             try
             {
+                Plugin.EventWindow.ForceCloseDialogue();
                 PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke((int)201, Guid.Empty);
             }
             catch (Exception e)
@@ -964,6 +965,14 @@ namespace AQuestReborn
 
                         if (distToPlayer > 1000f && isFollowing)
                         {
+                            // If player teleports within the same zone while in an event, forcefully break out of it
+                            if (Plugin.EventWindow.IsOpen || Plugin.ChoiceWindow.IsOpen)
+                            {
+                                Plugin.PluginLog.Warning($"[NPC Visibility] Player teleported while in dialogue (Dist: {distToPlayer:F0}y). Forcibly closing dialogue without progression.");
+                                Plugin.EventWindow.ForceCloseDialogue();
+                                continue; // Skip teleporting the NPC
+                            }
+
                             // NPC is way too far and should be following — position got corrupted, snap back to player
                             Plugin.PluginLog.Warning($"[NPC Visibility] '{kvp.Key}' is {distToPlayer:F0}y from player — position corrupted, snapping back.");
                             characterStruct->GameObject.SetPosition(playerPos.X, playerPos.Y, playerPos.Z);

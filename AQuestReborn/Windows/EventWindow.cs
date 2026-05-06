@@ -1068,7 +1068,52 @@ public class EventWindow : Window, IDisposable
             }
             Plugin.AQuestReborn.RefreshNpcs((ushort)Plugin.ClientState.TerritoryType, _questDisplayObject.RoleplayingQuest.QuestId, true);
             Plugin.AQuestReborn.RefreshMapMarkers();
+            Plugin.AQuestReborn.RefreshMapMarkers();
             Plugin.SaveProgress();
+        }
+    }
+
+    /// <summary>
+    /// Forcibly closes the dialogue window and cleans up state without progressing the quest.
+    /// Used when the player changes zones or teleports away during an active event.
+    /// </summary>
+    public void ForceCloseDialogue()
+    {
+        if (IsOpen || Plugin.ChoiceWindow.IsOpen)
+        {
+            _typewriterCts?.Cancel();
+            _typewriterCts?.Dispose();
+            _typewriterCts = null;
+
+            _dontUnblockMovement = false;
+            Plugin.DialogueBackgroundWindow.IsOpen = false;
+            IsOpen = false;
+            Plugin.ChoiceWindow.IsOpen = false;
+            
+            Plugin.Movement.DisableMovementLock();
+            Plugin.MediaManager.StopAudio(_backgroundMusic);
+            try
+            {
+                Plugin.GameConfig.Set(SystemConfigOption.IsSndBgm, false);
+            }
+            catch { }
+
+            if (_questDisplayObject != null && _questDisplayObject.QuestObjective != null && _questDisplayObject.QuestObjective.ObjectiveTriggersCutscene)
+            {
+                UIManager.HideUI(false);
+                AQuestReborn.CutsceneCamera.ResetCamera();
+                Plugin.AQuestReborn.CutscenePlayer.SetDefaults((new Vector3(0, float.MaxValue, 0) / 10), Quaternion.Identity.QuaternionToEuler());
+            }
+
+            _currentCharacter = 0;
+            textTimer.Reset();
+            _blockProgression = false;
+            _objectiveSkip = false;
+            _questFollowing = false;
+            _questStopFollowing = false;
+            _choicesAreNext = false;
+            
+            // Do not invoke QuestEvents to prevent forward progression.
         }
     }
 }
