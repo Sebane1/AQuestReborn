@@ -1698,10 +1698,24 @@ namespace AQuestReborn
 
                         Plugin.ChatGui.Print("[A Quest Reborn] " + npcData.NpcName + " has been summoned!");
                     }
+                    else
+                    {
+                        Plugin.PluginLog.Warning($"[Custom NPC] Failed to create Brio actor for '{npcData.NpcName}' (Steam Deck / slow load?). Retrying in 2 seconds...");
+                        Task.Run(() =>
+                        {
+                            Thread.Sleep(2000);
+                            _customNpcActorSpawnQueue.Enqueue(npcData);
+                        });
+                    }
                 }
                 catch (Exception ex)
                 {
                     Plugin.PluginLog.Warning(ex, "Failed to summon custom NPC: " + ex.Message);
+                    Task.Run(() =>
+                    {
+                        Thread.Sleep(2000);
+                        _customNpcActorSpawnQueue.Enqueue(npcData);
+                    });
                 }
             }
 
@@ -1801,10 +1815,24 @@ namespace AQuestReborn
 
                         Plugin.ChatGui.Print("[A Quest Reborn] " + npcData.NpcName + " is waiting where you left them!");
                     }
+                    else
+                    {
+                        Plugin.PluginLog.Warning($"[Custom NPC] Failed to create Brio actor at position for '{npcData.NpcName}'. Retrying in 2 seconds...");
+                        Task.Run(() =>
+                        {
+                            Thread.Sleep(2000);
+                            _customNpcPositionSpawnQueue.Enqueue(new Tuple<CustomNpcCharacter, Vector3, Vector3>(npcData, position, rotation));
+                        });
+                    }
                 }
                 catch (Exception ex)
                 {
                     Plugin.PluginLog.Warning(ex, "Failed to summon custom NPC at position: " + ex.Message);
+                    Task.Run(() =>
+                    {
+                        Thread.Sleep(2000);
+                        _customNpcPositionSpawnQueue.Enqueue(new Tuple<CustomNpcCharacter, Vector3, Vector3>(npcData, position, rotation));
+                    });
                 }
             }
         }
