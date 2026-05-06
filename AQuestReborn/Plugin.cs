@@ -112,6 +112,7 @@ public sealed class Plugin : IDalamudPlugin
     public MoveController Movement { get => _movement; set => _movement = value; }
     public ThreadSafeGameObjectManager ObjectTable { get => _objectTable; set => _objectTable = value; }
     public ICondition Condition { get => _condition; set => _condition = value; }
+    public string LastSubAreaText { get; set; } = "";
 
     private EmoteReaderHooks _emoteReaderHook;
     private IPluginLog _pluginLog;
@@ -260,7 +261,16 @@ public sealed class Plugin : IDalamudPlugin
         {
             var territory = DataManager.GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>()?.GetRow(ClientState.TerritoryType);
             string placeName = territory?.PlaceName.Value.Name.ToString();
-            context = $"Current Location: {placeName ?? "Eorzea"}";
+            string placeNameRegion = territory?.PlaceNameRegion.Value.Name.ToString();
+            string placeNameZone = territory?.PlaceNameZone.Value.Name.ToString();
+
+            List<string> locationParts = new List<string>();
+            if (!string.IsNullOrEmpty(placeNameRegion)) locationParts.Add(placeNameRegion);
+            if (!string.IsNullOrEmpty(placeNameZone) && placeNameZone != placeNameRegion) locationParts.Add(placeNameZone);
+            if (!string.IsNullOrEmpty(placeName) && placeName != placeNameZone && placeName != placeNameRegion) locationParts.Add(placeName);
+
+            string fullLocation = locationParts.Count > 0 ? string.Join(", ", locationParts) : "Eorzea";
+            context = $"Current Location: {fullLocation}";
 
             try
             {
@@ -288,31 +298,83 @@ public sealed class Plugin : IDalamudPlugin
             try { origin = observer != null ? observer.Position : _objectTable?.LocalPlayer?.Position; } catch { }
             if (origin != null)
             {
+                bool foundNuancedLocation = false;
                 try
                 {
-                    uint closestAetheryteId = ECommons.GameHelpers.Map.FindClosestAetheryte(ClientState.TerritoryType, origin.Value);
-                    if (closestAetheryteId != 0)
+                    if (territory != null && territory.Value.Map.Value.RowId != 0)
                     {
-                        var aetheryte = DataManager.GetExcelSheet<Lumina.Excel.Sheets.Aetheryte>()?.GetRow(closestAetheryteId);
-                        if (aetheryte.HasValue)
+                        var map = territory.Value.Map.Value;
+                        var markers = DataManager.GetSubrowExcelSheet<Lumina.Excel.Sheets.MapMarker>()?.GetRow(map.RowId);
+                        if (markers != null && map.SizeFactor != 0)
                         {
-                            string aetheryteName = aetheryte.Value.AethernetName.Value.Name.ToString();
-                            if (string.IsNullOrEmpty(aetheryteName))
-                                aetheryteName = aetheryte.Value.PlaceName.Value.Name.ToString();
+                            string closestMarker = "";
+                            float closestDist = float.MaxValue;
+                            float scale = map.SizeFactor / 100.0f;
+                            
+                            float playerPixelX = (origin.Value.X + map.OffsetX) * scale + 1024.0f;
+                            float playerPixelY = (origin.Value.Z + map.OffsetY) * scale + 1024.0f;
 
-                            if (!string.IsNullOrEmpty(aetheryteName))
+                            foreach (var m in markers)
                             {
-                                context += $" (Near: {aetheryteName})";
+                                string text = m.PlaceNameSubtext.Value.Name.ToString();
+                                if (string.IsNullOrEmpty(text)) continue;
+
+                                float dist = System.Numerics.Vector2.Distance(
+                                    new System.Numerics.Vector2(playerPixelX, playerPixelY), 
+                                    new System.Numerics.Vector2(m.X, m.Y)
+                                );
+
+                                if (dist < closestDist && dist < 120.0f) // ~120 pixel threshold radius
+                                {
+                                    closestDist = dist;
+                                    closestMarker = text;
+                                }
+                            }
+
+                            if (!string.IsNullOrEmpty(closestMarker))
+                            {
+                                context += $" (At: {closestMarker})";
+                                foundNuancedLocation = true;
                             }
                         }
                     }
                 }
                 catch { }
+
+                if (!foundNuancedLocation)
+                {
+                    try
+                    {
+                        uint closestAetheryteId = ECommons.GameHelpers.Map.FindClosestAetheryte(ClientState.TerritoryType, origin.Value);
+                        if (closestAetheryteId != 0)
+                        {
+                            var aetheryte = DataManager.GetExcelSheet<Lumina.Excel.Sheets.Aetheryte>()?.GetRow(closestAetheryteId);
+                            if (aetheryte.HasValue)
+                            {
+                                string aetheryteName = aetheryte.Value.AethernetName.Value.Name.ToString();
+                                if (string.IsNullOrEmpty(aetheryteName))
+                                    aetheryteName = aetheryte.Value.PlaceName.Value.Name.ToString();
+
+                                if (!string.IsNullOrEmpty(aetheryteName))
+                                {
+                                    context += $" (Near: {aetheryteName})";
+                                }
+                            }
+                        }
+                    }
+                    catch { }
+                }
+
+                if (!string.IsNullOrEmpty(LastSubAreaText) && !context.Contains(LastSubAreaText))
+                {
+                    context += $" (Sub-Area: {LastSubAreaText})";
+                }
             }
         }
         catch
         {
-            context = "Current Location: Eorzea";
+            if (string.IsNullOrEmpty(context))
+                context = "Current Location: Eorzea";
         }
 
         try

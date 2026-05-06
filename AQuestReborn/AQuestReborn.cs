@@ -140,6 +140,7 @@ namespace AQuestReborn
             Plugin.Framework.Update += _framework_Update;
             Plugin.ClientState.Login += _clientState_Login;
             Plugin.ClientState.TerritoryChanged += _clientState_TerritoryChanged;
+            Plugin.ToastGui.Toast += ToastGui_Toast;
             Plugin.ClientState.Logout += ClientState_Logout;
             Plugin.ChatGui.ChatMessage += ChatGui_ChatMessage;
             Plugin.NamePlateGui.OnNamePlateUpdate += NamePlateGui_OnNamePlateUpdate;
@@ -2285,6 +2286,7 @@ namespace AQuestReborn
             Plugin.Framework.Update -= _framework_Update;
             Plugin.ClientState.Login -= _clientState_Login;
             Plugin.ClientState.TerritoryChanged -= _clientState_TerritoryChanged;
+            Plugin.ToastGui.Toast -= ToastGui_Toast;
             Plugin.ChatGui.ChatMessage -= ChatGui_ChatMessage;
             Plugin.EmoteReaderHook.OnEmote -= (instigator, emoteId) => OnEmote(instigator as ICharacter, emoteId);
             Plugin.ClientState.Logout -= ClientState_Logout;
@@ -3089,6 +3091,14 @@ namespace AQuestReborn
         }
         private Stopwatch _npcChatCooldown = new Stopwatch();
         private bool _npcChatConfirmHeld;
+
+        private void ToastGui_Toast(ref Dalamud.Game.Text.SeStringHandling.SeString message, ref Dalamud.Game.Gui.Toast.ToastOptions options, ref bool isHandled)
+        {
+            if (message != null && !string.IsNullOrWhiteSpace(message.TextValue))
+            {
+                Plugin.LastSubAreaText = message.TextValue.Trim();
+            }
+        }
 
         /// <summary>
         /// Detects when the player targets a custom NPC and presses confirm to open the chat window.
