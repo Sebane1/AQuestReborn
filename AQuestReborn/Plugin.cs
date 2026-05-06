@@ -294,6 +294,19 @@ public sealed class Plugin : IDalamudPlugin
             }
             catch { }
 
+            // Add swimming/diving state
+            try
+            {
+                unsafe
+                {
+                    if (FFXIVClientStructs.FFXIV.Client.Game.Conditions.Instance()->Diving)
+                        context += ". Movement: Diving underwater";
+                    else if (FFXIVClientStructs.FFXIV.Client.Game.Conditions.Instance()->Swimming)
+                        context += ". Movement: Swimming";
+                }
+            }
+            catch { }
+
             System.Numerics.Vector3? origin = null;
             try { origin = observer != null ? observer.Position : _objectTable?.LocalPlayer?.Position; } catch { }
             if (origin != null)

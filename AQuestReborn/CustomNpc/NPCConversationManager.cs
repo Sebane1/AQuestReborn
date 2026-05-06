@@ -438,6 +438,12 @@ namespace AQuestReborn.CustomNpc
                                 {
                                     canEmote = _plugin.AQuestReborn.InteractiveNpcDictionary[_fullName].IsStationary;
                                 }
+                                // Suppress emotes while swimming/diving — land emotes look broken in water
+                                unsafe
+                                {
+                                    if (FFXIVClientStructs.FFXIV.Client.Game.Conditions.Instance()->Swimming || FFXIVClientStructs.FFXIV.Client.Game.Conditions.Instance()->Diving)
+                                        canEmote = false;
+                                }
 
                                 if (canEmote)
                                 {
