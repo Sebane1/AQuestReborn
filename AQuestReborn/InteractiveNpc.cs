@@ -895,6 +895,11 @@ namespace AQuestReborn
                             {
                                 if (!_followPlayer || _plugin.EventWindow.IsOpen || _plugin.ChoiceWindow.IsOpen)
                                 {
+                                    if (_followPlayer)
+                                    {
+                                        _defaultPosition = _currentPosition;
+                                        _defaultRotation = _currentRotation;
+                                    }
                                     if (Vector3.Distance(new Vector3(_currentPosition.X, 0, _currentPosition.Z), new Vector3(_defaultPosition.X, 0, _defaultPosition.Z)) > 0.2)
                                     {
                                         switch (_eventMovementType)
