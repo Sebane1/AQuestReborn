@@ -21,22 +21,20 @@ namespace AQuestReborn.CustomNpc
         private ConcurrentDictionary<string, DateTime> _lastNpcGreetings = new ConcurrentDictionary<string, DateTime>();
         private bool _isProcessingAmbient = false;
 
-        // Track when NPCs were summoned to enable the "chatty first minute" phase
+        // Track when NPCs were summoned
         private ConcurrentDictionary<string, Stopwatch> _npcSummonTimers = new ConcurrentDictionary<string, Stopwatch>();
-        private const int EARLY_INTERVAL_MIN_MS = 15000;  // 15 seconds
-        private const int EARLY_INTERVAL_MAX_MS = 30000;  // 30 seconds
-        private const int EARLY_PHASE_DURATION_MS = 60000; // first 60 seconds
-        private const int NORMAL_INTERVAL_MS = 300000;     // 5 minutes
+        private const int INITIAL_DELAY_MS = 5000;         // 5 seconds after re-zone/summon
+        private const int NORMAL_INTERVAL_MS = 600000;     // 10 minutes
 
         public SpeechBubbleManager(Plugin plugin)
         {
             _plugin = plugin;
-            _nextAmbientIntervalMs = EARLY_INTERVAL_MIN_MS; // Start chatty
+            _nextAmbientIntervalMs = NORMAL_INTERVAL_MS;
             _ambientTimer.Start();
         }
 
         /// <summary>
-        /// Call when an NPC is summoned/spawned to start their "chatty" phase.
+        /// Call when an NPC is summoned/spawned to start their initial chat phase.
         /// </summary>
         public void NotifyNpcSummoned(string npcName)
         {
@@ -44,10 +42,10 @@ namespace AQuestReborn.CustomNpc
             timer.Start();
             _npcSummonTimers[npcName] = timer;
 
-            // If we're currently on the long 5-min timer, shorten it so the new NPC talks soon
-            if (_nextAmbientIntervalMs > EARLY_INTERVAL_MAX_MS)
+            // Trigger dialogue soon after a re-zone/summon
+            if (_nextAmbientIntervalMs > INITIAL_DELAY_MS)
             {
-                _nextAmbientIntervalMs = _random.Next(EARLY_INTERVAL_MIN_MS, EARLY_INTERVAL_MAX_MS);
+                _nextAmbientIntervalMs = INITIAL_DELAY_MS;
                 _ambientTimer.Restart();
             }
         }
@@ -62,16 +60,11 @@ namespace AQuestReborn.CustomNpc
         }
 
         /// <summary>
-        /// Returns true if any NPC is still in its "chatty" early phase (first minute).
+        /// Returns true if any NPC was recently summoned.
         /// </summary>
         private bool IsAnyNpcInEarlyPhase()
         {
-            foreach (var kvp in _npcSummonTimers)
-            {
-                if (kvp.Value.ElapsedMilliseconds < EARLY_PHASE_DURATION_MS)
-                    return true;
-            }
-            return false;
+            return false; // Not used anymore, replaced by INITIAL_DELAY_MS logic
         }
 
         /// <summary>
@@ -168,11 +161,8 @@ namespace AQuestReborn.CustomNpc
                 _plugin.PluginLog.Information($"[SpeechBubble] Timer fired! NPCs={customNpcs.Count}, ConvMgrs={conversationManagers?.Count ?? 0}");
                 _ambientTimer.Restart();
 
-                // Use shorter intervals while any NPC is in its chatty first-minute phase
-                if (IsAnyNpcInEarlyPhase())
-                    _nextAmbientIntervalMs = _random.Next(EARLY_INTERVAL_MIN_MS, EARLY_INTERVAL_MAX_MS);
-                else
-                    _nextAmbientIntervalMs = NORMAL_INTERVAL_MS;
+                // Set next interval to the 10-minute normal rate
+                _nextAmbientIntervalMs = NORMAL_INTERVAL_MS;
                 _isProcessingAmbient = true;
 
                 Task.Run(async () =>
@@ -500,6 +490,74 @@ namespace AQuestReborn.CustomNpc
         public void NotifyPlayerRevived()
         {
             _deathSpeechTriggered = false;
+        }
+
+        /// <summary>
+        /// Triggers an AI-generated speech bubble from a random active NPC when combat ends.
+        /// </summary>
+        public void NotifyCombatEnded(string enemies)
+        {
+            if (_deathSpeechTriggered || _isProcessingAmbient) return;
+
+            var aq = _plugin.AQuestReborn;
+            if (aq == null) return;
+            var customNpcs = aq.CustomNpcCharacters;
+            var conversationManagers = aq.CustomNpcConversationManagers;
+            if (customNpcs == null || customNpcs.Count == 0) return;
+
+            var npcNames = customNpcs.Keys.ToList();
+            if (npcNames.Count == 0) return;
+
+            _isProcessingAmbient = true;
+            Task.Run(async () =>
+            {
+                try
+                {
+                    // Pick 1 random NPC to comment on the victory
+                    string npcName = npcNames[_random.Next(npcNames.Count)];
+
+                    if (!customNpcs.TryGetValue(npcName, out var npcChar) || !conversationManagers.TryGetValue(npcName, out var convManager)) return;
+
+                    var sender = _plugin.ObjectTable.LocalPlayer;
+                    if (sender == null || npcChar == null) return;
+
+                    CustomNpcCharacter npcData = null;
+                    foreach (var npc in _plugin.Configuration.CustomNpcCharacters)
+                    {
+                        if (npc.NpcName == npcName) { npcData = npc; break; }
+                    }
+                    if (npcData == null) return;
+
+                    string combatPrompt = $"*The battle is over. You just defeated: {enemies}.* React to the end of combat or comment on the enemies you just fought. (Keep your response brief, 1-2 sentences max!)";
+
+                    string response = await convManager.SendMessage(
+                        sender, npcChar,
+                        npcData.NpcName,
+                        npcData.NPCGreeting,
+                        combatPrompt,
+                        _plugin.GetEnvironmentContext(npcChar),
+                        npcData.GetFullLore());
+
+                    if (!string.IsNullOrEmpty(response))
+                    {
+                        string clean = CleanBubbleText(response);
+                        if (clean.Length > 450) clean = clean.Substring(0, 447) + "...";
+
+                        _plugin.Framework.RunOnFrameworkThread(() =>
+                        {
+                            ShowBubble(npcChar, npcName, clean);
+                        });
+                    }
+                }
+                catch (Exception e)
+                {
+                    _plugin.PluginLog.Warning(e, "Combat end speech error");
+                }
+                finally
+                {
+                    _isProcessingAmbient = false;
+                }
+            });
         }
 
         public void Dispose()
