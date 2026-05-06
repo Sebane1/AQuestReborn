@@ -1083,6 +1083,36 @@ namespace AQuestReborn
                                             isDead = true;
                                             Plugin.PluginLog.Warning($"[NPC Respawn] '{kvp.Key}' bone access threw — model corrupt, marking for respawn.");
                                         }
+                                        
+                                        if (!isDead)
+                                        {
+                                            // Check if engine hid the DrawObject permanently (0x10 flag or RenderFlags != 0)
+                                            bool drawObjectHidden = (cs->GameObject.DrawObject->Flags & 0x10) != 0;
+                                            bool renderFlagsSet = cs->GameObject.RenderFlags != 0;
+                                            
+                                            // Make sure the player isn't just standing inside them (which intentionally hides them)
+                                            _npcCameraClipped.TryGetValue(kvp.Key, out bool cameraClipped);
+                                            
+                                            if ((drawObjectHidden || renderFlagsSet) && !cameraClipped)
+                                            {
+                                                // Make sure they are close enough that distance culling isn't the cause
+                                                if (Plugin.ObjectTable.LocalPlayer != null)
+                                                {
+                                                    var npcPos = cs->GameObject.Position;
+                                                    var playerPos = Plugin.ObjectTable.LocalPlayer.Position;
+                                                    float dist = Vector3.Distance(
+                                                        new Vector3(npcPos.X, npcPos.Y, npcPos.Z), 
+                                                        playerPos);
+                                                    
+                                                    // 40y is well within FFXIV's active rendering radius
+                                                    if (dist < 40.0f)
+                                                    {
+                                                        isDead = true;
+                                                        Plugin.PluginLog.Warning($"[NPC Respawn] '{kvp.Key}' is permanently hidden by engine (Dist: {dist:F1}y, Clip: {cameraClipped}) — marking for respawn.");
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
