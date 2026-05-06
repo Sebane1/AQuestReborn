@@ -213,14 +213,12 @@ namespace AQuestReborn.CustomNpc
             Dictionary<string, ICharacter> customNpcs,
             Dictionary<string, NPCConversationManager> conversationManagers)
         {
-            if (!customNpcs.ContainsKey(npcName) || !conversationManagers.ContainsKey(npcName))
+            if (!customNpcs.TryGetValue(npcName, out var npcChar) || !conversationManagers.TryGetValue(npcName, out var convManager))
             {
-                _plugin.PluginLog.Information($"[SpeechBubble] NPC '{npcName}' not in dictionaries. customNpcs={customNpcs.ContainsKey(npcName)}, convMgrs={conversationManagers.ContainsKey(npcName)}");
+                _plugin.PluginLog.Information($"[SpeechBubble] NPC '{npcName}' not in dictionaries.");
                 return;
             }
 
-            var npcChar = customNpcs[npcName];
-            var convManager = conversationManagers[npcName];
             var sender = _plugin.ObjectTable.LocalPlayer;
             if (sender == null || npcChar == null)
             {
@@ -280,11 +278,9 @@ namespace AQuestReborn.CustomNpc
             string npcA = shuffled[0];
             string npcB = shuffled[1];
 
-            if (!customNpcs.ContainsKey(npcA) || !customNpcs.ContainsKey(npcB)) return;
-            if (!conversationManagers.ContainsKey(npcA) || !conversationManagers.ContainsKey(npcB)) return;
+            if (!customNpcs.TryGetValue(npcA, out var charA) || !customNpcs.TryGetValue(npcB, out var charB)) return;
+            if (!conversationManagers.TryGetValue(npcA, out var convManagerA) || !conversationManagers.TryGetValue(npcB, out var convManagerB)) return;
 
-            var charA = customNpcs[npcA];
-            var charB = customNpcs[npcB];
             var sender = _plugin.ObjectTable.LocalPlayer;
             if (sender == null || charA == null || charB == null) return;
 
@@ -316,7 +312,7 @@ namespace AQuestReborn.CustomNpc
             }
 
             // NPC A says something to NPC B
-            string responseA = await conversationManagers[npcA].SendMessage(
+            string responseA = await convManagerA.SendMessage(
                 charB, charA,
                 dataA.NpcName,
                 dataA.NPCGreeting,
@@ -347,7 +343,7 @@ namespace AQuestReborn.CustomNpc
                     return;
                 }
 
-                string responseB = await conversationManagers[npcB].SendMessage(
+                string responseB = await convManagerB.SendMessage(
                     charA, charB,
                     dataB.NpcName,
                     dataB.NPCGreeting,
@@ -450,10 +446,8 @@ namespace AQuestReborn.CustomNpc
 
                     foreach (string npcName in reactors)
                     {
-                        if (!customNpcs.ContainsKey(npcName) || !conversationManagers.ContainsKey(npcName)) continue;
+                        if (!customNpcs.TryGetValue(npcName, out var npcChar) || !conversationManagers.TryGetValue(npcName, out var convManager)) continue;
 
-                        var npcChar = customNpcs[npcName];
-                        var convManager = conversationManagers[npcName];
                         var sender = _plugin.ObjectTable.LocalPlayer;
                         if (sender == null || npcChar == null) continue;
 
