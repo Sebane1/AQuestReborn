@@ -1176,20 +1176,48 @@ namespace AQuestReborn
                 _plugin.PluginLog.Warning(e, e.Message);
             }
         }
+        private nint _lastDrawObjectPointer;
+        private nint _lastPlayerDrawObjectPointer;
 
         public void CheckPosing()
         {
-            if (_posing == null)
+            unsafe
             {
-                BrioAccessUtils.EntityManager.SetSelectedEntity(_character);
-                BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
-                _posing = posing;
-            }
-            if (_playerPosing == null)
-            {
-                BrioAccessUtils.EntityManager.SetSelectedEntity(_plugin.ObjectTable.LocalPlayer);
-                BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
-                _playerPosing = posing;
+                var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)SafeCharacterAddress;
+                if (native == null || native->GameObject.DrawObject == null) return;
+                
+                nint currentDrawObject = (nint)native->GameObject.DrawObject;
+                if (_posing != null && currentDrawObject != _lastDrawObjectPointer)
+                {
+                    // DrawObject was recreated by Penumbra or the engine. Old Brio pointers are invalid.
+                    _posing = null;
+                }
+
+                if (_posing == null)
+                {
+                    _lastDrawObjectPointer = currentDrawObject;
+                    BrioAccessUtils.EntityManager.SetSelectedEntity(_character);
+                    BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
+                    _posing = posing;
+                }
+
+                var playerNative = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_plugin.ObjectTable.LocalPlayer.Address;
+                if (playerNative != null && playerNative->GameObject.DrawObject != null)
+                {
+                    nint currentPlayerDrawObject = (nint)playerNative->GameObject.DrawObject;
+                    if (_playerPosing != null && currentPlayerDrawObject != _lastPlayerDrawObjectPointer)
+                    {
+                        _playerPosing = null;
+                    }
+
+                    if (_playerPosing == null)
+                    {
+                        _lastPlayerDrawObjectPointer = currentPlayerDrawObject;
+                        BrioAccessUtils.EntityManager.SetSelectedEntity(_plugin.ObjectTable.LocalPlayer);
+                        BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
+                        _playerPosing = posing;
+                    }
+                }
             }
         }
         public void SetDefaults(Vector3 position, Vector3 rotation, float speed = 5, QuestEvent.EventMovementType eventMovementType = QuestEvent.EventMovementType.Lerp)
