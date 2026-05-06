@@ -18,6 +18,7 @@ namespace AQuestReborn.CustomNpc
         private int _nextAmbientIntervalMs;
         private bool _ambientEnabled => _plugin.Configuration.EnableAmbientChatter;
         private ConcurrentDictionary<string, string> _lastAmbientMessages = new ConcurrentDictionary<string, string>();
+        private ConcurrentDictionary<string, DateTime> _lastNpcGreetings = new ConcurrentDictionary<string, DateTime>();
         private bool _isProcessingAmbient = false;
 
         // Track when NPCs were summoned to enable the "chatty first minute" phase
@@ -249,7 +250,7 @@ namespace AQuestReborn.CustomNpc
                 sender, npcChar,
                 npcData.NpcName,
                 npcData.NPCGreeting,
-                "*is standing nearby, looking around idly* (Make a short, passing observation. Keep it brief, 1-2 sentences max!)",
+                "*is standing nearby, looking around idly* (Make a short, passing observation about your current environment. Keep it brief, 1-2 sentences max!)",
                 _plugin.GetEnvironmentContext(npcChar),
                 npcData.GetFullLore());
 
@@ -295,12 +296,31 @@ namespace AQuestReborn.CustomNpc
             }
             if (dataA == null || dataB == null) return;
 
+            string greetingKey = string.Compare(npcA, npcB) < 0 ? $"{npcA}_{npcB}" : $"{npcB}_{npcA}";
+            bool shouldGreet = true;
+            if (_lastNpcGreetings.TryGetValue(greetingKey, out DateTime lastGreetingTime))
+            {
+                if ((DateTime.Now - lastGreetingTime).TotalHours < 2)
+                {
+                    shouldGreet = false;
+                }
+            }
+
+            string promptA = shouldGreet 
+                ? $"You notice {npcB} nearby. Greet them and make casual conversation. (Keep your response brief, 1-2 sentences max!)"
+                : $"You are traveling with {npcB}. Comment on your current environment or suggest something to do together here. DO NOT say hello or introduce yourself again. (Keep your response brief, 1-2 sentences max!)";
+            
+            if (shouldGreet)
+            {
+                _lastNpcGreetings[greetingKey] = DateTime.Now;
+            }
+
             // NPC A says something to NPC B
             string responseA = await conversationManagers[npcA].SendMessage(
                 charB, charA,
                 dataA.NpcName,
                 dataA.NPCGreeting,
-                $"You notice {npcB} nearby. Make casual conversation with them. (Keep your response brief, 1-2 sentences max!)",
+                promptA,
                 _plugin.GetEnvironmentContext(charA),
                 dataA.GetFullLore(),
                 senderNameOverride: npcB);
