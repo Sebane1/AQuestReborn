@@ -387,11 +387,7 @@ namespace AQuestReborn
                         {
                             if (_plugin.ObjectTable.LocalPlayer == null || !_plugin.ObjectTable.LocalPlayer.IsValid()) return;
 
-                            if (!ClassWeaponApplied)
-                            {
-                                ApplyClassWeapon();
-                                ClassWeaponApplied = true;
-                            }
+                            // Weapon and Job will be applied right before entering combat for the first time.
                             float delta = ((float)_plugin.Framework.UpdateDelta.Milliseconds / 1000f);
                             if (delta > 0)
                             {
@@ -780,6 +776,13 @@ namespace AQuestReborn
                                         {
                                             _wasInCombat = true;
                                             NotifyCombatStateChanged(true);
+                                            
+                                            if (!ClassWeaponApplied)
+                                            {
+                                                ApplyClassWeapon();
+                                                ClassWeaponApplied = true;
+                                            }
+
                                             var nChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)SafeCharacterAddress;
                                             nChara->DrawData.IsWeaponHidden = false;
                                             nChara->Timeline.TimelineSequencer.PlayTimeline(5616); // Draw weapon
