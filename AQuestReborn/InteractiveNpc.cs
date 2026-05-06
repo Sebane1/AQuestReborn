@@ -29,6 +29,28 @@ namespace AQuestReborn
     {
         public static string LastCombatTarget = "";
         private ICharacter _character;
+        private ushort _cachedObjectIndex = ushort.MaxValue;
+        private nint SafeCharacterAddress
+        {
+            get
+            {
+                try
+                {
+                    if (_character == null || _cachedObjectIndex == ushort.MaxValue) return nint.Zero;
+                    // Use the cached ObjectIndex to look up a fresh reference from the
+                    // object table via its safe, bounds-checked indexer. This avoids
+                    // touching any stale native pointer — the table returns null for
+                    // empty / recycled slots without dereferencing freed memory.
+                    var fresh = _plugin.ObjectTable[(int)_cachedObjectIndex];
+                    if (fresh == null) return nint.Zero;
+                    return fresh.Address;
+                }
+                catch
+                {
+                    return nint.Zero;
+                }
+            }
+        }
         private Plugin _plugin;
         private bool _shouldBeMoving;
         private Vector3 _target;
@@ -180,7 +202,15 @@ namespace AQuestReborn
         public string LastAppearance { get; internal set; }
         public bool LooksAtPlayer { get; internal set; }
         public bool ShouldBeMoving { get => _shouldBeMoving; set => _shouldBeMoving = value; }
-        public ICharacter Character { get => _character; set => _character = value; }
+        public ICharacter Character
+        {
+            get => _character;
+            set
+            {
+                _character = value;
+                _cachedObjectIndex = value?.ObjectIndex ?? ushort.MaxValue;
+            }
+        }
         public EventMovementAnimation EventMovementAnimationType { get => _eventMovementAnimationType; set => _eventMovementAnimationType = value; }
         public ushort VictoryPoseEmoteId { get; set; }
         public List<ushort> RandomIdleEmotes = new List<ushort>();
@@ -203,6 +233,7 @@ namespace AQuestReborn
         public InteractiveNpc(Plugin plugin, ICharacter character)
         {
             _character = character;
+            _cachedObjectIndex = character.ObjectIndex;
             _plugin = plugin;
             _plugin.Framework.Update += Framework_Update;
             _plugin.ClientState.TerritoryChanged += ClientState_TerritoryChanged;
@@ -233,11 +264,11 @@ namespace AQuestReborn
 
         public unsafe void ApplyClassWeapon()
         {
-            if (_character == null) return;
+            if (_character == null || !_character.IsValid()) return;
             if (TargetClassJobId == 0)
             {
                 _plugin.AnamcoreManager.SetWeapon(_character, 0, 0);
-                var nullChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
+                var nullChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)SafeCharacterAddress;
                 nullChara->ClassJob = 0;
                 return;
             }
@@ -286,7 +317,7 @@ namespace AQuestReborn
 
             if (mainHandModel != 0)
             {
-                var chara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
+                var chara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)SafeCharacterAddress;
                 
                 // Always force the weapon — Glamourer may have already set a different model
                 _plugin.AnamcoreManager.SetWeapon(_character, mainHandModel, offHandModel);
@@ -332,10 +363,11 @@ namespace AQuestReborn
 
         private void TriggerEmoteIfChanged(uint animationId)
         {
+            if (_character == null || !_character.IsValid()) return;
             if (_lastMovementAnimationId != animationId)
             {
                 _lastMovementAnimationId = animationId;
-                _plugin.AnamcoreManager.TriggerEmote(_character.Address, animationId);
+                _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, animationId);
             }
         }
 
@@ -347,8 +379,14 @@ namespace AQuestReborn
                 {
                     if (_plugin.AQuestReborn != null && !_plugin.AQuestReborn.WaitingForMcdfLoad && (AppearanceAccessUtils.AppearanceManager == null || !AppearanceAccessUtils.AppearanceManager.IsWorking()) && _plugin.ClientState.IsLoggedIn)
                     {
-                        if (_character != null)
+                        // Validate character address is live in the object table BEFORE any native access.
+                        // This prevents AccessViolationException (which cannot be caught in .NET Core)
+                        // when the character object has been freed during logout→login transitions.
+                        var safeAddr = SafeCharacterAddress;
+                        if (safeAddr != nint.Zero)
                         {
+                            if (_plugin.ObjectTable.LocalPlayer == null || !_plugin.ObjectTable.LocalPlayer.IsValid()) return;
+
                             if (!ClassWeaponApplied)
                             {
                                 ApplyClassWeapon();
@@ -377,10 +415,10 @@ namespace AQuestReborn
                                 _lastMovementAnimationId = uint.MaxValue; // Force re-trigger
                                 if (_idleEmotePlaying)
                                 {
-                                    _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
+                                    _plugin.AnamcoreManager.ForceStopEmote(SafeCharacterAddress);
                                     _idleEmotePlaying = false;
                                 }
-                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                                _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, ContextBasedMovementId(false));
                             }
                             if (_followPlayer && !_plugin.EventWindow.IsOpen && !_plugin.ChoiceWindow.IsOpen
                                 && _plugin.EventWindow.TimeSinceLastDialogueDisplayed.ElapsedMilliseconds > 200
@@ -482,7 +520,7 @@ namespace AQuestReborn
                                     // Break idle emote if playing
                                     if (_idleEmotePlaying)
                                     {
-                                        _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
+                                        _plugin.AnamcoreManager.ForceStopEmote(SafeCharacterAddress);
                                         _idleEmotePlaying = false;
                                     }
                                     // Trigger speech bubble reaction (only one NPC triggers the call)
@@ -496,7 +534,7 @@ namespace AQuestReborn
                                     // Player revived — clear state
                                     _reactingToPlayerDeath = false;
                                     _deathEmotePlayed = false;
-                                    _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
+                                    _plugin.AnamcoreManager.ForceStopEmote(SafeCharacterAddress);
                                     TriggerEmoteIfChanged(ContextBasedMovementId(false));
                                     if (followerIndex == 0)
                                     {
@@ -551,7 +589,7 @@ namespace AQuestReborn
                                     {
                                         // Arrived at spread position — stop run, play grief emote
                                         _deathEmotePlayed = true;
-                                        _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
+                                        _plugin.AnamcoreManager.ForceStopEmote(SafeCharacterAddress);
                                         // Face the player body
                                         var desiredQuat = CoordinateUtility.LookAt(_currentPosition, playerBody);
                                         _currentRotation = desiredQuat.QuaternionToEuler();
@@ -582,14 +620,14 @@ namespace AQuestReborn
                                     // Clear emote state - give StopEmote one frame to process
                                     if (_idleEmotePlaying || _victoryPosePlaying)
                                     {
-                                        _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
+                                        _plugin.AnamcoreManager.ForceStopEmote(SafeCharacterAddress);
                                         _idleEmotePlaying = false;
                                         _victoryPosePlaying = false;
                                         SetTransform(_currentPosition, _currentRotation, _currentScale);
                                         return;
                                     }
                                     // Clear head target while moving so NPC looks forward
-                                    _plugin.AnamcoreManager.ClearHeadTarget(_character.Address);
+                                    _plugin.AnamcoreManager.ClearHeadTarget(SafeCharacterAddress);
                                     // Smooth rotation BEFORE moving
                                     if (distToTarget > 0.5f)
                                     {
@@ -742,7 +780,7 @@ namespace AQuestReborn
                                         {
                                             _wasInCombat = true;
                                             NotifyCombatStateChanged(true);
-                                            var nChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
+                                            var nChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)SafeCharacterAddress;
                                             nChara->DrawData.IsWeaponHidden = false;
                                             nChara->Timeline.TimelineSequencer.PlayTimeline(5616); // Draw weapon
                                             TriggerEmoteIfChanged(34); // Draw Weapon / Combat Stance
@@ -751,7 +789,7 @@ namespace AQuestReborn
                                         if (activeTarget != null)
                                         {
                                             LastCombatTarget = activeTarget.Name.TextValue;
-                                            _plugin.AnamcoreManager.SetHeadTarget(_character.Address, activeTarget.EntityId);
+                                            _plugin.AnamcoreManager.SetHeadTarget(SafeCharacterAddress, activeTarget.EntityId);
                                             var tgtPos = activeTarget.Position;
 
                                             bool isMelee = false;
@@ -797,7 +835,7 @@ namespace AQuestReborn
 
                                                     if (!_isCombatMoving)
                                                     {
-                                                        _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(true));
+                                                        _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, ContextBasedMovementId(true));
                                                         _isCombatMoving = true;
                                                     }
                                                 }
@@ -806,7 +844,7 @@ namespace AQuestReborn
                                                     if (_isCombatMoving)
                                                     {
                                                         _isCombatMoving = false;
-                                                        _plugin.AnamcoreManager.TriggerEmote(_character.Address, 34); // Resume combat stance
+                                                        _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, 34); // Resume combat stance
                                                     }
                                                 }
                                             }
@@ -818,7 +856,7 @@ namespace AQuestReborn
                                         }
                                         else
                                         {
-                                            _plugin.AnamcoreManager.ClearHeadTarget(_character.Address);
+                                            _plugin.AnamcoreManager.ClearHeadTarget(SafeCharacterAddress);
                                         }
 
                                         var pChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_plugin.ObjectTable.LocalPlayer.Address;
@@ -862,7 +900,7 @@ namespace AQuestReborn
 
                                         if (_nextCombatAnimationToPlay != 0 && _combatAttackDelayTimer.ElapsedMilliseconds > _currentCombatDelayMs)
                                         {
-                                            var nChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
+                                            var nChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)SafeCharacterAddress;
                                             _plugin.PluginLog.Information($"Playing timeline {_nextCombatAnimationToPlay} for job {TargetClassJobId}");
                                             nChara->Timeline.TimelineSequencer.PlayTimeline(_nextCombatAnimationToPlay);
                                             _nextCombatAnimationToPlay = 0;
@@ -883,7 +921,7 @@ namespace AQuestReborn
                                             }
                                             else
                                             {
-                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                                                _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, ContextBasedMovementId(false));
                                             }
                                             _lastPlayerTimelineId = 0;
                                             _nextCombatAnimationToPlay = 0;
@@ -915,7 +953,7 @@ namespace AQuestReborn
                                             {
                                                 var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(selectedEmoteId);
                                                 _activeEmoteTimelineId = (ushort)emote.ActionTimeline[0].Value.RowId;
-                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, _activeEmoteTimelineId, true);
+                                                _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, _activeEmoteTimelineId, true);
                                             }
                                             catch { }
                                             _idleEmotePlaying = true;
@@ -925,11 +963,11 @@ namespace AQuestReborn
                                         if (_plugin.ObjectTable.LocalPlayer != null
                                             && Vector3.Distance(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position) < 3f)
                                         {
-                                            _plugin.AnamcoreManager.SetHeadTarget(_character.Address, _plugin.ObjectTable.LocalPlayer.EntityId);
+                                            _plugin.AnamcoreManager.SetHeadTarget(SafeCharacterAddress, _plugin.ObjectTable.LocalPlayer.EntityId);
                                         }
                                         else
                                         {
-                                            _plugin.AnamcoreManager.ClearHeadTarget(_character.Address);
+                                            _plugin.AnamcoreManager.ClearHeadTarget(SafeCharacterAddress);
                                         }
                                     }
                                 }
@@ -966,22 +1004,22 @@ namespace AQuestReborn
                                             switch (_eventMovementAnimationType)
                                             {
                                                 case EventMovementAnimation.Automatic:
-                                                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(true));
+                                                    _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, ContextBasedMovementId(true));
                                                     break;
                                                 case EventMovementAnimation.Run:
-                                                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22);
+                                                    _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, 22);
                                                     break;
                                                 case EventMovementAnimation.Walk:
-                                                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, 13);
+                                                    _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, 13);
                                                     break;
                                                 case EventMovementAnimation.Swim:
-                                                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, 4954);
+                                                    _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, 4954);
                                                     break;
                                             }
                                             // Break out of idle emote when starting to move
                                             if (_idleEmotePlaying)
                                             {
-                                                _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
+                                                _plugin.AnamcoreManager.ForceStopEmote(SafeCharacterAddress);
                                                 _idleEmotePlaying = false;
                                             }
                                             _idleTimer.Restart();
@@ -996,7 +1034,7 @@ namespace AQuestReborn
                                             _idleEmotePlaying = false;
                                             _idleTimer.Restart();
                                             _idleThresholdMs = 20000 + new Random().Next(20000); // 20-40 seconds
-                                            _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                                            _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, ContextBasedMovementId(false));
                                         }
                                         // Trigger idle emote after threshold
                                         ushort selectedEmoteId = _idleEmoteId;
@@ -1010,7 +1048,7 @@ namespace AQuestReborn
                                             try
                                             {
                                                 var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(selectedEmoteId);
-                                                _plugin.AnamcoreManager.TriggerEmote(_character.Address, (ushort)emote.ActionTimeline[0].Value.RowId, true);
+                                                _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, (ushort)emote.ActionTimeline[0].Value.RowId, true);
                                             }
                                             catch { }
                                             _idleEmotePlaying = true;
@@ -1032,11 +1070,11 @@ namespace AQuestReborn
                                         if (_plugin.ObjectTable.LocalPlayer != null
                                             && Vector3.Distance(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position) < 3f)
                                         {
-                                            _plugin.AnamcoreManager.SetHeadTarget(_character.Address, _plugin.ObjectTable.LocalPlayer.EntityId);
+                                            _plugin.AnamcoreManager.SetHeadTarget(SafeCharacterAddress, _plugin.ObjectTable.LocalPlayer.EntityId);
                                         }
                                         else
                                         {
-                                            _plugin.AnamcoreManager.ClearHeadTarget(_character.Address);
+                                            _plugin.AnamcoreManager.ClearHeadTarget(SafeCharacterAddress);
                                         }
                                     }
                                     SetTransform(_currentPosition, _currentRotation, _currentScale);
@@ -1088,11 +1126,11 @@ namespace AQuestReborn
         {
             try
             {
-                if (_character != null && _character.Address != 0)
+                if (_character != null && _character.IsValid() && SafeCharacterAddress != 0)
                 {
                     unsafe
                     {
-                        var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)_character.Address;
+                        var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)SafeCharacterAddress;
                         if (_wasSwimming)
                         {
                             // When swimming, only update XZ natively — the game engine fights our Y
@@ -1176,7 +1214,7 @@ namespace AQuestReborn
                 _currentRotation = rotation;
             }
             _shouldBeMoving = false;
-            _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
+            _plugin.AnamcoreManager.ForceStopEmote(SafeCharacterAddress);
         }
 
         public Vector3 CurrentPosition => _currentPosition;
@@ -1291,7 +1329,7 @@ namespace AQuestReborn
                         // Stop current idle emote
                         if (_idleEmotePlaying)
                         {
-                            _plugin.AnamcoreManager.ForceStopEmote(_character.Address);
+                            _plugin.AnamcoreManager.ForceStopEmote(SafeCharacterAddress);
                             _idleEmotePlaying = false;
                         }
 
@@ -1576,7 +1614,7 @@ namespace AQuestReborn
                 var smoothed = Quaternion.Slerp(currentQuat, desiredQuat, Math.Min(5f * delta, 1f));
                 _currentRotation = smoothed.QuaternionToEuler();
                 
-                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, ContextBasedMovementId(false));
                 SetTransform(_currentPosition, _currentRotation, _currentScale);
                 return;
             }
@@ -1640,7 +1678,7 @@ namespace AQuestReborn
                 }
 
                 // Play idle animation while looking
-                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, ContextBasedMovementId(false));
                 SetTransform(_currentPosition, _currentRotation, _currentScale);
                 return;
             }
@@ -1663,7 +1701,7 @@ namespace AQuestReborn
                 }
 
                 // Play idle/look animation
-                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, ContextBasedMovementId(false));
                 SetTransform(_currentPosition, _currentRotation, _currentScale);
                 return;
             }
@@ -1674,7 +1712,7 @@ namespace AQuestReborn
                 // Reached end of path
                 _tailPathCompleted = true;
                 _tailPlaybackTimer.Stop();
-                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, ContextBasedMovementId(false));
                 SetTransform(_currentPosition, _currentRotation, _currentScale);
                 OnTailPathCompleted?.Invoke(this, EventArgs.Empty);
                 return;
@@ -1691,7 +1729,7 @@ namespace AQuestReborn
             {
                 _tailPathCompleted = true;
                 _tailPlaybackTimer.Stop();
-                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, ContextBasedMovementId(false));
                 SetTransform(_currentPosition, _currentRotation, _currentScale);
                 OnTailPathCompleted?.Invoke(this, EventArgs.Empty);
                 return;
@@ -1722,14 +1760,14 @@ namespace AQuestReborn
             {
                 // Moving — play walk or run animation
                 if (waypointSpeed > 3.5f)
-                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, 22); // Run
+                    _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, 22); // Run
                 else
-                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, 13); // Walk
+                    _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, 13); // Walk
             }
             else
             {
                 // Paused/idle
-                _plugin.AnamcoreManager.TriggerEmote(_character.Address, ContextBasedMovementId(false));
+                _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, ContextBasedMovementId(false));
             }
 
             // Trigger recorded emotes
@@ -1738,7 +1776,7 @@ namespace AQuestReborn
                 try
                 {
                     var emote = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(wpCurrent.EmoteId);
-                    _plugin.AnamcoreManager.TriggerEmote(_character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
+                    _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, (ushort)emote.ActionTimeline[0].Value.RowId);
                     _tailLastEmoteId = wpCurrent.EmoteId;
                 }
                 catch { }

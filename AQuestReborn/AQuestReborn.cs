@@ -201,6 +201,13 @@ namespace AQuestReborn
 
         private void ClientState_Logout(int type, int code)
         {
+            // Stop any pending appearance loads — the character objects they reference
+            // are about to be freed, and the async MCDF loader continuation will AV
+            // if it tries to access .Name on a destroyed GameObject.
+            _waitingForAppearanceLoad = false;
+            _appearanceApplicationQueue.Clear();
+            _npcActorSpawnQueue.Clear();
+
             // Invalidate all native character references — they point at freed memory now
             _customNpcCharacters.Clear();
             _customNpcDictionary.Clear();
@@ -1551,7 +1558,9 @@ namespace AQuestReborn
             if (!_initializationStarted)
             {
                 _initializationStarted = true;
-                _playerAddress = Plugin.ObjectTable.LocalPlayer.Address;
+                var localPlayer = Plugin.ObjectTable.LocalPlayer;
+                if (localPlayer == null) { _initializationStarted = false; return; }
+                _playerAddress = localPlayer.Address;
                 Task.Run(() =>
                 {
                     try
@@ -2241,7 +2250,9 @@ namespace AQuestReborn
             {
                 if (Plugin.RoleplayingQuestManager.QuestChains.ContainsKey(member.QuestId))
                 {
-                    var transform = new Transform() { Name = member.NpcName, Position = Plugin.ObjectTable.LocalPlayer.Position, TransformScale = new Vector3(1, 1, 1) };
+                    var localPlayer = Plugin.ObjectTable.LocalPlayer;
+                    if (localPlayer == null) continue;
+                    var transform = new Transform() { Name = member.NpcName, Position = localPlayer.Position, TransformScale = new Vector3(1, 1, 1) };
                     if (!_spawnedNpcsDictionary.ContainsKey(member.QuestId))
                     {
                         _spawnedNpcsDictionary[member.QuestId] = new Dictionary<string, ICharacter>();
@@ -2345,8 +2356,13 @@ namespace AQuestReborn
         public void Dispose()
         {
             _disposed = true;
+            // Stop all pending work FIRST — before any async operations or actor destruction.
+            // The MCDF loader's async continuations will AV if they run after actors are freed.
+            _waitingForAppearanceLoad = false;
+            _appearanceApplicationQueue.Clear();
+            _npcActorSpawnQueue.Clear();
             PenumbraAndGlamourerIpcWrapper.Instance.SetCollectionForObject.Invoke((int)201, Guid.Empty);
-            AppearanceAccessUtils.AppearanceManager.RemoveAllTemporaryCollections();
+            try { AppearanceAccessUtils.AppearanceManager?.RemoveAllTemporaryCollections(); } catch { }
             CutsceneCamera.Dispose();
             Plugin.DialogueBackgroundWindow.ButtonClicked -= DialogueBackgroundWindow_buttonClicked;
             Plugin.ObjectiveWindow.OnSelectionAttempt -= DialogueBackgroundWindow_buttonClicked;
