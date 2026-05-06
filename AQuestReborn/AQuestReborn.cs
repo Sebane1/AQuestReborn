@@ -1,4 +1,3 @@
-using Anamnesis.GameData;
 using Brio;
 using Brio.Capabilities.Actor;
 using Brio.Capabilities.Posing;
@@ -202,6 +201,36 @@ namespace AQuestReborn
 
         private void ClientState_Logout(int type, int code)
         {
+            try
+            {
+                if (_actorSpawnService != null)
+                {
+                    foreach (var kvp in _customNpcCharacters)
+                    {
+                        try { _actorSpawnService.DestroyObject(kvp.Value); } catch { }
+                    }
+                    foreach (var kvp in _hiddenNpcPool)
+                    {
+                        try { _actorSpawnService.DestroyObject(kvp.Value.Character); } catch { }
+                    }
+                    foreach (var questDict in _spawnedNpcsDictionary.Values)
+                    {
+                        foreach (var kvp in questDict)
+                        {
+                            try { _actorSpawnService.DestroyObject(kvp.Value); } catch { }
+                        }
+                    }
+                    if (_cutscenePlayer != null && _cutscenePlayer.Character != null)
+                    {
+                        try { _actorSpawnService.DestroyObject(_cutscenePlayer.Character); } catch { }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Warning(ex, "Failed to destroy Brio actors during logout.");
+            }
+
             // Invalidate all native character references — they point at freed memory now
             _customNpcCharacters.Clear();
             _customNpcDictionary.Clear();
@@ -836,6 +865,8 @@ namespace AQuestReborn
         {
             // Don't touch game objects during logout/loading/dispose — memory may be freed
             if (_disposed || !Plugin.ClientState.IsLoggedIn) return;
+
+            if (Conditions.Instance()->BetweenAreas) return;
 
             bool requestedRedraw = false;
             foreach (var kvp in _customNpcCharacters)

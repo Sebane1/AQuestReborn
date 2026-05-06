@@ -1,0 +1,1 @@
+using System.Reflection; using System.IO; class Dump2 { public static void Run() { var m = typeof(FFXIVClientStructs.FFXIV.Client.Game.Object.ClientObjectManager).GetMethod(" CreateBattleCharacter\); File.WriteAllText(\dump2.txt\, m.ToString() + " params: \ + string.Join(" \, (object[])m.GetParameters())); } }
