@@ -96,6 +96,11 @@ namespace AQuestReborn
         /// The swim animation shifts the model up, so we push the position down to compensate.
         /// </summary>
         private const float SwimYOffset = -0.65f;
+        /// <summary>
+        /// Max Y-axis change per frame. The game engine nukes DrawObjects when characters
+        /// move too far vertically in a single frame (e.g. falling from cliffs).
+        /// </summary>
+        private const float MaxYDeltaPerFrame = 1.5f;
         EventMovementAnimation _eventMovementAnimationType = EventMovementAnimation.Automatic;
         public static Dictionary<uint, List<ushort>> JobCombatAnimations = null;
 
@@ -528,8 +533,11 @@ namespace AQuestReborn
                                         }
                                         float groundY = _plugin.AQuestReborn.GroundMap.GetGroundY(
                                             _currentPosition.X, _currentPosition.Z, playerBody.Y);
+                                        float targetY = groundY + (_wasSwimming ? SwimYOffset : 0f);
+                                        float yDelta = targetY - _currentPosition.Y;
+                                        yDelta = Math.Clamp(yDelta, -MaxYDeltaPerFrame, MaxYDeltaPerFrame);
                                         float yLerp = Math.Clamp(10f * delta, 0f, 1f);
-                                        _currentPosition.Y += (groundY + (_wasSwimming ? SwimYOffset : 0f) - _currentPosition.Y) * yLerp;
+                                        _currentPosition.Y += yDelta * yLerp;
 
                                         // Face the player body
                                         var desiredQuat = CoordinateUtility.LookAt(_currentPosition, playerBody);
@@ -647,9 +655,12 @@ namespace AQuestReborn
                                     }
 
                                     float yLerp = Math.Clamp(10f * delta, 0f, 1f);
+                                    float targetY = groundY + (_wasSwimming ? SwimYOffset : 0f);
+                                    float yDelta = targetY - _currentPosition.Y;
+                                    yDelta = Math.Clamp(yDelta, -MaxYDeltaPerFrame, MaxYDeltaPerFrame);
                                     var newPosition = new Vector3(
                                         newH.X,
-                                        _currentPosition.Y + (groundY + (_wasSwimming ? SwimYOffset : 0f) - _currentPosition.Y) * yLerp,
+                                        _currentPosition.Y + yDelta * yLerp,
                                         newH.Z);
                                         
                                     float speedThisFrame = targetSpeed;
@@ -705,7 +716,10 @@ namespace AQuestReborn
                                     float groundY = _plugin.AQuestReborn.GroundMap.GetGroundY(
                                         _currentPosition.X, _currentPosition.Z, fallbackY);
                                     float yLerp = Math.Clamp(10f * delta, 0f, 1f);
-                                    _currentPosition = new Vector3(_currentPosition.X, _currentPosition.Y + (groundY + (_wasSwimming ? SwimYOffset : 0f) - _currentPosition.Y) * yLerp, _currentPosition.Z);
+                                    float targetY = groundY + (_wasSwimming ? SwimYOffset : 0f);
+                                    float yDelta = targetY - _currentPosition.Y;
+                                    yDelta = Math.Clamp(yDelta, -MaxYDeltaPerFrame, MaxYDeltaPerFrame);
+                                    _currentPosition = new Vector3(_currentPosition.X, _currentPosition.Y + yDelta * yLerp, _currentPosition.Z);
                                     _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
 
                                     if (_wasMoving)
