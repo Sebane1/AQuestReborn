@@ -1005,9 +1005,9 @@ namespace AQuestReborn
                                                 _currentPosition = Vector3.Lerp(_lastDefaultPosition, _defaultPosition, Math.Clamp(_fixedMovementTimer.ElapsedMilliseconds / _speed, 0, 1));
                                                 break;
                                         }
-                                        _currentRotation = _currentRotation = CoordinateUtility.LookAt(_currentPosition, _defaultPosition).QuaternionToEuler();
+                                        _currentRotation = CoordinateUtility.LookAt(_currentPosition, _defaultPosition).QuaternionToEuler();
                                         _currentScale = Vector3.Lerp(_currentScale, _targetScale, _scaleSpeed * delta);
-                                        if (Vector3.Distance(_currentPosition, _plugin.ObjectTable.LocalPlayer.Position) > 0.2f)
+                                        if (Vector3.Distance(new Vector3(_currentPosition.X, 0, _currentPosition.Z), new Vector3(_defaultPosition.X, 0, _defaultPosition.Z)) > 0.2f)
                                         {
                                             switch (_eventMovementAnimationType)
                                             {
@@ -1113,21 +1113,25 @@ namespace AQuestReborn
         public Vector3 GetVerticalOffsetFromPlayer(float offset)
         {
             CheckPosing();
+            if (_playerPosing?.ModelPosing == null) return new Vector3(0, 0, 0);
             return _playerPosing.ModelPosing.Transform.Rotation.VectorDirection(new Vector3(1, 0, 0)) * offset;
         }
         public Vector3 GetHorizontalOffsetFromPlayer(float offset)
         {
             CheckPosing();
+            if (_playerPosing?.ModelPosing == null) return new Vector3(0, 0, 0);
             return _playerPosing.ModelPosing.Transform.Rotation.VectorDirection(new Vector3(0, 0, 1)) * offset;
         }
         public Vector3 GetVerticalOffset(float offset)
         {
             CheckPosing();
+            if (_posing?.ModelPosing == null) return new Vector3(0, 0, 0);
             return _posing.ModelPosing.Transform.Rotation.VectorDirection(new Vector3(1, 0, 0)) * offset;
         }
         public Vector3 GetHorizontalOffset(float offset)
         {
             CheckPosing();
+            if (_posing?.ModelPosing == null) return new Vector3(0, 0, 0);
             return _posing.ModelPosing.Transform.Rotation.VectorDirection(new Vector3(0, 0, 1)) * offset;
         }
         public void SetTransform(Vector3 position, Vector3 rotation, Vector3 scale)
@@ -1277,6 +1281,8 @@ namespace AQuestReborn
         public void StopFollowingPlayer()
         {
             _followPlayer = false;
+            _defaultPosition = _currentPosition;
+            _defaultRotation = _currentRotation;
         }
 
         public void SetScale(Vector3 scale, float speed)
