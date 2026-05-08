@@ -1194,15 +1194,22 @@ namespace AQuestReborn
         {
             if (_posing == null)
             {
-                BrioAccessUtils.EntityManager.SetSelectedEntity(_character);
-                BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
-                _posing = posing;
+                if (_character != null && _character.IsValid())
+                {
+                    BrioAccessUtils.EntityManager.SetSelectedEntity(_character);
+                    BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
+                    _posing = posing;
+                }
             }
             if (_playerPosing == null)
             {
-                BrioAccessUtils.EntityManager.SetSelectedEntity(_plugin.ObjectTable.LocalPlayer);
-                BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
-                _playerPosing = posing;
+                var localPlayer = _plugin.ObjectTable.LocalPlayer;
+                if (localPlayer != null)
+                {
+                    BrioAccessUtils.EntityManager.SetSelectedEntity(localPlayer);
+                    BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
+                    _playerPosing = posing;
+                }
             }
         }
         public void SetDefaults(Vector3 position, Vector3 rotation, float speed = 5, QuestEvent.EventMovementType eventMovementType = QuestEvent.EventMovementType.Lerp)
