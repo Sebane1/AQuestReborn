@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using AnamCore;
 using McdfDataImporter;
 using RoleplayingQuestCore;
+using AQuestReborn.CustomNpc;
 using System.Diagnostics;
 using Quaternion = System.Numerics.Quaternion;
 using Brio.Core;
@@ -230,6 +231,7 @@ namespace AQuestReborn
         public uint TargetClassJobId { get; set; }
         public uint TargetWeaponItemId { get; set; }
         public bool ClassWeaponApplied { get; set; }
+        public CustomNpcCharacter NpcConfig { get; set; }
 
         public InteractiveNpc(Plugin plugin, ICharacter character)
         {

@@ -624,15 +624,7 @@ namespace AQuestReborn
             // Wait for zone to be fully loaded before spawning
             Thread.Sleep(3000);
 
-            // Wait for the cutscene player slot to be reserved.
-            // The cutscene player is now always spawned to reserve Brio slot 0.
-            int waitedMs = 0;
-            while (!_cutsceneNpcSpawned && waitedMs < 15000)
-            {
-                if (!Plugin.ClientState.IsLoggedIn) return;
-                Thread.Sleep(500);
-                waitedMs += 500;
-            }
+            // Custom NPCs do not depend on the cutscene player slot, so we no longer wait for _cutsceneNpcSpawned here.
             uint currentTerritory = Plugin.ClientState.TerritoryType;
             Plugin.PluginLog.Information("[Custom NPC] Checking " + Plugin.Configuration.CustomNpcCharacters.Count + " NPCs for respawn in territory " + currentTerritory);
             int followingSpawned = 0;
@@ -1036,153 +1028,8 @@ namespace AQuestReborn
             {
                 _penumbraCollectionVerifyTimer.Restart();
 
-                // --- Dead actor detection: re-spawn if the game destroyed our actors ---
-                try
-                {
-                    var deadNpcs = new List<string>();
-                    foreach (var kvp in _customNpcCharacters)
-                    {
-                        bool isDead = false;
-                        if (kvp.Value == null || kvp.Value.Address == 0)
-                        {
-                            isDead = true;
-                        }
-                        else
-                        {
-                            // Verify the actor still exists in the object table
-                            bool foundInTable = false;
-                            foreach (var obj in Plugin.ObjectTable)
-                            {
-                                if (obj != null && obj.Address == kvp.Value.Address)
-                                {
-                                    foundInTable = true;
-                                    break;
-                                }
-                            }
-                            if (!foundInTable)
-                            {
-                                isDead = true;
-                            }
-                            else
-                            {
-                                // Actor exists but check if model is irrecoverably broken
-                                var cs = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)kvp.Value.Address;
-                                if (cs->GameObject.DrawObject == null)
-                                {
-                                    // DrawObject gone — might recover, but if it persists it's broken
-                                    isDead = true;
-                                    Plugin.PluginLog.Warning($"[NPC Respawn] '{kvp.Key}' has null DrawObject — marking for respawn.");
-                                }
-                                else
-                                {
-                                    // Check if the CharacterBase skeleton is null (model destroyed)
-                                    var charBase = (FFXIVClientStructs.FFXIV.Client.Graphics.Scene.CharacterBase*)cs->GameObject.DrawObject;
-                                    if (charBase->Skeleton == null)
-                                    {
-                                        isDead = true;
-                                        Plugin.PluginLog.Warning($"[NPC Respawn] '{kvp.Key}' has null Skeleton — marking for respawn.");
-                                    }
-                                    else
-                                    {
-                                        // Check if head bone position is valid (bone 6 = head)
-                                        // If it returns Zero, the model's bone data is corrupt (nameplate detaches from head)
-                                        try
-                                        {
-                                            var headPos = Hypostasis.Game.Common.GetBoneWorldPosition(&cs->GameObject, 6);
-                                            if (headPos == Vector3.Zero)
-                                            {
-                                                isDead = true;
-                                                Plugin.PluginLog.Warning($"[NPC Respawn] '{kvp.Key}' head bone returned Zero — model corrupt, marking for respawn.");
-                                            }
-                                        }
-                                        catch
-                                        {
-                                            isDead = true;
-                                            Plugin.PluginLog.Warning($"[NPC Respawn] '{kvp.Key}' bone access threw — model corrupt, marking for respawn.");
-                                        }
-                                        
-                                        if (!isDead)
-                                        {
-                                            // Check if engine hid the DrawObject permanently (0x10 flag or RenderFlags != 0)
-                                            bool drawObjectHidden = (cs->GameObject.DrawObject->Flags & 0x10) != 0;
-                                            bool renderFlagsSet = cs->GameObject.RenderFlags != 0;
-                                            
-                                            // Make sure the player isn't just standing inside them (which intentionally hides them)
-                                            _npcCameraClipped.TryGetValue(kvp.Key, out bool cameraClipped);
-                                            
-                                            if ((drawObjectHidden || renderFlagsSet) && !cameraClipped)
-                                            {
-                                                // Make sure they are close enough that distance culling isn't the cause
-                                                if (Plugin.ObjectTable.LocalPlayer != null)
-                                                {
-                                                    var npcPos = cs->GameObject.Position;
-                                                    var playerPos = Plugin.ObjectTable.LocalPlayer.Position;
-                                                    float dist = Vector3.Distance(
-                                                        new Vector3(npcPos.X, npcPos.Y, npcPos.Z), 
-                                                        playerPos);
-                                                    
-                                                    // 40y is well within FFXIV's active rendering radius
-                                                    if (dist < 40.0f)
-                                                    {
-                                                        isDead = true;
-                                                        Plugin.PluginLog.Warning($"[NPC Respawn] '{kvp.Key}' is permanently hidden by engine (Dist: {dist:F1}y, Clip: {cameraClipped}) — marking for respawn.");
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        if (isDead) deadNpcs.Add(kvp.Key);
-                    }
-
-                    if (deadNpcs.Count > 0)
-                    {
-                        Plugin.PluginLog.Warning($"[NPC Respawn] Detected {deadNpcs.Count} destroyed NPC(s): {string.Join(", ", deadNpcs)}. Scheduling re-spawn.");
-                        // Clean up stale tracking and destroy broken actors
-                        foreach (var name in deadNpcs)
-                        {
-                            // Try to destroy the broken actor so the object table slot is freed
-                            if (_customNpcCharacters.TryGetValue(name, out var brokenChar) && brokenChar != null)
-                            {
-                                try { _actorSpawnService?.DestroyObject(brokenChar); }
-                                catch { }
-                            }
-                            _customNpcCharacters.Remove(name);
-                            _customNpcDictionary.Remove(name);
-                            _interactiveNpcDictionary.Remove(name);
-                            _npcRedrawCooldowns.Remove(name);
-                            _npcLastDrawObjectPtr.Remove(name);
-                            _npcCameraClipped.Remove(name);
-                        }
-                        // Schedule re-spawns
-                        Task.Run(() =>
-                        {
-                            try
-                            {
-                                Thread.Sleep(2000);
-                                foreach (var name in deadNpcs)
-                                {
-                                    var npcData = Plugin.Configuration.CustomNpcCharacters.FirstOrDefault(n => n.NpcName == name);
-                                    if (npcData != null && npcData.IsFollowingPlayer && !npcData.IsStaying)
-                                    {
-                                        Plugin.Framework.RunOnFrameworkThread(() => SummonCustomNpc(npcData));
-                                        Thread.Sleep(500);
-                                    }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Plugin.PluginLog.Warning(ex, "[NPC Respawn] Failed to re-spawn destroyed NPCs.");
-                            }
-                        });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Plugin.PluginLog.Warning(ex, "[NPC Respawn] Failed dead-actor check.");
-                }
+                // Dead actor detection has been removed. Brio handles actor lifecycles natively now, and culling/DrawObject 
+                // delays during zone load no longer trigger false-positive destruction and endless respawn cycles.
 
                 // --- Penumbra collection verification ---
                 try
@@ -1289,13 +1136,14 @@ namespace AQuestReborn
                                 {
                                     ScheduleCutsceneNpcSpawn();
                                 }
-                                else if (_cutsceneNpcSpawned)
+                                // Always process custom NPC spawn queues — they don't depend on the cutscene player
+                                CheckForCustomNpcCreationLoad();
+                                if (_cutsceneNpcSpawned)
                                 {
                                     CheckForPassiveQuestProgression();
                                     CheckForNewAppearanceLoad();
                                     QuestInputCheck();
                                     CheckForNewPlayerCreationLoad();
-                                    CheckForCustomNpcCreationLoad();
                                     CheckForNPCRefresh();
                                     CheckForMapRefresh();
                                     if (_checkCooldownTimer.ElapsedMilliseconds > 500)
@@ -1746,7 +1594,7 @@ namespace AQuestReborn
                 {
                     ICharacter character = null;
                     if (_actorSpawnService.CreateCharacter(out character, SpawnFlags.DefinePosition, true,
-                        position, 0) && character != null)
+                        position, 0, customName: npcData.UseMcdfAppearance ? null : npcData.NpcName.Split(' ')[0] + " Cnpc") && character != null)
                     {
                         _customNpcCharacters[npcData.NpcName] = character;
                         var npc = new InteractiveNpc(Plugin, character);
@@ -2609,6 +2457,7 @@ namespace AQuestReborn
                             _customNpcCharacters[npcData.NpcName] = pooled.Character;
                             _customNpcDictionary[npcData.NpcName] = pooled.Npc;
                             _interactiveNpcDictionary[npcData.NpcName] = pooled.Npc;
+                            pooled.Npc.NpcConfig = npcData;
 
                             pooled.Npc.TargetClassJobId = npcData.NpcClassJobId;
                             pooled.Npc.TargetWeaponItemId = npcData.NpcEquippedWeaponItemId;
