@@ -1547,7 +1547,7 @@ namespace AQuestReborn
                                 try
                                 {
                                     var emote = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(initialEmoteId);
-                                    Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
+                                    Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)emote.ActionTimeline[0].Value.RowId, true);
                                 }
                                 catch { }
                             }
@@ -1666,7 +1666,7 @@ namespace AQuestReborn
                             try
                             {
                                 var emote = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>().GetRow(initialEmoteId);
-                                Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)emote.ActionTimeline[0].Value.RowId);
+                                Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)emote.ActionTimeline[0].Value.RowId, true);
                             }
                             catch { }
                         }
@@ -1748,7 +1748,7 @@ namespace AQuestReborn
                                             _interactiveNpcDictionary[npcKey].LastAppearance = value.Item3;
                                         }
                                         Plugin.AnamcoreManager.SetVoice(character, 0);
-                                        Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)value.Item1.DefaultAnimationId);
+                                        Plugin.AnamcoreManager.TriggerEmote(character.Address, (ushort)value.Item1.DefaultAnimationId, true);
                                     }
                                     if (value.Item7)
                                     {
