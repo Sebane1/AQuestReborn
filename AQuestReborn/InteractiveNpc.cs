@@ -1041,6 +1041,7 @@ namespace AQuestReborn
                                         if (_wasMoving)
                                         {
                                             _wasMoving = false;
+                                            _shouldBeMoving = false;
                                             _idleEmotePlaying = false;
                                             _idleTimer.Restart();
                                             _idleThresholdMs = 20000 + new Random().Next(20000); // 20-40 seconds
@@ -1236,7 +1237,6 @@ namespace AQuestReborn
                 _currentPosition = position;
                 _currentRotation = rotation;
             }
-            _shouldBeMoving = false;
             _plugin.AnamcoreManager.ForceStopEmote(SafeCharacterAddress);
         }
 

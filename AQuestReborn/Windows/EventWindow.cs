@@ -802,8 +802,11 @@ public class EventWindow : Window, IDisposable
                     {
                         // This event doesn't set new coordinates for the speaking NPC,
                         // so snap its default to current position to prevent it running
-                        // back to a stale position from a previous objective.
-                        Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].SnapDefaultsToCurrent();
+                        // back to a stale position from a previous objective, UNLESS it's already moving.
+                        if (!Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].ShouldBeMoving)
+                        {
+                            Plugin.AQuestReborn.InteractiveNpcDictionary[questNpcKey].SnapDefaultsToCurrent();
+                        }
                     }
                 }
                 // Snap all other quest NPCs (not the speaker) to their current positions
@@ -812,7 +815,10 @@ public class EventWindow : Window, IDisposable
                 {
                     if (kvp.Key != questNpcKey && kvp.Key.StartsWith(questPrefix))
                     {
-                        kvp.Value.SnapDefaultsToCurrent();
+                        if (!kvp.Value.ShouldBeMoving)
+                        {
+                            kvp.Value.SnapDefaultsToCurrent();
+                        }
                     }
                 }
                 // Enable look-at for any additional NPCs the creator specified

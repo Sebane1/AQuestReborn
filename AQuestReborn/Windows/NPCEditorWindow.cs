@@ -85,6 +85,21 @@ public class NPCEditorWindow : Window, IDisposable
                         item.AppearanceData = appearanceData;
                     }
 
+                    var hideNameplate = item.HideNameplate;
+                    if (ImGui.Checkbox(Translator.LocalizeUI("Hide Nameplate##"), ref hideNameplate))
+                    {
+                        item.HideNameplate = hideNameplate;
+                    }
+
+                    if (!hideNameplate)
+                    {
+                        var nameplateAlias = item.NameplateAlias ?? "";
+                        if (ImGui.InputText(Translator.LocalizeUI("Nameplate Alias##"), ref nameplateAlias, 40))
+                        {
+                            item.NameplateAlias = nameplateAlias;
+                        }
+                    }
+
                     if (_isCreatingAppearance)
                     {
                         ImGui.BeginDisabled();

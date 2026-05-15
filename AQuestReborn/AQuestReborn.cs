@@ -182,11 +182,34 @@ namespace AQuestReborn
                 // Check Spawned Quest NPCs
                 foreach (var questKvp in _spawnedNpcsDictionary)
                 {
+                    string questId = questKvp.Key;
+                    RoleplayingQuestCore.RoleplayingQuest quest = null;
+                    if (Plugin.RoleplayingQuestManager != null && Plugin.RoleplayingQuestManager.QuestChains.ContainsKey(questId))
+                    {
+                        quest = Plugin.RoleplayingQuestManager.QuestChains[questId];
+                    }
+
                     foreach (var npcKvp in questKvp.Value)
                     {
                         if (npcKvp.Value != null && npcKvp.Value.Address == handler.GameObject.Address)
                         {
-                            handler.NameParts.Text = npcKvp.Key;
+                            string displayName = npcKvp.Key;
+                            if (quest != null && quest.NpcCustomizations != null)
+                            {
+                                var npcInfo = System.Linq.Enumerable.FirstOrDefault(quest.NpcCustomizations.Values, n => n.NpcName == npcKvp.Key);
+                                if (npcInfo != null)
+                                {
+                                    if (npcInfo.HideNameplate)
+                                    {
+                                        displayName = "";
+                                    }
+                                    else if (!string.IsNullOrEmpty(npcInfo.NameplateAlias))
+                                    {
+                                        displayName = npcInfo.NameplateAlias;
+                                    }
+                                }
+                            }
+                            handler.NameParts.Text = displayName;
                             break;
                         }
                     }
