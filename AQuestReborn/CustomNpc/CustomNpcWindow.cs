@@ -1457,6 +1457,39 @@ namespace AQuestReborn.CustomNpc
 
                     bool isSpawned = _customNpcCharacters[_currentSelection].IsFollowingPlayer
                         || _customNpcCharacters[_currentSelection].IsStaying;
+
+                    if (isSpawned && _plugin?.AQuestReborn?.InteractiveNpcDictionary != null)
+                    {
+                        if (_plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(_customNpcCharacters[_currentSelection].NpcName, out var liveNpc) && liveNpc.Character != null)
+                        {
+                            IntPtr drawObjectAddr = IntPtr.Zero;
+                            unsafe
+                            {
+                                var go = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)liveNpc.Character.Address;
+                                if (go != null)
+                                {
+                                    drawObjectAddr = (IntPtr)go->DrawObject;
+                                }
+                            }
+                            ImGui.TextColored(new Vector4(0.8f, 0.8f, 0.8f, 1f), $"Index: {liveNpc.Character.ObjectIndex} | Memory: {liveNpc.Character.Address:X} | DrawObj: {drawObjectAddr:X}");
+                            ImGui.SameLine();
+                            if (ImGui.Button("Copy Mem"))
+                            {
+                                ImGui.SetClipboardText($"{liveNpc.Character.Address:X}");
+                            }
+                            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Copy GameObject Memory Address");
+                            
+                            ImGui.SameLine();
+                            if (ImGui.Button("Copy Draw"))
+                            {
+                                ImGui.SetClipboardText($"{drawObjectAddr:X}");
+                            }
+                            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Copy DrawObject Memory Address");
+                            
+                            ImGui.Dummy(new Vector2(0, 5));
+                        }
+                    }
+
                     string buttonLabel = isSpawned ? Translator.LocalizeUI("Dismiss NPC") : Translator.LocalizeUI("Summon NPC");
                     if (ImGui.Button(buttonLabel, new Vector2(ImGui.GetColumnWidth(), 30)))
                     {

@@ -32,20 +32,41 @@ namespace AQuestReborn
         public static HashSet<string> CombatTargets = new HashSet<string>();
         private ICharacter _character;
         private ushort _cachedObjectIndex = ushort.MaxValue;
+        private string _npcName;
+        private Stopwatch _reclaimCooldown = new Stopwatch();
         private nint SafeCharacterAddress
         {
             get
             {
                 try
                 {
-                    if (_character == null || _cachedObjectIndex == ushort.MaxValue) return nint.Zero;
-                    // Use the cached ObjectIndex to look up a fresh reference from the
-                    // object table via its safe, bounds-checked indexer. This avoids
-                    // touching any stale native pointer — the table returns null for
-                    // empty / recycled slots without dereferencing freed memory.
-                    var fresh = _plugin.ObjectTable[(int)_cachedObjectIndex];
-                    if (fresh == null) return nint.Zero;
-                    return fresh.Address;
+                    if (_cachedObjectIndex != ushort.MaxValue)
+                    {
+                        // Use the cached ObjectIndex to look up a fresh reference from the
+                        // object table via its safe, bounds-checked indexer.
+                        var fresh = _plugin.ObjectTable[(int)_cachedObjectIndex];
+                        if (fresh != null && fresh.Name.TextValue == _npcName)
+                        {
+                            return fresh.Address;
+                        }
+                    }
+
+                    // The reference was lost or recycled. Attempt to reclaim it.
+                    if (!_reclaimCooldown.IsRunning || _reclaimCooldown.ElapsedMilliseconds > 1000)
+                    {
+                        _reclaimCooldown.Restart();
+                        foreach (var obj in _plugin.ObjectTable)
+                        {
+                            if (obj is ICharacter charObj && charObj.Name.TextValue == _npcName)
+                            {
+                                _character = charObj;
+                                _cachedObjectIndex = charObj.ObjectIndex;
+                                return charObj.Address;
+                            }
+                        }
+                    }
+                    
+                    return nint.Zero;
                 }
                 catch
                 {
@@ -115,6 +136,7 @@ namespace AQuestReborn
         private bool _deathEmotePlayed;
         private float _deathSpreadAngle;
         private bool _wasSwimming;
+        private uint _defaultRenderFlags = 0;
         /// <summary>
         /// Vertical offset applied when swim BaseOverride is active.
         /// The swim animation shifts the model up, so we push the position down to compensate.
@@ -236,6 +258,7 @@ namespace AQuestReborn
         public InteractiveNpc(Plugin plugin, ICharacter character)
         {
             _character = character;
+            _npcName = character.Name.TextValue;
             _cachedObjectIndex = character.ObjectIndex;
             _plugin = plugin;
             _plugin.Framework.Update += Framework_Update;
@@ -249,6 +272,15 @@ namespace AQuestReborn
             _horizontalRefreshTimer.Start();
             _idleTimer.Start();
             _idleThresholdMs = 20000 + new System.Random().Next(20000);
+            
+            unsafe
+            {
+                var go = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)_character.Address;
+                if (go != null)
+                {
+                    _defaultRenderFlags = (uint)go->RenderFlags;
+                }
+            }
         }
 
         private void ClientState_TerritoryChanged(uint obj)
@@ -388,6 +420,32 @@ namespace AQuestReborn
                         var safeAddr = SafeCharacterAddress;
                         if (safeAddr != nint.Zero)
                         {
+                            var go = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)safeAddr;
+                            
+                            // Brute-force state enforcement: if the engine tried to hide the NPC, flip the flag right back
+                            bool needsEnableDraw = false;
+                            
+                            if ((uint)go->RenderFlags != _defaultRenderFlags)
+                            {
+                                go->RenderFlags = (FFXIVClientStructs.FFXIV.Client.Game.Object.VisibilityFlags)_defaultRenderFlags;
+                                needsEnableDraw = true;
+                            }
+
+                            // Also enforce the DrawObject's internal hidden flag
+                            if (go->DrawObject != null)
+                            {
+                                if ((go->DrawObject->Flags & 0x10) != 0)
+                                {
+                                    go->DrawObject->Flags &= unchecked((byte)~0x10);
+                                    needsEnableDraw = true;
+                                }
+                            }
+                            
+                            if (needsEnableDraw)
+                            {
+                                go->EnableDraw();
+                            }
+                            
                             if (_plugin.ObjectTable.LocalPlayer == null || !_plugin.ObjectTable.LocalPlayer.IsValid()) return;
 
                             // Weapon and Job will be applied right before entering combat for the first time.
