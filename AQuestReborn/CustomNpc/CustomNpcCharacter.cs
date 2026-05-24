@@ -5,6 +5,67 @@ using System.Numerics;
 
 namespace AQuestReborn.CustomNpc
 {
+    /// <summary>
+    /// Configuration for a paired/coordinated animation between this NPC and a partner
+    /// (either the player or another NPC). Triggered by the player saying a command phrase.
+    /// </summary>
+    public class PairedAnimationConfig
+    {
+        /// <summary>
+        /// The command phrase the player says to trigger this animation (e.g. "lets dance").
+        /// Matched case-insensitively against chat messages.
+        /// </summary>
+        public string TriggerPhrase = "";
+
+        /// <summary>
+        /// The Emote RowId for THIS NPC's animation (the "primary" role).
+        /// The ActionTimeline ID is resolved automatically from this at runtime.
+        /// </summary>
+        public ushort NpcEmoteId = 0;
+
+        /// <summary>
+        /// The Emote RowId for the PARTNER's animation (player or another NPC).
+        /// The ActionTimeline ID is resolved automatically from this at runtime.
+        /// </summary>
+        public ushort PartnerEmoteId = 0;
+
+        /// <summary>
+        /// Optional: name of a specific partner NPC. If empty, the player is the partner.
+        /// Must match the NpcName of another summoned Custom NPC exactly.
+        /// </summary>
+        public string PartnerNpcName = "";
+
+        /// <summary>
+        /// Whether to use BaseOverride (looping) for the animations.
+        /// If false, uses PlayTimeline (one-shot).
+        /// </summary>
+        public bool LoopAnimation = false;
+
+        /// <summary>
+        /// Whether to automatically stop the animation after DurationMs.
+        /// If false, the animation plays indefinitely until interrupted.
+        /// </summary>
+        public bool UseDuration = true;
+
+        /// <summary>
+        /// Duration in milliseconds for the animation before cleanup (default 10 seconds).
+        /// Only used when UseDuration is true.
+        /// </summary>
+        public int DurationMs = 10000;
+
+        /// <summary>
+        /// Glamourer design name to apply to the NPC during the paired animation.
+        /// Empty means no appearance change. Reverted on cleanup.
+        /// </summary>
+        public string NpcGlamourerDesign = "";
+
+        /// <summary>
+        /// Glamourer design name to apply to the player/partner during the paired animation.
+        /// Empty means no appearance change. Reverted on cleanup.
+        /// </summary>
+        public string PartnerGlamourerDesign = "";
+    }
+
     public class CustomNpcCharacter
     {
         // Public fields because I cant use properties with Imgui code.
@@ -37,6 +98,9 @@ namespace AQuestReborn.CustomNpc
         public ushort IdleEmoteId = 50; // Default: groundsit
         public List<ushort> RandomIdleEmotes = new List<ushort>();
         public ushort VictoryPoseEmoteId = 0; // Default: none
+
+        // Paired/coordinated animations (e.g. paired dances with the player or another NPC)
+        public List<PairedAnimationConfig> PairedAnimations = new List<PairedAnimationConfig>();
 
         // Appearance mode
         public bool UseMcdfAppearance = false;

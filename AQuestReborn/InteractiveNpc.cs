@@ -34,6 +34,7 @@ namespace AQuestReborn
         private ushort _cachedObjectIndex = ushort.MaxValue;
         private string _npcName;
         private Stopwatch _reclaimCooldown = new Stopwatch();
+        private Stopwatch _redrawCooldown = new Stopwatch();
         private nint SafeCharacterAddress
         {
             get
@@ -61,6 +62,7 @@ namespace AQuestReborn
                             {
                                 _character = charObj;
                                 _cachedObjectIndex = charObj.ObjectIndex;
+                                _posing = null; // Force Brio capability re-acquisition!
                                 return charObj.Address;
                             }
                         }
@@ -226,13 +228,22 @@ namespace AQuestReborn
         public string LastAppearance { get; internal set; }
         public bool LooksAtPlayer { get; internal set; }
         public bool ShouldBeMoving { get => _shouldBeMoving; set => _shouldBeMoving = value; }
+        /// <summary>
+        /// When true, the idle emote system and movement-stop transitions in Framework_Update
+        /// will not override the currently playing animation. Used by paired animations.
+        /// </summary>
+        public bool AnimationLocked { get; set; }
         public ICharacter Character
         {
             get => _character;
             set
             {
-                _character = value;
-                _cachedObjectIndex = value?.ObjectIndex ?? ushort.MaxValue;
+                if (_character != value)
+                {
+                    _character = value;
+                    _cachedObjectIndex = value?.ObjectIndex ?? ushort.MaxValue;
+                    _posing = null; // Re-acquire Brio on character change
+                }
             }
         }
         public EventMovementAnimation EventMovementAnimationType { get => _eventMovementAnimationType; set => _eventMovementAnimationType = value; }
@@ -432,6 +443,7 @@ namespace AQuestReborn
                             }
 
                             // Also enforce the DrawObject's internal hidden flag
+                            bool needsRedraw = false;
                             if (go->DrawObject != null)
                             {
                                 if ((go->DrawObject->Flags & 0x10) != 0)
@@ -439,11 +451,35 @@ namespace AQuestReborn
                                     go->DrawObject->Flags &= unchecked((byte)~0x10);
                                     needsEnableDraw = true;
                                 }
+                                
+                                var charBase = (FFXIVClientStructs.FFXIV.Client.Graphics.Scene.CharacterBase*)go->DrawObject;
+                                if (charBase->Skeleton == null)
+                                {
+                                    needsRedraw = true;
+                                }
+                            }
+                            else
+                            {
+                                needsRedraw = true;
                             }
                             
                             if (needsEnableDraw)
                             {
                                 go->EnableDraw();
+                            }
+
+                            // If the mesh is completely gone, flags won't save it. We must force a full redraw.
+                            if (needsRedraw)
+                            {
+                                if (!_redrawCooldown.IsRunning || _redrawCooldown.ElapsedMilliseconds > 3000)
+                                {
+                                    _redrawCooldown.Restart();
+                                    try
+                                    {
+                                        PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke((int)_cachedObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                                    }
+                                    catch { }
+                                }
                             }
                             
                             if (_plugin.ObjectTable.LocalPlayer == null || !_plugin.ObjectTable.LocalPlayer.IsValid()) return;
@@ -1103,7 +1139,8 @@ namespace AQuestReborn
                                             _idleEmotePlaying = false;
                                             _idleTimer.Restart();
                                             _idleThresholdMs = 20000 + new Random().Next(20000); // 20-40 seconds
-                                            _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, ContextBasedMovementId(false));
+                                            if (!AnimationLocked)
+                                                _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, ContextBasedMovementId(false));
                                         }
                                         // Trigger idle emote after threshold
                                         ushort selectedEmoteId = _idleEmoteId;
@@ -1112,7 +1149,7 @@ namespace AQuestReborn
                                             selectedEmoteId = RandomIdleEmotes[new System.Random().Next(RandomIdleEmotes.Count)];
                                         }
 
-                                        if (selectedEmoteId > 0 && !_idleEmotePlaying && _idleTimer.ElapsedMilliseconds > _idleThresholdMs && !Conditions.Instance()->Swimming && !Conditions.Instance()->Diving)
+                                        if (selectedEmoteId > 0 && !_idleEmotePlaying && !AnimationLocked && _idleTimer.ElapsedMilliseconds > _idleThresholdMs && !Conditions.Instance()->Swimming && !Conditions.Instance()->Diving)
                                         {
                                             try
                                             {

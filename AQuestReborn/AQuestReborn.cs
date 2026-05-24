@@ -114,6 +114,7 @@ namespace AQuestReborn
         private Dictionary<string, (InteractiveNpc Npc, ICharacter Character)> _hiddenNpcPool = new Dictionary<string, (InteractiveNpc, ICharacter)>();
         private Dictionary<string, int> _penumbraRetryCounts = new Dictionary<string, int>();
         private Stopwatch _groundMapTimer = Stopwatch.StartNew();
+        private PairedAnimationManager _pairedAnimationManager;
 
         // Tail objective state
         private bool _tailObjectiveActive;
@@ -126,6 +127,7 @@ namespace AQuestReborn
         public AQuestReborn(Plugin plugin)
         {
             Plugin = plugin;
+            _pairedAnimationManager = new PairedAnimationManager(plugin, this);
             plugin.RoleplayingQuestManager.LoadMainQuestGameObject(new QuestGameObject(plugin.ObjectTable, plugin.ClientState));
             Plugin.DialogueBackgroundWindow.ButtonClicked += DialogueBackgroundWindow_buttonClicked;
             Plugin.ObjectiveWindow.OnSelectionAttempt += DialogueBackgroundWindow_buttonClicked;
@@ -2660,6 +2662,15 @@ namespace AQuestReborn
             if (_customNpcCharacters.Count == 0)
             {
                 Plugin.ChatGui.PrintError("[A Quest Reborn] No custom NPCs are currently summoned.");
+                return;
+            }
+
+            // Check for paired animation commands BEFORE sending to AI chat
+            if (_pairedAnimationManager != null &&
+                _pairedAnimationManager.TryTriggerPairedAnimation(message, sender))
+            {
+                // Show the player's message bubble, then return — the animation handles the response
+                Plugin.SpeechBubbleManager.ShowBubble(sender, sender.Name.TextValue, message);
                 return;
             }
 

@@ -1,0 +1,513 @@
+using AQuestReborn.CustomNpc;
+using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Game.ClientState.Objects.Types;
+using Glamourer.Api.Enums;
+using SamplePlugin;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Numerics;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace AQuestReborn
+{
+    /// <summary>
+    /// Handles paired/coordinated animations between Custom NPCs and their partners
+    /// (either the player or another NPC). When a trigger phrase is matched in chat,
+    /// the NPC walks to the partner, both face each other, and both play their
+    /// respective animations simultaneously.
+    /// </summary>
+    internal class PairedAnimationManager
+    {
+        private readonly Plugin _plugin;
+        private readonly AQuestReborn _aqr;
+
+        /// <summary>
+        /// Distance in yalms at which the NPC stops walking and begins the paired animation.
+        /// </summary>
+        private const float PairDistance = 1.2f;
+
+        /// <summary>
+        /// Maximum distance in yalms from the partner that the NPC will react to a trigger phrase.
+        /// If the NPC is further away, it will be ignored.
+        /// </summary>
+        private const float MaxTriggerRange = 30f;
+
+        /// <summary>
+        /// Tracks which NPCs are currently performing a paired animation to prevent re-triggering.
+        /// </summary>
+        private readonly HashSet<string> _activeAnimations = new HashSet<string>();
+
+        public PairedAnimationManager(Plugin plugin, AQuestReborn aqr)
+        {
+            _plugin = plugin;
+            _aqr = aqr;
+        }
+
+        /// <summary>
+        /// Check a player message for paired animation triggers across all summoned Custom NPCs.
+        /// Returns true if a paired animation was triggered (caller should skip AI chat).
+        /// </summary>
+        public bool TryTriggerPairedAnimation(string message, IPlayerCharacter sender)
+        {
+            if (string.IsNullOrWhiteSpace(message) || sender == null) return false;
+
+            string lowerMessage = message.ToLower().Trim();
+
+            foreach (var npcData in _plugin.Configuration.CustomNpcCharacters)
+            {
+                if (npcData.PairedAnimations == null || npcData.PairedAnimations.Count == 0)
+                    continue;
+
+                // Check if this NPC is summoned
+                if (!_aqr.InteractiveNpcDictionary.ContainsKey(npcData.NpcName))
+                    continue;
+                if (!_aqr.CustomNpcCharacters.ContainsKey(npcData.NpcName))
+                    continue;
+
+                // Skip if this NPC is already performing a paired animation
+                if (_activeAnimations.Contains(npcData.NpcName))
+                    continue;
+
+                var interactiveNpc = _aqr.InteractiveNpcDictionary[npcData.NpcName];
+                var npcCharacter = _aqr.CustomNpcCharacters[npcData.NpcName];
+
+                foreach (var config in npcData.PairedAnimations)
+                {
+                    if (string.IsNullOrWhiteSpace(config.TriggerPhrase))
+                        continue;
+                    if (config.NpcEmoteId == 0)
+                        continue;
+
+                    // Case-insensitive phrase match: the message must contain the trigger phrase
+                    if (!lowerMessage.Contains(config.TriggerPhrase.ToLower().Trim()))
+                        continue;
+
+                    // Determine partner
+                    if (string.IsNullOrEmpty(config.PartnerNpcName))
+                    {
+                        // Partner is the player
+                        float distToPlayer = Vector3.Distance(interactiveNpc.CurrentPosition, sender.Position);
+                        if (distToPlayer > MaxTriggerRange) continue;
+
+                        // Trigger the paired animation (NPC walks to player, then both animate)
+                        ExecutePlayerPairedAnimation(interactiveNpc, npcData, npcCharacter, config, sender);
+                        return true;
+                    }
+                    else
+                    {
+                        // Partner is another NPC
+                        if (!_aqr.InteractiveNpcDictionary.ContainsKey(config.PartnerNpcName))
+                            continue;
+                        if (!_aqr.CustomNpcCharacters.ContainsKey(config.PartnerNpcName))
+                            continue;
+
+                        var partnerNpc = _aqr.InteractiveNpcDictionary[config.PartnerNpcName];
+                        var partnerCharacter = _aqr.CustomNpcCharacters[config.PartnerNpcName];
+
+                        float distBetween = Vector3.Distance(interactiveNpc.CurrentPosition, partnerNpc.CurrentPosition);
+                        if (distBetween > MaxTriggerRange) continue;
+
+                        ExecuteNpcPairedAnimation(interactiveNpc, npcData, npcCharacter,
+                            partnerNpc, config.PartnerNpcName, partnerCharacter, config);
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Execute a paired animation between an NPC and the player.
+        /// The NPC walks to the player, both face each other, and both play their emotes.
+        /// </summary>
+        private void ExecutePlayerPairedAnimation(
+            InteractiveNpc npc, CustomNpcCharacter npcData, ICharacter npcCharacter,
+            PairedAnimationConfig config, IPlayerCharacter player)
+        {
+            _activeAnimations.Add(npcData.NpcName);
+
+            // Show a speech bubble so it doesn't look like the NPC just randomly walks over
+            _plugin.SpeechBubbleManager?.ShowBubble(npcCharacter, npcData.NpcName, GetApproachBubble());
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    bool wasFollowing = npc.IsFollowingPlayer;
+
+                    // Stop following so the NPC doesn't fight our movement commands
+                    npc.StopFollowingPlayer();
+
+                    // Walk to the player's exact position for paired animation alignment.
+                    Vector3 targetPos = player.Position;
+                    Vector3 faceRot = CoordinateUtility.LookAt(npc.CurrentPosition, player.Position).QuaternionToEuler();
+
+                    // WalkToTarget sets _shouldBeMoving = true.
+                    // Then SetDefaults sets _defaultPosition (the Lerp target).
+                    // Because _shouldBeMoving is true, SetDefaults will NOT snap _currentPosition.
+                    _plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        npc.WalkToTarget(targetPos, 5f);
+                        npc.SetDefaults(targetPos, faceRot, 5f);
+                    });
+
+                    // Wait for the NPC to arrive
+                    var arrivalTimeout = Stopwatch.StartNew();
+                    while (arrivalTimeout.ElapsedMilliseconds < 15000)
+                    {
+                        float dist = Vector3.Distance(npc.CurrentPosition, targetPos);
+                        if (dist < 0.15f) break;
+                        await Task.Delay(50);
+                    }
+
+                    // Let the idle Lerp pull the NPC the final fraction
+                    await Task.Delay(500);
+
+                    // Stop the walk and break any idle emote
+                    _plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        npc.ShouldBeMoving = false;
+                        _plugin.AnamcoreManager.ForceStopEmote(npcCharacter.Address);
+                    });
+
+                    await Task.Delay(200);
+
+                    // Lock the NPC's animation so idle emotes don't override it
+                    string savedNpcState = null;
+                    string savedPlayerState = null;
+
+                    _plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        npc.AnimationLocked = true;
+
+                        // Save current states before applying designs
+                        if (!string.IsNullOrEmpty(config.NpcGlamourerDesign))
+                            savedNpcState = SaveGlamourerState(npcCharacter);
+                        if (!string.IsNullOrEmpty(config.PartnerGlamourerDesign))
+                            savedPlayerState = SaveGlamourerState(player);
+
+                        // Apply Glamourer designs if configured
+                        ApplyGlamourerDesign(config.NpcGlamourerDesign, npcCharacter);
+                        ApplyGlamourerDesign(config.PartnerGlamourerDesign, player);
+
+                        // Resolve Emote RowIds → ActionTimeline RowIds
+                        ushort npcTimelineId = ResolveEmoteToTimeline(config.NpcEmoteId);
+                        ushort partnerTimelineId = ResolveEmoteToTimeline(config.PartnerEmoteId);
+
+                        // NPC plays their animation
+                        if (npcTimelineId > 0)
+                            _plugin.AnamcoreManager.TriggerEmote(npcCharacter.Address, npcTimelineId, config.LoopAnimation);
+
+                        // Player plays their animation (if configured)
+                        if (partnerTimelineId > 0 && player.Address != nint.Zero)
+                        {
+                            _plugin.AnamcoreManager.TriggerEmote(player.Address, partnerTimelineId, config.LoopAnimation);
+                        }
+                    });
+
+                    // Monitor for player movement or duration expiry.
+                    // If the player moves, cancel the animation immediately.
+                    Vector3 animStartPos = player.Position;
+                    var animTimer = Stopwatch.StartNew();
+                    int maxDurationMs = config.UseDuration
+                        ? (config.LoopAnimation ? config.DurationMs : Math.Max(config.DurationMs, 5000))
+                        : int.MaxValue;
+
+                    while (animTimer.ElapsedMilliseconds < maxDurationMs)
+                    {
+                        // Check if player moved
+                        float movedDist = Vector3.Distance(player.Position, animStartPos);
+                        if (movedDist > 0.5f)
+                            break;
+
+                        await Task.Delay(100);
+                    }
+
+                    // Cleanup: stop animations, restore glamour, and restore state
+                    _plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        npc.AnimationLocked = false;
+                        _plugin.AnamcoreManager.ForceStopEmote(npcCharacter.Address);
+
+                        if (config.PartnerEmoteId > 0 && player.Address != nint.Zero)
+                        {
+                            _plugin.AnamcoreManager.ForceStopEmote(player.Address);
+                        }
+
+                        // Restore saved Glamourer states
+                        RestoreGlamourerState(npcCharacter, savedNpcState);
+                        RestoreGlamourerState(player, savedPlayerState);
+
+                        if (wasFollowing)
+                        {
+                            npc.FollowPlayer(2);
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _plugin.PluginLog.Warning(ex, "[PairedAnimation] Error during player paired animation");
+                }
+                finally
+                {
+                    _activeAnimations.Remove(npcData.NpcName);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Execute a paired animation between two NPCs.
+        /// NPC B walks to NPC A, both face each other, and both play their emotes.
+        /// </summary>
+        private void ExecuteNpcPairedAnimation(
+            InteractiveNpc npcA, CustomNpcCharacter npcDataA, ICharacter npcCharacterA,
+            InteractiveNpc npcB, string npcNameB, ICharacter npcCharacterB,
+            PairedAnimationConfig config)
+        {
+            _activeAnimations.Add(npcDataA.NpcName);
+            _activeAnimations.Add(npcNameB);
+
+            // Show a speech bubble on the initiating NPC
+            _plugin.SpeechBubbleManager?.ShowBubble(npcCharacterA, npcDataA.NpcName, GetApproachBubble());
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    bool wasFollowingA = npcA.IsFollowingPlayer;
+                    bool wasFollowingB = npcB.IsFollowingPlayer;
+
+                    // Stop both from following
+                    npcA.StopFollowingPlayer();
+                    npcB.StopFollowingPlayer();
+
+                    // NPC B walks to NPC A's exact position for paired animation alignment
+                    Vector3 npcAPos = npcA.CurrentPosition;
+                    Vector3 targetPosB = npcAPos;
+                    Vector3 bFaceA = CoordinateUtility.LookAt(npcB.CurrentPosition, npcAPos).QuaternionToEuler();
+
+                    _plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        npcB.WalkToTarget(targetPosB, 5f);
+                        npcB.SetDefaults(targetPosB, bFaceA, 5f);
+                    });
+
+                    // Wait for NPC B to arrive
+                    var arrivalTimeout = Stopwatch.StartNew();
+                    while (arrivalTimeout.ElapsedMilliseconds < 15000)
+                    {
+                        float dist = Vector3.Distance(npcB.CurrentPosition, targetPosB);
+                        if (dist < 0.15f) break;
+                        await Task.Delay(50);
+                    }
+
+                    await Task.Delay(500);
+
+                    // Stop movement, break idle emotes
+                    _plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        npcB.ShouldBeMoving = false;
+                        _plugin.AnamcoreManager.ForceStopEmote(npcCharacterA.Address);
+                        _plugin.AnamcoreManager.ForceStopEmote(npcCharacterB.Address);
+                    });
+
+                    await Task.Delay(200);
+
+                    // Lock both NPCs' animations
+                    string savedNpcAState = null;
+                    string savedNpcBState = null;
+
+                    _plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        npcA.AnimationLocked = true;
+                        npcB.AnimationLocked = true;
+
+                        // Save current states before applying designs
+                        if (!string.IsNullOrEmpty(config.NpcGlamourerDesign))
+                            savedNpcAState = SaveGlamourerState(npcCharacterA);
+                        if (!string.IsNullOrEmpty(config.PartnerGlamourerDesign))
+                            savedNpcBState = SaveGlamourerState(npcCharacterB);
+
+                        // Apply Glamourer designs if configured
+                        ApplyGlamourerDesign(config.NpcGlamourerDesign, npcCharacterA);
+                        ApplyGlamourerDesign(config.PartnerGlamourerDesign, npcCharacterB);
+
+                        ushort npcTimelineId = ResolveEmoteToTimeline(config.NpcEmoteId);
+                        ushort partnerTimelineId = ResolveEmoteToTimeline(config.PartnerEmoteId);
+
+                        if (npcTimelineId > 0)
+                            _plugin.AnamcoreManager.TriggerEmote(npcCharacterA.Address, npcTimelineId, config.LoopAnimation);
+
+                        if (partnerTimelineId > 0)
+                        {
+                            _plugin.AnamcoreManager.TriggerEmote(npcCharacterB.Address, partnerTimelineId, config.LoopAnimation);
+                        }
+                    });
+
+                    if (config.UseDuration)
+                    {
+                        int waitTime = config.LoopAnimation ? config.DurationMs : Math.Max(config.DurationMs, 5000);
+                        await Task.Delay(waitTime);
+                    }
+                    else
+                    {
+                        // No duration, so wait indefinitely (task stays alive for finally block)
+                        await Task.Delay(Timeout.Infinite);
+                    }
+
+                    // Cleanup: stop animations, restore glamour, and restore state
+                    _plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        npcA.AnimationLocked = false;
+                        npcB.AnimationLocked = false;
+                        _plugin.AnamcoreManager.ForceStopEmote(npcCharacterA.Address);
+                        _plugin.AnamcoreManager.ForceStopEmote(npcCharacterB.Address);
+
+                        // Restore saved Glamourer states
+                        RestoreGlamourerState(npcCharacterA, savedNpcAState);
+                        RestoreGlamourerState(npcCharacterB, savedNpcBState);
+
+                        if (wasFollowingA) npcA.FollowPlayer(2);
+                        if (wasFollowingB) npcB.FollowPlayer(2);
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _plugin.PluginLog.Warning(ex, "[PairedAnimation] Error during NPC-NPC paired animation");
+                }
+                finally
+                {
+                    _activeAnimations.Remove(npcDataA.NpcName);
+                    _activeAnimations.Remove(npcNameB);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Calculate a world position that is a given distance directly in front of a character
+        /// based on their rotation (yaw in radians, FFXIV convention).
+        /// </summary>
+        private Vector3 GetPositionInFrontOf(Vector3 position, float rotationRadians, float distance)
+        {
+            // FFXIV rotation: 0 = south, positive = counter-clockwise
+            // Forward direction in FFXIV is -sin(rot) on X, -cos(rot) on Z
+            float frontX = position.X - MathF.Sin(rotationRadians) * distance;
+            float frontZ = position.Z - MathF.Cos(rotationRadians) * distance;
+            return new Vector3(frontX, position.Y, frontZ);
+        }
+
+        /// <summary>
+        /// Returns a random short approach line for the NPC's speech bubble.
+        /// </summary>
+        private string GetApproachBubble()
+        {
+            string[] lines = new[]
+            {
+                "Of course!",
+                "Sure, let's do it!",
+                "I'd love to!",
+                "Right away!",
+                "With pleasure!",
+                "You got it!",
+                "Let's go!",
+                "Gladly!",
+            };
+            return lines[Random.Shared.Next(lines.Length)];
+        }
+
+        /// <summary>
+        /// Resolve an Emote RowId to its ActionTimeline RowId for animation playback.
+        /// Returns 0 if the emote is not found or has no ActionTimeline.
+        /// </summary>
+        private ushort ResolveEmoteToTimeline(ushort emoteRowId)
+        {
+            if (emoteRowId == 0) return 0;
+            try
+            {
+                var emoteSheet = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>();
+                if (emoteSheet == null) return 0;
+                var emote = emoteSheet.GetRow(emoteRowId);
+                if (emote.RowId > 0 && emote.ActionTimeline[0].Value.RowId > 0)
+                {
+                    return (ushort)emote.ActionTimeline[0].Value.RowId;
+                }
+            }
+            catch { }
+            return 0;
+        }
+
+        /// <summary>
+        /// Apply a Glamourer design by name to a character. Returns true if successful.
+        /// </summary>
+        private bool ApplyGlamourerDesign(string designName, ICharacter character)
+        {
+            if (string.IsNullOrEmpty(designName) || character == null) return false;
+            try
+            {
+                var designs = PenumbraAndGlamourerHelpers.PenumbraAndGlamourerHelperFunctions.GetGlamourerDesigns();
+                foreach (var design in designs)
+                {
+                    if (design.Value.Equals(designName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        PenumbraAndGlamourerIpcWrapper.Instance.ApplyDesign.Invoke(design.Key, character.ObjectIndex);
+                        return true;
+                    }
+                }
+                _plugin.PluginLog.Warning($"[PairedAnimation] Glamourer design '{designName}' not found.");
+            }
+            catch (Exception ex)
+            {
+                _plugin.PluginLog.Warning(ex, $"[PairedAnimation] Failed to apply Glamourer design '{designName}'");
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Save a character's current Glamourer state (base64) so it can be restored later.
+        /// Returns the base64 string, or null on failure.
+        /// </summary>
+        private string SaveGlamourerState(ICharacter character)
+        {
+            if (character == null) return null;
+            try
+            {
+                var result = PenumbraAndGlamourerIpcWrapper.Instance.GetStateBase64.Invoke(character.ObjectIndex);
+                return result.Item2;
+            }
+            catch (Exception ex)
+            {
+                _plugin.PluginLog.Warning(ex, "[PairedAnimation] Failed to save Glamourer state");
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Restore a character's Glamourer state from a previously saved base64 string.
+        /// </summary>
+        private void RestoreGlamourerState(ICharacter character, string savedState)
+        {
+            if (character == null || string.IsNullOrEmpty(savedState)) return;
+            try
+            {
+                PenumbraAndGlamourerIpcWrapper.Instance.ApplyState.Invoke(savedState, character.ObjectIndex, 0,
+                    ApplyFlag.Equipment | ApplyFlag.Customization);
+            }
+            catch (Exception ex)
+            {
+                _plugin.PluginLog.Warning(ex, "[PairedAnimation] Failed to restore Glamourer state");
+            }
+        }
+
+        /// <summary>
+        /// Whether a specific NPC is currently performing a paired animation.
+        /// </summary>
+        public bool IsNpcInPairedAnimation(string npcName)
+        {
+            return _activeAnimations.Contains(npcName);
+        }
+    }
+}
