@@ -144,7 +144,8 @@ namespace AQuestReborn
 
                     // Walk to the player's exact position for paired animation alignment.
                     Vector3 targetPos = player.Position;
-                    Vector3 faceRot = CoordinateUtility.LookAt(npc.CurrentPosition, player.Position).QuaternionToEuler();
+                    // Face toward the player while walking (travel direction)
+                    Vector3 walkFaceRot = CoordinateUtility.LookAt(npc.CurrentPosition, player.Position).QuaternionToEuler();
 
                     // WalkToTarget sets _shouldBeMoving = true.
                     // Then SetDefaults sets _defaultPosition (the Lerp target).
@@ -152,7 +153,7 @@ namespace AQuestReborn
                     _plugin.Framework.RunOnFrameworkThread(() =>
                     {
                         npc.WalkToTarget(targetPos, 5f);
-                        npc.SetDefaults(targetPos, faceRot, 5f);
+                        npc.SetDefaults(targetPos, walkFaceRot, 5f);
                     });
 
                     // Wait for the NPC to arrive
@@ -164,7 +165,16 @@ namespace AQuestReborn
                         await Task.Delay(50);
                     }
 
-                    // Let the idle Lerp pull the NPC the final fraction
+                    // Match the player's rotation so the NPC faces the same direction
+                    // player.Rotation is in radians, but SetDefaults expects degrees
+                    float playerRotDegrees = player.Rotation * (180f / MathF.PI);
+                    Vector3 playerRotation = new Vector3(0, playerRotDegrees, 0);
+                    _plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        npc.SetDefaults(targetPos, playerRotation, 5f);
+                    });
+
+                    // Let the idle Lerp pull the NPC to final position and rotation
                     await Task.Delay(500);
 
                     // Stop the walk and break any idle emote
@@ -288,12 +298,13 @@ namespace AQuestReborn
                     // NPC B walks to NPC A's exact position for paired animation alignment
                     Vector3 npcAPos = npcA.CurrentPosition;
                     Vector3 targetPosB = npcAPos;
-                    Vector3 bFaceA = CoordinateUtility.LookAt(npcB.CurrentPosition, npcAPos).QuaternionToEuler();
+                    // Face toward NPC A while walking (travel direction)
+                    Vector3 walkFaceRot = CoordinateUtility.LookAt(npcB.CurrentPosition, npcAPos).QuaternionToEuler();
 
                     _plugin.Framework.RunOnFrameworkThread(() =>
                     {
                         npcB.WalkToTarget(targetPosB, 5f);
-                        npcB.SetDefaults(targetPosB, bFaceA, 5f);
+                        npcB.SetDefaults(targetPosB, walkFaceRot, 5f);
                     });
 
                     // Wait for NPC B to arrive
@@ -304,6 +315,12 @@ namespace AQuestReborn
                         if (dist < 0.15f) break;
                         await Task.Delay(50);
                     }
+
+                    // Match NPC A's rotation so both face the same direction
+                    _plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        npcB.SetDefaults(targetPosB, npcA.CurrentRotation, 5f);
+                    });
 
                     await Task.Delay(500);
 
