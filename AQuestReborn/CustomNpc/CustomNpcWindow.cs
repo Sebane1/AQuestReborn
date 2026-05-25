@@ -391,6 +391,7 @@ namespace AQuestReborn.CustomNpc
             Plugin.Configuration.Save();
         }
 
+
         private void DrawListBox()
         {
             ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
@@ -1071,6 +1072,19 @@ namespace AQuestReborn.CustomNpc
                                         }
                                         ImGui.EndChild();
 
+                                        // NPC /cpose sub-animation selector
+                                        if (pa.NpcEmoteId > 0)
+                                        {
+                                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                                            if (ImGui.InputInt("NPC Pose Variant##npcCpose", ref pa.NpcCposeIndex))
+                                            {
+                                                if (pa.NpcCposeIndex < 0) pa.NpcCposeIndex = 0;
+                                                SaveNPCCharacters();
+                                            }
+                                            if (ImGui.IsItemHovered())
+                                                ImGui.SetTooltip("/cpose sub-animation index. 0 = default pose.");
+                                        }
+
                                         // Partner Emote (search + scrollable list)
                                         ImGui.LabelText("##partnerEmoteLabel", Translator.LocalizeUI("Partner Emote"));
                                         int partnerEmoteIdx = Array.IndexOf(_idleEmoteRowIds, pa.PartnerEmoteId);
@@ -1095,6 +1109,19 @@ namespace AQuestReborn.CustomNpc
                                             }
                                         }
                                         ImGui.EndChild();
+
+                                        // Partner /cpose sub-animation selector
+                                        if (pa.PartnerEmoteId > 0)
+                                        {
+                                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                                            if (ImGui.InputInt("Partner Pose Variant##partnerCpose", ref pa.PartnerCposeIndex))
+                                            {
+                                                if (pa.PartnerCposeIndex < 0) pa.PartnerCposeIndex = 0;
+                                                SaveNPCCharacters();
+                                            }
+                                            if (ImGui.IsItemHovered())
+                                                ImGui.SetTooltip("/cpose sub-animation index. 0 = default pose.");
+                                        }
 
                                         // Partner NPC Name (optional)
                                         ImGui.LabelText("##partnerLabel", "Partner NPC Name (optional)");

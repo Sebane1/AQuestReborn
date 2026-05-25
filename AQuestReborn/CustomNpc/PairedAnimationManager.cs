@@ -175,7 +175,7 @@ namespace AQuestReborn
                     });
 
                     // Let the idle Lerp pull the NPC to final position and rotation
-                    await Task.Delay(500);
+                    await Task.Delay(100);
 
                     // Stop the walk and break any idle emote
                     _plugin.Framework.RunOnFrameworkThread(() =>
@@ -204,9 +204,13 @@ namespace AQuestReborn
                         ApplyGlamourerDesign(config.NpcGlamourerDesign, npcCharacter);
                         ApplyGlamourerDesign(config.PartnerGlamourerDesign, player);
 
-                        // Resolve Emote RowIds → ActionTimeline RowIds
+                        // Resolve Emote RowIds → ActionTimeline RowIds, applying cpose variant if set
                         ushort npcTimelineId = ResolveEmoteToTimeline(config.NpcEmoteId);
+                        if (config.NpcCposeIndex > 0)
+                            npcTimelineId = ResolveCposeTimeline(npcTimelineId, config.NpcCposeIndex);
                         ushort partnerTimelineId = ResolveEmoteToTimeline(config.PartnerEmoteId);
+                        if (config.PartnerCposeIndex > 0)
+                            partnerTimelineId = ResolveCposeTimeline(partnerTimelineId, config.PartnerCposeIndex);
 
                         // NPC plays their animation
                         if (npcTimelineId > 0)
@@ -214,9 +218,7 @@ namespace AQuestReborn
 
                         // Player plays their animation (if configured)
                         if (partnerTimelineId > 0 && player.Address != nint.Zero)
-                        {
                             _plugin.AnamcoreManager.TriggerEmote(player.Address, partnerTimelineId, config.LoopAnimation);
-                        }
                     });
 
                     // Monitor for player movement or duration expiry.
@@ -322,7 +324,7 @@ namespace AQuestReborn
                         npcB.SetDefaults(targetPosB, npcA.CurrentRotation, 5f);
                     });
 
-                    await Task.Delay(500);
+                    await Task.Delay(100);
 
                     // Stop movement, break idle emotes
                     _plugin.Framework.RunOnFrameworkThread(() =>
@@ -354,15 +356,17 @@ namespace AQuestReborn
                         ApplyGlamourerDesign(config.PartnerGlamourerDesign, npcCharacterB);
 
                         ushort npcTimelineId = ResolveEmoteToTimeline(config.NpcEmoteId);
+                        if (config.NpcCposeIndex > 0)
+                            npcTimelineId = ResolveCposeTimeline(npcTimelineId, config.NpcCposeIndex);
                         ushort partnerTimelineId = ResolveEmoteToTimeline(config.PartnerEmoteId);
+                        if (config.PartnerCposeIndex > 0)
+                            partnerTimelineId = ResolveCposeTimeline(partnerTimelineId, config.PartnerCposeIndex);
 
                         if (npcTimelineId > 0)
                             _plugin.AnamcoreManager.TriggerEmote(npcCharacterA.Address, npcTimelineId, config.LoopAnimation);
 
                         if (partnerTimelineId > 0)
-                        {
                             _plugin.AnamcoreManager.TriggerEmote(npcCharacterB.Address, partnerTimelineId, config.LoopAnimation);
-                        }
                     });
 
                     if (config.UseDuration)
@@ -456,6 +460,62 @@ namespace AQuestReborn
             catch { }
             return 0;
         }
+
+        /// <summary>
+        /// Resolve an emote's ActionTimeline to a /cpose variant.
+        /// The base timeline key (e.g. "emote/jmn") tells us the emote family prefix (e.g. "j" for groundsit).
+        /// Cpose variants are separate ActionTimeline entries with keys like "emote/j_pose01_loop".
+        /// We construct the variant key and search the ActionTimeline sheet for it.
+        /// </summary>
+        private ushort ResolveCposeTimeline(ushort baseTimelineId, int cposeIndex)
+        {
+            if (baseTimelineId == 0 || cposeIndex <= 0) return baseTimelineId;
+            try
+            {
+                var timelineSheet = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.ActionTimeline>();
+                if (timelineSheet == null) return baseTimelineId;
+
+                var baseTimeline = timelineSheet.GetRow(baseTimelineId);
+                string baseKey = baseTimeline.Key.ToString();
+                if (string.IsNullOrEmpty(baseKey)) return baseTimelineId;
+
+                // Extract the emote prefix from the key
+                // Base keys look like "emote/jmn" (groundsit), "emote/lmn" (doze), etc.
+                // The prefix letter(s) before "mn" indicate the emote family
+                string prefix = "";
+                if (baseKey.StartsWith("emote/"))
+                {
+                    string afterEmote = baseKey.Substring(6);
+                    foreach (char c in afterEmote)
+                    {
+                        if (char.IsLetter(c))
+                            prefix += c;
+                        else
+                            break;
+                    }
+                    // Strip the "mn" suffix to get the family prefix
+                    // "jmn" -> "j", "lmn" -> "l"
+                    if (prefix.EndsWith("mn"))
+                        prefix = prefix.Substring(0, prefix.Length - 2);
+                }
+
+                if (string.IsNullOrEmpty(prefix))
+                    return baseTimelineId;
+
+                // Construct the cpose variant key: "emote/{prefix}_pose{XX}_loop"
+                string targetKey = "emote/" + prefix + "_pose" + cposeIndex.ToString("D2") + "_loop";
+
+                // Search the ActionTimeline sheet for the matching key
+                foreach (var timeline in timelineSheet)
+                {
+                    if (timeline.Key.ToString() == targetKey)
+                        return (ushort)timeline.RowId;
+                }
+            }
+            catch { }
+            return baseTimelineId;
+        }
+
 
         /// <summary>
         /// Apply a Glamourer design by name to a character. Returns true if successful.

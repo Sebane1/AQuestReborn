@@ -24,10 +24,22 @@ namespace AQuestReborn.CustomNpc
         public ushort NpcEmoteId = 0;
 
         /// <summary>
+        /// The /cpose sub-animation index for the NPC's emote.
+        /// 0 = default pose, 1+ = alternate poses (if the emote supports them).
+        /// </summary>
+        public int NpcCposeIndex = 0;
+
+        /// <summary>
         /// The Emote RowId for the PARTNER's animation (player or another NPC).
         /// The ActionTimeline ID is resolved automatically from this at runtime.
         /// </summary>
         public ushort PartnerEmoteId = 0;
+
+        /// <summary>
+        /// The /cpose sub-animation index for the partner's emote.
+        /// 0 = default pose, 1+ = alternate poses (if the emote supports them).
+        /// </summary>
+        public int PartnerCposeIndex = 0;
 
         /// <summary>
         /// Optional: name of a specific partner NPC. If empty, the player is the partner.
