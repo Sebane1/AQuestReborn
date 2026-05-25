@@ -1158,6 +1158,18 @@ namespace AQuestReborn.CustomNpc
                                                 ImGui.SetTooltip("How long the animation plays before the NPC returns to normal.");
                                         }
 
+                                        // Approach delay
+                                        ImGui.LabelText("##approachDelayLabel", "Approach Delay (seconds)");
+                                        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                                        int approachSec = pa.ApproachDelayMs / 1000;
+                                        if (ImGui.SliderInt("##approachDelay", ref approachSec, 0, 10))
+                                        {
+                                            pa.ApproachDelayMs = approachSec * 1000;
+                                            SaveNPCCharacters();
+                                        }
+                                        if (ImGui.IsItemHovered())
+                                            ImGui.SetTooltip("How long the NPC waits after turning and speaking\nbefore walking to the partner. 0 = walk immediately.");
+
                                         ImGui.Dummy(new Vector2(0, 3));
                                         ImGui.Separator();
                                         ImGui.TextColored(new Vector4(0.8f, 0.7f, 0.3f, 1f), "Glamourer Designs (optional)");
@@ -1177,6 +1189,17 @@ namespace AQuestReborn.CustomNpc
                                             SaveNPCCharacters();
                                         if (ImGui.IsItemHovered())
                                             ImGui.SetTooltip("Name of a Glamourer design to apply to the partner (player or NPC) during the animation.\nLeave empty for no change. Reverted when animation ends.");
+
+                                        ImGui.Dummy(new Vector2(0, 3));
+                                        ImGui.Separator();
+                                        ImGui.TextColored(new Vector4(0.3f, 0.7f, 0.8f, 1f), "Penumbra Mod (optional)");
+
+                                        ImGui.LabelText("##penumbraModLabel", "Mod Name Filter");
+                                        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                                        if (ImGui.InputTextWithHint("##penumbraMod", "e.g. Meal Time", ref pa.PenumbraModFilter, 200))
+                                            SaveNPCCharacters();
+                                        if (ImGui.IsItemHovered())
+                                            ImGui.SetTooltip("Partial name of a Penumbra mod to enable during this animation.\nConflicting mods (same file paths) are disabled automatically.\nAll changes are reverted when the animation ends.\nLeave empty to skip.");
 
                                         ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.5f, 0.1f, 0.1f, 1f));
                                         ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.7f, 0.15f, 0.15f, 1f));

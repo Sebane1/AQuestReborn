@@ -76,6 +76,21 @@ namespace AQuestReborn.CustomNpc
         /// Empty means no appearance change. Reverted on cleanup.
         /// </summary>
         public string PartnerGlamourerDesign = "";
+
+        /// <summary>
+        /// Delay in milliseconds before the NPC starts walking to the partner.
+        /// Gives time for the NPC to turn, say their approach line, and then move.
+        /// 0 = no delay (walks immediately). Default: 3000ms (3 seconds).
+        /// </summary>
+        public int ApproachDelayMs = 3000;
+
+        /// <summary>
+        /// Partial name filter for a Penumbra mod to enable during this animation.
+        /// Matched case-insensitively against mod names. Any conflicting mods
+        /// (those affecting the same file paths) are disabled and restored on cleanup.
+        /// Leave empty to skip Penumbra mod management.
+        /// </summary>
+        public string PenumbraModFilter = "";
     }
 
     public class CustomNpcCharacter

@@ -130,9 +130,6 @@ namespace AQuestReborn
         {
             _activeAnimations.Add(npcData.NpcName);
 
-            // Show a speech bubble so it doesn't look like the NPC just randomly walks over
-            _plugin.SpeechBubbleManager?.ShowBubble(npcCharacter, npcData.NpcName, GetApproachBubble());
-
             Task.Run(async () =>
             {
                 try
@@ -142,14 +139,24 @@ namespace AQuestReborn
                     // Stop following so the NPC doesn't fight our movement commands
                     npc.StopFollowingPlayer();
 
+                    // Turn to face the player before speaking
+                    Vector3 facePlayerRot = CoordinateUtility.LookAt(npc.CurrentPosition, player.Position).QuaternionToEuler();
+                    _plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        npc.SetDefaults(npc.CurrentPosition, facePlayerRot, 5f);
+                    });
+
+                    // Show a speech bubble so it looks like the NPC is addressing the player
+                    _plugin.SpeechBubbleManager?.ShowBubble(npcCharacter, npcData.NpcName, GetApproachBubble());
+
+                    // Wait for the approach delay so the player can read the line
+                    if (config.ApproachDelayMs > 0)
+                        await Task.Delay(config.ApproachDelayMs);
+
                     // Walk to the player's exact position for paired animation alignment.
                     Vector3 targetPos = player.Position;
-                    // Face toward the player while walking (travel direction)
                     Vector3 walkFaceRot = CoordinateUtility.LookAt(npc.CurrentPosition, player.Position).QuaternionToEuler();
 
-                    // WalkToTarget sets _shouldBeMoving = true.
-                    // Then SetDefaults sets _defaultPosition (the Lerp target).
-                    // Because _shouldBeMoving is true, SetDefaults will NOT snap _currentPosition.
                     _plugin.Framework.RunOnFrameworkThread(() =>
                     {
                         npc.WalkToTarget(targetPos, 5f);
@@ -189,10 +196,14 @@ namespace AQuestReborn
                     // Lock the NPC's animation so idle emotes don't override it
                     string savedNpcState = null;
                     string savedPlayerState = null;
+                    List<string> disabledPenumbraMods = new List<string>();
 
                     _plugin.Framework.RunOnFrameworkThread(() =>
                     {
                         npc.AnimationLocked = true;
+
+                        // Enable Penumbra mod if configured (before glamourer to avoid conflicts)
+                        disabledPenumbraMods = EnablePenumbraMod(config.PenumbraModFilter);
 
                         // Save current states before applying designs
                         if (!string.IsNullOrEmpty(config.NpcGlamourerDesign))
@@ -254,6 +265,9 @@ namespace AQuestReborn
                         RestoreGlamourerState(npcCharacter, savedNpcState);
                         RestoreGlamourerState(player, savedPlayerState);
 
+                        // Restore Penumbra mods
+                        RestorePenumbraMods(config.PenumbraModFilter, disabledPenumbraMods);
+
                         if (wasFollowing)
                         {
                             npc.FollowPlayer(2);
@@ -283,9 +297,6 @@ namespace AQuestReborn
             _activeAnimations.Add(npcDataA.NpcName);
             _activeAnimations.Add(npcNameB);
 
-            // Show a speech bubble on the initiating NPC
-            _plugin.SpeechBubbleManager?.ShowBubble(npcCharacterA, npcDataA.NpcName, GetApproachBubble());
-
             Task.Run(async () =>
             {
                 try
@@ -297,10 +308,23 @@ namespace AQuestReborn
                     npcA.StopFollowingPlayer();
                     npcB.StopFollowingPlayer();
 
+                    // Turn NPC A to face NPC B before speaking
+                    Vector3 faceRot = CoordinateUtility.LookAt(npcA.CurrentPosition, npcB.CurrentPosition).QuaternionToEuler();
+                    _plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        npcA.SetDefaults(npcA.CurrentPosition, faceRot, 5f);
+                    });
+
+                    // Show a speech bubble on the initiating NPC
+                    _plugin.SpeechBubbleManager?.ShowBubble(npcCharacterA, npcDataA.NpcName, GetApproachBubble());
+
+                    // Wait for the approach delay so the bubble can be read
+                    if (config.ApproachDelayMs > 0)
+                        await Task.Delay(config.ApproachDelayMs);
+
                     // NPC B walks to NPC A's exact position for paired animation alignment
                     Vector3 npcAPos = npcA.CurrentPosition;
                     Vector3 targetPosB = npcAPos;
-                    // Face toward NPC A while walking (travel direction)
                     Vector3 walkFaceRot = CoordinateUtility.LookAt(npcB.CurrentPosition, npcAPos).QuaternionToEuler();
 
                     _plugin.Framework.RunOnFrameworkThread(() =>
@@ -339,11 +363,15 @@ namespace AQuestReborn
                     // Lock both NPCs' animations
                     string savedNpcAState = null;
                     string savedNpcBState = null;
+                    List<string> disabledPenumbraMods = new List<string>();
 
                     _plugin.Framework.RunOnFrameworkThread(() =>
                     {
                         npcA.AnimationLocked = true;
                         npcB.AnimationLocked = true;
+
+                        // Enable Penumbra mod if configured
+                        disabledPenumbraMods = EnablePenumbraMod(config.PenumbraModFilter);
 
                         // Save current states before applying designs
                         if (!string.IsNullOrEmpty(config.NpcGlamourerDesign))
@@ -391,6 +419,9 @@ namespace AQuestReborn
                         // Restore saved Glamourer states
                         RestoreGlamourerState(npcCharacterA, savedNpcAState);
                         RestoreGlamourerState(npcCharacterB, savedNpcBState);
+
+                        // Restore Penumbra mods
+                        RestorePenumbraMods(config.PenumbraModFilter, disabledPenumbraMods);
 
                         if (wasFollowingA) npcA.FollowPlayer(2);
                         if (wasFollowingB) npcB.FollowPlayer(2);
@@ -514,6 +545,140 @@ namespace AQuestReborn
             }
             catch { }
             return baseTimelineId;
+        }
+
+        /// <summary>
+        /// Enable a Penumbra mod by partial folder name match, disabling any conflicting mods
+        /// that affect the same game file paths. Returns a list of mod directory names
+        /// that were disabled so they can be restored later.
+        /// </summary>
+        private List<string> EnablePenumbraMod(string modFilter)
+        {
+            var disabledMods = new List<string>();
+            if (string.IsNullOrEmpty(modFilter)) return disabledMods;
+            try
+            {
+                var ipc = PenumbraAndGlamourerIpcWrapper.Instance;
+                var collection = ipc.GetCollectionForObject.Invoke(0).EffectiveCollection.Id;
+
+                // Get the Penumbra mod root directory
+                string modRoot = ipc.GetModDirectory.Invoke();
+                if (string.IsNullOrEmpty(modRoot) || !System.IO.Directory.Exists(modRoot))
+                {
+                    _plugin.ChatGui.Print("[Penumbra] Mod directory not found: " + modRoot);
+                    return disabledMods;
+                }
+
+                // Search all mod folders for a partial name match
+                string targetModDir = null;
+                string targetModFolder = null;
+                foreach (var dir in System.IO.Directory.GetDirectories(modRoot))
+                {
+                    string folderName = System.IO.Path.GetFileName(dir);
+                    if (folderName.Contains(modFilter, StringComparison.OrdinalIgnoreCase))
+                    {
+                        targetModDir = dir;
+                        targetModFolder = folderName;
+                        break;
+                    }
+                }
+
+                if (targetModDir == null)
+                {
+                    _plugin.ChatGui.Print("[Penumbra] No mod folder matching: " + modFilter);
+                    return disabledMods;
+                }
+
+                _plugin.ChatGui.Print("[Penumbra] Found mod: " + targetModFolder);
+
+                // Ask Penumbra what paths this mod affects
+                var targetItems = ipc.GetChangedItemsForMod.Invoke(targetModFolder, "");
+                var targetPaths = new HashSet<string>(targetItems.Keys, StringComparer.OrdinalIgnoreCase);
+                _plugin.ChatGui.Print("[Penumbra] Target mod affects " + targetPaths.Count + " items");
+
+                // Find and disable conflicting mods (other mod folders with overlapping paths)
+                if (targetPaths.Count > 0)
+                {
+                    foreach (var dir in System.IO.Directory.GetDirectories(modRoot))
+                    {
+                        string folderName = System.IO.Path.GetFileName(dir);
+                        if (folderName == targetModFolder) continue;
+
+                        try
+                        {
+                            var otherItems = ipc.GetChangedItemsForMod.Invoke(folderName, "");
+                            bool hasOverlap = otherItems.Keys.Any(p => targetPaths.Contains(p));
+                            if (hasOverlap)
+                            {
+                                // Check if this mod is currently enabled
+                                var settings = ipc.GetCurrentModSettings.Invoke(collection, folderName, "", false);
+                                bool isEnabled = settings.Item1 == Penumbra.Api.Enums.PenumbraApiEc.Success
+                                    && settings.Item2 != null
+                                    && settings.Item2.Value.Item1;
+                                if (isEnabled)
+                                {
+                                    _plugin.ChatGui.Print("[Penumbra] Disabling conflicting: " + folderName);
+                                    ipc.TrySetMod.Invoke(collection, folderName, false);
+                                    disabledMods.Add(folderName);
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                }
+
+                // Enable the target mod
+                ipc.TrySetMod.Invoke(collection, targetModFolder, true);
+                ipc.TrySetModPriority.Invoke(collection, targetModFolder, 11);
+
+                _plugin.ChatGui.Print("[Penumbra] Enabled: " + targetModFolder
+                    + (disabledMods.Count > 0 ? " (disabled " + disabledMods.Count + " conflicting)" : ""));
+            }
+            catch (Exception ex)
+            {
+                _plugin.ChatGui.Print("[Penumbra] Error: " + ex.Message);
+            }
+            return disabledMods;
+        }
+
+        /// <summary>
+        /// Restore Penumbra mods that were disabled during animation.
+        /// Re-enables the previously disabled mods and disables the one we enabled.
+        /// </summary>
+        private void RestorePenumbraMods(string modFilter, List<string> disabledMods)
+        {
+            if (string.IsNullOrEmpty(modFilter) && (disabledMods == null || disabledMods.Count == 0)) return;
+            try
+            {
+                var ipc = PenumbraAndGlamourerIpcWrapper.Instance;
+                var collection = ipc.GetCollectionForObject.Invoke(0).EffectiveCollection.Id;
+
+                // Re-enable mods we disabled
+                foreach (var modDir in disabledMods)
+                {
+                    try { ipc.TrySetMod.Invoke(collection, modDir, true); }
+                    catch { }
+                }
+
+                // Disable the mod we enabled
+                if (!string.IsNullOrEmpty(modFilter))
+                {
+                    string modRoot = ipc.GetModDirectory.Invoke();
+                    if (!string.IsNullOrEmpty(modRoot) && System.IO.Directory.Exists(modRoot))
+                    {
+                        foreach (var dir in System.IO.Directory.GetDirectories(modRoot))
+                        {
+                            string folderName = System.IO.Path.GetFileName(dir);
+                            if (folderName.Contains(modFilter, StringComparison.OrdinalIgnoreCase))
+                            {
+                                ipc.TrySetMod.Invoke(collection, folderName, false);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
         }
 
 
