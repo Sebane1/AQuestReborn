@@ -18,9 +18,6 @@ using RoleplayingQuestCore;
 using AQuestReborn.CustomNpc;
 using System.Diagnostics;
 using Quaternion = System.Numerics.Quaternion;
-using Brio.Core;
-using Brio.Capabilities.Actor;
-using Lumina.Excel.Sheets;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using static RoleplayingQuestCore.QuestEvent;
 
@@ -104,7 +101,7 @@ namespace AQuestReborn
         private Vector3 _lastDefaultPosition;
         private Vector3 _lastDefaultRotation;
         private Vector3 _snapPosition;
-        private PosingCapability? _playerPosing;
+
         private float _horizontalOffset;
         Stopwatch _horizontalRefreshTimer = new Stopwatch();
         Stopwatch _fixedMovementTimer = new Stopwatch();
@@ -299,12 +296,25 @@ namespace AQuestReborn
             Dispose();
         }
 
+        public bool IsHidden { get; private set; } = false;
+
         public void HideNPC()
         {
+            IsHidden = true;
             _targetScale = new Vector3(0.0001f, 0.0001f, 0.0001f);
+            unsafe
+            {
+                var safeAddr = SafeCharacterAddress;
+                if (safeAddr != nint.Zero)
+                {
+                    var go = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)safeAddr;
+                    go->DisableDraw();
+                }
+            }
         }
         public void ShowNPC()
         {
+            IsHidden = false;
             _targetScale = new Vector3(1f, 1f, 1f);
         }
 
@@ -419,7 +429,7 @@ namespace AQuestReborn
 
         public unsafe void Framework_Update(IFramework framework)
         {
-            if (!_disposed)
+            if (!_disposed && !IsHidden)
             {
                 try
                 {
@@ -601,7 +611,7 @@ namespace AQuestReborn
                                 bool inCombat = Conditions.Instance()->InCombat;
                                 if (inCombat) _isFollowMoving = false;
 
-                                // --- Player Death Reaction ---
+                                // Player Death Reaction 
                                 bool playerDead = _plugin.ObjectTable.LocalPlayer.CurrentHp == 0;
                                 if (playerDead && !_reactingToPlayerDeath)
                                 {
@@ -1210,15 +1220,17 @@ namespace AQuestReborn
         }
         public Vector3 GetVerticalOffsetFromPlayer(float offset)
         {
-            CheckPosing();
-            if (_playerPosing?.ModelPosing == null) return new Vector3(0, 0, 0);
-            return _playerPosing.ModelPosing.Transform.Rotation.VectorDirection(new Vector3(1, 0, 0)) * offset;
+            if (_plugin.ObjectTable.LocalPlayer == null) return new Vector3(0, 0, 0);
+            float rot = _plugin.ObjectTable.LocalPlayer.Rotation;
+            // Right vector in FFXIV: (-cos(rot), 0, sin(rot))
+            return new Vector3(-MathF.Cos(rot), 0, MathF.Sin(rot)) * offset;
         }
         public Vector3 GetHorizontalOffsetFromPlayer(float offset)
         {
-            CheckPosing();
-            if (_playerPosing?.ModelPosing == null) return new Vector3(0, 0, 0);
-            return _playerPosing.ModelPosing.Transform.Rotation.VectorDirection(new Vector3(0, 0, 1)) * offset;
+            if (_plugin.ObjectTable.LocalPlayer == null) return new Vector3(0, 0, 0);
+            float rot = _plugin.ObjectTable.LocalPlayer.Rotation;
+            // Forward vector in FFXIV: (sin(rot), 0, cos(rot))
+            return new Vector3(MathF.Sin(rot), 0, MathF.Cos(rot)) * offset;
         }
         public Vector3 GetVerticalOffset(float offset)
         {
@@ -1295,16 +1307,6 @@ namespace AQuestReborn
                     BrioAccessUtils.EntityManager.SetSelectedEntity(_character);
                     BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
                     _posing = posing;
-                }
-            }
-            if (_playerPosing == null)
-            {
-                var localPlayer = _plugin.ObjectTable.LocalPlayer;
-                if (localPlayer != null)
-                {
-                    BrioAccessUtils.EntityManager.SetSelectedEntity(localPlayer);
-                    BrioAccessUtils.EntityManager.TryGetCapabilityFromSelectedEntity<PosingCapability>(out var posing);
-                    _playerPosing = posing;
                 }
             }
         }
@@ -1751,7 +1753,7 @@ namespace AQuestReborn
 
             float elapsed = (float)_tailPlaybackTimer.Elapsed.TotalSeconds;
 
-            // --- Check fail conditions (too close or too far) ---
+            //  Check fail conditions (too close or too far) 
             if (_plugin.ObjectTable.LocalPlayer != null)
             {
                 var playerPos = _plugin.ObjectTable.LocalPlayer.Position;
@@ -1769,7 +1771,7 @@ namespace AQuestReborn
                 }
             }
 
-            // --- Look-back interjection ---
+            //  Look-back interjection 
             if (_tailIsLookingBack)
             {
                 float lookElapsed = (float)_tailLookBackTimer.Elapsed.TotalSeconds;
@@ -1813,7 +1815,7 @@ namespace AQuestReborn
                 return;
             }
 
-            // --- Check if it's time for a look-back ---
+            //  Check if it's time for a look-back 
             if (_tailPlaybackTimer.ElapsedMilliseconds >= _tailNextLookBackTime)
             {
                 _tailIsLookingBack = true;
@@ -1836,7 +1838,7 @@ namespace AQuestReborn
                 return;
             }
 
-            // --- Normal path playback ---
+            //  Normal path playback 
             if (_tailWaypointIndex >= _tailData.Waypoints.Count - 1)
             {
                 // Reached end of path
