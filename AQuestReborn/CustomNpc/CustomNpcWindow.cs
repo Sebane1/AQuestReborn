@@ -1053,6 +1053,15 @@ namespace AQuestReborn.CustomNpc
                                     }
                                 }
 
+                                if (npcInPairedAnim)
+                                {
+                                    ImGui.Dummy(new Vector2(0, 5));
+                                    if (ImGui.Button("Stop Animation", new Vector2(-1, 0)))
+                                    {
+                                        _plugin.AQuestReborn.PairedAnimationManager.StopAnimation(npc.NpcName);
+                                    }
+                                }
+
                                 ImGui.Dummy(new Vector2(0, 5));
                                 if (ImGui.Button("+ Add##addPaired", new Vector2(-1, 0)))
                                 {

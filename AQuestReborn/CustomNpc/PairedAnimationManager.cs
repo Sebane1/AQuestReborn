@@ -74,6 +74,14 @@ namespace AQuestReborn
         }
 
         /// <summary>
+        /// Stops any active paired animation for the specified NPC.
+        /// </summary>
+        public void StopAnimation(string npcName)
+        {
+            _activeAnimations.Remove(npcName);
+        }
+
+        /// <summary>
         /// Check a player message for paired animation triggers across all summoned Custom NPCs.
         /// Returns true if a paired animation was triggered (caller should skip AI chat).
         /// </summary>
@@ -325,6 +333,12 @@ namespace AQuestReborn
 
                     while (animTimer.ElapsedMilliseconds < maxDurationMs)
                     {
+                        if (!_activeAnimations.Contains(npcData.NpcName))
+                        {
+                            _plugin.PluginLog.Information($"[PairedAnimation] {npcData.NpcName} stopped explicitly.");
+                            break;
+                        }
+
                         // Check if player moved
                         float movedDist = Vector3.Distance(player.Position, animStartPos);
                         if (movedDist > 0.5f)
@@ -560,15 +574,39 @@ namespace AQuestReborn
                         npcDataA.TemporaryAnimationContext = config.AnimationContext;
                     }
 
-                    if (config.UseDuration)
+                    var animTimer = Stopwatch.StartNew();
+                    int maxDurationMs = config.UseDuration
+                        ? (config.LoopAnimation ? config.DurationMs : Math.Max(config.DurationMs, 5000))
+                        : int.MaxValue;
+
+                    while (animTimer.ElapsedMilliseconds < maxDurationMs)
                     {
-                        int waitTime = config.LoopAnimation ? config.DurationMs : Math.Max(config.DurationMs, 5000);
-                        await Task.Delay(waitTime);
-                    }
-                    else
-                    {
-                        // No duration, so wait indefinitely (task stays alive for finally block)
-                        await Task.Delay(Timeout.Infinite);
+                        if (!_activeAnimations.Contains(npcDataA.NpcName) || !_activeAnimations.Contains(npcNameB))
+                        {
+                            break;
+                        }
+
+                        // Check if either moved manually
+                        if (npcA.ShouldBeMoving || npcB.ShouldBeMoving || npcA.IsFollowingPlayer || npcB.IsFollowingPlayer)
+                        {
+                            break;
+                        }
+
+                        // Break if player moves too far away and neither is staying
+                        var npcDataB = _plugin.Configuration.CustomNpcCharacters.FirstOrDefault(n => n.NpcName == npcNameB);
+                        bool isStayingB = npcDataB != null && npcDataB.IsStaying;
+
+                        if (!npcDataA.IsStaying && !isStayingB)
+                        {
+                            var player = _plugin.ObjectTable.LocalPlayer;
+                            if (player != null && Vector3.Distance(npcA.CurrentPosition, player.Position) > 15f)
+                            {
+                                _plugin.PluginLog.Information($"[PairedAnimation] {npcDataA.NpcName} and {npcNameB} stopped: player moved too far away.");
+                                break;
+                            }
+                        }
+
+                        await Task.Delay(100);
                     }
 
                     // Cleanup: stop animations, restore glamour, and restore state
