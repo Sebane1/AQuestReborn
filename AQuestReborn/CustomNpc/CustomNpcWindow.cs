@@ -207,6 +207,7 @@ namespace AQuestReborn.CustomNpc
                     }
                     catch { }
 
+
                     foreach (var bnpc in bNpcBases)
                     {
                         if (bnpc.ModelChara.RowId > 0 && bnpc.ModelChara.RowId < 10000)
@@ -1787,12 +1788,23 @@ namespace AQuestReborn.CustomNpc
                         if (_plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(_customNpcCharacters[_currentSelection].NpcName, out var liveNpc) && liveNpc.Character != null)
                         {
                             IntPtr drawObjectAddr = IntPtr.Zero;
+                            IntPtr skeletonAddr = IntPtr.Zero;
+                            int partialSkeletonCount = 0;
                             unsafe
                             {
                                 var go = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)liveNpc.Character.Address;
                                 if (go != null)
                                 {
                                     drawObjectAddr = (IntPtr)go->DrawObject;
+                                    if (go->DrawObject != null)
+                                    {
+                                        var charBase = (FFXIVClientStructs.FFXIV.Client.Graphics.Scene.CharacterBase*)go->DrawObject;
+                                        if (charBase->Skeleton != null)
+                                        {
+                                            skeletonAddr = (IntPtr)charBase->Skeleton;
+                                            partialSkeletonCount = charBase->Skeleton->PartialSkeletonCount;
+                                        }
+                                    }
                                 }
                             }
                             ImGui.TextColored(new Vector4(0.8f, 0.8f, 0.8f, 1f), $"Index: {liveNpc.Character.ObjectIndex} | Memory: {liveNpc.Character.Address:X} | DrawObj: {drawObjectAddr:X}");
@@ -1809,6 +1821,17 @@ namespace AQuestReborn.CustomNpc
                                 ImGui.SetClipboardText($"{drawObjectAddr:X}");
                             }
                             if (ImGui.IsItemHovered()) ImGui.SetTooltip("Copy DrawObject Memory Address");
+
+                            if (skeletonAddr != IntPtr.Zero)
+                            {
+                                ImGui.TextColored(new Vector4(0.8f, 0.8f, 0.8f, 1f), $"Skeleton: {skeletonAddr:X} | PartialSkeletons: {partialSkeletonCount}");
+                                ImGui.SameLine();
+                                if (ImGui.Button("Copy Skel"))
+                                {
+                                    ImGui.SetClipboardText($"{skeletonAddr:X}");
+                                }
+                                if (ImGui.IsItemHovered()) ImGui.SetTooltip("Copy Skeleton Memory Address");
+                            }
                             
                             ImGui.Dummy(new Vector2(0, 5));
                         }

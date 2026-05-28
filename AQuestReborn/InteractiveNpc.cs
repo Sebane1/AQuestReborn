@@ -531,10 +531,18 @@ namespace AQuestReborn
                                 int followerCount = Math.Max(1, followingNpcs.Count);
                                 int followerIndex = Math.Max(0, followingNpcs.IndexOf(this));
 
+                                int maxCols = 3;
+                                int row = followerIndex / maxCols;
+                                int col = followerIndex % maxCols;
+                                int rowFollowerCount = Math.Min(maxCols, followerCount - row * maxCols);
+
+                                float rightOffset = (col - (rowFollowerCount - 1) / 2f) * 1.2f;
+                                float forwardOffset = _horizontalOffset - (row * 1.5f);
+
                                 var playerPos = _plugin.ObjectTable.LocalPlayer.Position;
                                 var targetPosition = playerPos
-                                        + GetVerticalOffsetFromPlayer((followerIndex) - ((float)(followerCount - 1) / 2f))
-                                        + GetHorizontalOffsetFromPlayer(_horizontalOffset);
+                                        + GetVerticalOffsetFromPlayer(rightOffset)
+                                        + GetHorizontalOffsetFromPlayer(forwardOffset);
                                 
                                 float distToPlayer = Vector3.Distance(_currentPosition, playerPos);
 
@@ -573,6 +581,26 @@ namespace AQuestReborn
                                         if (_currentBreadcrumbTargetIndex < _currentBreadcrumbPath.Count)
                                             targetPosition = _currentBreadcrumbPath[_currentBreadcrumbTargetIndex];
                                     }
+                                }
+
+                                // Flocking/Collision Avoidance to prevent NPCs from phasing through each other
+                                if (followerCount > 1)
+                                {
+                                    Vector3 avoidance = Vector3.Zero;
+                                    foreach (var other in followingNpcs)
+                                    {
+                                        if (other == this) continue;
+                                        float d = Vector3.Distance(_currentPosition, other.CurrentPosition);
+                                        // If within 1.5 yalms, push them apart
+                                        if (d < 1.5f && d > 0.01f)
+                                        {
+                                            var push = _currentPosition - other.CurrentPosition;
+                                            push.Y = 0;
+                                            avoidance += Vector3.Normalize(push) * (1.5f - d);
+                                        }
+                                    }
+                                    // Add the avoidance vector to steer the target position outward
+                                    targetPosition += avoidance * 1.5f;
                                 }
 
                                 float distToTarget = Vector3.Distance(_currentPosition, targetPosition);
