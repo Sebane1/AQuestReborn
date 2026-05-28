@@ -61,6 +61,7 @@ namespace AQuestReborn
         public InteractiveNpc CutscenePlayer { get => _cutscenePlayer; set => _cutscenePlayer = value; }
         public Dictionary<string, ICharacter> CustomNpcCharacters => _customNpcCharacters;
         public Dictionary<string, NPCConversationManager> CustomNpcConversationManagers => _customNpcConversationManagers;
+        public PairedAnimationManager PairedAnimationManager => _pairedAnimationManager;
 
         /// <summary>
         /// Generates a composite key for quest NPCs so that two quests can have
@@ -598,6 +599,7 @@ namespace AQuestReborn
                             { 
                                 stillLoading = _actorSpawnService == null || 
                                                Conditions.Instance()->BetweenAreas || 
+                                               Plugin.ClientState.IsGPosing ||
                                                Plugin.ObjectTable.LocalPlayer == null || 
                                                !Plugin.ObjectTable.LocalPlayer.IsValid(); 
                             }
@@ -648,6 +650,13 @@ namespace AQuestReborn
             }
             // Wait for zone to be fully loaded before spawning
             Thread.Sleep(3000);
+
+            // If GPose became active while waiting, hold off until it ends
+            while (Plugin.ClientState.IsGPosing)
+            {
+                Thread.Sleep(500);
+                if (!Plugin.ClientState.IsLoggedIn) return;
+            }
 
             // Custom NPCs do not depend on the cutscene player slot, so we no longer wait for _cutsceneNpcSpawned here.
             uint currentTerritory = Plugin.ClientState.TerritoryType;
@@ -855,6 +864,8 @@ namespace AQuestReborn
         private Dictionary<string, int> _npcRedrawRetries = new Dictionary<string, int>();
         // Track when each NPC's DrawObject first became broken for time-based respawn
         private Dictionary<string, long> _npcBrokenTimestamp = new Dictionary<string, long>();
+        // Flag to trigger custom NPC respawn after GPose exits
+        private bool _needsPostGPoseRespawn = false;
         private unsafe void _framework_Update(IFramework framework)
         {
             // Don't touch game objects during logout/loading/dispose — memory may be freed
@@ -862,7 +873,12 @@ namespace AQuestReborn
 
             if (Conditions.Instance()->BetweenAreas) return;
 
+            // Skip NPC visibility/redraw processing during GPose — game hides actors intentionally.
+            // The GPose cleanup block later in this method must still run.
+            bool skipVisibilityChecks = Plugin.ClientState.IsGPosing;
+
             bool requestedRedraw = false;
+            if (!skipVisibilityChecks)
             foreach (var kvp in _customNpcCharacters)
             {
                 if (kvp.Value != null && kvp.Value.Address != 0)
@@ -1163,6 +1179,17 @@ namespace AQuestReborn
                                 }
                                 // Always process custom NPC spawn queues — they don't depend on the cutscene player
                                 CheckForCustomNpcCreationLoad();
+
+                                // Respawn custom NPCs after GPose exit
+                                if (_needsPostGPoseRespawn)
+                                {
+                                    _needsPostGPoseRespawn = false;
+                                    Task.Run(() =>
+                                    {
+                                        try { RespawnActiveCustomNpcs(); }
+                                        catch (Exception e) { Plugin.PluginLog.Warning(e, e.Message); }
+                                    });
+                                }
                                 if (_cutsceneNpcSpawned)
                                 {
                                     CheckForPassiveQuestProgression();
@@ -1199,15 +1226,36 @@ namespace AQuestReborn
                     {
                         if (Plugin.ClientState.IsGPosing)
                         {
-                            if (_cutsceneNpcSpawned || _spawnedNpcsDictionary.Count > 0)
+                            if (_cutsceneNpcSpawned || _spawnedNpcsDictionary.Count > 0 || _customNpcCharacters.Count > 0)
                             {
+                                // Set flags first to prevent re-entry on next frame
+                                _cutsceneNpcSpawned = false;
+                                _cutsceneNpcSpawnScheduled = false;
+
+                                // Dispose interactive NPC wrappers
                                 foreach (var item in _interactiveNpcDictionary)
                                 {
                                     item.Value?.Dispose();
                                 }
                                 _interactiveNpcDictionary?.Clear();
-                                ClearNPCs(Plugin.ClientState.TerritoryType);
+
+                                // Clean up custom NPC references (don't use ClearNPCs — it spawns respawn threads)
+                                foreach (var kvp in _customNpcDictionary)
+                                {
+                                    try { kvp.Value.Dispose(); } catch { }
+                                }
+                                _customNpcDictionary.Clear();
+                                _customNpcCharacters.Clear();
+
+                                // Clear quest NPCs
+                                _spawnedNpcsDictionary.Clear();
+                                _nameplateForcedActors.Clear();
+
+                                // Destroy all Brio actors
                                 _actorSpawnService?.ClearAll();
+
+                                // Schedule respawn when GPose exits
+                                _needsPostGPoseRespawn = true;
                             }
                         }
                     }
@@ -2835,7 +2883,8 @@ namespace AQuestReborn
                             try
                             {
                                 var emoteMatches = System.Text.RegularExpressions.Regex.Matches(cleanResponse, @"\*(.*?)\*");
-                                if (emoteMatches.Count > 0 && _interactiveNpcDictionary.ContainsKey(npcData.NpcName))
+                                if (emoteMatches.Count > 0 && _interactiveNpcDictionary.ContainsKey(npcData.NpcName)
+                                    && !_interactiveNpcDictionary[npcData.NpcName].AnimationLocked)
                                 {
                                     string actionText = emoteMatches[0].Groups[1].Value.ToLower();
                                     var emoteSheet = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>();
@@ -3082,6 +3131,7 @@ namespace AQuestReborn
         private unsafe void CustomNpcChatCheck()
         {
             if (Conditions.Instance()->InCombat) return;
+            if (!Plugin.Configuration.EnableClickToChat) return;
             if (Plugin.ObjectTable.LocalPlayer != null && Plugin.ObjectTable.LocalPlayer.CurrentHp == 0) return; // Can't talk while dead
             if (Plugin.NpcChatWindow.IsConversationActive) return;
             if (Plugin.EventWindow.IsOpen || Plugin.ChoiceWindow.IsOpen) return;

@@ -4,6 +4,7 @@ using Dalamud.Game.ClientState.Objects.Types;
 using Glamourer.Api.Enums;
 using SamplePlugin;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -19,7 +20,7 @@ namespace AQuestReborn
     /// the NPC walks to the partner, both face each other, and both play their
     /// respective animations simultaneously.
     /// </summary>
-    internal class PairedAnimationManager
+    public class PairedAnimationManager
     {
         private readonly Plugin _plugin;
         private readonly AQuestReborn _aqr;
@@ -40,10 +41,36 @@ namespace AQuestReborn
         /// </summary>
         private readonly HashSet<string> _activeAnimations = new HashSet<string>();
 
-        public PairedAnimationManager(Plugin plugin, AQuestReborn aqr)
+        /// <summary>
+        /// Pending switch configs: when a switch is requested, the new config is stored here
+        /// and picked up by the monitoring loop within 100ms.
+        /// </summary>
+        private readonly ConcurrentDictionary<string, PairedAnimationConfig> _pendingSwitchConfigs
+            = new ConcurrentDictionary<string, PairedAnimationConfig>();
+
+        internal PairedAnimationManager(Plugin plugin, AQuestReborn aqr)
         {
             _plugin = plugin;
             _aqr = aqr;
+        }
+
+        /// <summary>
+        /// Returns true if the named NPC is currently performing a paired animation.
+        /// </summary>
+        public bool IsNpcInPairedAnimation(string npcName)
+        {
+            return _activeAnimations.Contains(npcName);
+        }
+
+        /// <summary>
+        /// Request an instant switch to a different paired animation for an NPC
+        /// that is already in an active paired animation. The monitoring loop will
+        /// pick this up within 100ms and swap emotes/glamour inline.
+        /// </summary>
+        public void SwitchAnimation(string npcName, PairedAnimationConfig newConfig)
+        {
+            if (!_activeAnimations.Contains(npcName)) return;
+            _pendingSwitchConfigs[npcName] = newConfig;
         }
 
         /// <summary>
@@ -67,9 +94,21 @@ namespace AQuestReborn
                 if (!_aqr.CustomNpcCharacters.ContainsKey(npcData.NpcName))
                     continue;
 
-                // Skip if this NPC is already performing a paired animation
+                // If this NPC is already performing a paired animation, try to switch via trigger
                 if (_activeAnimations.Contains(npcData.NpcName))
+                {
+                    foreach (var config in npcData.PairedAnimations)
+                    {
+                        if (string.IsNullOrWhiteSpace(config.TriggerPhrase) || config.NpcEmoteId == 0)
+                            continue;
+                        if (!lowerMessage.Contains(config.TriggerPhrase.ToLower().Trim()))
+                            continue;
+
+                        SwitchAnimation(npcData.NpcName, config);
+                        return true;
+                    }
                     continue;
+                }
 
                 var interactiveNpc = _aqr.InteractiveNpcDictionary[npcData.NpcName];
                 var npcCharacter = _aqr.CustomNpcCharacters[npcData.NpcName];
@@ -196,14 +235,14 @@ namespace AQuestReborn
                     // Lock the NPC's animation so idle emotes don't override it
                     string savedNpcState = null;
                     string savedPlayerState = null;
-                    List<string> disabledPenumbraMods = new List<string>();
+                    Dictionary<Guid, List<string>> disabledPenumbraMods = new Dictionary<Guid, List<string>>();
 
                     _plugin.Framework.RunOnFrameworkThread(() =>
                     {
                         npc.AnimationLocked = true;
 
                         // Enable Penumbra mod if configured (before glamourer to avoid conflicts)
-                        disabledPenumbraMods = EnablePenumbraMod(config.PenumbraModFilter);
+                        disabledPenumbraMods = EnablePenumbraMod(config.PenumbraModFilter, npcCharacter, player);
 
                         // Save current states before applying designs
                         if (!string.IsNullOrEmpty(config.NpcGlamourerDesign))
@@ -232,23 +271,133 @@ namespace AQuestReborn
                             _plugin.AnamcoreManager.TriggerEmote(player.Address, partnerTimelineId, config.LoopAnimation);
                     });
 
+                    // Set emotion and animation context overrides if configured
+                    if (!string.IsNullOrEmpty(config.EmotionOverride))
+                    {
+                        npcData.TemporaryMoodOverride = config.EmotionOverride;
+                    }
+                    if (!string.IsNullOrEmpty(config.AnimationContext))
+                    {
+                        npcData.TemporaryAnimationContext = config.AnimationContext;
+                    }
+
+                    // Open the one-on-one chat window if configured (player-partner only)
+                    if (config.OpenChatOnStart && string.IsNullOrEmpty(config.PartnerNpcName))
+                    {
+                        _plugin.Framework.RunOnFrameworkThread(() =>
+                        {
+                            try
+                            {
+                                if (_aqr.CustomNpcConversationManagers.ContainsKey(npcData.NpcName))
+                                {
+                                    // Build greeting: prefer explicit ChatGreeting, fall back to AnimationContext
+                                    string greeting = null;
+                                    if (!string.IsNullOrWhiteSpace(config.ChatGreeting))
+                                        greeting = config.ChatGreeting;
+                                    else if (!string.IsNullOrWhiteSpace(config.AnimationContext))
+                                        greeting = $"*is {config.AnimationContext} with you*";
+
+                                    _plugin.NpcChatWindow.OpenConversation(
+                                        npcData.NpcName,
+                                        _aqr.CustomNpcConversationManagers[npcData.NpcName],
+                                        npcCharacter, npcData, greeting);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _plugin.PluginLog.Warning(ex, "[PairedAnimation] Failed to open chat window");
+                            }
+                        });
+                    }
+
                     // Monitor for player movement or duration expiry.
                     // If the player moves, cancel the animation immediately.
-                    Vector3 animStartPos = player.Position;
                     var animTimer = Stopwatch.StartNew();
                     int maxDurationMs = config.UseDuration
                         ? (config.LoopAnimation ? config.DurationMs : Math.Max(config.DurationMs, 5000))
                         : int.MaxValue;
+
+                    // Capture start position after a brief grace period so emotes that shift
+                    // the player position don't immediately trigger the movement threshold.
+                    await Task.Delay(500);
+                    Vector3 animStartPos = player.Position;
+                    _plugin.PluginLog.Information($"[PairedAnimation] Monitoring started for {npcData.NpcName}. StartPos={animStartPos}, maxDurationMs={maxDurationMs}");
 
                     while (animTimer.ElapsedMilliseconds < maxDurationMs)
                     {
                         // Check if player moved
                         float movedDist = Vector3.Distance(player.Position, animStartPos);
                         if (movedDist > 0.5f)
+                        {
+                            _plugin.PluginLog.Information($"[PairedAnimation] {npcData.NpcName} stopped: player moved {movedDist:F3} yalms after {animTimer.ElapsedMilliseconds}ms");
                             break;
+                        }
+
+                        // Check for pending animation switch
+                        if (_pendingSwitchConfigs.TryRemove(npcData.NpcName, out var switchConfig))
+                        {
+                            // Swap Penumbra mods, glamour, and emotes on the framework thread
+                            _plugin.Framework.RunOnFrameworkThread(() =>
+                            {
+                                // 1. Stop old emotes first — characters return to idle pose
+                                _plugin.AnamcoreManager.ForceStopEmote(npcCharacter.Address);
+                                if (player.Address != nint.Zero)
+                                    _plugin.AnamcoreManager.ForceStopEmote(player.Address);
+                            });
+
+                            // 2. Pause so the idle pose settles before mod swap
+                            await Task.Delay(100);
+
+                            // 3. Swap mods and glamour
+                            _plugin.Framework.RunOnFrameworkThread(() =>
+                            {
+                                // Enable new Penumbra mods (old ones restored in final cleanup)
+                                disabledPenumbraMods = EnablePenumbraMod(switchConfig.PenumbraModFilter, npcCharacter, player);
+
+                                // Apply new glamour designs
+                                ApplyGlamourerDesign(switchConfig.NpcGlamourerDesign, npcCharacter);
+                                ApplyGlamourerDesign(switchConfig.PartnerGlamourerDesign, player);
+                            });
+
+                            // 4. Let mods and glamour settle before starting new emotes
+                            await Task.Delay(500);
+
+                            // 5. Start new emotes
+                            _plugin.Framework.RunOnFrameworkThread(() =>
+                            {
+                                ushort newNpcTimeline = ResolveEmoteToTimeline(switchConfig.NpcEmoteId);
+                                if (switchConfig.NpcCposeIndex > 0)
+                                    newNpcTimeline = ResolveCposeTimeline(newNpcTimeline, switchConfig.NpcCposeIndex);
+                                ushort newPartnerTimeline = ResolveEmoteToTimeline(switchConfig.PartnerEmoteId);
+                                if (switchConfig.PartnerCposeIndex > 0)
+                                    newPartnerTimeline = ResolveCposeTimeline(newPartnerTimeline, switchConfig.PartnerCposeIndex);
+
+                                if (newNpcTimeline > 0)
+                                    _plugin.AnamcoreManager.TriggerEmote(npcCharacter.Address, newNpcTimeline, switchConfig.LoopAnimation);
+                                if (newPartnerTimeline > 0 && player.Address != nint.Zero)
+                                    _plugin.AnamcoreManager.TriggerEmote(player.Address, newPartnerTimeline, switchConfig.LoopAnimation);
+                            });
+
+                            // Update emotion and animation context overrides
+                            npcData.TemporaryMoodOverride = switchConfig.EmotionOverride ?? "";
+                            npcData.TemporaryAnimationContext = switchConfig.AnimationContext ?? "";
+
+                            // Update the active config so cleanup uses the latest values
+                            config = switchConfig;
+
+                            // Reset duration timer for new animation
+                            animTimer.Restart();
+                            animStartPos = player.Position;
+                            maxDurationMs = switchConfig.UseDuration
+                                ? (switchConfig.LoopAnimation ? switchConfig.DurationMs : Math.Max(switchConfig.DurationMs, 5000))
+                                : int.MaxValue;
+
+                            _plugin.PluginLog.Information($"[PairedAnimation] Switched {npcData.NpcName} to new animation");
+                        }
 
                         await Task.Delay(100);
                     }
+                    _plugin.PluginLog.Information($"[PairedAnimation] Loop exited for {npcData.NpcName}. Elapsed={animTimer.ElapsedMilliseconds}ms, maxDuration={maxDurationMs}ms");
 
                     // Cleanup: stop animations, restore glamour, and restore state
                     _plugin.Framework.RunOnFrameworkThread(() =>
@@ -266,7 +415,11 @@ namespace AQuestReborn
                         RestoreGlamourerState(player, savedPlayerState);
 
                         // Restore Penumbra mods
-                        RestorePenumbraMods(config.PenumbraModFilter, disabledPenumbraMods);
+                        RestorePenumbraMods(config.PenumbraModFilter, disabledPenumbraMods, npcCharacter, player);
+
+                        // Clear emotion and animation context overrides
+                        npcData.TemporaryMoodOverride = "";
+                        npcData.TemporaryAnimationContext = "";
 
                         if (wasFollowing)
                         {
@@ -363,7 +516,7 @@ namespace AQuestReborn
                     // Lock both NPCs' animations
                     string savedNpcAState = null;
                     string savedNpcBState = null;
-                    List<string> disabledPenumbraMods = new List<string>();
+                    Dictionary<Guid, List<string>> disabledPenumbraMods = new Dictionary<Guid, List<string>>();
 
                     _plugin.Framework.RunOnFrameworkThread(() =>
                     {
@@ -371,7 +524,7 @@ namespace AQuestReborn
                         npcB.AnimationLocked = true;
 
                         // Enable Penumbra mod if configured
-                        disabledPenumbraMods = EnablePenumbraMod(config.PenumbraModFilter);
+                        disabledPenumbraMods = EnablePenumbraMod(config.PenumbraModFilter, npcCharacterA, npcCharacterB);
 
                         // Save current states before applying designs
                         if (!string.IsNullOrEmpty(config.NpcGlamourerDesign))
@@ -397,6 +550,16 @@ namespace AQuestReborn
                             _plugin.AnamcoreManager.TriggerEmote(npcCharacterB.Address, partnerTimelineId, config.LoopAnimation);
                     });
 
+                    // Set emotion and animation context overrides if configured
+                    if (!string.IsNullOrEmpty(config.EmotionOverride))
+                    {
+                        npcDataA.TemporaryMoodOverride = config.EmotionOverride;
+                    }
+                    if (!string.IsNullOrEmpty(config.AnimationContext))
+                    {
+                        npcDataA.TemporaryAnimationContext = config.AnimationContext;
+                    }
+
                     if (config.UseDuration)
                     {
                         int waitTime = config.LoopAnimation ? config.DurationMs : Math.Max(config.DurationMs, 5000);
@@ -421,7 +584,11 @@ namespace AQuestReborn
                         RestoreGlamourerState(npcCharacterB, savedNpcBState);
 
                         // Restore Penumbra mods
-                        RestorePenumbraMods(config.PenumbraModFilter, disabledPenumbraMods);
+                        RestorePenumbraMods(config.PenumbraModFilter, disabledPenumbraMods, npcCharacterA, npcCharacterB);
+
+                        // Clear emotion and animation context overrides
+                        npcDataA.TemporaryMoodOverride = "";
+                        npcDataA.TemporaryAnimationContext = "";
 
                         if (wasFollowingA) npcA.FollowPlayer(2);
                         if (wasFollowingB) npcB.FollowPlayer(2);
@@ -549,17 +716,19 @@ namespace AQuestReborn
 
         /// <summary>
         /// Enable a Penumbra mod by partial folder name match, disabling any conflicting mods
-        /// that affect the same game file paths. Returns a list of mod directory names
-        /// that were disabled so they can be restored later.
+        /// that affect the same game file paths. Returns a dictionary of collection IDs to the
+        /// list of mod directory names that were disabled so they can be restored later.
         /// </summary>
-        private List<string> EnablePenumbraMod(string modFilter)
+        private Dictionary<Guid, List<string>> EnablePenumbraMod(string modFilter, ICharacter char1, ICharacter char2)
         {
-            var disabledMods = new List<string>();
+            var disabledMods = new Dictionary<Guid, List<string>>();
             if (string.IsNullOrEmpty(modFilter)) return disabledMods;
             try
             {
                 var ipc = PenumbraAndGlamourerIpcWrapper.Instance;
-                var collection = ipc.GetCollectionForObject.Invoke(0).EffectiveCollection.Id;
+                var collections = new HashSet<Guid>();
+                if (char1 != null) collections.Add(ipc.GetCollectionForObject.Invoke(char1.ObjectIndex).EffectiveCollection.Id);
+                if (char2 != null) collections.Add(ipc.GetCollectionForObject.Invoke(char2.ObjectIndex).EffectiveCollection.Id);
 
                 // Get the Penumbra mod root directory
                 string modRoot = ipc.GetModDirectory.Invoke();
@@ -597,42 +766,49 @@ namespace AQuestReborn
                 _plugin.ChatGui.Print("[Penumbra] Target mod affects " + targetPaths.Count + " items");
 
                 // Find and disable conflicting mods (other mod folders with overlapping paths)
-                if (targetPaths.Count > 0)
+                foreach (var collection in collections)
                 {
-                    foreach (var dir in System.IO.Directory.GetDirectories(modRoot))
-                    {
-                        string folderName = System.IO.Path.GetFileName(dir);
-                        if (folderName == targetModFolder) continue;
+                    var collectionDisabled = new List<string>();
+                    disabledMods[collection] = collectionDisabled;
 
-                        try
+                    if (targetPaths.Count > 0)
+                    {
+                        foreach (var dir in System.IO.Directory.GetDirectories(modRoot))
                         {
-                            var otherItems = ipc.GetChangedItemsForMod.Invoke(folderName, "");
-                            bool hasOverlap = otherItems.Keys.Any(p => targetPaths.Contains(p));
-                            if (hasOverlap)
+                            string folderName = System.IO.Path.GetFileName(dir);
+                            if (folderName == targetModFolder) continue;
+
+                            try
                             {
-                                // Check if this mod is currently enabled
-                                var settings = ipc.GetCurrentModSettings.Invoke(collection, folderName, "", false);
-                                bool isEnabled = settings.Item1 == Penumbra.Api.Enums.PenumbraApiEc.Success
-                                    && settings.Item2 != null
-                                    && settings.Item2.Value.Item1;
-                                if (isEnabled)
+                                var otherItems = ipc.GetChangedItemsForMod.Invoke(folderName, "");
+                                bool hasOverlap = otherItems.Keys.Any(p => targetPaths.Contains(p));
+                                if (hasOverlap)
                                 {
-                                    _plugin.ChatGui.Print("[Penumbra] Disabling conflicting: " + folderName);
-                                    ipc.TrySetMod.Invoke(collection, folderName, false);
-                                    disabledMods.Add(folderName);
+                                    // Check if this mod is currently enabled for this collection
+                                    var settings = ipc.GetCurrentModSettings.Invoke(collection, folderName, "", false);
+                                    bool isEnabled = settings.Item1 == Penumbra.Api.Enums.PenumbraApiEc.Success
+                                        && settings.Item2 != null
+                                        && settings.Item2.Value.Item1;
+                                    if (isEnabled)
+                                    {
+                                        _plugin.ChatGui.Print($"[Penumbra] Disabling conflicting: {folderName} on collection {collection}");
+                                        ipc.TrySetMod.Invoke(collection, folderName, false);
+                                        collectionDisabled.Add(folderName);
+                                    }
                                 }
                             }
+                            catch { }
                         }
-                        catch { }
                     }
+
+                    // Enable the target mod
+                    ipc.TrySetMod.Invoke(collection, targetModFolder, true);
+                    ipc.TrySetModPriority.Invoke(collection, targetModFolder, 11);
                 }
 
-                // Enable the target mod
-                ipc.TrySetMod.Invoke(collection, targetModFolder, true);
-                ipc.TrySetModPriority.Invoke(collection, targetModFolder, 11);
-
+                int totalDisabled = disabledMods.Values.Sum(v => v.Count);
                 _plugin.ChatGui.Print("[Penumbra] Enabled: " + targetModFolder
-                    + (disabledMods.Count > 0 ? " (disabled " + disabledMods.Count + " conflicting)" : ""));
+                    + (totalDisabled > 0 ? " (disabled " + totalDisabled + " conflicting)" : ""));
             }
             catch (Exception ex)
             {
@@ -645,26 +821,32 @@ namespace AQuestReborn
         /// Restore Penumbra mods that were disabled during animation.
         /// Re-enables the previously disabled mods and disables the one we enabled.
         /// </summary>
-        private void RestorePenumbraMods(string modFilter, List<string> disabledMods)
+        private void RestorePenumbraMods(string modFilter, Dictionary<Guid, List<string>> disabledMods, ICharacter char1, ICharacter char2)
         {
             if (string.IsNullOrEmpty(modFilter) && (disabledMods == null || disabledMods.Count == 0)) return;
             try
             {
                 var ipc = PenumbraAndGlamourerIpcWrapper.Instance;
-                var collection = ipc.GetCollectionForObject.Invoke(0).EffectiveCollection.Id;
+                var collections = new HashSet<Guid>();
+                if (char1 != null) collections.Add(ipc.GetCollectionForObject.Invoke(char1.ObjectIndex).EffectiveCollection.Id);
+                if (char2 != null) collections.Add(ipc.GetCollectionForObject.Invoke(char2.ObjectIndex).EffectiveCollection.Id);
 
-                // Re-enable mods we disabled
-                foreach (var modDir in disabledMods)
-                {
-                    try { ipc.TrySetMod.Invoke(collection, modDir, true); }
-                    catch { }
-                }
+                // Re-enable mods we disabled and disable the mod we enabled
+                string modRoot = string.IsNullOrEmpty(modFilter) ? null : ipc.GetModDirectory.Invoke();
+                bool hasModRoot = !string.IsNullOrEmpty(modRoot) && System.IO.Directory.Exists(modRoot);
 
-                // Disable the mod we enabled
-                if (!string.IsNullOrEmpty(modFilter))
+                foreach (var collection in collections)
                 {
-                    string modRoot = ipc.GetModDirectory.Invoke();
-                    if (!string.IsNullOrEmpty(modRoot) && System.IO.Directory.Exists(modRoot))
+                    if (disabledMods.TryGetValue(collection, out var collectionDisabled))
+                    {
+                        foreach (var modDir in collectionDisabled)
+                        {
+                            try { ipc.TrySetMod.Invoke(collection, modDir, true); }
+                            catch { }
+                        }
+                    }
+
+                    if (hasModRoot)
                     {
                         foreach (var dir in System.IO.Directory.GetDirectories(modRoot))
                         {
@@ -742,14 +924,6 @@ namespace AQuestReborn
             {
                 _plugin.PluginLog.Warning(ex, "[PairedAnimation] Failed to restore Glamourer state");
             }
-        }
-
-        /// <summary>
-        /// Whether a specific NPC is currently performing a paired animation.
-        /// </summary>
-        public bool IsNpcInPairedAnimation(string npcName)
-        {
-            return _activeAnimations.Contains(npcName);
         }
     }
 }

@@ -165,6 +165,12 @@ public class MainWindow : Window, IDisposable
             Plugin.Configuration.EnableControllerInteraction = enableController;
             Plugin.Configuration.Save();
         }
+        bool enableClickToChat = Plugin.Configuration.EnableClickToChat;
+        if (ImGui.Checkbox(Translator.LocalizeUI("Enable Click-to-Chat with Custom NPCs"), ref enableClickToChat))
+        {
+            Plugin.Configuration.EnableClickToChat = enableClickToChat;
+            Plugin.Configuration.Save();
+        }
     }
 
     private void DrawQuestObjectives()

@@ -68,7 +68,7 @@ public class NpcChatWindow : Window, IDisposable
     public bool IsConversationActive => IsOpen && _activeNpcName != null;
 
     public void OpenConversation(string npcName, NPCConversationManager conversationManager,
-        ICharacter npcCharacter, CustomNpcCharacter npcData)
+        ICharacter npcCharacter, CustomNpcCharacter npcData, string initialGreeting = null)
     {
         _activeNpcName = npcName;
         _activeConversationManager = conversationManager;
@@ -85,7 +85,10 @@ public class NpcChatWindow : Window, IDisposable
         IsOpen = true;
 
         // Ask the AI to generate its own greeting
-        SendMessage("*approaches and waves hello*");
+        string greeting = !string.IsNullOrWhiteSpace(initialGreeting)
+            ? initialGreeting
+            : "*approaches and waves hello*";
+        SendMessage(greeting);
     }
 
     public override void OnClose()

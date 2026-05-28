@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -51,13 +52,13 @@ namespace AQuestReborn.CustomNpc
         /// Whether to use BaseOverride (looping) for the animations.
         /// If false, uses PlayTimeline (one-shot).
         /// </summary>
-        public bool LoopAnimation = false;
+        public bool LoopAnimation = true;
 
         /// <summary>
         /// Whether to automatically stop the animation after DurationMs.
         /// If false, the animation plays indefinitely until interrupted.
         /// </summary>
-        public bool UseDuration = true;
+        public bool UseDuration = false;
 
         /// <summary>
         /// Duration in milliseconds for the animation before cleanup (default 10 seconds).
@@ -91,6 +92,36 @@ namespace AQuestReborn.CustomNpc
         /// Leave empty to skip Penumbra mod management.
         /// </summary>
         public string PenumbraModFilter = "";
+
+        /// <summary>
+        /// Whether to automatically open the one-on-one NPC chat window when this
+        /// paired animation starts. Only applies when the partner is the player
+        /// (PartnerNpcName is empty).
+        /// </summary>
+        public bool OpenChatOnStart = false;
+
+        /// <summary>
+        /// An emotion/mood string injected into the NPC's AI conversation context
+        /// while this paired animation is active. For example: "romantic and affectionate"
+        /// or "playful and mischievous". Leave empty for no mood override.
+        /// </summary>
+        public string EmotionOverride = "";
+
+        /// <summary>
+        /// A description of what the paired animation is doing to/with the NPC.
+        /// Injected into the AI prompt so the NPC understands the situation.
+        /// For example: "hugging", "dancing together", "sitting on a lap".
+        /// Leave empty for no animation context.
+        /// </summary>
+        public string AnimationContext = "";
+
+        /// <summary>
+        /// Custom greeting message sent automatically when the chat window opens
+        /// during this paired animation. For example: "*holds you close*" or "*dances with you*".
+        /// If empty, falls back to a greeting derived from AnimationContext,
+        /// or the default "*approaches and waves hello*".
+        /// </summary>
+        public string ChatGreeting = "";
     }
 
     public class CustomNpcCharacter
@@ -151,6 +182,15 @@ namespace AQuestReborn.CustomNpc
         public bool WasLeftBehind = false;
         // Accumulated sentiment modifier per person (positive = kind, negative = hostile)
         public Dictionary<string, int> SentimentModifiers = new Dictionary<string, int>();
+
+        // Temporary mood override set by paired animations (not serialized)
+        [JsonIgnore]
+        public string TemporaryMoodOverride = "";
+
+        // Temporary animation context set by paired animations (not serialized)
+        // Describes what the animation is doing, e.g. "hugging", "dancing together"
+        [JsonIgnore]
+        public string TemporaryAnimationContext = "";
 
         // Places this NPC has visited (persisted across sessions)
         public List<string> VisitedLocations = new List<string>();
@@ -458,21 +498,32 @@ namespace AQuestReborn.CustomNpc
         /// </summary>
         public string GetMoodContext(string personName)
         {
+            // Prepend temporary mood override from paired animations if present
+            string moodOverride = "";
+            if (!string.IsNullOrEmpty(TemporaryAnimationContext))
+            {
+                moodOverride += $" {NpcName} is currently {TemporaryAnimationContext}.";
+            }
+            if (!string.IsNullOrEmpty(TemporaryMoodOverride))
+            {
+                moodOverride += $" {NpcName} is currently feeling {TemporaryMoodOverride}.";
+            }
+
             var rel = GetRelationshipWith(personName);
             string cleanName = CleanName(personName);
 
             if (rel.Score <= 5)
-                return $" {NpcName} deeply resents {cleanName.Split(" ")[0]} and wants nothing to do with them. They are cold, hostile, and dismissive.";
+                return moodOverride + $" {NpcName} deeply resents {cleanName.Split(" ")[0]} and wants nothing to do with them. They are cold, hostile, and dismissive.";
             else if (rel.Score <= 15)
-                return $" {NpcName} is upset and hurt by how {cleanName.Split(" ")[0]} has treated them. They are guarded and short-tempered.";
+                return moodOverride + $" {NpcName} is upset and hurt by how {cleanName.Split(" ")[0]} has treated them. They are guarded and short-tempered.";
             else if (rel.Score <= 25)
-                return $" {NpcName} is somewhat wary of {cleanName.Split(" ")[0]}. They're cautious and not fully comfortable.";
+                return moodOverride + $" {NpcName} is somewhat wary of {cleanName.Split(" ")[0]}. They're cautious and not fully comfortable.";
             else if (rel.Score >= 80)
-                return $" {NpcName} adores {cleanName.Split(" ")[0]} and considers them a soulmate. They are warm, affectionate, and deeply trusting.";
+                return moodOverride + $" {NpcName} adores {cleanName.Split(" ")[0]} and considers them a soulmate. They are warm, affectionate, and deeply trusting.";
             else if (rel.Score >= 60)
-                return $" {NpcName} considers {cleanName.Split(" ")[0]} a close friend. They are open, cheerful, and supportive.";
+                return moodOverride + $" {NpcName} considers {cleanName.Split(" ")[0]} a close friend. They are open, cheerful, and supportive.";
             else
-                return ""; // Neutral — no special mood injection
+                return moodOverride; // Neutral — only mood override if any
         }
     }
 }

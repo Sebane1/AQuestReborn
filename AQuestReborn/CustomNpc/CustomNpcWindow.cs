@@ -36,6 +36,7 @@ namespace AQuestReborn.CustomNpc
         private string _pairedNpcEmoteSearchText = "";
         private string _pairedPartnerEmoteSearchText = "";
         private string _penumbraSearchText = "";
+        private int _selectedPairedIndex = -1;
         
         // PlaceName list
         private string[] _placeNames = new string[] { "Unknown" };
@@ -1008,221 +1009,317 @@ namespace AQuestReborn.CustomNpc
                             }
                             ImGui.EndChild();
 
-                            ImGui.Dummy(new Vector2(0, 10));
+                            ImGui.EndTabItem();
+                        }
 
-                            // Paired Animations
-                            ImGui.Separator();
-                            ImGui.Dummy(new Vector2(0, 5));
-
+                        if (ImGui.BeginTabItem("Paired Animations"))
+                        {
                             var npc = _customNpcCharacters[_currentSelection];
                             npc.PairedAnimations ??= new List<PairedAnimationConfig>();
 
-                            bool pairedOpen = ImGui.TreeNodeEx("Paired Animations (" + npc.PairedAnimations.Count + ")##pairedAnims",
-                                ImGuiTreeNodeFlags.Framed);
-                            if (ImGui.IsItemHovered())
-                                ImGui.SetTooltip("Pre-configured coordinated animations.\nSay the trigger phrase via /npcchat to start the paired emote.");
+                            float availWidth = ImGui.GetContentRegionAvail().X;
+                            float listWidth = 180;
 
-                            if (pairedOpen)
+                            // Check if this NPC is currently in a paired animation
+                            bool npcInPairedAnim = _plugin?.AQuestReborn?.PairedAnimationManager != null
+                                && _plugin.AQuestReborn.PairedAnimationManager.IsNpcInPairedAnimation(npc.NpcName);
+
+                            // ── Left panel: animation list ──
+                            if (ImGui.BeginChild("##pairedList", new Vector2(listWidth, -1), true))
                             {
-                                if (ImGui.Button("+ Add Paired Animation##addPaired"))
-                                {
-                                    npc.PairedAnimations.Add(new PairedAnimationConfig());
-                                    SaveNPCCharacters();
-                                }
-
-                                int removeIndex = -1;
                                 for (int pi = 0; pi < npc.PairedAnimations.Count; pi++)
                                 {
                                     var pa = npc.PairedAnimations[pi];
-                                    string label = "Paired Animation #" + (pi + 1);
+                                    string itemLabel = !string.IsNullOrEmpty(pa.TriggerPhrase)
+                                        ? pa.TriggerPhrase
+                                        : "Animation #" + (pi + 1);
+                                    bool isSelected = _selectedPairedIndex == pi;
 
-                                    ImGui.PushID("paired_" + pi);
-                                    if (ImGui.TreeNodeEx(label + "##pa", ImGuiTreeNodeFlags.Framed))
+                                    // Show switch button when NPC is in an active paired animation
+                                    if (npcInPairedAnim)
                                     {
-                                        // Trigger Phrase
-                                        ImGui.LabelText("##triggerLabel", "Trigger Phrase");
-                                        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                        if (ImGui.InputTextWithHint("##triggerPhrase", "e.g. lets dance", ref pa.TriggerPhrase, 200))
-                                            SaveNPCCharacters();
-                                        if (ImGui.IsItemHovered())
-                                            ImGui.SetTooltip("The phrase the player says via /npcchat to trigger this animation.\nMatched case-insensitively.");
-
-                                        // NPC Emote (search + scrollable list)
-                                        ImGui.LabelText("##npcEmoteLabel", Translator.LocalizeUI("NPC Emote"));
-                                        int npcEmoteIdx = Array.IndexOf(_idleEmoteRowIds, pa.NpcEmoteId);
-                                        string npcEmotePreview = npcEmoteIdx >= 0 && npcEmoteIdx < _idleEmoteNames.Length
-                                            ? _idleEmoteNames[npcEmoteIdx] : Translator.LocalizeUI("None");
-                                        ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + npcEmotePreview);
-                                        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                        ImGui.InputTextWithHint("##pairedNpcSearch", Translator.LocalizeUI("Search emotes..."), ref _pairedNpcEmoteSearchText, 100);
-                                        if (ImGui.BeginChild("##npcEmoteList", new Vector2(ImGui.GetColumnWidth(), 100), true))
+                                        if (ImGui.SmallButton(">>##switch_" + pi))
                                         {
-                                            for (int ei = 0; ei < _idleEmoteNames.Length; ei++)
-                                            {
-                                                if (!string.IsNullOrEmpty(_pairedNpcEmoteSearchText)
-                                                    && !_idleEmoteNames[ei].Contains(_pairedNpcEmoteSearchText, StringComparison.OrdinalIgnoreCase))
-                                                    continue;
-                                                bool isSelected = _idleEmoteRowIds[ei] == pa.NpcEmoteId;
-                                                if (ImGui.Selectable(_idleEmoteNames[ei] + "##npcE_" + ei, isSelected))
-                                                {
-                                                    pa.NpcEmoteId = _idleEmoteRowIds[ei];
-                                                    SaveNPCCharacters();
-                                                }
-                                            }
-                                        }
-                                        ImGui.EndChild();
-
-                                        // NPC /cpose sub-animation selector
-                                        if (pa.NpcEmoteId > 0)
-                                        {
-                                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                            if (ImGui.InputInt("NPC Pose Variant##npcCpose", ref pa.NpcCposeIndex))
-                                            {
-                                                if (pa.NpcCposeIndex < 0) pa.NpcCposeIndex = 0;
-                                                SaveNPCCharacters();
-                                            }
-                                            if (ImGui.IsItemHovered())
-                                                ImGui.SetTooltip("/cpose sub-animation index. 0 = default pose.");
-                                        }
-
-                                        // Partner Emote (search + scrollable list)
-                                        ImGui.LabelText("##partnerEmoteLabel", Translator.LocalizeUI("Partner Emote"));
-                                        int partnerEmoteIdx = Array.IndexOf(_idleEmoteRowIds, pa.PartnerEmoteId);
-                                        string partnerEmotePreview = partnerEmoteIdx >= 0 && partnerEmoteIdx < _idleEmoteNames.Length
-                                            ? _idleEmoteNames[partnerEmoteIdx] : Translator.LocalizeUI("None");
-                                        ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + partnerEmotePreview);
-                                        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                        ImGui.InputTextWithHint("##pairedPartnerSearch", Translator.LocalizeUI("Search emotes..."), ref _pairedPartnerEmoteSearchText, 100);
-                                        if (ImGui.BeginChild("##partnerEmoteList", new Vector2(ImGui.GetColumnWidth(), 100), true))
-                                        {
-                                            for (int ei = 0; ei < _idleEmoteNames.Length; ei++)
-                                            {
-                                                if (!string.IsNullOrEmpty(_pairedPartnerEmoteSearchText)
-                                                    && !_idleEmoteNames[ei].Contains(_pairedPartnerEmoteSearchText, StringComparison.OrdinalIgnoreCase))
-                                                    continue;
-                                                bool isSelected = _idleEmoteRowIds[ei] == pa.PartnerEmoteId;
-                                                if (ImGui.Selectable(_idleEmoteNames[ei] + "##partE_" + ei, isSelected))
-                                                {
-                                                    pa.PartnerEmoteId = _idleEmoteRowIds[ei];
-                                                    SaveNPCCharacters();
-                                                }
-                                            }
-                                        }
-                                        ImGui.EndChild();
-
-                                        // Partner /cpose sub-animation selector
-                                        if (pa.PartnerEmoteId > 0)
-                                        {
-                                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                            if (ImGui.InputInt("Partner Pose Variant##partnerCpose", ref pa.PartnerCposeIndex))
-                                            {
-                                                if (pa.PartnerCposeIndex < 0) pa.PartnerCposeIndex = 0;
-                                                SaveNPCCharacters();
-                                            }
-                                            if (ImGui.IsItemHovered())
-                                                ImGui.SetTooltip("/cpose sub-animation index. 0 = default pose.");
-                                        }
-
-                                        // Partner NPC Name (optional)
-                                        ImGui.LabelText("##partnerLabel", "Partner NPC Name (optional)");
-                                        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                        if (ImGui.InputTextWithHint("##partnerName", "Leave empty = player is partner", ref pa.PartnerNpcName, 200))
-                                            SaveNPCCharacters();
-                                        if (ImGui.IsItemHovered())
-                                            ImGui.SetTooltip("Name of another Custom NPC to pair with.\nLeave empty to pair with the player instead.");
-
-                                        // Loop toggle
-                                        if (ImGui.Checkbox("Loop Animation##loopAnim", ref pa.LoopAnimation))
-                                            SaveNPCCharacters();
-                                        if (ImGui.IsItemHovered())
-                                            ImGui.SetTooltip("If checked, the animation will loop via BaseOverride.\nOtherwise it plays once via PlayTimeline.");
-
-                                        // Auto-stop toggle
-                                        if (ImGui.Checkbox("Auto-stop after duration##useDuration", ref pa.UseDuration))
-                                            SaveNPCCharacters();
-                                        if (ImGui.IsItemHovered())
-                                            ImGui.SetTooltip("If checked, the animation will automatically stop after the set duration.\nIf unchecked, the animation plays indefinitely.");
-
-                                        // Duration (only shown when UseDuration is enabled)
-                                        if (pa.UseDuration)
-                                        {
-                                            ImGui.LabelText("##durationLabel", "Duration (seconds)");
-                                            ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                            int durationSec = pa.DurationMs / 1000;
-                                            if (ImGui.SliderInt("##duration", ref durationSec, 1, 60))
-                                            {
-                                                pa.DurationMs = durationSec * 1000;
-                                                SaveNPCCharacters();
-                                            }
-                                            if (ImGui.IsItemHovered())
-                                                ImGui.SetTooltip("How long the animation plays before the NPC returns to normal.");
-                                        }
-
-                                        // Approach delay
-                                        ImGui.LabelText("##approachDelayLabel", "Approach Delay (seconds)");
-                                        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                        int approachSec = pa.ApproachDelayMs / 1000;
-                                        if (ImGui.SliderInt("##approachDelay", ref approachSec, 0, 10))
-                                        {
-                                            pa.ApproachDelayMs = approachSec * 1000;
-                                            SaveNPCCharacters();
+                                            _plugin.AQuestReborn.PairedAnimationManager.SwitchAnimation(npc.NpcName, pa);
                                         }
                                         if (ImGui.IsItemHovered())
-                                            ImGui.SetTooltip("How long the NPC waits after turning and speaking\nbefore walking to the partner. 0 = walk immediately.");
-
-                                        ImGui.Dummy(new Vector2(0, 3));
-                                        ImGui.Separator();
-                                        ImGui.TextColored(new Vector4(0.8f, 0.7f, 0.3f, 1f), "Glamourer Designs (optional)");
-
-                                        // NPC Glamourer Design
-                                        ImGui.LabelText("##npcDesignLabel", "NPC Design Name");
-                                        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                        if (ImGui.InputTextWithHint("##npcGlamDesign", "e.g. Dance Outfit", ref pa.NpcGlamourerDesign, 200))
-                                            SaveNPCCharacters();
-                                        if (ImGui.IsItemHovered())
-                                            ImGui.SetTooltip("Name of a Glamourer design to apply to the NPC during the animation.\nLeave empty for no change. Reverted when animation ends.");
-
-                                        // Partner Glamourer Design
-                                        ImGui.LabelText("##partnerDesignLabel", "Partner Design Name");
-                                        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                        if (ImGui.InputTextWithHint("##partnerGlamDesign", "e.g. Dance Outfit", ref pa.PartnerGlamourerDesign, 200))
-                                            SaveNPCCharacters();
-                                        if (ImGui.IsItemHovered())
-                                            ImGui.SetTooltip("Name of a Glamourer design to apply to the partner (player or NPC) during the animation.\nLeave empty for no change. Reverted when animation ends.");
-
-                                        ImGui.Dummy(new Vector2(0, 3));
-                                        ImGui.Separator();
-                                        ImGui.TextColored(new Vector4(0.3f, 0.7f, 0.8f, 1f), "Penumbra Mod (optional)");
-
-                                        ImGui.LabelText("##penumbraModLabel", "Mod Name Filter");
-                                        ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                        if (ImGui.InputTextWithHint("##penumbraMod", "e.g. Meal Time", ref pa.PenumbraModFilter, 200))
-                                            SaveNPCCharacters();
-                                        if (ImGui.IsItemHovered())
-                                            ImGui.SetTooltip("Partial name of a Penumbra mod to enable during this animation.\nConflicting mods (same file paths) are disabled automatically.\nAll changes are reverted when the animation ends.\nLeave empty to skip.");
-
-                                        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.5f, 0.1f, 0.1f, 1f));
-                                        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.7f, 0.15f, 0.15f, 1f));
-                                        if (ImGui.Button("Remove##removePaired"))
-                                        {
-                                            removeIndex = pi;
-                                        }
-                                        ImGui.PopStyleColor(2);
-
-                                        ImGui.TreePop();
+                                            ImGui.SetTooltip("Instantly switch to this animation");
+                                        ImGui.SameLine();
                                     }
-                                    ImGui.PopID();
+
+                                    if (ImGui.Selectable(itemLabel + "##pa_" + pi, isSelected))
+                                    {
+                                        _selectedPairedIndex = pi;
+                                    }
                                 }
 
-                                if (removeIndex >= 0)
+                                ImGui.Dummy(new Vector2(0, 5));
+                                if (ImGui.Button("+ Add##addPaired", new Vector2(-1, 0)))
                                 {
-                                    npc.PairedAnimations.RemoveAt(removeIndex);
+                                    npc.PairedAnimations.Add(new PairedAnimationConfig());
+                                    _selectedPairedIndex = npc.PairedAnimations.Count - 1;
                                     SaveNPCCharacters();
                                 }
-
-                                ImGui.TreePop();
                             }
-                            
+                            ImGui.EndChild();
+
+                            ImGui.SameLine();
+
+                            // ── Right panel: selected animation settings ──
+                            if (ImGui.BeginChild("##pairedDetail", new Vector2(0, -1), true))
+                            {
+                                if (_selectedPairedIndex >= 0 && _selectedPairedIndex < npc.PairedAnimations.Count)
+                                {
+                                    var pa = npc.PairedAnimations[_selectedPairedIndex];
+                                    int pi = _selectedPairedIndex;
+
+                                    ImGui.PushID("pairedDetail_" + pi);
+
+                                    // Trigger Phrase
+                                    ImGui.TextColored(new Vector4(0.6f, 0.8f, 1f, 1f), "Trigger Phrase");
+                                    ImGui.SetNextItemWidth(-1);
+                                    ImGui.InputTextWithHint("##triggerPhrase", "e.g. lets dance", ref pa.TriggerPhrase, 200);
+                                    if (ImGui.IsItemDeactivatedAfterEdit())
+                                        SaveNPCCharacters();
+                                    if (ImGui.IsItemHovered())
+                                        ImGui.SetTooltip("The phrase the player says via /npcchat to trigger this animation.\nMatched case-insensitively.");
+
+                                    ImGui.Dummy(new Vector2(0, 5));
+                                    ImGui.Separator();
+
+                                    // NPC Emote
+                                    ImGui.TextColored(new Vector4(0.6f, 0.8f, 1f, 1f), Translator.LocalizeUI("NPC Emote"));
+                                    int npcEmoteIdx = Array.IndexOf(_idleEmoteRowIds, pa.NpcEmoteId);
+                                    string npcEmotePreview = npcEmoteIdx >= 0 && npcEmoteIdx < _idleEmoteNames.Length
+                                        ? _idleEmoteNames[npcEmoteIdx] : Translator.LocalizeUI("None");
+                                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + npcEmotePreview);
+                                    ImGui.SetNextItemWidth(-1);
+                                    ImGui.InputTextWithHint("##pairedNpcSearch", Translator.LocalizeUI("Search emotes..."), ref _pairedNpcEmoteSearchText, 100);
+                                    if (ImGui.BeginChild("##npcEmoteList", new Vector2(-1, 100), true))
+                                    {
+                                        for (int ei = 0; ei < _idleEmoteNames.Length; ei++)
+                                        {
+                                            if (!string.IsNullOrEmpty(_pairedNpcEmoteSearchText)
+                                                && !_idleEmoteNames[ei].Contains(_pairedNpcEmoteSearchText, StringComparison.OrdinalIgnoreCase))
+                                                continue;
+                                            bool isEmoteSel = _idleEmoteRowIds[ei] == pa.NpcEmoteId;
+                                            if (ImGui.Selectable(_idleEmoteNames[ei] + "##npcE_" + ei, isEmoteSel))
+                                            {
+                                                pa.NpcEmoteId = _idleEmoteRowIds[ei];
+                                                SaveNPCCharacters();
+                                            }
+                                        }
+                                    }
+                                    ImGui.EndChild();
+
+                                    if (pa.NpcEmoteId > 0)
+                                    {
+                                        if (ImGui.InputInt("NPC Pose Variant##npcCpose", ref pa.NpcCposeIndex))
+                                        {
+                                            if (pa.NpcCposeIndex < 0) pa.NpcCposeIndex = 0;
+                                            SaveNPCCharacters();
+                                        }
+                                        if (ImGui.IsItemHovered())
+                                            ImGui.SetTooltip("/cpose sub-animation index. 0 = default pose.");
+                                    }
+
+                                    ImGui.Dummy(new Vector2(0, 5));
+                                    ImGui.Separator();
+
+                                    // Partner Emote
+                                    ImGui.TextColored(new Vector4(0.6f, 0.8f, 1f, 1f), Translator.LocalizeUI("Partner Emote"));
+                                    int partnerEmoteIdx = Array.IndexOf(_idleEmoteRowIds, pa.PartnerEmoteId);
+                                    string partnerEmotePreview = partnerEmoteIdx >= 0 && partnerEmoteIdx < _idleEmoteNames.Length
+                                        ? _idleEmoteNames[partnerEmoteIdx] : Translator.LocalizeUI("None");
+                                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + partnerEmotePreview);
+                                    ImGui.SetNextItemWidth(-1);
+                                    ImGui.InputTextWithHint("##pairedPartnerSearch", Translator.LocalizeUI("Search emotes..."), ref _pairedPartnerEmoteSearchText, 100);
+                                    if (ImGui.BeginChild("##partnerEmoteList", new Vector2(-1, 100), true))
+                                    {
+                                        for (int ei = 0; ei < _idleEmoteNames.Length; ei++)
+                                        {
+                                            if (!string.IsNullOrEmpty(_pairedPartnerEmoteSearchText)
+                                                && !_idleEmoteNames[ei].Contains(_pairedPartnerEmoteSearchText, StringComparison.OrdinalIgnoreCase))
+                                                continue;
+                                            bool isEmoteSel = _idleEmoteRowIds[ei] == pa.PartnerEmoteId;
+                                            if (ImGui.Selectable(_idleEmoteNames[ei] + "##partE_" + ei, isEmoteSel))
+                                            {
+                                                pa.PartnerEmoteId = _idleEmoteRowIds[ei];
+                                                SaveNPCCharacters();
+                                            }
+                                        }
+                                    }
+                                    ImGui.EndChild();
+
+                                    if (pa.PartnerEmoteId > 0)
+                                    {
+                                        if (ImGui.InputInt("Partner Pose Variant##partnerCpose", ref pa.PartnerCposeIndex))
+                                        {
+                                            if (pa.PartnerCposeIndex < 0) pa.PartnerCposeIndex = 0;
+                                            SaveNPCCharacters();
+                                        }
+                                        if (ImGui.IsItemHovered())
+                                            ImGui.SetTooltip("/cpose sub-animation index. 0 = default pose.");
+                                    }
+
+                                    ImGui.Dummy(new Vector2(0, 5));
+                                    ImGui.Separator();
+
+                                    // Partner NPC Name
+                                    ImGui.TextColored(new Vector4(0.6f, 0.8f, 1f, 1f), "Partner NPC Name (optional)");
+                                    ImGui.SetNextItemWidth(-1);
+                                    ImGui.InputTextWithHint("##partnerName", "Leave empty = player is partner", ref pa.PartnerNpcName, 200);
+                                    if (ImGui.IsItemDeactivatedAfterEdit())
+                                        SaveNPCCharacters();
+                                    if (ImGui.IsItemHovered())
+                                        ImGui.SetTooltip("Name of another Custom NPC to pair with.\nLeave empty to pair with the player instead.");
+
+                                    ImGui.Dummy(new Vector2(0, 5));
+                                    ImGui.Separator();
+                                    ImGui.TextColored(new Vector4(0.6f, 0.8f, 1f, 1f), "Timing & Behavior");
+
+                                    // Loop toggle
+                                    if (ImGui.Checkbox("Loop Animation##loopAnim", ref pa.LoopAnimation))
+                                        SaveNPCCharacters();
+                                    if (ImGui.IsItemHovered())
+                                        ImGui.SetTooltip("If checked, the animation will loop via BaseOverride.\nOtherwise it plays once via PlayTimeline.");
+
+                                    // Auto-stop toggle
+                                    if (ImGui.Checkbox("Auto-stop after duration##useDuration", ref pa.UseDuration))
+                                        SaveNPCCharacters();
+                                    if (ImGui.IsItemHovered())
+                                        ImGui.SetTooltip("If checked, the animation will automatically stop after the set duration.\nIf unchecked, the animation plays indefinitely.");
+
+                                    // Duration
+                                    if (pa.UseDuration)
+                                    {
+                                        ImGui.SetNextItemWidth(-1);
+                                        int durationSec = pa.DurationMs / 1000;
+                                        if (ImGui.SliderInt("Duration (s)##duration", ref durationSec, 1, 60))
+                                        {
+                                            pa.DurationMs = durationSec * 1000;
+                                            SaveNPCCharacters();
+                                        }
+                                        if (ImGui.IsItemHovered())
+                                            ImGui.SetTooltip("How long the animation plays before the NPC returns to normal.");
+                                    }
+
+                                    // Approach delay
+                                    ImGui.SetNextItemWidth(-1);
+                                    int approachSec = pa.ApproachDelayMs / 1000;
+                                    if (ImGui.SliderInt("Approach Delay (s)##approachDelay", ref approachSec, 0, 10))
+                                    {
+                                        pa.ApproachDelayMs = approachSec * 1000;
+                                        SaveNPCCharacters();
+                                    }
+                                    if (ImGui.IsItemHovered())
+                                        ImGui.SetTooltip("How long the NPC waits after turning and speaking\nbefore walking to the partner. 0 = walk immediately.");
+
+                                    // Open Chat on Start
+                                    if (ImGui.Checkbox("Open Chat Window##openChat", ref pa.OpenChatOnStart))
+                                        SaveNPCCharacters();
+                                    if (ImGui.IsItemHovered())
+                                        ImGui.SetTooltip("Automatically open the one-on-one NPC chat window\nwhen this paired animation starts.\nOnly works when the partner is the player.");
+
+                                    // Chat Greeting (only relevant when Open Chat is enabled)
+                                    if (pa.OpenChatOnStart)
+                                    {
+                                        ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), "Chat Greeting");
+                                        ImGui.SetNextItemWidth(-1);
+                                        ImGui.InputTextWithHint("##chatGreeting", "e.g. *holds you close*", ref pa.ChatGreeting, 300);
+                                        if (ImGui.IsItemDeactivatedAfterEdit())
+                                            SaveNPCCharacters();
+                                        if (ImGui.IsItemHovered())
+                                            ImGui.SetTooltip("Custom greeting sent when the chat window opens.\nFor example: \"*holds you close*\" or \"*dances with you*\".\nIf empty, falls back to Animation Context or the default greeting.");
+                                    }
+
+                                    ImGui.Dummy(new Vector2(0, 5));
+                                    ImGui.Separator();
+                                    ImGui.TextColored(new Vector4(0.9f, 0.6f, 0.8f, 1f), "Emotion Override (optional)");
+
+                                    ImGui.SetNextItemWidth(-1);
+                                    ImGui.InputTextWithHint("##emotionOverride", "e.g. romantic and affectionate", ref pa.EmotionOverride, 300);
+                                    if (ImGui.IsItemDeactivatedAfterEdit())
+                                        SaveNPCCharacters();
+                                    if (ImGui.IsItemHovered())
+                                        ImGui.SetTooltip("An emotion/mood injected into the NPC's AI context\nwhile this paired animation is active.\nFor example: \"romantic and affectionate\" or \"playful\".\nLeave empty for no mood override.");
+
+                                    ImGui.Dummy(new Vector2(0, 5));
+                                    ImGui.Separator();
+                                    ImGui.TextColored(new Vector4(0.6f, 0.9f, 0.7f, 1f), "Animation Context (optional)");
+
+                                    ImGui.SetNextItemWidth(-1);
+                                    ImGui.InputTextWithHint("##animContext", "e.g. hugging, dancing together, sitting on a lap", ref pa.AnimationContext, 300);
+                                    if (ImGui.IsItemDeactivatedAfterEdit())
+                                        SaveNPCCharacters();
+                                    if (ImGui.IsItemHovered())
+                                        ImGui.SetTooltip("Describes what the animation is doing to/with the NPC.\nInjected into the AI prompt so the NPC understands the situation.\nFor example: \"hugging\", \"dancing together\", \"sitting on a lap\".\nLeave empty for no animation context.");
+
+                                    ImGui.Dummy(new Vector2(0, 5));
+                                    ImGui.Separator();
+                                    ImGui.TextColored(new Vector4(0.8f, 0.7f, 0.3f, 1f), "Glamourer Designs (optional)");
+
+                                    // NPC Glamourer Design
+                                    ImGui.TextWrapped("NPC Design Name");
+                                    ImGui.SetNextItemWidth(-1);
+                                    ImGui.InputTextWithHint("##npcGlamDesign", "e.g. Dance Outfit", ref pa.NpcGlamourerDesign, 200);
+                                    if (ImGui.IsItemDeactivatedAfterEdit())
+                                        SaveNPCCharacters();
+                                    if (ImGui.IsItemHovered())
+                                        ImGui.SetTooltip("Name of a Glamourer design to apply to the NPC during the animation.\nLeave empty for no change. Reverted when animation ends.");
+
+                                    // Partner Glamourer Design
+                                    ImGui.TextWrapped("Partner Design Name");
+                                    ImGui.SetNextItemWidth(-1);
+                                    ImGui.InputTextWithHint("##partnerGlamDesign", "e.g. Dance Outfit", ref pa.PartnerGlamourerDesign, 200);
+                                    if (ImGui.IsItemDeactivatedAfterEdit())
+                                        SaveNPCCharacters();
+                                    if (ImGui.IsItemHovered())
+                                        ImGui.SetTooltip("Name of a Glamourer design to apply to the partner (player or NPC) during the animation.\nLeave empty for no change. Reverted when animation ends.");
+
+                                    ImGui.Dummy(new Vector2(0, 5));
+                                    ImGui.Separator();
+                                    ImGui.TextColored(new Vector4(0.3f, 0.7f, 0.8f, 1f), "Penumbra Mod (optional)");
+
+                                    ImGui.TextWrapped("Mod Name Filter");
+                                    ImGui.SetNextItemWidth(-1);
+                                    ImGui.InputTextWithHint("##penumbraMod", "e.g. Meal Time", ref pa.PenumbraModFilter, 200);
+                                    if (ImGui.IsItemDeactivatedAfterEdit())
+                                        SaveNPCCharacters();
+                                    if (ImGui.IsItemHovered())
+                                        ImGui.SetTooltip("Partial name of a Penumbra mod to enable during this animation.\nConflicting mods (same file paths) are disabled automatically.\nAll changes are reverted when the animation ends.\nLeave empty to skip.");
+
+                                    ImGui.Dummy(new Vector2(0, 10));
+
+                                    // Remove button (requires Shift)
+                                    bool shiftHeld = ImGui.GetIO().KeyShift;
+                                    if (!shiftHeld)
+                                    {
+                                        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.3f, 0.3f, 0.3f, 1f));
+                                        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.3f, 0.3f, 0.3f, 1f));
+                                    }
+                                    else
+                                    {
+                                        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.5f, 0.1f, 0.1f, 1f));
+                                        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.7f, 0.15f, 0.15f, 1f));
+                                    }
+                                    if (ImGui.Button(shiftHeld ? "Remove Animation##removePaired" : "Hold Shift to Remove##removePaired", new Vector2(-1, 0)) && shiftHeld)
+                                    {
+                                        npc.PairedAnimations.RemoveAt(pi);
+                                        _selectedPairedIndex = Math.Min(_selectedPairedIndex, npc.PairedAnimations.Count - 1);
+                                        SaveNPCCharacters();
+                                    }
+                                    ImGui.PopStyleColor(2);
+
+                                    ImGui.PopID();
+                                }
+                                else
+                                {
+                                    ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1f), "Select an animation from the list,\nor click '+ Add' to create one.");
+                                }
+                            }
+                            ImGui.EndChild();
+
                             ImGui.EndTabItem();
                         }
 

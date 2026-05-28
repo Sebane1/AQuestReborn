@@ -133,12 +133,11 @@ namespace AQuestReborn.CustomNpc
                 aiMessage = await _gptWrapper.SendMessage(senderName, message, $@" smiles. ""{aiGreeting}""",
                 GetPlayerDescription(sendingCharacter, false, "", senderFullName), enrichedDescription + " " + GetPlayerDescription(receivingCharacter, true, aiName), finalSetting, 5, newModelChoice);
             }
-            string correctedMessage = PenumbraAndGlamourerHelperFunctions.GetGender(sendingCharacter) == 1 ? GenderFix(aiMessage) : aiMessage;
             Task.Run(() =>
             {
-                EmoteReaction(correctedMessage);
+                EmoteReaction(aiMessage);
             });
-            return correctedMessage;
+            return aiMessage;
         }
 
         public string GetPromptPreview(ICharacter sendingCharacter, ICharacter receivingCharacter, string aiName,
@@ -394,15 +393,7 @@ namespace AQuestReborn.CustomNpc
             }
             return pronoun + " has no skills";
         }
-        string GenderFix(string value)
-        {
-            return value.Replace(" himself", " herself").Replace("He ", "She ")
-                                 .Replace(" he ", " she ").Replace(" he?", " she?")
-                                 .Replace(" hes ", " she's ").Replace(" he's ", " she's ").Replace("He's ", "She's ")
-                                 .Replace(" him ", " her ").Replace(" him,", " her,").Replace(" him.", " her.").Replace(" his ", " her ").Replace(" his.", " her.")
-                                 .Replace("His ", "Her ").Replace(" men ", " women ").Replace(" men.", " women.").Replace(" sir ", " ma'am ")
-                                 .Replace(" man ", " woman ").Replace(" boy", " girl").Replace(" man.", " woman.");
-        }
+
         private async void EmoteReaction(string messageValue)
         {
             try
@@ -436,7 +427,11 @@ namespace AQuestReborn.CustomNpc
                                 bool canEmote = true;
                                 if (_plugin.AQuestReborn.InteractiveNpcDictionary.ContainsKey(_fullName))
                                 {
-                                    canEmote = _plugin.AQuestReborn.InteractiveNpcDictionary[_fullName].IsStationary;
+                                    var interactiveNpc = _plugin.AQuestReborn.InteractiveNpcDictionary[_fullName];
+                                    canEmote = interactiveNpc.IsStationary;
+                                    // Suppress emotes during paired animations — would break the coordinated pose
+                                    if (interactiveNpc.AnimationLocked)
+                                        canEmote = false;
                                 }
                                 // Suppress emotes while swimming/diving — land emotes look broken in water
                                 unsafe
