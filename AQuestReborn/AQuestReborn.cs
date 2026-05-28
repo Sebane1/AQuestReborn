@@ -1891,8 +1891,9 @@ namespace AQuestReborn
                 if (_waitingForAppearanceLoad && _mcdfRefreshTimer.ElapsedMilliseconds > 500 && (AppearanceAccessUtils.AppearanceManager == null || !AppearanceAccessUtils.AppearanceManager.IsWorking()))
                 {
                     var item = _appearanceApplicationQueue.Dequeue();
-                    if (item.Item3 != null)
+                    if (item.Item3 != null && item.Item3.IsValid())
                     {
+                        Plugin.PluginLog.Information($"[Appearance] Processing queued appearance: '{item.Item1}' on character index {item.Item3.ObjectIndex}");
                         var appearanceDataItems = item.Item1.StringToArray();
                         bool charaAlreadyLoaded = false;
                         bool mcdfAlreadyLoaded = false;
@@ -1919,6 +1920,7 @@ namespace AQuestReborn
                                 }
                                 mcdfLoad = delegate
                                 {
+                                    Plugin.PluginLog.Information($"[Appearance] Invoking AppearanceManager.LoadAppearance for '{appearanceDataItem}'");
                                     AppearanceAccessUtils.AppearanceManager?.LoadAppearance(appearanceDataItem, item.Item3, (int)appearanceSwapType);
                                 };
                                 mcdfAlreadyLoaded = true;
@@ -1932,6 +1934,7 @@ namespace AQuestReborn
                         {
 
                         }
+                        var characterForRedraw = item.Item3;
                         Task.Run(() =>
                         {
                             if (charaAlreadyLoaded)
@@ -1939,8 +1942,34 @@ namespace AQuestReborn
                                 Thread.Sleep(100);
                             }
                             mcdfLoad?.Invoke(this, EventArgs.Empty);
+                            // After the MCDF applies the new temporary collection, trigger a redraw
+                            // so the engine actually renders the new appearance.
+                            if (characterForRedraw != null && characterForRedraw.IsValid())
+                            {
+                                Thread.Sleep(500);
+                                try
+                                {
+                                    Plugin.Framework.RunOnFrameworkThread(() =>
+                                    {
+                                        if (characterForRedraw != null && characterForRedraw.IsValid())
+                                        {
+                                            PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(
+                                                characterForRedraw.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
+                                            Plugin.PluginLog.Information($"[Appearance] Triggered post-MCDF redraw for index {characterForRedraw.ObjectIndex}");
+                                        }
+                                    });
+                                }
+                                catch (Exception ex)
+                                {
+                                    Plugin.PluginLog.Warning(ex, "[Appearance] Failed to trigger post-MCDF redraw");
+                                }
+                            }
                         });
                         _waitingForAppearanceLoad = false;
+                    }
+                    else
+                    {
+                        Plugin.PluginLog.Warning($"[Appearance] Dequeued appearance item but character is null or invalid. Path: '{item.Item1}'");
                     }
                     _mcdfRefreshTimer.Restart();
                 }
@@ -2203,10 +2232,27 @@ namespace AQuestReborn
         {
             try
             {
-                LoadAppearance(appearancePath, AppearanceSwapType.EntireAppearance, _spawnedNpcsDictionary[questId][npcName]);
+                if (!_spawnedNpcsDictionary.ContainsKey(questId) || !_spawnedNpcsDictionary[questId].ContainsKey(npcName))
+                {
+                    Plugin.PluginLog.Warning($"[Appearance] NPC '{npcName}' not found in spawned dictionary for quest '{questId}'. " +
+                        $"Available quests: [{string.Join(", ", _spawnedNpcsDictionary.Keys)}]. " +
+                        (_spawnedNpcsDictionary.ContainsKey(questId) ? $"NPCs in quest: [{string.Join(", ", _spawnedNpcsDictionary[questId].Keys)}]" : "Quest not in dictionary."));
+                    RefreshNpcs(territoryId, questId, true);
+                    return;
+                }
+                var npcCharacter = _spawnedNpcsDictionary[questId][npcName];
+                if (npcCharacter == null || !npcCharacter.IsValid())
+                {
+                    Plugin.PluginLog.Warning($"[Appearance] NPC '{npcName}' character is null or invalid. Refreshing.");
+                    RefreshNpcs(territoryId, questId, true);
+                    return;
+                }
+                Plugin.PluginLog.Information($"[Appearance] Queuing MCDF load for '{npcName}': {appearancePath}");
+                LoadAppearance(appearancePath, AppearanceSwapType.EntireAppearance, npcCharacter);
             }
-            catch
+            catch (Exception ex)
             {
+                Plugin.PluginLog.Warning(ex, $"[Appearance] Failed to update NPC '{npcName}' appearance: {ex.Message}");
                 try
                 {
                     RefreshNpcs(territoryId, questId, true);
