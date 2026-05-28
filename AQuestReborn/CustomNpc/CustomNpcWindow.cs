@@ -1238,7 +1238,7 @@ namespace AQuestReborn.CustomNpc
                                     ImGui.TextColored(new Vector4(0.9f, 0.6f, 0.8f, 1f), "Emotion Override (optional)");
 
                                     ImGui.SetNextItemWidth(-1);
-                                    ImGui.InputTextWithHint("##emotionOverride", "e.g. romantic and affectionate", ref pa.EmotionOverride, 300);
+                                    ImGui.InputTextWithHint("##emotionOverride", "e.g. happy or sad", ref pa.EmotionOverride, 300);
                                     if (ImGui.IsItemDeactivatedAfterEdit())
                                         SaveNPCCharacters();
                                     if (ImGui.IsItemHovered())
@@ -1283,7 +1283,7 @@ namespace AQuestReborn.CustomNpc
 
                                     ImGui.TextWrapped("Mod Name Filter");
                                     ImGui.SetNextItemWidth(-1);
-                                    ImGui.InputTextWithHint("##penumbraMod", "e.g. Meal Time", ref pa.PenumbraModFilter, 200);
+                                    ImGui.InputTextWithHint("##penumbraMod", "e.g. Super Epic Group Dance Mod", ref pa.PenumbraModFilter, 200);
                                     if (ImGui.IsItemDeactivatedAfterEdit())
                                         SaveNPCCharacters();
                                     if (ImGui.IsItemHovered())
