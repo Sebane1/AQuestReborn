@@ -2514,17 +2514,23 @@ namespace AQuestReborn
             }
         }
 
-        public void SummonCustomNpc(CustomNpcCharacter npcData)
+        public bool SummonCustomNpc(CustomNpcCharacter npcData)
         {
-            if (_actorSpawnService == null || !Plugin.ClientState.IsLoggedIn) return;
+            if (_actorSpawnService == null || !Plugin.ClientState.IsLoggedIn) return false;
             if (Plugin.ClientState.IsGPosing)
             {
                 Plugin.ToastGui.ShowError("Cannot summon NPCs while GPose is active.");
-                return;
+                return false;
+            }
+            int limit = 3;
+            if (_customNpcCharacters.Count >= limit)
+            {
+                Plugin.ToastGui.ShowError($"Cannot summon more than {limit} custom NPC's in the same zone");
+                return false;
             }
             if (Plugin.Condition[Dalamud.Game.ClientState.Conditions.ConditionFlag.InDeepDungeon])
             {
-                return;
+                return false;
             }
             // Don't spawn custom NPCs during duties with other real players
             unsafe
@@ -2532,7 +2538,7 @@ namespace AQuestReborn
                 if (Conditions.Instance()->BoundByDuty)
                 {
                     var groupManager = GroupManager.Instance();
-                    if (groupManager != null && groupManager->MainGroup.MemberCount > 1) return;
+                    if (groupManager != null && groupManager->MainGroup.MemberCount > 1) return false;
                 }
             }
             if (_customNpcDictionary.TryGetValue(npcData.NpcName, out var existingNpc))
@@ -2541,7 +2547,7 @@ namespace AQuestReborn
                 {
                     // Already summoned and valid, dismiss instead
                     DismissCustomNpc(npcData.NpcName);
-                    return;
+                    return false;
                 }
                 else
                 {
@@ -2620,12 +2626,13 @@ namespace AQuestReborn
                     // Pooled actor was invalid — fall through to fresh create
                     FreshSpawnCustomNpc(npcData);
                 });
-                return;
+                return true;
             }
 
             int followingCount = Plugin.Configuration.CustomNpcCharacters.Count(n => n.IsFollowingPlayer && !n.IsStaying && _customNpcDictionary.ContainsKey(n.NpcName));
 
             FreshSpawnCustomNpc(npcData);
+            return true;
         }
 
         private Queue<CustomNpcCharacter> _customNpcActorSpawnQueue = new Queue<CustomNpcCharacter>();

@@ -37,11 +37,11 @@ namespace AQuestReborn.CustomNpc
         private string _pairedPartnerEmoteSearchText = "";
         private string _penumbraSearchText = "";
         private int _selectedPairedIndex = -1;
-        
+
         // PlaceName list
         private string[] _placeNames = new string[] { "Unknown" };
         private string _placeNameSearchText = "";
-        
+
         // ClassJob list
         private string[] _classJobNames = new string[] { "None" };
         private uint[] _classJobRowIds = new uint[] { 0 };
@@ -217,7 +217,7 @@ namespace AQuestReborn.CustomNpc
 
                             string name = "";
                             string rawName = $"B:{bnpc.RowId:D7}";
-                            
+
                             if (brioNameMap != null && brioNameMap.TryGetValue(rawName, out var mappedName))
                             {
                                 rawName = mappedName;
@@ -292,7 +292,7 @@ namespace AQuestReborn.CustomNpc
                             var items = _plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Item>();
                             foreach (var item in items)
                             {
-                                if (item.EquipSlotCategory.RowId == 1 || item.EquipSlotCategory.RowId == 13) 
+                                if (item.EquipSlotCategory.RowId == 1 || item.EquipSlotCategory.RowId == 13)
                                 {
                                     var cjc = item.ClassJobCategory.Value;
                                     if (cjc.RowId != 0 && (bool)prop.GetValue(cjc))
@@ -660,7 +660,7 @@ namespace AQuestReborn.CustomNpc
                             {
                                 ImGui.LabelText("##monsterLabel", Translator.LocalizeUI("Monster Model"));
                                 ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                
+
                                 int currentModelId = (int)_customNpcCharacters[_currentSelection].MonsterModelId;
                                 string previewValue = currentModelId.ToString();
                                 for (int i = 0; i < _monsterModelIds.Length; i++)
@@ -677,7 +677,7 @@ namespace AQuestReborn.CustomNpc
                                     ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + previewValue);
                                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
                                     ImGui.InputTextWithHint("##monsterSearch", Translator.LocalizeUI("Search monsters..."), ref _monsterSearchText, 100);
-                                    
+
                                     if (ImGui.BeginChild("##MonsterModelList", new Vector2(ImGui.GetColumnWidth(), 120), true))
                                     {
                                         for (int i = 0; i < _monsterNames.Length; i++)
@@ -693,7 +693,7 @@ namespace AQuestReborn.CustomNpc
                                             {
                                                 _customNpcCharacters[_currentSelection].MonsterModelId = (uint)id;
                                                 SaveNPCCharacters();
-                                                
+
                                                 // Re-apply immediately if spawned
                                                 if (_customNpcCharacters[_currentSelection].IsFollowingPlayer || _customNpcCharacters[_currentSelection].IsStaying)
                                                 {
@@ -753,11 +753,11 @@ namespace AQuestReborn.CustomNpc
                                 if (Brio.Brio.TryGetService<Brio.IPC.PenumbraService>(out var penumbraService))
                                 {
                                     var collections = penumbraService.GetCollections().Values.OrderBy(name => name).ToArray();
-                                    
+
                                     if (ImGui.BeginCombo("##PenumbraCollectionCombo", _customNpcCharacters[_currentSelection].PenumbraCollection ?? ""))
                                     {
                                         ImGui.InputTextWithHint("##penumbraSearch", Translator.LocalizeUI("Search collections..."), ref _penumbraSearchText, 100);
-                                        
+
                                         foreach (var collectionName in collections)
                                         {
                                             if (!string.IsNullOrEmpty(_penumbraSearchText) && !collectionName.Contains(_penumbraSearchText, StringComparison.OrdinalIgnoreCase))
@@ -768,7 +768,7 @@ namespace AQuestReborn.CustomNpc
                                             {
                                                 _customNpcCharacters[_currentSelection].PenumbraCollection = collectionName;
                                                 SaveNPCCharacters();
-                                                
+
                                                 // Auto apply if spawned
                                                 if (_customNpcCharacters[_currentSelection].IsFollowingPlayer || _customNpcCharacters[_currentSelection].IsStaying)
                                                 {
@@ -790,7 +790,7 @@ namespace AQuestReborn.CustomNpc
                                     ImGui.TextColored(new Vector4(1, 0, 0, 1), Translator.LocalizeUI("Penumbra is not installed or available."));
                                 }
                             }
-                            
+
                             ImGui.EndTabItem();
                         }
 
@@ -820,7 +820,7 @@ namespace AQuestReborn.CustomNpc
                                     {
                                         SaveNPCCharacters();
                                     }
-                                    
+
                                     ImGui.Dummy(new Vector2(0, 15));
 
                                     // Only show re-roll button when using the default built-in AI
@@ -835,7 +835,7 @@ namespace AQuestReborn.CustomNpc
                                         if (ImGui.IsItemHovered())
                                             ImGui.SetTooltip("Randomly assigns a new default AI brain for this NPC.\nDoes not affect memories or relationships.");
                                     }
-                                    
+
                                     ImGui.EndTabItem();
                                 }
 
@@ -849,7 +849,7 @@ namespace AQuestReborn.CustomNpc
                                     }
 
                                     ImGui.LabelText("##npcBirthLocationLabel", Translator.LocalizeUI("Birth Location (Lore)"));
-                                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + 
+                                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " +
                                         (string.IsNullOrEmpty(_customNpcCharacters[_currentSelection].NpcBirthLocation) ? Translator.LocalizeUI("Unknown") : _customNpcCharacters[_currentSelection].NpcBirthLocation));
                                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
                                     ImGui.InputTextWithHint("##placeNameSearch", Translator.LocalizeUI("Search locations..."), ref _placeNameSearchText, 100);
@@ -872,13 +872,13 @@ namespace AQuestReborn.CustomNpc
                                         }
                                     }
                                     ImGui.EndChild();
-                                    
+
                                     ImGui.EndTabItem();
                                 }
-                                
+
                                 ImGui.EndTabBar();
                             }
-                            
+
                             ImGui.EndTabItem();
                         }
 
@@ -910,11 +910,11 @@ namespace AQuestReborn.CustomNpc
                                     if (!string.IsNullOrEmpty(_emoteSearchText)
                                         && !_idleEmoteNames[i].Contains(_emoteSearchText, StringComparison.OrdinalIgnoreCase))
                                         continue;
-                                    
+
                                     ushort currentId = _idleEmoteRowIds[i];
-                                    bool isSelected = _customNpcCharacters[_currentSelection].RandomIdleEmotes.Contains(currentId) 
+                                    bool isSelected = _customNpcCharacters[_currentSelection].RandomIdleEmotes.Contains(currentId)
                                         || (_customNpcCharacters[_currentSelection].RandomIdleEmotes.Count == 0 && currentId == _customNpcCharacters[_currentSelection].IdleEmoteId);
-                                        
+
                                     if (ImGui.Selectable(_idleEmoteNames[i] + "##" + i, isSelected))
                                     {
                                         if (currentId == 0) // "None" clicked
@@ -1338,7 +1338,7 @@ namespace AQuestReborn.CustomNpc
                             ImGui.Dummy(new Vector2(0, 10));
 
                             ImGui.LabelText("##npcJobLabel2", Translator.LocalizeUI("Profession/Job"));
-                            ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + 
+                            ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " +
                                 (string.IsNullOrEmpty(_customNpcCharacters[_currentSelection].NpcJob) ? Translator.LocalizeUI("None") : _customNpcCharacters[_currentSelection].NpcJob));
                             ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
                             ImGui.InputTextWithHint("##classJobSearch2", Translator.LocalizeUI("Search jobs..."), ref _classJobSearchText, 100);
@@ -1374,13 +1374,13 @@ namespace AQuestReborn.CustomNpc
                             {
                                 ImGui.Dummy(new Vector2(0, 10));
                                 RefreshWeaponList(_customNpcCharacters[_currentSelection].NpcClassJobId);
-                                
+
                                 ImGui.LabelText("##npcWeaponLabel2", Translator.LocalizeUI("Equipped Weapon"));
-                                
+
                                 int currentWeaponIdx = Array.IndexOf(_weaponItemIds, _customNpcCharacters[_currentSelection].NpcEquippedWeaponItemId);
                                 string currentWeaponName = currentWeaponIdx >= 0 && currentWeaponIdx < _weaponNames.Length
                                     ? _weaponNames[currentWeaponIdx] : Translator.LocalizeUI("Default (From Class)");
-                                    
+
                                 ImGui.TextColored(new Vector4(0.5f, 0.8f, 1f, 1f), Translator.LocalizeUI("Current") + ": " + currentWeaponName);
                                 ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
                                 ImGui.InputTextWithHint("##weaponSearch2", Translator.LocalizeUI("Search weapons..."), ref _weaponSearchText, 100);
@@ -1391,13 +1391,13 @@ namespace AQuestReborn.CustomNpc
                                         if (!string.IsNullOrEmpty(_weaponSearchText)
                                             && !_weaponNames[i].Contains(_weaponSearchText, StringComparison.OrdinalIgnoreCase))
                                             continue;
-                                            
+
                                         bool isSelected = _weaponItemIds[i] == _customNpcCharacters[_currentSelection].NpcEquippedWeaponItemId;
                                         if (ImGui.Selectable(_weaponNames[i] + "##wep2_" + i, isSelected))
                                         {
                                             _customNpcCharacters[_currentSelection].NpcEquippedWeaponItemId = _weaponItemIds[i];
                                             SaveNPCCharacters();
-                                            
+
                                             if (_plugin?.AQuestReborn?.InteractiveNpcDictionary != null
                                                 && _plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(
                                                     _customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
@@ -1814,7 +1814,7 @@ namespace AQuestReborn.CustomNpc
                                 ImGui.SetClipboardText($"{liveNpc.Character.Address:X}");
                             }
                             if (ImGui.IsItemHovered()) ImGui.SetTooltip("Copy GameObject Memory Address");
-                            
+
                             ImGui.SameLine();
                             if (ImGui.Button("Copy Draw"))
                             {
@@ -1832,7 +1832,7 @@ namespace AQuestReborn.CustomNpc
                                 }
                                 if (ImGui.IsItemHovered()) ImGui.SetTooltip("Copy Skeleton Memory Address");
                             }
-                            
+
                             ImGui.Dummy(new Vector2(0, 5));
                         }
                     }
@@ -1844,15 +1844,21 @@ namespace AQuestReborn.CustomNpc
                         {
                             if (!isSpawned)
                             {
-                                _plugin.AQuestReborn.SummonCustomNpc(_customNpcCharacters[_currentSelection]);
-                                _customNpcCharacters[_currentSelection].IsFollowingPlayer = false;
-                                _customNpcCharacters[_currentSelection].IsStaying = true;
-                                _customNpcCharacters[_currentSelection].StayTerritoryId = _plugin.ClientState.TerritoryType;
-                                var playerPos = _plugin.ObjectTable.LocalPlayer?.Position ?? System.Numerics.Vector3.Zero;
-                                var spawnPos = playerPos + new System.Numerics.Vector3(2, 0, 2);
-                                _customNpcCharacters[_currentSelection].StayPositionX = spawnPos.X;
-                                _customNpcCharacters[_currentSelection].StayPositionY = _plugin.AQuestReborn.GroundMap.GetGroundY(spawnPos.X, spawnPos.Z, playerPos.Y);
-                                _customNpcCharacters[_currentSelection].StayPositionZ = spawnPos.Z;
+                                if (_plugin.AQuestReborn.SummonCustomNpc(_customNpcCharacters[_currentSelection]))
+                                {
+                                    _customNpcCharacters[_currentSelection].IsFollowingPlayer = false;
+                                    _customNpcCharacters[_currentSelection].IsStaying = true;
+                                    _customNpcCharacters[_currentSelection].StayTerritoryId = _plugin.ClientState.TerritoryType;
+                                    var playerPos = _plugin.ObjectTable.LocalPlayer?.Position ?? System.Numerics.Vector3.Zero;
+                                    var spawnPos = playerPos + new System.Numerics.Vector3(2, 0, 2);
+                                    _customNpcCharacters[_currentSelection].StayPositionX = spawnPos.X;
+                                    _customNpcCharacters[_currentSelection].StayPositionY = _plugin.AQuestReborn.GroundMap.GetGroundY(spawnPos.X, spawnPos.Z, playerPos.Y);
+                                    _customNpcCharacters[_currentSelection].StayPositionZ = spawnPos.Z;
+                                }
+                                else
+                                {
+                                    Plugin.ToastGui.ShowError($"Could not spawm any more custom npcs. The limit has been reached.");
+                                }
                             }
                             else
                             {
@@ -2124,7 +2130,7 @@ namespace AQuestReborn.CustomNpc
             {
                 var provider = GPTApi.AiProviderFactory.CreateProvider();
                 // Avoid using "\n" as a stop sequence for tests because many local LLMs start responses with a newline
-                var stopSequences = new List<string>(); 
+                var stopSequences = new List<string>();
                 string testPrompt = "You are a friendly NPC. Say hello in one sentence.\nNPC: ";
 
                 string result;
