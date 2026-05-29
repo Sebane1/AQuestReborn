@@ -2522,7 +2522,7 @@ namespace AQuestReborn
                 Plugin.ToastGui.ShowError("Cannot summon NPCs while GPose is active.");
                 return false;
             }
-            int limit = 3;
+            int limit = 2;
             if (_customNpcCharacters.Count >= limit)
             {
                 Plugin.ToastGui.ShowError($"Cannot summon more than {limit} custom NPC's in the same zone");
