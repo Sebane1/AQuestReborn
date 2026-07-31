@@ -911,13 +911,7 @@ namespace AQuestReborn
                                         {
                                             _wasInCombat = true;
                                             NotifyCombatStateChanged(true);
-                                            CombatTargets.Clear();
-                                            
-                                            if (!ClassWeaponApplied)
-                                            {
-                                                ApplyClassWeapon();
-                                                ClassWeaponApplied = true;
-                                            }
+                                            CombatTargets.Clear();                                 
 
                                             var nChara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)SafeCharacterAddress;
                                             nChara->DrawData.IsWeaponHidden = false;
@@ -1050,6 +1044,11 @@ namespace AQuestReborn
                                     }
                                     else
                                     {
+                                        if (!ClassWeaponApplied)
+                                        {
+                                            ApplyClassWeapon();
+                                            ClassWeaponApplied = true;
+                                        }
                                         if (_wasInCombat)
                                         {
                                             _wasInCombat = false;
