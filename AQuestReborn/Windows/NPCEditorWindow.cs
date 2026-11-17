@@ -74,12 +74,19 @@ public class NPCEditorWindow : Window, IDisposable
                 {
                     var item = npcCustomization[_selectedNpcCustomization];
                     var npcName = item.NpcName;
+                    var npcVoice = item.Voice;
                     var appearanceData = item.AppearanceData;
                     var branchingChoiceTypes = Enum.GetNames(typeof(BranchingChoiceType));
                     if (ImGui.InputText(Translator.LocalizeUI("Npc Name##"), ref npcName, 40))
                     {
                         item.NpcName = npcName;
                     }
+
+                    if (ImGui.InputText(Translator.LocalizeUI("Npc Voice##"), ref npcVoice, 40))
+                    {
+                        item.Voice = npcVoice;
+                    }
+
                     if (ImGui.InputText(Translator.LocalizeUI("Npc Appearance Data##"), ref appearanceData, 255))
                     {
                         item.AppearanceData = appearanceData;

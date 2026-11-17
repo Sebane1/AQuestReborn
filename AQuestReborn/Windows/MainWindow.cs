@@ -199,20 +199,20 @@ public class MainWindow : Window, IDisposable
                     ImGui.Text("Fish Audio API Key");
                     ImGui.SetNextItemWidth(ImGui.GetContentRegionMax().X);
                     string fishApiKey = Plugin.Configuration.FishAudioApiKey ?? "";
-                    ImGui.InputText("##fishApiKey", ref fishApiKey, 51, ImGuiInputTextFlags.Password);
+                    if (ImGui.InputText("##fishApiKey", ref fishApiKey, 51, ImGuiInputTextFlags.Password))
+                    {
+                        Plugin.Configuration.FishAudioApiKey = fishApiKey;
+                    }
                     if (ImGui.IsItemDeactivatedAfterEdit())
                     {
-                        if (Plugin.Configuration.FishAudioApiKey != fishApiKey)
+                        Plugin.Configuration.FishAudioApiKey = fishApiKey;
+                        Plugin.Configuration.Save();
+                        if (Plugin.RoleplayingMediaManagerInstance != null)
                         {
-                            Plugin.Configuration.FishAudioApiKey = fishApiKey;
-                            Plugin.Configuration.Save();
-                            if (Plugin.RoleplayingMediaManagerInstance != null)
-                            {
-                                Plugin.RoleplayingMediaManagerInstance.FishAudioApiKey = fishApiKey;
-                                Plugin.RoleplayingMediaManagerInstance.RefreshFishAudioSubscriptionInfo();
-                            }
-                            Plugin.RefreshVoices();
+                            Plugin.RoleplayingMediaManagerInstance.FishAudioApiKey = fishApiKey;
+                            Plugin.RoleplayingMediaManagerInstance.RefreshFishAudioSubscriptionInfo();
                         }
+                        Plugin.RefreshVoices();
                     }
                     if (string.IsNullOrEmpty(fishApiKey))
                     {
@@ -239,19 +239,19 @@ public class MainWindow : Window, IDisposable
                     ImGui.Text("CTTS Server Address");
                     ImGui.SetNextItemWidth(ImGui.GetContentRegionMax().X);
                     string cttsAddress = Plugin.Configuration.CTTSAddress ?? "http://localhost:8308";
-                    ImGui.InputText("##cttsAddress", ref cttsAddress, 2000);
+                    if (ImGui.InputText("##cttsAddress", ref cttsAddress, 2000))
+                    {
+                        Plugin.Configuration.CTTSAddress = cttsAddress;
+                    }
                     if (ImGui.IsItemDeactivatedAfterEdit())
                     {
-                        if (Plugin.Configuration.CTTSAddress != cttsAddress)
+                        Plugin.Configuration.CTTSAddress = cttsAddress;
+                        if (Plugin.RoleplayingMediaManagerInstance != null)
                         {
-                            Plugin.Configuration.CTTSAddress = cttsAddress;
-                            if (Plugin.RoleplayingMediaManagerInstance != null)
-                            {
-                                Plugin.RoleplayingMediaManagerInstance.CTTSAddress = cttsAddress;
-                            }
-                            Plugin.Configuration.Save();
-                            Plugin.RefreshVoices();
+                            Plugin.RoleplayingMediaManagerInstance.CTTSAddress = cttsAddress;
                         }
+                        Plugin.Configuration.Save();
+                        Plugin.RefreshVoices();
                     }
 
                     ImGui.TextWrapped($"To add more voices, simply place .wav files of what you want to sound like in the folder the buttons below manage.");

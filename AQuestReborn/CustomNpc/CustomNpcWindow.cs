@@ -2030,7 +2030,10 @@ namespace AQuestReborn.CustomNpc
             ImGui.Text("API Base URL:");
             string url = config.OpenAiCompatibleUrl ?? "";
             ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
-            ImGui.InputText("##OpenAiUrl", ref url, 512);
+            if (ImGui.InputText("##OpenAiUrl", ref url, 512))
+            {
+                config.OpenAiCompatibleUrl = url;
+            }
             if (ImGui.IsItemDeactivatedAfterEdit())
             {
                 config.OpenAiCompatibleUrl = url;
@@ -2044,7 +2047,10 @@ namespace AQuestReborn.CustomNpc
             ImGui.Text("API Key (optional for local servers):");
             string apiKey = config.OpenAiCompatibleApiKey ?? "";
             ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
-            ImGui.InputText("##OpenAiKey", ref apiKey, 256, ImGuiInputTextFlags.Password);
+            if (ImGui.InputText("##OpenAiKey", ref apiKey, 256, ImGuiInputTextFlags.Password))
+            {
+                config.OpenAiCompatibleApiKey = apiKey;
+            }
             if (ImGui.IsItemDeactivatedAfterEdit())
             {
                 config.OpenAiCompatibleApiKey = apiKey;
@@ -2057,7 +2063,10 @@ namespace AQuestReborn.CustomNpc
             ImGui.Text("Model Name (optional):");
             string modelName = config.OpenAiCompatibleModelName ?? "";
             ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
-            ImGui.InputText("##OpenAiModel", ref modelName, 128);
+            if (ImGui.InputText("##OpenAiModel", ref modelName, 128))
+            {
+                config.OpenAiCompatibleModelName = modelName;
+            }
             if (ImGui.IsItemDeactivatedAfterEdit())
             {
                 config.OpenAiCompatibleModelName = modelName;
@@ -2076,7 +2085,10 @@ namespace AQuestReborn.CustomNpc
             ImGui.Text("Persistent API Token:");
             string token = config.NovelAiApiToken ?? "";
             ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
-            ImGui.InputText("##NovelAiToken", ref token, 512, ImGuiInputTextFlags.Password);
+            if (ImGui.InputText("##NovelAiToken", ref token, 512, ImGuiInputTextFlags.Password))
+            {
+                config.NovelAiApiToken = token;
+            }
             if (ImGui.IsItemDeactivatedAfterEdit())
             {
                 config.NovelAiApiToken = token;
@@ -2109,7 +2121,10 @@ namespace AQuestReborn.CustomNpc
             ImGui.Text("API Key:");
             string apiKey = config.GeminiApiKey ?? "";
             ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
-            ImGui.InputText("##GeminiApiKey", ref apiKey, 256, ImGuiInputTextFlags.Password);
+            if (ImGui.InputText("##GeminiApiKey", ref apiKey, 256, ImGuiInputTextFlags.Password))
+            {
+                config.GeminiApiKey = apiKey;
+            }
             if (ImGui.IsItemDeactivatedAfterEdit())
             {
                 config.GeminiApiKey = apiKey;
