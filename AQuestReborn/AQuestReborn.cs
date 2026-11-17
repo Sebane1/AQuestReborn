@@ -1900,6 +1900,11 @@ namespace AQuestReborn
                         bool mcdfAlreadyLoaded = false;
                         EventHandler charaLoad = null;
                         EventHandler mcdfLoad = null;
+                        string capturedItemName = string.Empty;
+                        ushort capturedItemIndex = item.Item3.ObjectIndex;
+                        nint capturedItemAddress = item.Item3.Address;
+                        try { capturedItemName = item.Item3.Name?.TextValue ?? string.Empty; } catch { }
+
                         foreach (var appearanceDataItem in appearanceDataItems)
                         {
                             if (appearanceDataItem.EndsWith(".chara") && !charaAlreadyLoaded)
@@ -1922,7 +1927,10 @@ namespace AQuestReborn
                                 mcdfLoad = delegate
                                 {
                                     Plugin.PluginLog.Information($"[Appearance] Invoking AppearanceManager.LoadAppearance for '{appearanceDataItem}'");
-                                    AppearanceAccessUtils.AppearanceManager?.LoadAppearance(appearanceDataItem, item.Item3, (int)appearanceSwapType);
+                                    Plugin.Framework.RunOnFrameworkThread(() =>
+                                    {
+                                        AppearanceAccessUtils.AppearanceManager?.LoadAppearance(appearanceDataItem, item.Item3, (int)appearanceSwapType);
+                                    });
                                 };
                                 mcdfAlreadyLoaded = true;
                             }

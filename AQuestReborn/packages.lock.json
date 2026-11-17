@@ -16,9 +16,9 @@
       },
       "Glamourer.Api": {
         "type": "Direct",
-        "requested": "[2.8.1, )",
-        "resolved": "2.8.1",
-        "contentHash": "RCaAAd1hmRLiLAeAVFPi8GZKRIVYrh2m0vmGA+3yKZj3xemWr8/KU2vHlt1mUdMnyPlCX2zPK6zM4nFsMB+GYg=="
+        "requested": "[2.8.2, )",
+        "resolved": "2.8.2",
+        "contentHash": "+mEzejUhvJLcpTjv4Hk6ap22WiEPyEa9wg1EECFwDJim1B+fKy3l4iWlvjaoEFlfp+nB67BZp8KBiHclsEBQQw=="
       },
       "System.Drawing.Common": {
         "type": "Direct",
@@ -627,8 +627,8 @@
       },
       "Penumbra.Api": {
         "type": "Transitive",
-        "resolved": "5.13.1",
-        "contentHash": "kmpqhcbnnF+Ib0F9g7+1W17IbZ8Q8G2zn3MJURd/rmQiB3D7cm8YS2JRmvhDzrN5w9OMlfq7MFxVtwG419YkIA=="
+        "resolved": "5.15.1",
+        "contentHash": "3ikk0zIOaLm2n3nZRQpW3xaRQ2cq/TOOEApNUjYXolqbyvCrZVGXhdQulcssNUbo0AMQ81l+cf7OfqRceeRBcg=="
       },
       "Penumbra.String": {
         "type": "Transitive",
@@ -739,13 +739,13 @@
           "DalamudPackager": "[15.0.0, )",
           "Dependancies.API": "[1.0.0, )",
           "Downloader": "[3.3.4, )",
-          "Glamourer.Api": "[2.8.0, )",
+          "Glamourer.Api": "[2.8.2, )",
           "Microsoft.AspNetCore.SignalR.Client": "[9.0.3, )",
           "Microsoft.AspNetCore.SignalR.Protocols.MessagePack": "[9.0.3, )",
           "Microsoft.Extensions.Hosting": "[9.0.3, )",
           "NGuid": "[1.0.0, )",
           "NReco.Logging.File": "[1.2.2, )",
-          "Penumbra.Api": "[5.13.1, )",
+          "Penumbra.Api": "[5.15.1, )",
           "Penumbra.String": "[1.0.7, )",
           "SixLabors.ImageSharp": "[3.1.11, )",
           "System.IdentityModel.Tokens.Jwt": "[8.7.0, )",
