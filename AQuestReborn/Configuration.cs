@@ -1,8 +1,10 @@
 using AQuestReborn.CustomNpc;
 using Dalamud.Configuration;
 using FFXIVClientStructs.FFXIV.Common.Lua;
+using FFXIVLooseTextureCompiler.Networking;
 using LanguageConversionProxy;
 using McdfDataImporter;
+using RoleplayingMediaCore.AudioRecycler;
 using RoleplayingQuestCore;
 using System;
 using System.Collections.Generic;
@@ -49,15 +51,21 @@ public class Configuration : IPluginConfiguration
     private bool _enableAmbientChatter = true;
     private bool _enableClickToChat = true;
 
-    // AI Provider settings (global for all NPCs)
-    private string _aiProvider = "default"; // "default", "openai_compatible", "novelai"
-    private string _openAiCompatibleUrl = ""; // Base URL for OpenAI-compatible endpoints
+    private string _aiProvider = "default";
+    private string _openAiCompatibleUrl = ""; 
     private string _openAiCompatibleApiKey = "";
     private string _openAiCompatibleModelName = "";
     private string _novelAiApiToken = "";
     private string _novelAiModel = "kayra-v2";
     private string _geminiApiKey = "";
     private string _geminiModel = "gemini-2.0-flash";
+    private int _accessibilityTextProvider;
+    private string? fishAudioApiKey;
+    private string voiceCache = "";
+    private string? cTTSAddress;
+    private bool accessibilityReaderActive;
+    private CharacterVoices? characterVoices;
+    private bool narrateUnquotedText;
 
     public Dictionary<string, int> QuestProgression { get => _questProgression; set => _questProgression = value; }
     public Dictionary<string, List<string>> CompletedObjectives { get { return _completedObjectives; } set { _completedObjectives = value; } }
@@ -72,7 +80,7 @@ public class Configuration : IPluginConfiguration
     public bool EnableAmbientChatter { get => _enableAmbientChatter; set => _enableAmbientChatter = value; }
     public bool EnableClickToChat { get => _enableClickToChat; set => _enableClickToChat = value; }
 
-    // AI Provider properties
+
     public string AiProvider { get => _aiProvider; set => _aiProvider = value; }
     public string OpenAiCompatibleUrl { get => _openAiCompatibleUrl; set => _openAiCompatibleUrl = value; }
     public string OpenAiCompatibleApiKey { get => _openAiCompatibleApiKey; set => _openAiCompatibleApiKey = value; }
@@ -81,8 +89,15 @@ public class Configuration : IPluginConfiguration
     public string NovelAiModel { get => _novelAiModel; set => _novelAiModel = value; }
     public string GeminiApiKey { get => _geminiApiKey; set => _geminiApiKey = value; }
     public string GeminiModel { get => _geminiModel; set => _geminiModel = value; }
+    public int AccessibilityTextProvider { get => _accessibilityTextProvider; set => _accessibilityTextProvider = value; }
+    public Dictionary<string, string> CharacterVoiceSelections { get; internal set; }
+    public bool NarrateUnquotedText { get => narrateUnquotedText; set => narrateUnquotedText = value; }
+    public bool AccessibilityReaderActive { get => accessibilityReaderActive; set => accessibilityReaderActive = value; }
+    public string? CTTSAddress { get => cTTSAddress; set => cTTSAddress = value; }
+    public string VoiceCache { get => voiceCache; set => voiceCache = value; }
+    public string? FishAudioApiKey { get => fishAudioApiKey; set => fishAudioApiKey = value; }
+    public CharacterVoices? CharacterVoices { get => characterVoices; set => characterVoices = value; }
 
-    // the below exist just to make saving less cumbersome
     public void Save()
     {
         bool persistenceSucceeded = false;

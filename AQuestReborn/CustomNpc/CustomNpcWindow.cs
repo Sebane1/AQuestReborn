@@ -93,6 +93,7 @@ namespace AQuestReborn.CustomNpc
             RefreshPlaceNameList();
             RefreshClassJobList();
             RefreshMonsterList();
+            Plugin.RefreshVoices();
         }
         public override void OnClose()
         {
@@ -231,7 +232,7 @@ namespace AQuestReborn.CustomNpc
                                     name = nameRow.Singular.ToString();
                                 }
                             }
-                            else if (!rawName.StartsWith("B:")) // if it was mapped to a direct string instead of an N: id
+                            else if (!rawName.StartsWith("B:"))
                             {
                                 name = rawName;
                             }
@@ -357,10 +358,9 @@ namespace AQuestReborn.CustomNpc
                 }
                 RefreshNPCItemNames();
 
-                // === Conversational Provider Settings (global, shown above NPC list) ===
                 if (ImGui.CollapsingHeader("Conversational Provider Settings"))
                 {
-                    DrawAiProviderSettings();
+                    DrawConversationalProviderSettings();
                 }
                 ImGui.Spacing();
 
@@ -438,7 +438,6 @@ namespace AQuestReborn.CustomNpc
                 ImGui.PopStyleColor(2);
             }
 
-            // --- Delete NPC Confirmation Popup ---
             var deletePopupCenter = ImGui.GetMainViewport().Size / 2;
             ImGui.SetNextWindowPos(deletePopupCenter, ImGuiCond.Appearing, new Vector2(0.5f, 0.5f));
             ImGui.SetNextWindowSize(new Vector2(400, 0), ImGuiCond.Appearing);
@@ -524,6 +523,18 @@ namespace AQuestReborn.CustomNpc
                             if (ImGui.InputText("##NPCName", ref _customNpcCharacters[_currentSelection].NpcName, 255))
                             {
                                 SaveNPCCharacters();
+                            }
+
+                            if (Plugin.Configuration.AccessibilityReaderActive)
+                            {
+                                ImGui.LabelText("##voiceLabel", Translator.LocalizeUI("NPC Voice"));
+                                ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+                                int currentVoice = Plugin.VoiceList.IndexOf<string>(_customNpcCharacters[_currentSelection].NpcVoice);
+                                if (ImGui.Combo("NPC Voice", ref currentVoice, Plugin.VoiceList, 10))
+                                {
+                                    _customNpcCharacters[_currentSelection].NpcVoice = Plugin.VoiceList[currentVoice];
+                                    SaveNPCCharacters();
+                                }
                             }
 
                             ImGui.Dummy(new Vector2(0, 5));
@@ -1025,7 +1036,6 @@ namespace AQuestReborn.CustomNpc
                             bool npcInPairedAnim = _plugin?.AQuestReborn?.PairedAnimationManager != null
                                 && _plugin.AQuestReborn.PairedAnimationManager.IsNpcInPairedAnimation(npc.NpcName);
 
-                            // ── Left panel: animation list ──
                             if (ImGui.BeginChild("##pairedList", new Vector2(listWidth, -1), true))
                             {
                                 for (int pi = 0; pi < npc.PairedAnimations.Count; pi++)
@@ -1075,7 +1085,6 @@ namespace AQuestReborn.CustomNpc
 
                             ImGui.SameLine();
 
-                            // ── Right panel: selected animation settings ──
                             if (ImGui.BeginChild("##pairedDetail", new Vector2(0, -1), true))
                             {
                                 if (_selectedPairedIndex >= 0 && _selectedPairedIndex < npc.PairedAnimations.Count)
@@ -1427,7 +1436,6 @@ namespace AQuestReborn.CustomNpc
                                 LoadMemoryFilesForNpc(npc.NpcName);
                             }
 
-                            // --- Conversation Summaries ---
                             ImGui.TextColored(new Vector4(0.6f, 1f, 0.8f, 1f), "Conversation Summaries");
                             ImGui.Separator();
 
@@ -1462,7 +1470,6 @@ namespace AQuestReborn.CustomNpc
 
                             ImGui.Dummy(new Vector2(0, 5));
 
-                            // --- Keyword Memories ---
                             ImGui.TextColored(new Vector4(1f, 0.7f, 0.5f, 1f), "Keyword Memories");
                             ImGui.Separator();
 
@@ -1492,7 +1499,6 @@ namespace AQuestReborn.CustomNpc
 
                             ImGui.Dummy(new Vector2(0, 5));
 
-                            // --- Relationships ---
                             ImGui.TextColored(new Vector4(0.9f, 0.6f, 1f, 1f), "Relationships");
                             ImGui.Separator();
 
@@ -1574,7 +1580,6 @@ namespace AQuestReborn.CustomNpc
 
                             ImGui.Dummy(new Vector2(0, 5));
 
-                            // --- Travel History ---
                             ImGui.TextColored(new Vector4(0.4f, 0.9f, 1f, 1f), "Places Visited");
                             ImGui.Separator();
 
@@ -1589,7 +1594,6 @@ namespace AQuestReborn.CustomNpc
 
                             ImGui.Dummy(new Vector2(0, 10));
 
-                            // --- Actions ---
                             float buttonWidth = (ImGui.GetColumnWidth() - 8) / 2;
                             if (ImGui.Button(Translator.LocalizeUI("Refresh"), new Vector2(buttonWidth, 28)))
                             {
@@ -1620,7 +1624,6 @@ namespace AQuestReborn.CustomNpc
                                 ImGui.PopStyleColor(2);
                             }
 
-                            // --- Confirmation Popup ---
                             var popupCenter = ImGui.GetMainViewport().Size / 2;
                             ImGui.SetNextWindowPos(popupCenter, ImGuiCond.Appearing, new Vector2(0.5f, 0.5f));
                             ImGui.SetNextWindowSize(new Vector2(400, 0), ImGuiCond.Appearing);
@@ -1700,15 +1703,14 @@ namespace AQuestReborn.CustomNpc
                             var debugNpc = _customNpcCharacters[_currentSelection];
                             string playerName = _plugin?.ObjectTable?.LocalPlayer?.Name?.TextValue ?? "Adventurer";
 
-                            ImGui.TextColored(new Vector4(1f, 0.85f, 0.4f, 1f), "Full AI Context Preview");
-                            ImGui.TextWrapped("This is what the AI sees when responding to you.");
+                            ImGui.TextColored(new Vector4(1f, 0.85f, 0.4f, 1f), "Full Conversational Context Preview");
+                            ImGui.TextWrapped("This is what the conversational provider sees when responding to you.");
                             ImGui.Separator();
                             ImGui.Dummy(new Vector2(0, 5));
 
                             // Build the full context preview
                             var sb = new System.Text.StringBuilder();
 
-                            // --- EXACT PROMPT PREVIEW ---
                             if (_plugin?.ObjectTable?.LocalPlayer != null
                                 && _plugin.AQuestReborn?.CustomNpcConversationManagers != null
                                 && _plugin.AQuestReborn.CustomNpcConversationManagers.TryGetValue(debugNpc.NpcName, out var manager))
@@ -1879,7 +1881,7 @@ namespace AQuestReborn.CustomNpc
                         {
                             if (_plugin != null && _plugin.AQuestReborn != null)
                             {
-                                bool shouldFollow = isStaying; // If it's currently staying, we want it to follow.
+                                bool shouldFollow = isStaying;
                                 _customNpcCharacters[_currentSelection].IsStaying = !shouldFollow;
                                 _customNpcCharacters[_currentSelection].IsFollowingPlayer = shouldFollow;
                                 _plugin.AQuestReborn.ToggleCustomNpcFollow(
@@ -1935,13 +1937,12 @@ namespace AQuestReborn.CustomNpc
             }
         }
 
-        // === Conversational Provider Settings UI ===
         private static readonly string[] _aiProviderNames = { "Default (Built-in)", "Google Gemini", "OpenAI Compatible (CosmoRP, LM Studio, etc.)", "NovelAI" };
-        private static readonly string[] _aiProviderKeys = { "default", "gemini", "openai_compatible", "novelai" };
+        private static readonly string[] _conversationalProviderKeys = { "default", "gemini", "openai_compatible", "novelai" };
         private string _testConnectionResult = "";
         private bool _testingConnection = false;
 
-        private void DrawAiProviderSettings()
+        private void DrawConversationalProviderSettings()
         {
             if (_plugin?.Configuration == null) return;
             var config = _plugin.Configuration;
@@ -1951,13 +1952,13 @@ namespace AQuestReborn.CustomNpc
             ImGui.Spacing();
 
             // Provider dropdown
-            int currentIndex = Array.IndexOf(_aiProviderKeys, config.AiProvider);
+            int currentIndex = Array.IndexOf(_conversationalProviderKeys, config.AiProvider);
             if (currentIndex < 0) currentIndex = 0;
 
             ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
-            if (ImGui.Combo("##AiProviderCombo", ref currentIndex, _aiProviderNames, _aiProviderNames.Length))
+            if (ImGui.Combo("##ConversationalProviderCombo", ref currentIndex, _aiProviderNames, _aiProviderNames.Length))
             {
-                config.AiProvider = _aiProviderKeys[currentIndex];
+                config.AiProvider = _conversationalProviderKeys[currentIndex];
                 config.Save();
                 _testConnectionResult = "";
             }

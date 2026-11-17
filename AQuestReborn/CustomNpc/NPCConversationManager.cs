@@ -74,7 +74,7 @@ namespace AQuestReborn.CustomNpc
                     }
                 }
             }
-            // Enrich the AI description with encounter history
+
             string encounterContext = "";
             string playerFullName = senderFullName;
             

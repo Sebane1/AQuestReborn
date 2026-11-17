@@ -16,6 +16,8 @@ using System.IO;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+using RoleplayingVoiceDalamudWrapper;
+using GameObjectHelper.ThreadSafeDalamudObjectTable;
 
 namespace SamplePlugin.Windows;
 
@@ -286,7 +288,8 @@ public class NpcChatWindow : Window, IDisposable
 
             if ((submitted || sendClicked) && !string.IsNullOrWhiteSpace(_inputText))
             {
-                SendMessage(_inputText.Trim());
+                string trimmedText = _inputText.Trim();
+                SendMessage(trimmedText);
                 _inputText = "";
             }
         }
@@ -346,7 +349,7 @@ public class NpcChatWindow : Window, IDisposable
         var npcChar = _activeNpcCharacter;
         var npcData = _activeNpcData;
         var npcName = _activeNpcName;
-
+        var environmentContext = _plugin.GetEnvironmentContext(npcChar);
         Task.Run(async () =>
         {
             try
@@ -362,7 +365,7 @@ public class NpcChatWindow : Window, IDisposable
                     npcData.NpcName,
                     npcData.NPCGreeting,
                     message,
-                    _plugin.GetEnvironmentContext(npcChar),
+                    environmentContext,
                     npcLore);
 
                 _plugin.PluginLog.Information($"NPC Chat: Got response in {sw.ElapsedMilliseconds}ms, length={response?.Length ?? 0}");
@@ -370,8 +373,8 @@ public class NpcChatWindow : Window, IDisposable
 
                 if (!string.IsNullOrEmpty(response))
                 {
-                    // Clean up formatting artifacts from GPT pipeline
-                    // WordFilter leaves "says, " / "asks, " prefix — strip it for dialogue display
+                    // Clean up formatting artifacts
+
                     string cleanResponse = response;
                     foreach (var prefix in new[] { "says, ", "asks, ", "exclaims, " })
                     {
@@ -409,8 +412,28 @@ public class NpcChatWindow : Window, IDisposable
                     if (string.IsNullOrWhiteSpace(cleanResponse)) cleanResponse = "...";
 
                     _plugin.PluginLog.Information($"NPC Chat: Clean display text: [{cleanResponse}]");
+                    string audioPath = "";
+
+                    if (Plugin.Instance.Configuration.AccessibilityReaderActive)
+                    {
+                        switch (Plugin.Instance.Configuration.AccessibilityTextProvider)
+                        {
+                            case 0:
+                                audioPath = await Plugin.Instance.RoleplayingMediaManagerInstance.DoVoiceFishAudioWithSpecificVoice(npcData.NpcVoice, cleanResponse, false, 1, _activeNpcCharacter.Position, false);
+                                break;
+                            case 1:
+                                audioPath = await Plugin.Instance.RoleplayingMediaManagerInstance.DoVoiceMicrosoftNarratorWithSpecificVoice(npcData.NpcVoice, cleanResponse, false, 1, _activeNpcCharacter.Position, false);
+                                break;
+                            case 2:
+                                audioPath = await Plugin.Instance.RoleplayingMediaManagerInstance.DoCTTSWithSpecificVoice(npcData.NpcVoice, cleanResponse, false, 1, _activeNpcCharacter.Position, false);
+                                break;
+                        }
+
+                        Plugin.Instance.MediaManager.PlayMedia(new MediaGameObject(_activeNpcCharacter as ThreadSafeGameObject), audioPath, RoleplayingMediaCore.SoundType.NPC, true);
+                    }
 
                     // Start typewriter
+
                     _typewriterTarget = cleanResponse;
                     _typewriterIndex = 0;
                     _displayText = "";

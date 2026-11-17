@@ -8,35 +8,24 @@ using SamplePlugin.Windows;
 using RoleplayingQuestCore;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using System.Linq;
-using System.Diagnostics;
-using Dalamud.Game.Gui.Toast;
 using RoleplayingMediaCore;
 using RoleplayingVoiceDalamudWrapper;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.Game;
-using Brio.Game.Actor;
-using Brio.IPC;
-using Lumina.Excel.Sheets;
-using System.Threading;
-using Anamnesis.GameData;
-using EmbedIO.Authentication;
-using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using AQuestReborn;
 using AQuestReborn.CustomNpc;
 using ArtemisRoleplayingKit;
 using AnamCore;
 using AQuestReborn.UIAtlasing;
-using McdfLoader;
-using Dalamud.Game.ClientState.Objects;
-using FFXIVClientStructs.FFXIV.Client.UI;
 using ECommons;
 using ECommons.Reflection;
 using GameObjectHelper.ThreadSafeDalamudObjectTable;
 using EntryPoint = McdfLoader.EntryPoint;
 using AQuestReborn.UiHide;
+using FFXIVLooseTextureCompiler.Networking;
+using System.Threading.Tasks;
 
 namespace SamplePlugin;
 
@@ -89,6 +78,7 @@ public sealed class Plugin : IDalamudPlugin
     public EventWindow EventWindow { get; init; }
     public NpcChatWindow NpcChatWindow { get; private set; }
     public SpeechBubbleManager SpeechBubbleManager { get; private set; }
+    public RoleplayingMediaManager RoleplayingMediaManagerInstance { get; private set; }
     public CustomNpcWindow CustomNpcWindow { get => _customNpcWindow; }
     public IClientState ClientState { get => _clientState; set => _clientState = value; }
     public RoleplayingQuestManager RoleplayingQuestManager { get => _roleplayingQuestManager; set => _roleplayingQuestManager = value; }
@@ -113,6 +103,7 @@ public sealed class Plugin : IDalamudPlugin
     public ThreadSafeGameObjectManager ObjectTable { get => _objectTable; set => _objectTable = value; }
     public ICondition Condition { get => _condition; set => _condition = value; }
     public string LastSubAreaText { get; set; } = "";
+    public string[] VoiceList { get => _voiceList; set => _voiceList = value; }
 
     private EmoteReaderHooks _emoteReaderHook;
     private IPluginLog _pluginLog;
@@ -121,6 +112,7 @@ public sealed class Plugin : IDalamudPlugin
     private IGamepadState _gamepadState;
     private ICondition _condition;
     private bool _alreadyInitialized;
+    private string[] _voiceList;
 
     public Plugin(IClientState clientState, IFramework framework, IToastGui toastGui,
         ITextureProvider textureProvider, IGameGui gameGui, IDalamudPluginInterface dalamudPluginInterface,
@@ -168,6 +160,13 @@ public sealed class Plugin : IDalamudPlugin
         _customNpcWindow = new CustomNpcWindow(dalamudPluginInterface);
         NpcChatWindow = new NpcChatWindow(this);
         SpeechBubbleManager = new SpeechBubbleManager(this);
+        if(Configuration.CharacterVoices == null)
+        {
+            Configuration.CharacterVoices = new RoleplayingMediaCore.AudioRecycler.CharacterVoices();
+        }
+        Configuration.VoiceCache = Path.Combine(Path.GetPathRoot(Configuration.QuestInstallFolder), "QuestVoiceCache");
+        RoleplayingMediaManagerInstance = new RoleplayingMediaManager(Configuration.VoiceCache, new NetworkedClient(""), Configuration.CharacterVoices);
+        RoleplayingMediaManagerInstance.BasePath = Path.GetDirectoryName(dalamudPluginInterface.AssemblyLocation.FullName);
         _customNpcWindow.Plugin = this;
         if (Configuration.CustomNpcCharacters.Count == 0)
         {
@@ -187,7 +186,6 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.AddWindow(QuestAcceptanceWindow);
         WindowSystem.AddWindow(RewardWindow);
         WindowSystem.AddWindow(MainWindow);
-        WindowSystem.AddWindow(_customNpcWindow);
         WindowSystem.AddWindow(NpcChatWindow);
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
@@ -218,6 +216,7 @@ public sealed class Plugin : IDalamudPlugin
         {
             Initialize();
         }
+        RefreshVoices();
     }
 
     private void _clientState_Login()
@@ -323,7 +322,7 @@ public sealed class Plugin : IDalamudPlugin
                             string closestMarker = "";
                             float closestDist = float.MaxValue;
                             float scale = map.SizeFactor / 100.0f;
-                            
+
                             float playerPixelX = (origin.Value.X + map.OffsetX) * scale + 1024.0f;
                             float playerPixelY = (origin.Value.Z + map.OffsetY) * scale + 1024.0f;
 
@@ -333,7 +332,7 @@ public sealed class Plugin : IDalamudPlugin
                                 if (string.IsNullOrEmpty(text)) continue;
 
                                 float dist = System.Numerics.Vector2.Distance(
-                                    new System.Numerics.Vector2(playerPixelX, playerPixelY), 
+                                    new System.Numerics.Vector2(playerPixelX, playerPixelY),
                                     new System.Numerics.Vector2(m.X, m.Y)
                                 );
 
@@ -400,8 +399,8 @@ public sealed class Plugin : IDalamudPlugin
                 var nearbyObjects = new List<string>();
 
                 var objects = _objectTable
-                    .Where(obj => obj != null 
-                        && obj.Address != _objectTable?.LocalPlayer?.Address 
+                    .Where(obj => obj != null
+                        && obj.Address != _objectTable?.LocalPlayer?.Address
                         && !string.IsNullOrWhiteSpace(obj.Name.TextValue)
                         && !obj.Name.TextValue.StartsWith("Reborn", StringComparison.OrdinalIgnoreCase)
                         && !obj.Name.TextValue.StartsWith("Cutscene", StringComparison.OrdinalIgnoreCase)
@@ -459,7 +458,7 @@ public sealed class Plugin : IDalamudPlugin
                     if (!string.IsNullOrEmpty(obsRace) && !string.IsNullOrEmpty(obsTribe))
                     {
                         string objName = string.IsNullOrEmpty(characterObserver.Name.TextValue) ? "The NPC" : characterObserver.Name.TextValue;
-                        
+
                         // Custom NPCs have their appearances dictated by their bio in the GPTContextBuilder.
                         // Since Brio spawns them as base models before applying Glamourer, reading the 
                         // underlying memory will result in conflicting race/tribe data (e.g. Xaela Au Ra vs Miqo'te).
@@ -526,6 +525,64 @@ public sealed class Plugin : IDalamudPlugin
             _roleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.SayPhrase, arguments);
         }
     }
+
+    public void RefreshVoices()
+    {
+        Task.Run(async delegate ()
+        {
+            try
+            {
+                if (Configuration != null)
+                {
+                    // RefreshVoices awaits relay/API calls below. Snapshot the player name
+                    // up front so login, logout, or zoning cannot invalidate LocalPlayer
+                    // between the initial guard and the later voice-setting reads.
+                    if (Configuration.CharacterVoiceSelections == null)
+                    {
+                        Configuration.CharacterVoiceSelections = new System.Collections.Generic.Dictionary<string, string>();
+                    }
+                    if (RoleplayingMediaManagerInstance != null)
+                    {
+                        // RefreshVoices can run while the settings window is still
+                        // constructing its controls, so wait until the engine selector
+                        // exists before reading the selected voice backend.
+                        var selectedVoiceEngine = Configuration.AccessibilityTextProvider;
+                        var newVoiceList = new string[] { "None" };
+                        switch (selectedVoiceEngine)
+                        {
+                            case 0:
+                                RoleplayingMediaManagerInstance.FishAudioApiKey = Configuration.FishAudioApiKey;
+                                newVoiceList = await RoleplayingMediaManagerInstance.GetVoiceListFishAudio();
+                                break;
+                            case 1:
+                                newVoiceList = await RoleplayingMediaManagerInstance.GetVoiceListMicrosoftNarrator();
+                                break;
+                            case 2:
+                                newVoiceList = await RoleplayingMediaManagerInstance.GetVoiceListXTTS();
+                                break;
+                        }
+                        _voiceList = newVoiceList;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Warning(ex, ex.Message);
+            }
+            try
+            {
+                if (RoleplayingMediaManagerInstance != null && Configuration != null)
+                {
+                    RoleplayingMediaManagerInstance.ReadUnquotedText = Configuration.NarrateUnquotedText;
+                }
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Warning(ex, ex.Message);
+            }
+        });
+    }
+
     private void OnCommandNpcChat(string command, string arguments)
     {
         if (_clientState.IsLoggedIn && _objectTable.LocalPlayer != null && _aQuestReborn != null)

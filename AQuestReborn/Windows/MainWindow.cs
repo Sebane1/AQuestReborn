@@ -139,6 +139,8 @@ public class MainWindow : Window, IDisposable
             Translator.UiLanguage = Plugin.Configuration.QuestLanguage;
             Plugin.Configuration.Save();
         }
+        DrawReadingAccessibilityEngineProviderSettings();
+        ImGui.Spacing();
 
         ImGui.Dummy(new Vector2(0, 10));
         bool showHitboxes = Plugin.Configuration.ShowNpcHitboxes;
@@ -170,6 +172,107 @@ public class MainWindow : Window, IDisposable
         {
             Plugin.Configuration.EnableClickToChat = enableClickToChat;
             Plugin.Configuration.Save();
+        }
+    }
+
+    private void DrawReadingAccessibilityEngineProviderSettings()
+    {
+        int currentItem = Plugin.Configuration.AccessibilityTextProvider;
+        ImGui.LabelText("##GCVSLabel", "TTS Character Voice ");
+        bool customTTSVoiceActive = Plugin.Configuration.AccessibilityReaderActive;
+        if (ImGui.Checkbox("##characterVoiceActive", ref customTTSVoiceActive))
+        {
+            Plugin.Configuration.AccessibilityReaderActive = customTTSVoiceActive;
+            Plugin.Configuration.Save();
+        }
+        ImGui.SameLine();
+        ImGui.Text("TTS Voice Enabled");
+        if (customTTSVoiceActive)
+        {
+            if (ImGui.Combo("Accessibility Text Provider", ref currentItem, new List<string>() { "Fish Audio", "Microsoft Narrator", "Self Hosted" }, 3))
+            {
+                Plugin.Configuration.AccessibilityTextProvider = currentItem;
+            }
+            switch (currentItem)
+            {
+                case 0:
+                    ImGui.Text("Fish Audio API Key");
+                    ImGui.SetNextItemWidth(ImGui.GetContentRegionMax().X);
+                    string fishApiKey = Plugin.Configuration.FishAudioApiKey ?? "";
+                    if (ImGui.InputText("##fishApiKey", ref fishApiKey, 51, ImGuiInputTextFlags.Password))
+                    {
+                        if (Plugin.Configuration.FishAudioApiKey != fishApiKey)
+                        {
+                            Plugin.Configuration.FishAudioApiKey = fishApiKey;
+                            Plugin.Configuration.Save();
+                            if (Plugin.RoleplayingMediaManagerInstance != null)
+                            {
+                                Plugin.RoleplayingMediaManagerInstance.FishAudioApiKey = fishApiKey;
+                                Plugin.RoleplayingMediaManagerInstance.RefreshFishAudioSubscriptionInfo();
+                            }
+                            Plugin.RefreshVoices();
+                        }
+                    }
+                    if (string.IsNullOrEmpty(fishApiKey))
+                    {
+                        if (ImGui.Button("Fish Audio API Key Sign Up", new Vector2(ImGui.GetWindowSize().X - 10, 25)))
+                        {
+                            Process process = new Process();
+                            try
+                            {
+                                process.StartInfo.UseShellExecute = true;
+                                process.StartInfo.FileName = "https://fish.audio/?fpr=thelaweners";
+                                process.Start();
+                            }
+                            catch (Exception e)
+                            {
+
+                            }
+                        }
+                    }
+                    break;
+                case 1:
+                    Plugin.RefreshVoices();
+                    break;
+                case 2:
+                    ImGui.Text("CTTS Server Address");
+                    ImGui.SetNextItemWidth(ImGui.GetContentRegionMax().X);
+                    string cttsAddress = Plugin.Configuration.CTTSAddress ?? "http://localhost:8308";
+                    ImGui.InputText("##cttsAddress", ref cttsAddress, 2000);
+                    if (Plugin.Configuration.CTTSAddress != cttsAddress)
+                    {
+                        Plugin.Configuration.CTTSAddress = cttsAddress;
+                        if (Plugin.RoleplayingMediaManagerInstance != null)
+                        {
+                            Plugin.RoleplayingMediaManagerInstance.CTTSAddress = cttsAddress;
+                        }
+                        Plugin.Configuration.Save();
+                        Plugin.RefreshVoices();
+                    }
+
+                    ImGui.TextWrapped($"To add more voices, simply place .wav files of what you want to sound like in the folder the buttons below manage.");
+                    if (ImGui.Button("Add More Voices", new Vector2(ImGui.GetWindowSize().X / 2 - 5, 25)))
+                    {
+                        Process process = new Process();
+                        try
+                        {
+                            Directory.CreateDirectory(Path.Combine(Plugin.Configuration.VoiceCache, "speakers"));
+                            process.StartInfo.UseShellExecute = true;
+                            process.StartInfo.FileName = Path.Combine(Plugin.Configuration.VoiceCache, "speakers");
+                            process.Start();
+                        }
+                        catch (Exception e)
+                        {
+
+                        }
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button("Refresh Voices", new Vector2(ImGui.GetWindowSize().X / 2 - 5, 25)))
+                    {
+                        Plugin.RefreshVoices();
+                    }
+                    break;
+            }
         }
     }
 
@@ -336,7 +439,7 @@ public class MainWindow : Window, IDisposable
                 _currentSelectedInstalledQuest = 0;
             }
             ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-            ImGui.ListBox("##installedQuestInformation", ref _currentSelectedInstalledQuest,  questItems.ToArray(), 10);
+            ImGui.ListBox("##installedQuestInformation", ref _currentSelectedInstalledQuest, questItems.ToArray(), 10);
             if (ImGui.Button(Translator.LocalizeUI("Quest Creator")))
             {
                 Plugin.EditorWindow.IsOpen = true;

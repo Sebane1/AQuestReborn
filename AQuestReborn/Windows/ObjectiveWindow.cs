@@ -17,6 +17,7 @@ using AQuestReborn;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using Dalamud.Game.ClientState.Objects.Types;
+using GameObjectHelper.ThreadSafeDalamudObjectTable;
 
 namespace SamplePlugin.Windows;
 
@@ -295,7 +296,7 @@ public class ObjectiveWindow : Window, IDisposable
                                 {
                                     Plugin.NpcChatWindow.OpenConversation(npcName,
                                         Plugin.AQuestReborn.CustomNpcConversationManagers[npcName],
-                                        kvp.Value, npcData);
+                                        ThreadSafeGameObjectManager.GetThreadSafeGameObject(kvp.Value, false) as ICharacter, npcData);
                                 }
                                 break;
                             }
@@ -304,8 +305,6 @@ public class ObjectiveWindow : Window, IDisposable
                 }
             }
         }
-
-        // --- Draw ambient speech bubbles ---
         DrawSpeechBubbles();
     }
 

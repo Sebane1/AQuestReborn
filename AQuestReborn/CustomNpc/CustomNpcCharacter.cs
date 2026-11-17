@@ -194,6 +194,7 @@ namespace AQuestReborn.CustomNpc
 
         // Places this NPC has visited (persisted across sessions)
         public List<string> VisitedLocations = new List<string>();
+        private string npcVoice;
 
         /// <summary>
         /// Records a location visit if it hasn't been recorded already.
@@ -318,7 +319,7 @@ namespace AQuestReborn.CustomNpc
                 // Older than a week = no bonus
             }
 
-            // Travel bonus — shared adventures build bonds (each zone together adds 2, max 20)
+            // Travel bonus, shared adventures build bonds (each zone together adds 2, max 20)
             score += Math.Min(VisitedLocations.Count * 2, 20);
 
             // Sentiment modifier from conversation tone
@@ -373,7 +374,6 @@ namespace AQuestReborn.CustomNpc
             return (label, description, score);
         }
 
-        // --- Sentiment keyword tiers ---
         // Mild hostility: insults, dismissiveness (-3 per hit)
         private static readonly string[] MildNegativeKeywords = new[]
         {
@@ -423,6 +423,8 @@ namespace AQuestReborn.CustomNpc
             "couldn't do it without you", "you're everything", "my hero",
             "i treasure you", "you're special"
         };
+
+        public string NpcVoice { get => npcVoice; set => npcVoice = value; }
 
         /// <summary>
         /// Analyzes a message for sentiment keywords and adjusts the per-person modifier.

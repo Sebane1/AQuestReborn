@@ -40,6 +40,7 @@ using System.Threading.Tasks;
 using AQuestReborn.CustomNpc;
 using static RoleplayingQuestCore.QuestEvent;
 using Utf8String = FFXIVClientStructs.FFXIV.Client.System.String.Utf8String;
+using GameObjectHelper.ThreadSafeDalamudObjectTable;
 
 namespace AQuestReborn
 {
@@ -3259,7 +3260,7 @@ namespace AQuestReborn
                 // Open the conversation window
                 Plugin.NpcChatWindow.OpenConversation(interactionName,
                     _customNpcConversationManagers[interactionName],
-                    interactionCharacter, npcData);
+                  ThreadSafeGameObjectManager.GetThreadSafeGameObject(interactionCharacter, false) as ICharacter, npcData);
             }
             else if (!confirmPressed)
             {
