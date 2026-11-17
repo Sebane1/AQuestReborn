@@ -26,6 +26,7 @@ using EntryPoint = McdfLoader.EntryPoint;
 using AQuestReborn.UiHide;
 using FFXIVLooseTextureCompiler.Networking;
 using System.Threading.Tasks;
+using Dalamud.Bindings.ImGui;
 
 namespace SamplePlugin;
 

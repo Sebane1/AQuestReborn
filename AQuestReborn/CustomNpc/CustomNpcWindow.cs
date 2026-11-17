@@ -520,10 +520,11 @@ namespace AQuestReborn.CustomNpc
                         {
                             ImGui.LabelText("##personalityLabel", Translator.LocalizeUI("NPC Name"));
                             ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                            if (ImGui.InputText("##NPCName", ref _customNpcCharacters[_currentSelection].NpcName, 255))
-                            {
-                                SaveNPCCharacters();
-                            }
+                            ImGui.InputText("##NPCName", ref _customNpcCharacters[_currentSelection].NpcName, 255);
+                    if (ImGui.IsItemDeactivatedAfterEdit())
+                    {
+                        SaveNPCCharacters();
+                    }
 
                             if (Plugin.Configuration.AccessibilityReaderActive)
                             {
@@ -636,7 +637,8 @@ namespace AQuestReborn.CustomNpc
                                 // MCDF file path input
                                 ImGui.LabelText("##mcdfLabel", Translator.LocalizeUI("MCDF File Path"));
                                 ImGui.SetNextItemWidth(ImGui.GetColumnWidth() - 80);
-                                if (ImGui.InputText("##McdfPath", ref _customNpcCharacters[_currentSelection].McdfFilePath, 1024))
+                                ImGui.InputText("##McdfPath", ref _customNpcCharacters[_currentSelection].McdfFilePath, 1024);
+                                if (ImGui.IsItemDeactivatedAfterEdit())
                                 {
                                     SaveNPCCharacters();
                                 }
@@ -813,21 +815,24 @@ namespace AQuestReborn.CustomNpc
                                 {
                                     ImGui.LabelText("##greetingLabel", Translator.LocalizeUI("NPC Greeting"));
                                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                    if (ImGui.InputText("##Greeting", ref _customNpcCharacters[_currentSelection].NPCGreeting, 500))
+                                    ImGui.InputText("##Greeting", ref _customNpcCharacters[_currentSelection].NPCGreeting, 500);
+                                    if (ImGui.IsItemDeactivatedAfterEdit())
                                     {
                                         SaveNPCCharacters();
                                     }
 
                                     ImGui.LabelText("##personalityFieldLabel", Translator.LocalizeUI("NPC Personality"));
                                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                    if (ImGui.InputTextMultiline("##NpcPersonality", ref _customNpcCharacters[_currentSelection].NpcPersonality, 2000, new Vector2(ImGui.GetColumnWidth(), 100)))
+                                    ImGui.InputTextMultiline("##NpcPersonality", ref _customNpcCharacters[_currentSelection].NpcPersonality, 2000, new Vector2(ImGui.GetColumnWidth(), 100));
+                                    if (ImGui.IsItemDeactivatedAfterEdit())
                                     {
                                         SaveNPCCharacters();
                                     }
 
                                     ImGui.LabelText("##npcHobbiesLabel", Translator.LocalizeUI("Hobbies"));
                                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                    if (ImGui.InputText("##NpcHobbies", ref _customNpcCharacters[_currentSelection].NpcHobbies, 500))
+                                    ImGui.InputText("##NpcHobbies", ref _customNpcCharacters[_currentSelection].NpcHobbies, 500);
+                                    if (ImGui.IsItemDeactivatedAfterEdit())
                                     {
                                         SaveNPCCharacters();
                                     }
@@ -854,7 +859,8 @@ namespace AQuestReborn.CustomNpc
                                 {
                                     ImGui.LabelText("##npcBirthDateLabel", Translator.LocalizeUI("Birth Date (Lore)"));
                                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
-                                    if (ImGui.InputText("##NpcBirthDate", ref _customNpcCharacters[_currentSelection].NpcBirthDate, 100))
+                                    ImGui.InputText("##NpcBirthDate", ref _customNpcCharacters[_currentSelection].NpcBirthDate, 100);
+                                    if (ImGui.IsItemDeactivatedAfterEdit())
                                     {
                                         SaveNPCCharacters();
                                     }
@@ -2024,7 +2030,8 @@ namespace AQuestReborn.CustomNpc
             ImGui.Text("API Base URL:");
             string url = config.OpenAiCompatibleUrl ?? "";
             ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
-            if (ImGui.InputText("##OpenAiUrl", ref url, 512))
+            ImGui.InputText("##OpenAiUrl", ref url, 512);
+            if (ImGui.IsItemDeactivatedAfterEdit())
             {
                 config.OpenAiCompatibleUrl = url;
                 config.Save();
@@ -2037,7 +2044,8 @@ namespace AQuestReborn.CustomNpc
             ImGui.Text("API Key (optional for local servers):");
             string apiKey = config.OpenAiCompatibleApiKey ?? "";
             ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
-            if (ImGui.InputText("##OpenAiKey", ref apiKey, 256, ImGuiInputTextFlags.Password))
+            ImGui.InputText("##OpenAiKey", ref apiKey, 256, ImGuiInputTextFlags.Password);
+            if (ImGui.IsItemDeactivatedAfterEdit())
             {
                 config.OpenAiCompatibleApiKey = apiKey;
                 config.Save();
@@ -2049,7 +2057,8 @@ namespace AQuestReborn.CustomNpc
             ImGui.Text("Model Name (optional):");
             string modelName = config.OpenAiCompatibleModelName ?? "";
             ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
-            if (ImGui.InputText("##OpenAiModel", ref modelName, 128))
+            ImGui.InputText("##OpenAiModel", ref modelName, 128);
+            if (ImGui.IsItemDeactivatedAfterEdit())
             {
                 config.OpenAiCompatibleModelName = modelName;
                 config.Save();
@@ -2067,7 +2076,8 @@ namespace AQuestReborn.CustomNpc
             ImGui.Text("Persistent API Token:");
             string token = config.NovelAiApiToken ?? "";
             ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
-            if (ImGui.InputText("##NovelAiToken", ref token, 512, ImGuiInputTextFlags.Password))
+            ImGui.InputText("##NovelAiToken", ref token, 512, ImGuiInputTextFlags.Password);
+            if (ImGui.IsItemDeactivatedAfterEdit())
             {
                 config.NovelAiApiToken = token;
                 config.Save();
@@ -2099,7 +2109,8 @@ namespace AQuestReborn.CustomNpc
             ImGui.Text("API Key:");
             string apiKey = config.GeminiApiKey ?? "";
             ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 10f);
-            if (ImGui.InputText("##GeminiApiKey", ref apiKey, 256, ImGuiInputTextFlags.Password))
+            ImGui.InputText("##GeminiApiKey", ref apiKey, 256, ImGuiInputTextFlags.Password);
+            if (ImGui.IsItemDeactivatedAfterEdit())
             {
                 config.GeminiApiKey = apiKey;
                 config.Save();

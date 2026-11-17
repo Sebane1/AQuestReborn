@@ -5,6 +5,7 @@ using FFXIVLooseTextureCompiler.Networking;
 using LanguageConversionProxy;
 using McdfDataImporter;
 using RoleplayingMediaCore.AudioRecycler;
+using Newtonsoft.Json;
 using RoleplayingQuestCore;
 using System;
 using System.Collections.Generic;
@@ -52,7 +53,7 @@ public class Configuration : IPluginConfiguration
     private bool _enableClickToChat = true;
 
     private string _aiProvider = "default";
-    private string _openAiCompatibleUrl = ""; 
+    private string _openAiCompatibleUrl = "";
     private string _openAiCompatibleApiKey = "";
     private string _openAiCompatibleModelName = "";
     private string _novelAiApiToken = "";
@@ -100,26 +101,21 @@ public class Configuration : IPluginConfiguration
 
     public void Save()
     {
-        bool persistenceSucceeded = false;
-        while (!persistenceSucceeded)
+        try
         {
-            try
+            lock (QuestChains)
             {
-                lock (QuestChains)
                 {
+                    lock (QuestProgression)
                     {
-                        lock (QuestProgression)
-                        {
-                            Plugin.PluginInterface.SavePluginConfig(this);
-                            persistenceSucceeded = true;
-                        }
+                        Plugin.PluginInterface.SavePluginConfig(this);
                     }
                 }
             }
-            catch
-            {
+        }
+        catch
+        {
 
-            }
         }
     }
 }

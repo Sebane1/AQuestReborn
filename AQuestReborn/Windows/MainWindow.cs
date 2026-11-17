@@ -199,7 +199,8 @@ public class MainWindow : Window, IDisposable
                     ImGui.Text("Fish Audio API Key");
                     ImGui.SetNextItemWidth(ImGui.GetContentRegionMax().X);
                     string fishApiKey = Plugin.Configuration.FishAudioApiKey ?? "";
-                    if (ImGui.InputText("##fishApiKey", ref fishApiKey, 51, ImGuiInputTextFlags.Password))
+                    ImGui.InputText("##fishApiKey", ref fishApiKey, 51, ImGuiInputTextFlags.Password);
+                    if (ImGui.IsItemDeactivatedAfterEdit())
                     {
                         if (Plugin.Configuration.FishAudioApiKey != fishApiKey)
                         {
@@ -239,15 +240,18 @@ public class MainWindow : Window, IDisposable
                     ImGui.SetNextItemWidth(ImGui.GetContentRegionMax().X);
                     string cttsAddress = Plugin.Configuration.CTTSAddress ?? "http://localhost:8308";
                     ImGui.InputText("##cttsAddress", ref cttsAddress, 2000);
-                    if (Plugin.Configuration.CTTSAddress != cttsAddress)
+                    if (ImGui.IsItemDeactivatedAfterEdit())
                     {
-                        Plugin.Configuration.CTTSAddress = cttsAddress;
-                        if (Plugin.RoleplayingMediaManagerInstance != null)
+                        if (Plugin.Configuration.CTTSAddress != cttsAddress)
                         {
-                            Plugin.RoleplayingMediaManagerInstance.CTTSAddress = cttsAddress;
+                            Plugin.Configuration.CTTSAddress = cttsAddress;
+                            if (Plugin.RoleplayingMediaManagerInstance != null)
+                            {
+                                Plugin.RoleplayingMediaManagerInstance.CTTSAddress = cttsAddress;
+                            }
+                            Plugin.Configuration.Save();
+                            Plugin.RefreshVoices();
                         }
-                        Plugin.Configuration.Save();
-                        Plugin.RefreshVoices();
                     }
 
                     ImGui.TextWrapped($"To add more voices, simply place .wav files of what you want to sound like in the folder the buttons below manage.");
