@@ -60,7 +60,7 @@ public class EditorWindow : Window, IDisposable
     private static readonly HashSet<string> ValidImageExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".bmp" };
     private static readonly HashSet<string> ValidVideoExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".mp4", ".webm", ".avi", ".mkv", ".mov" };
     private static readonly HashSet<string> ValidMcdfExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".mcdf" };
-    private string _pendingAudioImportSlot = null; // "bgm" or "sfx_N"
+    private string _pendingAudioImportSlot = null;
     private QuestEvent _pendingAudioImportEvent = null;
 
     // Speech to text recording state for Dialogue & Choice Text
@@ -79,11 +79,20 @@ public class EditorWindow : Window, IDisposable
     private QuestObjective _tailRecordingObjective;
     private ushort _tailPendingEmoteId;
 
+    // Lumina game-data caches for dropdowns
+    private (uint Id, string Name)[] _emoteList;
+    private (uint Id, string Abbr, string Name)[] _classJobList;
+    private (uint Id, string Name)[] _tribeList;
+    private string[] _emoteNames;
+    private string[] _classJobNames;
+    private string[] _tribeNames;
+
+    // Item search state
+    private string _itemSearchBuf = "";
+    private (uint Id, string Name)[] _itemSearchResults = Array.Empty<(uint, string)>();
+
     public RoleplayingQuestCreator RoleplayingQuestCreator { get => _roleplayingQuestCreator; set => _roleplayingQuestCreator = value; }
 
-    // We give this window a hidden ID using ##
-    // So that the user will see "My Amazing Window" as window title,
-    // but for ImGui the ID is "My Amazing Window##With a hidden ID"
     public EditorWindow(Plugin plugin)
         : base("Quest Creator##" + Guid.NewGuid().ToString(), ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.AlwaysAutoResize)
     {
@@ -91,6 +100,7 @@ public class EditorWindow : Window, IDisposable
         Plugin = plugin;
         _fileDialogManager = new FileDialogManager();
         _dragDropManager = Plugin.DragDropManager;
+        InitializeLuminaDropdowns();
         if (_npcTransformEditorWindow == null)
         {
             _npcTransformEditorWindow = new NPCTransformEditorWindow(Plugin, _roleplayingQuestCreator);
@@ -111,6 +121,62 @@ public class EditorWindow : Window, IDisposable
     {
         _objectiveInFocus = null;
     }
+
+    private void InitializeLuminaDropdowns()
+    {
+        try
+        {
+            var dm = Plugin.DataManager;
+            var emoteSheet = dm.GetExcelSheet<Emote>();
+            if (emoteSheet != null)
+            {
+                var list = new List<(uint Id, string Name)>();
+                list.Add((0, "None"));
+                foreach (var e in emoteSheet)
+                {
+                    string name = e.Name.ToString();
+                    if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        list.Add((e.RowId, name));
+                    }
+                }
+                var sorted = list.Skip(1).OrderBy(e => e.Name).ToList();
+                sorted.Insert(0, (0, "None"));
+                _emoteList = sorted.ToArray();
+                _emoteNames = _emoteList.Select(e => e.Id == 0 ? "None" : $"{e.Name} ({e.Id})").ToArray();
+            }
+            else { _emoteList = new (uint, string)[] { (0, "None") }; _emoteNames = new string[] { "None" }; }
+
+            var classJobSheet = dm.GetExcelSheet<ClassJob>();
+            if (classJobSheet != null)
+            {
+                _classJobList = classJobSheet
+                    .Where(c => c.Abbreviation.ToString().Length > 0)
+                    .OrderBy(c => c.Abbreviation.ToString())
+                    .Select(c => (c.RowId, c.Abbreviation.ToString(), c.Name.ToString()))
+                    .ToArray();
+                _classJobNames = _classJobList.Select(c => $"{c.Abbr} - {c.Name} ({c.Id})").ToArray();
+            }
+            else { _classJobList = Array.Empty<(uint, string, string)>(); _classJobNames = Array.Empty<string>(); }
+
+            var tribeSheet = dm.GetExcelSheet<Tribe>();
+            if (tribeSheet != null)
+            {
+                _tribeList = tribeSheet
+                    .Where(t => t.Masculine.ToString().Length > 0)
+                    .OrderBy(t => (int)t.RowId)
+                    .Select(t => (t.RowId, t.Masculine.ToString()))
+                    .ToArray();
+                _tribeNames = _tribeList.Select(t => $"{t.Name} ({t.Id})").ToArray();
+            }
+            else { _tribeList = Array.Empty<(uint, string)>(); _tribeNames = Array.Empty<string>(); }
+        }
+        catch (Exception ex)
+        {
+            Plugin.PluginLog.Warning(ex, "Failed to initialize Lumina dropdowns.");
+        }
+    }
+
     public void Dispose()
     {
         if (_speechToTextManager != null)
@@ -173,7 +239,7 @@ public class EditorWindow : Window, IDisposable
                     EmoteId = _tailPendingEmoteId
                 };
                 _tailRecordedWaypoints.Add(wp);
-                _tailPendingEmoteId = 0; // Only capture each emote once
+                _tailPendingEmoteId = 0;
             }
         }
 
@@ -663,9 +729,25 @@ public class EditorWindow : Window, IDisposable
             switch (questObjective.TypeOfObjectiveTrigger)
             {
                 case ObjectiveTriggerType.DoEmote:
-                    if (ImGui.InputText(Translator.LocalizeUI("Emote Id##"), ref triggerText, 500))
                     {
-                        questObjective.TriggerText = triggerText;
+                        // Parse currently stored id to find index
+                        int emoteIdx = 0;
+                        if (uint.TryParse(triggerText, out var storedEmoteId))
+                            emoteIdx = Array.FindIndex(_emoteList, e => e.Id == storedEmoteId);
+                        if (emoteIdx < 0) emoteIdx = 0;
+                        if (_emoteNames.Length > 0)
+                        {
+                            if (ImGui.Combo(Translator.LocalizeUI("Emote##emoteCombo"), ref emoteIdx, _emoteNames, _emoteNames.Length))
+                            {
+                                questObjective.TriggerText = _emoteList[emoteIdx].Id.ToString();
+                                triggerText = questObjective.TriggerText;
+                            }
+                        }
+                        else
+                        {
+                            if (ImGui.InputText(Translator.LocalizeUI("Emote Id##"), ref triggerText, 500))
+                                questObjective.TriggerText = triggerText;
+                        }
                     }
                     break;
                 case ObjectiveTriggerType.SayPhrase:
@@ -997,33 +1079,119 @@ public class EditorWindow : Window, IDisposable
                                 }
                                 break;
                             case EventConditionType.PlayerClanId:
-                                if (ImGui.InputText(Translator.LocalizeUI("Clan Id Required##"), ref objectiveIdToComplete, 40))
                                 {
-                                    item.ObjectiveIdToComplete = objectiveIdToComplete;
+                                    // Tribe / Clan dropdown
+                                    uint.TryParse(objectiveIdToComplete, out var storedTribeId);
+                                    int tribeIdx = Array.FindIndex(_tribeList, t => t.Id == storedTribeId);
+                                    if (tribeIdx < 0) tribeIdx = 0;
+                                    ImGui.Text(Translator.LocalizeUI("Clan Required:"));
+                                    ImGui.SameLine();
+                                    if (_tribeNames.Length > 0)
+                                    {
+                                        ImGui.SetNextItemWidth(260);
+                                        if (ImGui.Combo("##clanCombo", ref tribeIdx, _tribeNames, _tribeNames.Length))
+                                        {
+                                            item.ObjectiveIdToComplete = _tribeList[tribeIdx].Id.ToString();
+                                            objectiveIdToComplete = item.ObjectiveIdToComplete;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (ImGui.InputText(Translator.LocalizeUI("Clan Id Required##"), ref objectiveIdToComplete, 40))
+                                            item.ObjectiveIdToComplete = objectiveIdToComplete;
+                                    }
                                 }
                                 break;
                             case EventConditionType.PlayerPhysicalPresentationId:
-                                if (ImGui.InputText(Translator.LocalizeUI("(Masculine: 0, Feminine: 1)##"), ref objectiveIdToComplete, 40))
                                 {
-                                    item.ObjectiveIdToComplete = objectiveIdToComplete;
+                                    // Simple radio: Masculine = 0, Feminine = 1
+                                    uint.TryParse(objectiveIdToComplete, out var presId);
+                                    int presIdx = (int)presId; // 0 or 1
+                                    if (presIdx < 0 || presIdx > 1) presIdx = 0;
+                                    ImGui.Text(Translator.LocalizeUI("Physical Presentation:"));
+                                    ImGui.SameLine();
+                                    if (ImGui.RadioButton(Translator.LocalizeUI("Masculine##pres"), ref presIdx, 0))
+                                    {
+                                        item.ObjectiveIdToComplete = "0";
+                                        objectiveIdToComplete = "0";
+                                    }
+                                    ImGui.SameLine();
+                                    if (ImGui.RadioButton(Translator.LocalizeUI("Feminine##pres"), ref presIdx, 1))
+                                    {
+                                        item.ObjectiveIdToComplete = "1";
+                                        objectiveIdToComplete = "1";
+                                    }
                                 }
                                 break;
                             case EventConditionType.PlayerClassId:
-                                if (ImGui.InputText(Translator.LocalizeUI("Player Class Id (SMN, RPR, WHM, etc)##"), ref objectiveIdToComplete, 40))
                                 {
-                                    item.ObjectiveIdToComplete = objectiveIdToComplete;
+                                    // ClassJob dropdown
+                                    uint.TryParse(objectiveIdToComplete, out var storedClassId);
+                                    int classIdx = Array.FindIndex(_classJobList, c => c.Id == storedClassId);
+                                    if (classIdx < 0) classIdx = 0;
+                                    ImGui.Text(Translator.LocalizeUI("Player Class/Job:"));
+                                    ImGui.SameLine();
+                                    if (_classJobNames.Length > 0)
+                                    {
+                                        ImGui.SetNextItemWidth(300);
+                                        if (ImGui.Combo("##classJobCombo", ref classIdx, _classJobNames, _classJobNames.Length))
+                                        {
+                                            item.ObjectiveIdToComplete = _classJobList[classIdx].Id.ToString();
+                                            objectiveIdToComplete = item.ObjectiveIdToComplete;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (ImGui.InputText(Translator.LocalizeUI("Player Class Id##"), ref objectiveIdToComplete, 40))
+                                            item.ObjectiveIdToComplete = objectiveIdToComplete;
+                                    }
                                 }
                                 break;
                             case EventConditionType.PlayerOutfitTopId:
-                                if (ImGui.InputText(Translator.LocalizeUI("Player Outfit Top Id##"), ref objectiveIdToComplete, 40))
-                                {
-                                    item.ObjectiveIdToComplete = objectiveIdToComplete;
-                                }
-                                break;
                             case EventConditionType.PlayerOutfitBottomId:
-                                if (ImGui.InputText(Translator.LocalizeUI("Player Outfit Bottom Id##"), ref objectiveIdToComplete, 40))
                                 {
-                                    item.ObjectiveIdToComplete = objectiveIdToComplete;
+                                    // Item search box (too many items for plain combo)
+                                    bool isTop = item.ConditionForDialogueToOccur == EventConditionType.PlayerOutfitTopId;
+                                    string labelPfx = isTop ? "Top" : "Bottom";
+                                    ImGui.Text(Translator.LocalizeUI($"Player Outfit {labelPfx} - Search:"));
+                                    ImGui.SetNextItemWidth(260);
+                                    if (ImGui.InputText($"##outfitSearch{labelPfx}", ref _itemSearchBuf, 64))
+                                    {
+                                        // Search item sheet on each keystroke (capped to 50 results)
+                                        if (_itemSearchBuf.Length >= 2)
+                                        {
+                                            var sheet = Plugin.DataManager.GetExcelSheet<Item>();
+                                            if (sheet != null)
+                                            {
+                                                _itemSearchResults = sheet
+                                                    .Where(i => i.Name.ToString().Contains(_itemSearchBuf, StringComparison.OrdinalIgnoreCase)
+                                                                && i.Name.ToString().Length > 0)
+                                                    .Take(50)
+                                                    .Select(i => (i.RowId, i.Name.ToString()))
+                                                    .ToArray();
+                                            }
+                                        }
+                                        else { _itemSearchResults = Array.Empty<(uint, string)>(); }
+                                    }
+                                    if (_itemSearchResults.Length > 0)
+                                    {
+                                        uint.TryParse(objectiveIdToComplete, out var storedItemId);
+                                        int itemIdx = Array.FindIndex(_itemSearchResults, r => r.Id == storedItemId);
+                                        if (itemIdx < 0) itemIdx = 0;
+                                        var itemResultNames = _itemSearchResults.Select(r => $"{r.Name} ({r.Id})").ToArray();
+                                        ImGui.SetNextItemWidth(360);
+                                        if (ImGui.Combo($"##outfitResult{labelPfx}", ref itemIdx, itemResultNames, itemResultNames.Length))
+                                        {
+                                            item.ObjectiveIdToComplete = _itemSearchResults[itemIdx].Id.ToString();
+                                            objectiveIdToComplete = item.ObjectiveIdToComplete;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // Show current stored id as text
+                                        if (!string.IsNullOrEmpty(objectiveIdToComplete))
+                                            ImGui.Text(Translator.LocalizeUI("Current Id: ") + objectiveIdToComplete);
+                                    }
                                 }
                                 break;
                             case EventConditionType.TimeLimitFailure:
@@ -1120,16 +1288,41 @@ public class EditorWindow : Window, IDisposable
                         {
                             item.DialogueBoxStyle = boxStyle;
                         }
-                        ImGui.SetNextItemWidth(100);
-                        if (ImGui.InputInt(Translator.LocalizeUI("NPC Face Expression Id##"), ref faceExpression))
+                        // NPC Emote / Animation selectors
+                        if (_emoteNames.Length > 0)
                         {
-                            item.FaceExpression = faceExpression;
+                            int npcFaceIdx = Array.FindIndex(_emoteList, e => e.Id == (uint)faceExpression);
+                            if (npcFaceIdx < 0) npcFaceIdx = 0;
+                            ImGui.SetNextItemWidth(220);
+                            if (ImGui.Combo(Translator.LocalizeUI("NPC Face Expression##npcFaceCombo"), ref npcFaceIdx, _emoteNames, _emoteNames.Length))
+                            {
+                                item.FaceExpression = (int)_emoteList[npcFaceIdx].Id;
+                                faceExpression = item.FaceExpression;
+                            }
+
+                            ImGui.SameLine();
+                            int npcBodyIdx = Array.FindIndex(_emoteList, e => e.Id == (uint)bodyExpression);
+                            if (npcBodyIdx < 0) npcBodyIdx = 0;
+                            ImGui.SetNextItemWidth(220);
+                            if (ImGui.Combo(Translator.LocalizeUI("NPC Body Expression##npcBodyCombo"), ref npcBodyIdx, _emoteNames, _emoteNames.Length))
+                            {
+                                item.BodyExpression = (int)_emoteList[npcBodyIdx].Id;
+                                bodyExpression = item.BodyExpression;
+                            }
                         }
-                        ImGui.SameLine();
-                        ImGui.SetNextItemWidth(100);
-                        if (ImGui.InputInt(Translator.LocalizeUI("NPC Body Expression Id##"), ref bodyExpression))
+                        else
                         {
-                            item.BodyExpression = bodyExpression;
+                            ImGui.SetNextItemWidth(100);
+                            if (ImGui.InputInt(Translator.LocalizeUI("NPC Face Expression Id##"), ref faceExpression))
+                            {
+                                item.FaceExpression = faceExpression;
+                            }
+                            ImGui.SameLine();
+                            ImGui.SetNextItemWidth(100);
+                            if (ImGui.InputInt(Translator.LocalizeUI("NPC Body Expression Id##"), ref bodyExpression))
+                            {
+                                item.BodyExpression = bodyExpression;
+                            }
                         }
                         ImGui.SameLine();
                         if (ImGui.Checkbox(Translator.LocalizeUI("Loop Animation##"), ref loopAnimation))
@@ -1137,16 +1330,41 @@ public class EditorWindow : Window, IDisposable
                             item.LoopAnimation = loopAnimation;
                         }
 
-                        ImGui.SetNextItemWidth(100);
-                        if (ImGui.InputInt(Translator.LocalizeUI("Player Face Expression Id##"), ref faceExpressionPlayer))
+                        // Player Emote / Animation selectors
+                        if (_emoteNames.Length > 0)
                         {
-                            item.FaceExpressionPlayer = faceExpressionPlayer;
+                            int playerFaceIdx = Array.FindIndex(_emoteList, e => e.Id == (uint)faceExpressionPlayer);
+                            if (playerFaceIdx < 0) playerFaceIdx = 0;
+                            ImGui.SetNextItemWidth(220);
+                            if (ImGui.Combo(Translator.LocalizeUI("Player Face Expression##plyFaceCombo"), ref playerFaceIdx, _emoteNames, _emoteNames.Length))
+                            {
+                                item.FaceExpressionPlayer = (int)_emoteList[playerFaceIdx].Id;
+                                faceExpressionPlayer = item.FaceExpressionPlayer;
+                            }
+
+                            ImGui.SameLine();
+                            int playerBodyIdx = Array.FindIndex(_emoteList, e => e.Id == (uint)bodyExpressionPlayer);
+                            if (playerBodyIdx < 0) playerBodyIdx = 0;
+                            ImGui.SetNextItemWidth(220);
+                            if (ImGui.Combo(Translator.LocalizeUI("Player Body Expression##plyBodyCombo"), ref playerBodyIdx, _emoteNames, _emoteNames.Length))
+                            {
+                                item.BodyExpressionPlayer = (int)_emoteList[playerBodyIdx].Id;
+                                bodyExpressionPlayer = item.BodyExpressionPlayer;
+                            }
                         }
-                        ImGui.SameLine();
-                        ImGui.SetNextItemWidth(100);
-                        if (ImGui.InputInt(Translator.LocalizeUI("Player Body Expression Id##"), ref bodyExpressionPlayer))
+                        else
                         {
-                            item.BodyExpressionPlayer = bodyExpressionPlayer;
+                            ImGui.SetNextItemWidth(100);
+                            if (ImGui.InputInt(Translator.LocalizeUI("Player Face Expression Id##"), ref faceExpressionPlayer))
+                            {
+                                item.FaceExpressionPlayer = faceExpressionPlayer;
+                            }
+                            ImGui.SameLine();
+                            ImGui.SetNextItemWidth(100);
+                            if (ImGui.InputInt(Translator.LocalizeUI("Player Body Expression Id##"), ref bodyExpressionPlayer))
+                            {
+                                item.BodyExpressionPlayer = bodyExpressionPlayer;
+                            }
                         }
                         ImGui.SameLine();
                         if (ImGui.Checkbox(Translator.LocalizeUI("Loop Player Animation##"), ref loopAnimationPlayer))
@@ -1310,7 +1528,6 @@ public class EditorWindow : Window, IDisposable
                     }
                     if (ImGui.BeginTabItem(Translator.LocalizeUI("Music And Sounds")))
                     {
-                        // ── Background Music ──────────────────────────────────────────
                         ImGui.TextColored(new Vector4(0.8f, 0.8f, 1f, 1f), Translator.LocalizeUI("Background Music"));
                         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 90);
                         if (ImGui.InputText(Translator.LocalizeUI("##bgm_path"), ref dialogueBackgroundMusic, 255))
@@ -1365,7 +1582,6 @@ public class EditorWindow : Window, IDisposable
 
                         ImGui.Separator();
 
-                        // ── Sound Effects ─────────────────────────────────────────────
                         ImGui.TextColored(new Vector4(0.8f, 0.8f, 1f, 1f), Translator.LocalizeUI("Sound Effects"));
 
                         int indexToRemove = -1;
@@ -1440,7 +1656,7 @@ public class EditorWindow : Window, IDisposable
                             item.SoundEffects.Add("");
                         }
 
-                        // Drop zone to add a NEW sound effect slot from OS drag-and-drop
+                        // Drop zone to add a new sound effect slot from drag and drop
                         if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
                         {
                             ImGui.SameLine();
