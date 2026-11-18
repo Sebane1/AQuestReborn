@@ -278,6 +278,38 @@ public class MainWindow : Window, IDisposable
                     break;
             }
         }
+
+        ImGui.Spacing();
+        bool useFishAudioSpeechToText = Plugin.Configuration.UseFishAudioTranscription;
+        if (ImGui.Checkbox("Use Fish Audio Speech-to-Text (Cloud)", ref useFishAudioSpeechToText))
+        {
+            Plugin.Configuration.UseFishAudioTranscription = useFishAudioSpeechToText;
+            Plugin.Configuration.Save();
+        }
+        if (!useFishAudioSpeechToText)
+        {
+            ImGui.TextDisabled("Whisper (Local) is used when disabled.");
+        }
+        else if (currentItem != 0)
+        {
+            // If Fish Audio is not currently selected as the TTS provider, allow providing the API key here
+            ImGui.Text("Fish Audio API Key");
+            ImGui.SetNextItemWidth(ImGui.GetContentRegionMax().X);
+            string fishApiKey = Plugin.Configuration.FishAudioApiKey ?? "";
+            if (ImGui.InputText("##fishApiKeySpeechToText", ref fishApiKey, 51, ImGuiInputTextFlags.Password))
+            {
+                Plugin.Configuration.FishAudioApiKey = fishApiKey;
+            }
+            if (ImGui.IsItemDeactivatedAfterEdit())
+            {
+                Plugin.Configuration.FishAudioApiKey = fishApiKey;
+                Plugin.Configuration.Save();
+                if (Plugin.RoleplayingMediaManagerInstance != null)
+                {
+                    Plugin.RoleplayingMediaManagerInstance.FishAudioApiKey = fishApiKey;
+                }
+            }
+        }
     }
 
     private void DrawQuestObjectives()

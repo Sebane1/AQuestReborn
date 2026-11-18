@@ -1,6 +1,7 @@
 using AQuestReborn;
 using AQuestReborn.CustomNpc;
 using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Interface;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
@@ -16,6 +17,7 @@ using System.IO;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+using RoleplayingVoiceCore;
 using RoleplayingVoiceDalamudWrapper;
 using GameObjectHelper.ThreadSafeDalamudObjectTable;
 
@@ -32,11 +34,15 @@ public class NpcChatWindow : Window, IDisposable
     private ICharacter _activeNpcCharacter;
     private CustomNpcCharacter _activeNpcData;
 
-    // Current display state — one response at a time
+    // Current display state
     private string _displayText = "";
     private bool _isWaitingForResponse;
     private string _inputText = "";
     private bool _focusInput;
+
+    // Speech-to-text
+    private SpeechToTextManager _speechToTextManager;
+    private bool _isTranscribing;
 
     // Typewriter
     private string _typewriterTarget = "";
@@ -48,7 +54,7 @@ public class NpcChatWindow : Window, IDisposable
     private bool _farewellDetected;
     private Stopwatch _farewellTimer = new Stopwatch();
 
-    // Dialogue box visuals (same as EventWindow)
+    // Dialogue box visuals
     private List<byte[]> _dialogueBoxStyles = new List<byte[]>();
     private ConcurrentDictionary<int, IDalamudTextureWrap> _dialogueStylesToLoad = new ConcurrentDictionary<int, IDalamudTextureWrap>();
     private bool _alreadyLoadingFrame;
@@ -86,7 +92,7 @@ public class NpcChatWindow : Window, IDisposable
         _plugin.Movement.EnableMovementLock();
         IsOpen = true;
 
-        // Ask the AI to generate its own greeting
+        // Ask the conversational provider to make its own greeting
         string greeting = !string.IsNullOrWhiteSpace(initialGreeting)
             ? initialGreeting
             : "*approaches and waves hello*";
@@ -96,6 +102,11 @@ public class NpcChatWindow : Window, IDisposable
     public override void OnClose()
     {
         _activeNpcName = null;
+        if (_speechToTextManager != null && _speechToTextManager.IsRecording)
+        {
+            try { _speechToTextManager.StopRecording(); } catch { }
+        }
+        _isTranscribing = false;
         _activeConversationManager = null;
         _activeNpcCharacter = null;
         _activeNpcData = null;
@@ -105,7 +116,17 @@ public class NpcChatWindow : Window, IDisposable
         base.OnClose();
     }
 
-    public void Dispose() { }
+    public void Dispose()
+    {
+        if (_speechToTextManager != null)
+        {
+            _speechToTextManager.RecordingFinished -= OnRecordingFinished;
+            if (_speechToTextManager.IsRecording)
+            {
+                try { _speechToTextManager.StopRecording(); } catch { }
+            }
+        }
+    }
 
     private byte[] ImageToBytes(Bitmap image)
     {
@@ -168,7 +189,7 @@ public class NpcChatWindow : Window, IDisposable
             }
         }
 
-        // Auto-close after farewell
+        // Automatically close after farewell
         if (_farewellDetected && _farewellTimer.ElapsedMilliseconds > 10000)
         {
             IsOpen = false;
@@ -235,16 +256,16 @@ public class NpcChatWindow : Window, IDisposable
 
     private void DrawDialogueContent()
     {
-        // NPC name (same style as EventWindow)
+        // NPC name
         ImGui.SetCursorPosY(22 * _globalScale);
         ImGui.SetWindowFontScale(2.2f);
         ImGui.LabelText("##npcChatName", _activeNpcName);
 
-        // NPC response text (single response)
+        // NPC response text
         ImGui.SetWindowFontScale(2f);
         ImGui.SetCursorPosY(75 * _globalScale);
 
-        // Use dark text for default box styles (same logic as EventWindow)
+        // Use dark text for default box styles
         if (_dialogueBoxIndex != 8 && _dialogueBoxIndex != 2 && _dialogueBoxIndex != 3)
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 0, 0, 255));
         else
@@ -261,9 +282,9 @@ public class NpcChatWindow : Window, IDisposable
         ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 1, 1, 1));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.4f, 0.4f, 0.4f, 0.8f));
 
-        bool busy = _isWaitingForResponse || _typewriterActive || _farewellDetected;
+        bool busy = _isWaitingForResponse || _typewriterActive || _farewellDetected || _isTranscribing;
 
-        ImGui.SetNextItemWidth(620 * _globalScale);
+        ImGui.SetNextItemWidth(570 * _globalScale);
         if (_focusInput && !busy)
         {
             ImGui.SetKeyboardFocusHere();
@@ -274,7 +295,7 @@ public class NpcChatWindow : Window, IDisposable
         {
             // Show disabled input while waiting
             ImGui.PushStyleColor(ImGuiCol.FrameBg, new Vector4(0.15f, 0.15f, 0.15f, 0.6f));
-            string placeholder = "";
+            string placeholder = _isTranscribing ? "Transcribing speech..." : "";
             ImGui.InputText("##npcChatInput", ref placeholder, 500, ImGuiInputTextFlags.ReadOnly);
             ImGui.PopStyleColor();
         }
@@ -282,6 +303,26 @@ public class NpcChatWindow : Window, IDisposable
         {
             bool submitted = ImGui.InputText("##npcChatInput", ref _inputText, 500,
                 ImGuiInputTextFlags.EnterReturnsTrue);
+
+            ImGui.SameLine();
+            bool isRecording = _speechToTextManager != null && _speechToTextManager.IsRecording;
+            if (isRecording)
+            {
+                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.85f, 0.2f, 0.2f, 1f));
+                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.95f, 0.3f, 0.3f, 1f));
+            }
+            ImGui.PushFont(UiBuilder.IconFont);
+            bool micClicked = ImGui.Button(FontAwesomeIcon.Microphone.ToIconString() + "##npcMicInput", new Vector2(40 * _globalScale, 0));
+            ImGui.PopFont();
+            if (isRecording)
+            {
+                ImGui.PopStyleColor(2);
+            }
+
+            if (micClicked)
+            {
+                ToggleMicrophone();
+            }
 
             ImGui.SameLine();
             bool sendClicked = ImGui.Button("Send", new Vector2(80 * _globalScale, 0));
@@ -296,7 +337,7 @@ public class NpcChatWindow : Window, IDisposable
 
         ImGui.PopStyleColor(3);
 
-        // Exit button — always visible
+        // Exit button
         ImGui.SameLine();
         if (ImGui.Button("Exit", new Vector2(60 * _globalScale, 0)))
         {
@@ -478,6 +519,70 @@ public class NpcChatWindow : Window, IDisposable
                 _isWaitingForResponse = false;
             }
         });
+    }
+
+    private void EnsureSpeechToTextManager()
+    {
+        if (_speechToTextManager == null)
+        {
+            string basePath = _plugin.RoleplayingMediaManagerInstance?.BasePath
+                ?? Path.GetDirectoryName(_plugin.DalamudPluginInterface.AssemblyLocation.FullName) ?? "";
+            _speechToTextManager = new SpeechToTextManager(basePath);
+            _speechToTextManager.RecordingFinished += OnRecordingFinished;
+        }
+
+        if (_plugin.Configuration.UseFishAudioTranscription && !string.IsNullOrWhiteSpace(_plugin.Configuration.FishAudioApiKey))
+        {
+            _speechToTextManager.Backend = SpeechToTextBackend.FishAudio;
+            _speechToTextManager.FishAudioApiKey = _plugin.Configuration.FishAudioApiKey;
+        }
+        else
+        {
+            _speechToTextManager.Backend = SpeechToTextBackend.Whisper;
+            _speechToTextManager.FishAudioApiKey = _plugin.Configuration.FishAudioApiKey ?? "";
+        }
+    }
+
+    private void ToggleMicrophone()
+    {
+        EnsureSpeechToTextManager();
+
+        if (_speechToTextManager.IsRecording)
+        {
+            _isTranscribing = true;
+            _speechToTextManager.StopRecording();
+        }
+        else
+        {
+            _isTranscribing = false;
+            try
+            {
+                _speechToTextManager.RecordAudio();
+            }
+            catch (Exception ex)
+            {
+                _plugin.PluginLog.Warning(ex, "Failed to start audio recording.");
+                _isTranscribing = false;
+            }
+        }
+    }
+
+    private void OnRecordingFinished(object sender, string recognizedText)
+    {
+        _isTranscribing = false;
+        if (!string.IsNullOrWhiteSpace(recognizedText))
+        {
+            string clean = recognizedText.Trim();
+            if (!string.IsNullOrEmpty(_inputText))
+            {
+                _inputText += " " + clean;
+            }
+            else
+            {
+                _inputText = clean;
+            }
+        }
+        _focusInput = true;
     }
 }
 
