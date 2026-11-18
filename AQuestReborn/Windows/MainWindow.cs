@@ -281,7 +281,7 @@ public class MainWindow : Window, IDisposable
 
         ImGui.Spacing();
         bool useFishAudioSpeechToText = Plugin.Configuration.UseFishAudioTranscription;
-        if (ImGui.Checkbox("Use Fish Audio Speech-to-Text (Cloud)", ref useFishAudioSpeechToText))
+        if (ImGui.Checkbox("Use Fish Audio Speech to Text (Cloud)", ref useFishAudioSpeechToText))
         {
             Plugin.Configuration.UseFishAudioTranscription = useFishAudioSpeechToText;
             Plugin.Configuration.Save();
@@ -309,6 +309,18 @@ public class MainWindow : Window, IDisposable
                     Plugin.RoleplayingMediaManagerInstance.FishAudioApiKey = fishApiKey;
                 }
             }
+        }
+
+        ImGui.Spacing();
+        bool saveTranscriptionAsAudio = Plugin.Configuration.SaveTranscriptionAsDialogueAudio;
+        if (ImGui.Checkbox("Save Quest Editor Transcription as Dialogue Audio", ref saveTranscriptionAsAudio))
+        {
+            Plugin.Configuration.SaveTranscriptionAsDialogueAudio = saveTranscriptionAsAudio;
+            Plugin.Configuration.Save();
+        }
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("When recording dialogue speech to text in the Quest Editor, also saves the recording audio into the quest's audio folder and sets Dialogue Audio Path.");
         }
     }
 

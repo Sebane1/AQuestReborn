@@ -63,6 +63,7 @@ public class Configuration : IPluginConfiguration
     private int _accessibilityTextProvider;
     private string? fishAudioApiKey;
     private bool _useFishAudioTranscription;
+    private bool _saveTranscriptionAsDialogueAudio;
     private string voiceCache = "";
     private string? cTTSAddress;
     private bool accessibilityReaderActive;
@@ -99,6 +100,7 @@ public class Configuration : IPluginConfiguration
     public string VoiceCache { get => voiceCache; set => voiceCache = value; }
     public string? FishAudioApiKey { get => fishAudioApiKey; set => fishAudioApiKey = value; }
     public bool UseFishAudioTranscription { get => _useFishAudioTranscription; set => _useFishAudioTranscription = value; }
+    public bool SaveTranscriptionAsDialogueAudio { get => _saveTranscriptionAsDialogueAudio; set => _saveTranscriptionAsDialogueAudio = value; }
     public CharacterVoices? CharacterVoices { get => characterVoices; set => characterVoices = value; }
 
     public void Save()

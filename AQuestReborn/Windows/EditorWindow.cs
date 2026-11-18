@@ -1794,6 +1794,12 @@ public class EditorWindow : Window, IDisposable
                 {
                     _speechToTextTargetDialogueEvent.Dialogue = clean;
                 }
+
+                if (Plugin.Configuration.SaveTranscriptionAsDialogueAudio && _speechToTextManager?.LastRecordedAudio?.Length > 100)
+                {
+                    SaveTranscriptionAudioToDialogueEvent(_speechToTextTargetDialogueEvent, _speechToTextManager.LastRecordedAudio);
+                }
+
                 RefreshMenus();
             }
             else if (_speechToTextTargetField == SpeechToTextTargetField.ChoiceText && _speechToTextTargetChoice != null)
@@ -1811,5 +1817,44 @@ public class EditorWindow : Window, IDisposable
         _speechToTextTargetField = SpeechToTextTargetField.None;
         _speechToTextTargetDialogueEvent = null;
         _speechToTextTargetChoice = null;
+    }
+
+    private void SaveTranscriptionAudioToDialogueEvent(QuestEvent dialogueEvent, byte[] audioData)
+    {
+        try
+        {
+            if (_roleplayingQuestCreator?.CurrentQuest == null) return;
+
+            string questName = _roleplayingQuestCreator.CurrentQuest.QuestName;
+            string questFolder = Path.Combine(Plugin.Configuration.QuestInstallFolder, questName);
+            string audioFolder = Path.Combine(questFolder, "audio");
+            Directory.CreateDirectory(audioFolder);
+
+            int objIndex = _roleplayingQuestCreator.CurrentQuest.QuestObjectives.IndexOf(_objectiveInFocus);
+            if (objIndex < 0) objIndex = 0;
+            int evtIndex = _selectedEvent >= 0 ? _selectedEvent : 0;
+
+            string npcIdentifier = !string.IsNullOrWhiteSpace(dialogueEvent.NpcAlias)
+                ? dialogueEvent.NpcAlias
+                : (!string.IsNullOrWhiteSpace(dialogueEvent.NpcName) ? dialogueEvent.NpcName : "NPC");
+
+            foreach (char c in Path.GetInvalidFileNameChars())
+            {
+                npcIdentifier = npcIdentifier.Replace(c, '_');
+            }
+            if (npcIdentifier.Length > 60) npcIdentifier = npcIdentifier.Substring(0, 60);
+
+            string fileName = $"{npcIdentifier}_obj{objIndex + 1}_evt{evtIndex + 1}.wav";
+            string fullPath = Path.Combine(audioFolder, fileName);
+
+            File.WriteAllBytes(fullPath, audioData);
+
+            string relativePath = Path.Combine("audio", fileName);
+            dialogueEvent.DialogueAudio = relativePath;
+        }
+        catch (Exception ex)
+        {
+            Plugin.PluginLog.Warning(ex, "Failed to save speech transcription audio to quest dialogue audio path.");
+        }
     }
 }
