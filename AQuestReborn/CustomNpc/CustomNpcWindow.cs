@@ -26,6 +26,7 @@ namespace AQuestReborn.CustomNpc
         private int _designListSelectedIndex = 0;
         Plugin _plugin;
         private FileDialogManager _fileDialogManager;
+        private static readonly HashSet<string> ValidMcdfExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".mcdf" };
         private bool _isCreatingMcdf;
 
         // Idle emote list built from Excel sheet
@@ -667,6 +668,24 @@ namespace AQuestReborn.CustomNpc
                                         }
                                     }, 0, null, true);
                                     ImGui.EndPopup();
+                                }
+                                if (Plugin.DragDropManager != null && Plugin.DragDropManager.ServiceAvailable)
+                                {
+                                    ImGui.Button(Translator.LocalizeUI("  Drop MCDF File Here  ##customNpcMcdfDrop"),
+                                        new Vector2(ImGui.GetColumnWidth(), 24));
+                                    Plugin.DragDropManager.CreateImGuiSource("CustomNpcMcdfDragDrop", m => m.Extensions.Any(e => ValidMcdfExtensions.Contains(e.ToLowerInvariant())), m => true);
+                                    if (Plugin.DragDropManager.CreateImGuiTarget("CustomNpcMcdfDragDrop", out var customNpcMcdfFiles, out _)
+                                        && customNpcMcdfFiles != null && customNpcMcdfFiles.Count > 0)
+                                    {
+                                        _customNpcCharacters[_currentSelection].McdfFilePath = customNpcMcdfFiles[0];
+                                        SaveNPCCharacters();
+                                        if ((_customNpcCharacters[_currentSelection].IsFollowingPlayer || _customNpcCharacters[_currentSelection].IsStaying)
+                                            && _plugin != null && _plugin.AQuestReborn != null)
+                                        {
+                                            _plugin.AQuestReborn.ReapplyCustomNpcMcdfAppearance(
+                                                _customNpcCharacters[_currentSelection].NpcName, customNpcMcdfFiles[0]);
+                                        }
+                                    }
                                 }
                             }
                             else if (_customNpcCharacters[_currentSelection].UseMonsterModel)

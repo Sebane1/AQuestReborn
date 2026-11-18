@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
 using AQuestReborn;
@@ -20,6 +22,8 @@ public class NPCEditorWindow : Window, IDisposable
     private string GoatImagePath;
     private Plugin Plugin;
     private FileDialogManager _fileDialogManager;
+    private Dalamud.Interface.DragDrop.IDragDropManager _dragDropManager;
+    private static readonly HashSet<string> ValidMcdfExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".mcdf" };
     private RoleplayingQuest _roleplayingQuest;
     private int _selectedNpcCustomization;
     private string[] _npcCustomizations;
@@ -39,6 +43,7 @@ public class NPCEditorWindow : Window, IDisposable
 
         Plugin = plugin;
         _fileDialogManager = new FileDialogManager();
+        _dragDropManager = Plugin.DragDropManager;
     }
 
     public void Dispose() { }
@@ -51,6 +56,7 @@ public class NPCEditorWindow : Window, IDisposable
 
     public override void Draw()
     {
+        _fileDialogManager.Draw();
         ImGui.BeginTable("##NPC Creation Table", 2);
         ImGui.TableSetupColumn(Translator.LocalizeUI("NPC Creation List"), ImGuiTableColumnFlags.WidthFixed, 150);
         ImGui.TableSetupColumn(Translator.LocalizeUI("NPC Creation Editor"), ImGuiTableColumnFlags.WidthStretch);
@@ -87,26 +93,50 @@ public class NPCEditorWindow : Window, IDisposable
                         item.Voice = npcVoice;
                     }
 
-                    if (ImGui.InputText(Translator.LocalizeUI("Npc Appearance Data##"), ref appearanceData, 255))
+                    ImGui.Text(Translator.LocalizeUI("Npc Appearance Data:"));
+                    ImGui.SetNextItemWidth(250);
+                    if (ImGui.InputText("##NpcAppearanceData", ref appearanceData, 255))
                     {
                         item.AppearanceData = appearanceData;
                     }
-
-                    var hideNameplate = item.HideNameplate;
-                    if (ImGui.Checkbox(Translator.LocalizeUI("Hide Nameplate##"), ref hideNameplate))
+                    ImGui.SameLine();
+                    if (ImGui.Button(Translator.LocalizeUI("Browse##npcAppearance")))
                     {
-                        item.HideNameplate = hideNameplate;
+                        _fileDialogManager.Reset();
+                        ImGui.OpenPopup("McdfImportDialog##npcEditor");
                     }
-
-                    if (!hideNameplate)
+                    if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an MCDF file (.mcdf)"));
+                    if (ImGui.BeginPopup("McdfImportDialog##npcEditor"))
                     {
-                        var nameplateAlias = item.NameplateAlias ?? "";
-                        if (ImGui.InputText(Translator.LocalizeUI("Nameplate Alias##"), ref nameplateAlias, 40))
+                        _fileDialogManager.OpenFileDialog(
+                            Translator.LocalizeUI("Select MCDF File"),
+                            ".mcdf",
+                            (isOk, file) =>
+                            {
+                                if (isOk && !string.IsNullOrEmpty(file))
+                                {
+                                    string imported = ImportMcdfFileToQuestFolder(file);
+                                    if (imported != null) item.AppearanceData = imported;
+                                }
+                            });
+                        ImGui.EndPopup();
+                    }
+                    if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
+                    {
+                        ImGui.SetNextItemWidth(320);
+                        ImGui.Button(Translator.LocalizeUI("  Drop MCDF File Here  ##npcAppMcdfDrop"),
+                            new Vector2(320, 24));
+                        _dragDropManager.CreateImGuiSource("NpcEditorMcdfDragDrop", m => m.Extensions.Any(e => ValidMcdfExtensions.Contains(e.ToLowerInvariant())), m => true);
+                        if (_dragDropManager.CreateImGuiTarget("NpcEditorMcdfDragDrop", out var mcdfFiles, out _)
+                            && mcdfFiles != null && mcdfFiles.Count > 0)
                         {
-                            item.NameplateAlias = nameplateAlias;
+                            string imported = ImportMcdfFileToQuestFolder(mcdfFiles[0]);
+                            if (imported != null)
+                            {
+                                item.AppearanceData = imported;
+                            }
                         }
                     }
-
                     if (_isCreatingAppearance)
                     {
                         ImGui.BeginDisabled();
@@ -126,6 +156,21 @@ public class NPCEditorWindow : Window, IDisposable
                             _isCreatingAppearance = false;
                         });
                     }
+                    var hideNameplate = item.HideNameplate;
+                    if (ImGui.Checkbox(Translator.LocalizeUI("Hide Nameplate##"), ref hideNameplate))
+                    {
+                        item.HideNameplate = hideNameplate;
+                    }
+
+                    if (!hideNameplate)
+                    {
+                        var nameplateAlias = item.NameplateAlias ?? "";
+                        if (ImGui.InputText(Translator.LocalizeUI("Nameplate Alias##"), ref nameplateAlias, 40))
+                        {
+                            item.NameplateAlias = nameplateAlias;
+                        }
+                    }
+
                     if (_isCreatingAppearance)
                     {
                         ImGui.EndDisabled();
@@ -179,5 +224,43 @@ public class NPCEditorWindow : Window, IDisposable
     {
         _npcCustomizations = Utility.FillNewList(_roleplayingQuest.NpcCustomizations.Count, await Translator.LocalizeText("NPC Appearance", Translator.UiLanguage, LanguageConversionProxy.LanguageEnum.English));
         _selectedNpcCustomization = _npcCustomizations.Length - 1;
+    }
+
+    private string ImportMcdfFileToQuestFolder(string sourceFilePath)
+    {
+        try
+        {
+            if (!File.Exists(sourceFilePath)) return null;
+            if (_roleplayingQuest == null) return null;
+
+            string questPath = Path.Combine(
+                Plugin.Configuration.QuestInstallFolder,
+                _roleplayingQuest.QuestName);
+            Directory.CreateDirectory(questPath);
+
+            string destFileName = Path.GetFileName(sourceFilePath);
+            string destPath = Path.Combine(questPath, destFileName);
+
+            if (File.Exists(destPath) && destPath != sourceFilePath)
+            {
+                string nameNoExt = Path.GetFileNameWithoutExtension(destFileName);
+                string ext = Path.GetExtension(destFileName);
+                destFileName = $"{nameNoExt}_{Guid.NewGuid().ToString()[..8]}{ext}";
+                destPath = Path.Combine(questPath, destFileName);
+            }
+
+            if (!string.Equals(Path.GetFullPath(sourceFilePath), Path.GetFullPath(destPath),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(sourceFilePath, destPath, overwrite: true);
+            }
+
+            return destFileName;
+        }
+        catch (Exception ex)
+        {
+            Plugin.PluginLog.Warning(ex, $"Failed to import MCDF file '{sourceFilePath}' to quest folder.");
+            return null;
+        }
     }
 }

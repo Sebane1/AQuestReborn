@@ -58,6 +58,7 @@ public class EditorWindow : Window, IDisposable
     private static readonly HashSet<string> ValidAudioExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".mp3", ".wav", ".ogg" };
     private static readonly HashSet<string> ValidImageExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".bmp" };
     private static readonly HashSet<string> ValidVideoExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".mp4", ".webm", ".avi", ".mkv", ".mov" };
+    private static readonly HashSet<string> ValidMcdfExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".mcdf" };
     private string _pendingAudioImportSlot = null; // "bgm" or "sfx_N"
     private QuestEvent _pendingAudioImportEvent = null;
 
@@ -1372,9 +1373,53 @@ public class EditorWindow : Window, IDisposable
                     }
                     if (ImGui.BeginTabItem(Translator.LocalizeUI("Appearance Swap##we're unique and such")))
                     {
-                        if (ImGui.InputText(Translator.LocalizeUI("Npc Appearance Swap##"), ref appearanceSwap, 4000))
+                        ImGui.Text(Translator.LocalizeUI("NPC Appearance Swap:"));
+                        ImGui.SetNextItemWidth(350);
+                        if (ImGui.InputText("##npcAppearanceSwapInput", ref appearanceSwap, 4000))
                         {
                             item.AppearanceSwap = appearanceSwap;
+                        }
+                        ImGui.SameLine();
+                        if (ImGui.Button(Translator.LocalizeUI("Browse##npcMcdf")))
+                        {
+                            _pendingAudioImportSlot = "npc_appearance";
+                            _pendingAudioImportEvent = item;
+                            _fileDialogManager.Reset();
+                            ImGui.OpenPopup("McdfImportDialog##npc");
+                        }
+                        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an MCDF file (.mcdf)"));
+                        if (ImGui.BeginPopup("McdfImportDialog##npc"))
+                        {
+                            _fileDialogManager.OpenFileDialog(
+                                Translator.LocalizeUI("Select NPC MCDF File"),
+                                ".mcdf",
+                                (isOk, file) =>
+                                {
+                                    if (isOk && _pendingAudioImportEvent != null)
+                                    {
+                                        string imported = ImportBackgroundFileToQuestFolder(file);
+                                        if (imported != null) _pendingAudioImportEvent.AppearanceSwap = imported;
+                                        _pendingAudioImportSlot = null;
+                                        _pendingAudioImportEvent = null;
+                                    }
+                                });
+                            ImGui.EndPopup();
+                        }
+                        if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
+                        {
+                            ImGui.SetNextItemWidth(420);
+                            ImGui.Button(Translator.LocalizeUI("  Drop NPC MCDF File Here  ##npcMcdfDrop"),
+                                new Vector2(420, 24));
+                            _dragDropManager.CreateImGuiSource("NpcMcdfDragDrop", m => m.Extensions.Any(e => ValidMcdfExtensions.Contains(e.ToLowerInvariant())), m => true);
+                            if (_dragDropManager.CreateImGuiTarget("NpcMcdfDragDrop", out var npcMcdfFiles, out _)
+                                && npcMcdfFiles != null && npcMcdfFiles.Count > 0)
+                            {
+                                string imported = ImportBackgroundFileToQuestFolder(npcMcdfFiles[0]);
+                                if (imported != null)
+                                {
+                                    item.AppearanceSwap = imported;
+                                }
+                            }
                         }
                         if (_isCreatingAppearance)
                         {
@@ -1399,9 +1444,56 @@ public class EditorWindow : Window, IDisposable
                         {
                             ImGui.EndDisabled();
                         }
-                        if (ImGui.InputText(Translator.LocalizeUI("Player Appearance Swap##"), ref playerAppearanceSwap, 4000))
+
+                        ImGui.Separator();
+
+                        ImGui.Text(Translator.LocalizeUI("Player Appearance Swap:"));
+                        ImGui.SetNextItemWidth(350);
+                        if (ImGui.InputText("##playerAppearanceSwapInput", ref playerAppearanceSwap, 4000))
                         {
                             item.PlayerAppearanceSwap = playerAppearanceSwap;
+                        }
+                        ImGui.SameLine();
+                        if (ImGui.Button(Translator.LocalizeUI("Browse##playerMcdf")))
+                        {
+                            _pendingAudioImportSlot = "player_appearance";
+                            _pendingAudioImportEvent = item;
+                            _fileDialogManager.Reset();
+                            ImGui.OpenPopup("McdfImportDialog##player");
+                        }
+                        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an MCDF file (.mcdf)"));
+                        if (ImGui.BeginPopup("McdfImportDialog##player"))
+                        {
+                            _fileDialogManager.OpenFileDialog(
+                                Translator.LocalizeUI("Select Player MCDF File"),
+                                ".mcdf",
+                                (isOk, file) =>
+                                {
+                                    if (isOk && _pendingAudioImportEvent != null)
+                                    {
+                                        string imported = ImportBackgroundFileToQuestFolder(file);
+                                        if (imported != null) _pendingAudioImportEvent.PlayerAppearanceSwap = imported;
+                                        _pendingAudioImportSlot = null;
+                                        _pendingAudioImportEvent = null;
+                                    }
+                                });
+                            ImGui.EndPopup();
+                        }
+                        if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
+                        {
+                            ImGui.SetNextItemWidth(420);
+                            ImGui.Button(Translator.LocalizeUI("  Drop Player MCDF File Here  ##playerMcdfDrop"),
+                                new Vector2(420, 24));
+                            _dragDropManager.CreateImGuiSource("PlayerMcdfDragDrop", m => m.Extensions.Any(e => ValidMcdfExtensions.Contains(e.ToLowerInvariant())), m => true);
+                            if (_dragDropManager.CreateImGuiTarget("PlayerMcdfDragDrop", out var playerMcdfFiles, out _)
+                                && playerMcdfFiles != null && playerMcdfFiles.Count > 0)
+                            {
+                                string imported = ImportBackgroundFileToQuestFolder(playerMcdfFiles[0]);
+                                if (imported != null)
+                                {
+                                    item.PlayerAppearanceSwap = imported;
+                                }
+                            }
                         }
                         if (ImGui.Combo(Translator.LocalizeUI("Player Appearance Swap Type"), ref playerAppearanceSwapType, eventPlayerAppearanceApplicationTypes, eventPlayerAppearanceApplicationTypes.Length))
                         {
