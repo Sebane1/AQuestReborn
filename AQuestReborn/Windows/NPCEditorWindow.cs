@@ -29,9 +29,6 @@ public class NPCEditorWindow : Window, IDisposable
     private string[] _npcCustomizations;
     private bool _isCreatingAppearance;
 
-    // We give this window a hidden ID using ##
-    // So that the user will see "My Amazing Window" as window title,
-    // but for ImGui the ID is "My Amazing Window##With a hidden ID"
     public NPCEditorWindow(Plugin plugin)
         : base("NPC Editor Window##" + Guid.NewGuid().ToString(), ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {

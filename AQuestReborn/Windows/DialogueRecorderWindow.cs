@@ -56,9 +56,10 @@ public class DialogueRecorderWindow : Window, IDisposable
     private float _globalScale;
     private bool _collapseAll = false;
     private Dictionary<string, bool> _groupCollapsed = new();
+    private bool _bringToFrontOnNextDraw = false;
 
     public DialogueRecorderWindow(Plugin plugin)
-        : base("Dialogue Recorder##dialogueRecorder", ImGuiWindowFlags.NoScrollbar)
+        : base("Dialogue Recorder##" + Guid.NewGuid().ToString(), ImGuiWindowFlags.NoScrollbar)
     {
         Size = new Vector2(1100, 650);
         SizeCondition = ImGuiCond.FirstUseEver;
@@ -70,12 +71,14 @@ public class DialogueRecorderWindow : Window, IDisposable
         _quest = quest;
         _questFolder = questFolder;
         _dirty = true;
+        _bringToFrontOnNextDraw = true;
         IsOpen = true;
     }
 
     public override void OnOpen()
     {
         _dirty = true;
+        _bringToFrontOnNextDraw = true;
     }
 
     public override void OnClose()
@@ -92,6 +95,7 @@ public class DialogueRecorderWindow : Window, IDisposable
 
     public override void Draw()
     {
+
         _globalScale = ImGuiHelpers.GlobalScale;
 
         if (_quest == null)
@@ -122,18 +126,33 @@ public class DialogueRecorderWindow : Window, IDisposable
 
         // Refresh
         if (ImGui.Button("Refresh##dialogueRecorder_refresh"))
+        {
             _dirty = true;
+        }
 
         ImGui.SameLine();
 
-        // Bulk TTS
-        bool busy = _state != RecorderState.Idle || _bulkRunning;
-        if (busy) ImGui.BeginDisabled();
-        if (ImGui.Button("Generate All Missing TTS##dialogueRecorder_alltts"))
-            _ = BulkGenerateTtsAsync(null);  // null = all NPCs
-        if (busy) ImGui.EndDisabled();
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Generate TTS for every line that has no audio file yet.");
+        if (Plugin.Instance.Configuration.AccessibilityReaderActive)
+        {
+            // Bulk TTS
+            bool busy = _state != RecorderState.Idle || _bulkRunning;
+            if (busy)
+            {
+                ImGui.BeginDisabled();
+            }
+            if (ImGui.Button("Generate All Missing TTS##dialogueRecorder_alltts"))
+            {
+                _ = BulkGenerateTtsAsync(null);
+            }
+            if (busy)
+            {
+                ImGui.EndDisabled();
+            }
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Generate TTS for every line that has no audio file yet.");
+            }
+        }
 
         ImGui.SameLine();
 
@@ -170,14 +189,15 @@ public class DialogueRecorderWindow : Window, IDisposable
             _groupCollapsed[npcName] = !open;
 
             if (!open) continue;
-
-            bool busy = _state != RecorderState.Idle || _bulkRunning;
-            if (busy) ImGui.BeginDisabled();
-            if (ImGui.Button($"Generate All TTS for {npcName}##npcgen_{npcName}"))
-                _ = BulkGenerateTtsAsync(npcName);
-            if (busy) ImGui.EndDisabled();
-            ImGui.Spacing();
-
+            if (Plugin.Instance.Configuration.AccessibilityReaderActive)
+            {
+                bool busy = _state != RecorderState.Idle || _bulkRunning;
+                if (busy) ImGui.BeginDisabled();
+                if (ImGui.Button($"Generate All TTS for {npcName}##npcgen_{npcName}"))
+                    _ = BulkGenerateTtsAsync(npcName);
+                if (busy) ImGui.EndDisabled();
+                ImGui.Spacing();
+            }
             if (!ImGui.BeginTable($"##table_{npcName}", 8,
                 ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg |
                 ImGuiTableFlags.ScrollX | ImGuiTableFlags.SizingFixedFit))

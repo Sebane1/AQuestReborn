@@ -79,6 +79,9 @@ public class EditorWindow : Window, IDisposable
     private QuestObjective _tailRecordingObjective;
     private ushort _tailPendingEmoteId;
 
+    private bool _focusDialogueRecorderNextDraw = false;
+    private bool _focusNpcEditorNextDraw = false;
+
     // Lumina game-data caches for dropdowns
     private (uint Id, string Name)[] _emoteList;
     private (uint Id, string Abbr, string Name)[] _classJobList;
@@ -93,8 +96,10 @@ public class EditorWindow : Window, IDisposable
 
     public RoleplayingQuestCreator RoleplayingQuestCreator { get => _roleplayingQuestCreator; set => _roleplayingQuestCreator = value; }
 
+    private readonly string _windowGuid = Guid.NewGuid().ToString();
+
     public EditorWindow(Plugin plugin)
-        : base("Quest Creator##" + Guid.NewGuid().ToString(), ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.AlwaysAutoResize)
+        : base("Quest Creator##" + Guid.NewGuid().ToString(), ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoBringToFrontOnFocus)
     {
         Size = new Vector2(1500, 1200);
         Plugin = plugin;
@@ -111,7 +116,7 @@ public class EditorWindow : Window, IDisposable
     {
         if (_roleplayingQuestCreator.CurrentQuest != null)
         {
-            WindowName = (!_roleplayingQuestCreator.CurrentQuest.IsSubQuest ? "Quest Creator##" : "Branching Quest Creator##") + Guid.NewGuid().ToString();
+            WindowName = (!_roleplayingQuestCreator.CurrentQuest.IsSubQuest ? "Quest Creator##" : "Branching Quest Creator##") + _windowGuid;
         }
         _objectiveInFocus = null;
         RefreshMenus();
@@ -220,6 +225,17 @@ public class EditorWindow : Window, IDisposable
 
     public override void Draw()
     {
+        if (_focusDialogueRecorderNextDraw && _dialogueRecorderWindow != null)
+        {
+            ImGui.SetWindowFocus(_dialogueRecorderWindow.WindowName);
+            _focusDialogueRecorderNextDraw = false;
+        }
+        if (_focusNpcEditorNextDraw && _npcEditorWindow != null)
+        {
+            ImGui.SetWindowFocus(_npcEditorWindow.WindowName);
+            _focusNpcEditorNextDraw = false;
+        }
+
         _globalScale = ImGuiHelpers.GlobalScale;
         _shiftModifierHeld = ImGui.GetIO().KeyShift;
         _fileDialogManager.Draw();
@@ -295,6 +311,7 @@ public class EditorWindow : Window, IDisposable
                         Plugin.Configuration.QuestInstallFolder,
                         _roleplayingQuestCreator.CurrentQuest.QuestName);
                     _dialogueRecorderWindow.OpenForQuest(_roleplayingQuestCreator.CurrentQuest, questFolder);
+                    _focusDialogueRecorderNextDraw = true;
                 }
             }
             ImGui.SameLine();
@@ -309,6 +326,7 @@ public class EditorWindow : Window, IDisposable
                 {
                     _npcEditorWindow.SetEditingQuest(_roleplayingQuestCreator.CurrentQuest);
                     _npcEditorWindow.IsOpen = true;
+                    _focusNpcEditorNextDraw = true;
                 }
             }
             ImGui.Separator();
@@ -455,10 +473,47 @@ public class EditorWindow : Window, IDisposable
                     ImGui.Spacing();
 
                     ImGui.Text(Translator.LocalizeUI("Quest Start Title Card"));
-                    ImGui.SetNextItemWidth(fieldWidth);
+                    ImGui.SetNextItemWidth(fieldWidth - 80 * _globalScale);
                     if (ImGui.InputText("##questStartTitleCardInput", ref questStartTitleCard, 255))
                     {
                         _roleplayingQuestCreator.CurrentQuest.QuestStartTitleCard = questStartTitleCard;
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button(Translator.LocalizeUI("Browse##startTitleCard"), new Vector2(75 * _globalScale, 0)))
+                    {
+                        _fileDialogManager.Reset();
+                        ImGui.OpenPopup("ImageImportDialog##startTitleCard");
+                    }
+                    if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an image file (.png, .jpg, .jpeg, .bmp)"));
+                    if (ImGui.BeginPopup("ImageImportDialog##startTitleCard"))
+                    {
+                        _fileDialogManager.OpenFileDialog(
+                            Translator.LocalizeUI("Select Start Title Card"),
+                            ".png,.jpg,.jpeg,.bmp",
+                            (isOk, file) =>
+                            {
+                                if (isOk && _roleplayingQuestCreator?.CurrentQuest != null)
+                                {
+                                    string imported = ImportBackgroundFileToQuestFolder(file);
+                                    if (imported != null) _roleplayingQuestCreator.CurrentQuest.QuestStartTitleCard = imported;
+                                }
+                            });
+                        ImGui.EndPopup();
+                    }
+                    if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
+                    {
+                        ImGui.Button($"" + Translator.LocalizeUI("Drop Start Title Card Here  ##startTitleCardDrop"),
+                            new Vector2(fieldWidth, 24 * _globalScale));
+                        _dragDropManager.CreateImGuiSource("QuestStartTitleCardDragDrop", m => m.Extensions.Any(e => ValidImageExtensions.Contains(e.ToLowerInvariant())), m => true);
+                        if (_dragDropManager.CreateImGuiTarget("QuestStartTitleCardDragDrop", out var startCardFiles, out _)
+                            && startCardFiles != null && startCardFiles.Count > 0)
+                        {
+                            string imported = ImportBackgroundFileToQuestFolder(startCardFiles[0]);
+                            if (imported != null)
+                            {
+                                _roleplayingQuestCreator.CurrentQuest.QuestStartTitleCard = imported;
+                            }
+                        }
                     }
 
                     ImGui.Spacing();
@@ -508,10 +563,47 @@ public class EditorWindow : Window, IDisposable
 
                     ImGui.Spacing();
                     ImGui.Text(Translator.LocalizeUI("Quest End Title Card"));
-                    ImGui.SetNextItemWidth(fieldWidth);
+                    ImGui.SetNextItemWidth(fieldWidth - 80 * _globalScale);
                     if (ImGui.InputText("##questEndTitleCardInput", ref questEndTitleCard, 255))
                     {
                         _roleplayingQuestCreator.CurrentQuest.QuestEndTitleCard = questEndTitleCard;
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button(Translator.LocalizeUI("Browse##endTitleCard"), new Vector2(75 * _globalScale, 0)))
+                    {
+                        _fileDialogManager.Reset();
+                        ImGui.OpenPopup("ImageImportDialog##endTitleCard");
+                    }
+                    if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an image file (.png, .jpg, .jpeg, .bmp)"));
+                    if (ImGui.BeginPopup("ImageImportDialog##endTitleCard"))
+                    {
+                        _fileDialogManager.OpenFileDialog(
+                            Translator.LocalizeUI("Select End Title Card"),
+                            ".png,.jpg,.jpeg,.bmp",
+                            (isOk, file) =>
+                            {
+                                if (isOk && _roleplayingQuestCreator?.CurrentQuest != null)
+                                {
+                                    string imported = ImportBackgroundFileToQuestFolder(file);
+                                    if (imported != null) _roleplayingQuestCreator.CurrentQuest.QuestEndTitleCard = imported;
+                                }
+                            });
+                        ImGui.EndPopup();
+                    }
+                    if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
+                    {
+                        ImGui.Button($"" + Translator.LocalizeUI("Drop End Title Card Here  ##endTitleCardDrop"),
+                            new Vector2(fieldWidth, 24 * _globalScale));
+                        _dragDropManager.CreateImGuiSource("QuestEndTitleCardDragDrop", m => m.Extensions.Any(e => ValidImageExtensions.Contains(e.ToLowerInvariant())), m => true);
+                        if (_dragDropManager.CreateImGuiTarget("QuestEndTitleCardDragDrop", out var endCardFiles, out _)
+                            && endCardFiles != null && endCardFiles.Count > 0)
+                        {
+                            string imported = ImportBackgroundFileToQuestFolder(endCardFiles[0]);
+                            if (imported != null)
+                            {
+                                _roleplayingQuestCreator.CurrentQuest.QuestEndTitleCard = imported;
+                            }
+                        }
                     }
 
                     ImGui.Spacing();
