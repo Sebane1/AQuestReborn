@@ -27,6 +27,7 @@ using AQuestReborn.UiHide;
 using FFXIVLooseTextureCompiler.Networking;
 using System.Threading.Tasks;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.DragDrop;
 
 namespace SamplePlugin;
 
@@ -35,6 +36,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
+    [PluginService] internal static IDragDropManager DragDropManager { get; private set; } = null!;
     public static Plugin Instance { get; set; }
 
     private const string CommandName = "/questreborn";

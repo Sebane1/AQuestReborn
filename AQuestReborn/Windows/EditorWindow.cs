@@ -36,6 +36,7 @@ public class EditorWindow : Window, IDisposable
     private Plugin Plugin;
     private RoleplayingQuestCreator _roleplayingQuestCreator = new RoleplayingQuestCreator();
     private FileDialogManager _fileDialogManager;
+    private Dalamud.Interface.DragDrop.IDragDropManager _dragDropManager;
     private EditorWindow _subEditorWindow;
     private NPCEditorWindow _npcEditorWindow;
     private NPCTransformEditorWindow _npcTransformEditorWindow;
@@ -52,6 +53,13 @@ public class EditorWindow : Window, IDisposable
     private float _globalScale;
     private bool _shiftModifierHeld;
     private bool _isCreatingAppearance;
+
+    // Music & Sounds audio import state
+    private static readonly HashSet<string> ValidAudioExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".mp3", ".wav", ".ogg" };
+    private static readonly HashSet<string> ValidImageExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".bmp" };
+    private static readonly HashSet<string> ValidVideoExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".mp4", ".webm", ".avi", ".mkv", ".mov" };
+    private string _pendingAudioImportSlot = null; // "bgm" or "sfx_N"
+    private QuestEvent _pendingAudioImportEvent = null;
 
     // Speech to text recording state for Dialogue & Choice Text
     private SpeechToTextManager _speechToTextManager;
@@ -80,6 +88,7 @@ public class EditorWindow : Window, IDisposable
         Size = new Vector2(1500, 1200);
         Plugin = plugin;
         _fileDialogManager = new FileDialogManager();
+        _dragDropManager = Plugin.DragDropManager;
         if (_npcTransformEditorWindow == null)
         {
             _npcTransformEditorWindow = new NPCTransformEditorWindow(Plugin, _roleplayingQuestCreator);
@@ -229,9 +238,49 @@ public class EditorWindow : Window, IDisposable
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestDescription = questDescription;
                 }
-                if (ImGui.InputText(Translator.LocalizeUI("Quest Thumbnail##"), ref questThumbnail, 255))
+                ImGui.Text(Translator.LocalizeUI("Quest Thumbnail:"));
+                ImGui.SetNextItemWidth(300);
+                if (ImGui.InputText("##questThumbnailPath", ref questThumbnail, 255))
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestThumbnailPath = questThumbnail;
+                }
+                ImGui.SameLine();
+                if (ImGui.Button(Translator.LocalizeUI("Browse##questThumb")))
+                {
+                    _fileDialogManager.Reset();
+                    ImGui.OpenPopup("MediaImportDialog##questThumb");
+                }
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an image file (.png, .jpg, .jpeg, .bmp)"));
+                if (ImGui.BeginPopup("MediaImportDialog##questThumb"))
+                {
+                    _fileDialogManager.OpenFileDialog(
+                        Translator.LocalizeUI("Select Quest Thumbnail"),
+                        ".png,.jpg,.jpeg,.bmp",
+                        (isOk, file) =>
+                        {
+                            if (isOk && _roleplayingQuestCreator?.CurrentQuest != null)
+                            {
+                                string imported = ImportBackgroundFileToQuestFolder(file);
+                                if (imported != null) _roleplayingQuestCreator.CurrentQuest.QuestThumbnailPath = imported;
+                            }
+                        });
+                    ImGui.EndPopup();
+                }
+                if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
+                {
+                    ImGui.SetNextItemWidth(380);
+                    ImGui.Button(Translator.LocalizeUI("  Drop Quest Thumbnail Here  ##thumbDrop"),
+                        new Vector2(380, 24));
+                    _dragDropManager.CreateImGuiSource("QuestThumbnailDragDrop", m => m.Extensions.Any(e => ValidImageExtensions.Contains(e.ToLowerInvariant())), m => true);
+                    if (_dragDropManager.CreateImGuiTarget("QuestThumbnailDragDrop", out var thumbFiles, out _)
+                        && thumbFiles != null && thumbFiles.Count > 0)
+                    {
+                        string imported = ImportBackgroundFileToQuestFolder(thumbFiles[0]);
+                        if (imported != null)
+                        {
+                            _roleplayingQuestCreator.CurrentQuest.QuestThumbnailPath = imported;
+                        }
+                    }
                 }
                 if (ImGui.Combo(Translator.LocalizeUI("Content Rating##"), ref contentRating, contentRatingTypes, contentRatingTypes.Length))
                 {
@@ -250,13 +299,94 @@ public class EditorWindow : Window, IDisposable
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestEndTitleCard = questEndTitleCard;
                 }
-                if (ImGui.InputText(Translator.LocalizeUI("Quest Start Title Sound##"), ref questStartTitleSound, 255))
+                ImGui.Text(Translator.LocalizeUI("Quest Start Title Sound:"));
+                ImGui.SetNextItemWidth(300);
+                if (ImGui.InputText("##questStartTitleSoundPath", ref questStartTitleSound, 255))
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestStartTitleSound = questStartTitleSound;
                 }
-                if (ImGui.InputText(Translator.LocalizeUI("Quest End Title Sound##"), ref questEndTitleSound, 255))
+                ImGui.SameLine();
+                if (ImGui.Button(Translator.LocalizeUI("Browse##startSound")))
+                {
+                    _fileDialogManager.Reset();
+                    ImGui.OpenPopup("AudioImportDialog##startSound");
+                }
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an audio file (.mp3, .wav, .ogg)"));
+                if (ImGui.BeginPopup("AudioImportDialog##startSound"))
+                {
+                    _fileDialogManager.OpenFileDialog(
+                        Translator.LocalizeUI("Select Start Title Sound"),
+                        ".mp3,.wav,.ogg",
+                        (isOk, file) =>
+                        {
+                            if (isOk && _roleplayingQuestCreator?.CurrentQuest != null)
+                            {
+                                string imported = ImportAudioToQuestFolder(file);
+                                if (imported != null) _roleplayingQuestCreator.CurrentQuest.QuestStartTitleSound = imported;
+                            }
+                        });
+                    ImGui.EndPopup();
+                }
+                if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
+                {
+                    ImGui.SetNextItemWidth(380);
+                    ImGui.Button(Translator.LocalizeUI("  Drop Start Title Sound Here  ##startSoundDrop"),
+                        new Vector2(380, 24));
+                    _dragDropManager.CreateImGuiSource("QuestStartTitleSoundDragDrop", m => m.Extensions.Any(e => ValidAudioExtensions.Contains(e.ToLowerInvariant())), m => true);
+                    if (_dragDropManager.CreateImGuiTarget("QuestStartTitleSoundDragDrop", out var startSoundFiles, out _)
+                        && startSoundFiles != null && startSoundFiles.Count > 0)
+                    {
+                        string imported = ImportAudioToQuestFolder(startSoundFiles[0]);
+                        if (imported != null)
+                        {
+                            _roleplayingQuestCreator.CurrentQuest.QuestStartTitleSound = imported;
+                        }
+                    }
+                }
+
+                ImGui.Text(Translator.LocalizeUI("Quest End Title Sound:"));
+                ImGui.SetNextItemWidth(300);
+                if (ImGui.InputText("##questEndTitleSoundPath", ref questEndTitleSound, 255))
                 {
                     _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound = questEndTitleSound;
+                }
+                ImGui.SameLine();
+                if (ImGui.Button(Translator.LocalizeUI("Browse##endSound")))
+                {
+                    _fileDialogManager.Reset();
+                    ImGui.OpenPopup("AudioImportDialog##endSound");
+                }
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an audio file (.mp3, .wav, .ogg)"));
+                if (ImGui.BeginPopup("AudioImportDialog##endSound"))
+                {
+                    _fileDialogManager.OpenFileDialog(
+                        Translator.LocalizeUI("Select End Title Sound"),
+                        ".mp3,.wav,.ogg",
+                        (isOk, file) =>
+                        {
+                            if (isOk && _roleplayingQuestCreator?.CurrentQuest != null)
+                            {
+                                string imported = ImportAudioToQuestFolder(file);
+                                if (imported != null) _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound = imported;
+                            }
+                        });
+                    ImGui.EndPopup();
+                }
+                if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
+                {
+                    ImGui.SetNextItemWidth(380);
+                    ImGui.Button(Translator.LocalizeUI("  Drop End Title Sound Here  ##endSoundDrop"),
+                        new Vector2(380, 24));
+                    _dragDropManager.CreateImGuiSource("QuestEndTitleSoundDragDrop", m => m.Extensions.Any(e => ValidAudioExtensions.Contains(e.ToLowerInvariant())), m => true);
+                    if (_dragDropManager.CreateImGuiTarget("QuestEndTitleSoundDragDrop", out var endSoundFiles, out _)
+                        && endSoundFiles != null && endSoundFiles.Count > 0)
+                    {
+                        string imported = ImportAudioToQuestFolder(endSoundFiles[0]);
+                        if (imported != null)
+                        {
+                            _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound = imported;
+                        }
+                    }
                 }
                 if (ImGui.Combo(Translator.LocalizeUI("Quest Reward Type##"), ref questRewardType, questRewardTypes, questRewardTypes.Length))
                 {
@@ -525,7 +655,7 @@ public class EditorWindow : Window, IDisposable
                 case ObjectiveTriggerType.TailNpc:
                     var tailData = questObjective.TailData;
                     ImGui.Separator();
-                    ImGui.TextColored(new Vector4(1, 0.8f, 0.2f, 1), "-- Tail Objective Path Recording --");
+                    ImGui.TextColored(new Vector4(1, 0.8f, 0.2f, 1), "Tail Objective Path Recording");
 
                     // NPC Name
                     var tailNpcName = tailData.NpcName;
@@ -568,7 +698,7 @@ public class EditorWindow : Window, IDisposable
                     ImGui.Text($"Recorded Waypoints: {tailData.Waypoints.Count}");
 
                     ImGui.Separator();
-                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1, 1), "-- Detection Settings --");
+                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1, 1), "Detection Settings");
                     var detRadius = tailData.DetectionRadius;
                     if (ImGui.SliderFloat("Detection Radius##tail", ref detRadius, 3f, 50f))
                     {
@@ -580,17 +710,17 @@ public class EditorWindow : Window, IDisposable
                         tailData.DetectionConeAngle = detCone;
                     }
                     var lbMin = tailData.LookBackMinInterval;
-                    if (ImGui.SliderFloat("Look-Back Min (sec)##tail", ref lbMin, 2f, 30f))
+                    if (ImGui.SliderFloat("Look Back Min (sec)##tail", ref lbMin, 2f, 30f))
                     {
                         tailData.LookBackMinInterval = lbMin;
                     }
                     var lbMax = tailData.LookBackMaxInterval;
-                    if (ImGui.SliderFloat("Look-Back Max (sec)##tail", ref lbMax, lbMin, 60f))
+                    if (ImGui.SliderFloat("Look Back Max (sec)##tail", ref lbMax, lbMin, 60f))
                     {
                         tailData.LookBackMaxInterval = lbMax;
                     }
                     var lbDur = tailData.LookBackDuration;
-                    if (ImGui.SliderFloat("Look-Back Duration (sec)##tail", ref lbDur, 1f, 10f))
+                    if (ImGui.SliderFloat("Look Back Duration (sec)##tail", ref lbDur, 1f, 10f))
                     {
                         tailData.LookBackDuration = lbDur;
                     }
@@ -606,7 +736,7 @@ public class EditorWindow : Window, IDisposable
                     }
 
                     ImGui.Separator();
-                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1, 1), "-- Dialogue & Reactions --");
+                    ImGui.TextColored(new Vector4(0.5f, 0.8f, 1, 1), "Dialogue & Reactions");
                     
                     if (tailData.LookAroundBlurbs == null) tailData.LookAroundBlurbs = new List<string>();
                     if (ImGui.TreeNode("Look Around Blurbs"))
@@ -850,9 +980,53 @@ public class EditorWindow : Window, IDisposable
                             item.Dialogue = dialogue;
                             RefreshMenus();
                         }
-                        if (ImGui.InputText(Translator.LocalizeUI("Dialogue Audio Path##"), ref dialogueAudio, 255))
+                        ImGui.Text(Translator.LocalizeUI("Dialogue Audio Path:"));
+                        ImGui.SetNextItemWidth(350);
+                        if (ImGui.InputText("##dialogueAudioPathInput", ref dialogueAudio, 255))
                         {
                             item.DialogueAudio = dialogueAudio;
+                        }
+                        ImGui.SameLine();
+                        if (ImGui.Button(Translator.LocalizeUI("Browse##dlgAudio")))
+                        {
+                            _pendingAudioImportSlot = "dialogue_audio";
+                            _pendingAudioImportEvent = item;
+                            _fileDialogManager.Reset();
+                            ImGui.OpenPopup("AudioImportDialog##dlgAudio");
+                        }
+                        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an audio file (.mp3, .wav, .ogg)"));
+                        if (ImGui.BeginPopup("AudioImportDialog##dlgAudio"))
+                        {
+                            _fileDialogManager.OpenFileDialog(
+                                Translator.LocalizeUI("Select Dialogue Audio"),
+                                ".mp3,.wav,.ogg",
+                                (isOk, file) =>
+                                {
+                                    if (isOk && _pendingAudioImportEvent != null)
+                                    {
+                                        string imported = ImportAudioToQuestFolder(file);
+                                        if (imported != null) _pendingAudioImportEvent.DialogueAudio = imported;
+                                        _pendingAudioImportSlot = null;
+                                        _pendingAudioImportEvent = null;
+                                    }
+                                });
+                            ImGui.EndPopup();
+                        }
+                        if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
+                        {
+                            ImGui.SetNextItemWidth(420);
+                            ImGui.Button(Translator.LocalizeUI("  Drop Dialogue Audio Here  ##dlgAudioDrop"),
+                                new Vector2(420, 24));
+                            _dragDropManager.CreateImGuiSource("DialogueAudioDragDrop", m => m.Extensions.Any(e => ValidAudioExtensions.Contains(e.ToLowerInvariant())), m => true);
+                            if (_dragDropManager.CreateImGuiTarget("DialogueAudioDragDrop", out var dlgAudioFiles, out _)
+                                && dlgAudioFiles != null && dlgAudioFiles.Count > 0)
+                            {
+                                string imported = ImportAudioToQuestFolder(dlgAudioFiles[0]);
+                                if (imported != null)
+                                {
+                                    item.DialogueAudio = imported;
+                                }
+                            }
                         }
                         var boxStyles = Translator.LocalizeTextArray(_boxStyles);
                         if (ImGui.Combo(Translator.LocalizeUI("Box Style##"), ref boxStyle, boxStyles, _boxStyles.Length))
@@ -901,15 +1075,103 @@ public class EditorWindow : Window, IDisposable
                         {
                             case EventBackgroundType.Image:
                             case EventBackgroundType.ImageTransparent:
-                                if (ImGui.InputText(Translator.LocalizeUI("Event Background Image Path##"), ref eventBackground, 255))
+                                ImGui.Text(Translator.LocalizeUI("Event Background Image Path:"));
+                                ImGui.SetNextItemWidth(350);
+                                if (ImGui.InputText("##eventBgImagePathInput", ref eventBackground, 255))
                                 {
                                     item.EventBackground = eventBackground;
                                 }
+                                ImGui.SameLine();
+                                if (ImGui.Button(Translator.LocalizeUI("Browse##bgImage")))
+                                {
+                                    _pendingAudioImportSlot = "bg_image";
+                                    _pendingAudioImportEvent = item;
+                                    _fileDialogManager.Reset();
+                                    ImGui.OpenPopup("MediaImportDialog##bgImage");
+                                }
+                                if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an image file (.png, .jpg, .jpeg, .bmp)"));
+                                if (ImGui.BeginPopup("MediaImportDialog##bgImage"))
+                                {
+                                    _fileDialogManager.OpenFileDialog(
+                                        Translator.LocalizeUI("Select Background Image"),
+                                        ".png,.jpg,.jpeg,.bmp",
+                                        (isOk, file) =>
+                                        {
+                                            if (isOk && _pendingAudioImportEvent != null)
+                                            {
+                                                string imported = ImportBackgroundFileToQuestFolder(file);
+                                                if (imported != null) _pendingAudioImportEvent.EventBackground = imported;
+                                                _pendingAudioImportSlot = null;
+                                                _pendingAudioImportEvent = null;
+                                            }
+                                        });
+                                    ImGui.EndPopup();
+                                }
+                                if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
+                                {
+                                    ImGui.SetNextItemWidth(420);
+                                    ImGui.Button(Translator.LocalizeUI("  Drop Background Image Here  ##bgImgDrop"),
+                                        new Vector2(420, 24));
+                                    _dragDropManager.CreateImGuiSource("BackgroundImageDragDrop", m => m.Extensions.Any(e => ValidImageExtensions.Contains(e.ToLowerInvariant())), m => true);
+                                    if (_dragDropManager.CreateImGuiTarget("BackgroundImageDragDrop", out var bgImgFiles, out _)
+                                        && bgImgFiles != null && bgImgFiles.Count > 0)
+                                    {
+                                        string imported = ImportBackgroundFileToQuestFolder(bgImgFiles[0]);
+                                        if (imported != null)
+                                        {
+                                            item.EventBackground = imported;
+                                        }
+                                    }
+                                }
                                 break;
                             case EventBackgroundType.Video:
-                                if (ImGui.InputText(Translator.LocalizeUI("Event Background Video Path##"), ref eventBackground, 255))
+                                ImGui.Text(Translator.LocalizeUI("Event Background Video Path:"));
+                                ImGui.SetNextItemWidth(350);
+                                if (ImGui.InputText("##eventBgVideoPathInput", ref eventBackground, 255))
                                 {
                                     item.EventBackground = eventBackground;
+                                }
+                                ImGui.SameLine();
+                                if (ImGui.Button(Translator.LocalizeUI("Browse##bgVideo")))
+                                {
+                                    _pendingAudioImportSlot = "bg_video";
+                                    _pendingAudioImportEvent = item;
+                                    _fileDialogManager.Reset();
+                                    ImGui.OpenPopup("MediaImportDialog##bgVideo");
+                                }
+                                if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for a video file (.mp4, .webm, .avi, .mkv, .mov)"));
+                                if (ImGui.BeginPopup("MediaImportDialog##bgVideo"))
+                                {
+                                    _fileDialogManager.OpenFileDialog(
+                                        Translator.LocalizeUI("Select Background Video"),
+                                        ".mp4,.webm,.avi,.mkv,.mov",
+                                        (isOk, file) =>
+                                        {
+                                            if (isOk && _pendingAudioImportEvent != null)
+                                            {
+                                                string imported = ImportBackgroundFileToQuestFolder(file);
+                                                if (imported != null) _pendingAudioImportEvent.EventBackground = imported;
+                                                _pendingAudioImportSlot = null;
+                                                _pendingAudioImportEvent = null;
+                                            }
+                                        });
+                                    ImGui.EndPopup();
+                                }
+                                if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
+                                {
+                                    ImGui.SetNextItemWidth(420);
+                                    ImGui.Button(Translator.LocalizeUI("  Drop Background Video Here  ##bgVidDrop"),
+                                        new Vector2(420, 24));
+                                    _dragDropManager.CreateImGuiSource("BackgroundVideoDragDrop", m => m.Extensions.Any(e => ValidVideoExtensions.Contains(e.ToLowerInvariant())), m => true);
+                                    if (_dragDropManager.CreateImGuiTarget("BackgroundVideoDragDrop", out var bgVidFiles, out _)
+                                        && bgVidFiles != null && bgVidFiles.Count > 0)
+                                    {
+                                        string imported = ImportBackgroundFileToQuestFolder(bgVidFiles[0]);
+                                        if (imported != null)
+                                        {
+                                            item.EventBackground = imported;
+                                        }
+                                    }
                                 }
                                 break;
                         }
@@ -961,24 +1223,151 @@ public class EditorWindow : Window, IDisposable
                     }
                     if (ImGui.BeginTabItem(Translator.LocalizeUI("Music And Sounds")))
                     {
-                        if (ImGui.InputText(Translator.LocalizeUI("Dialogue Background Music##"), ref dialogueBackgroundMusic, 255))
+                        // ── Background Music ──────────────────────────────────────────
+                        ImGui.TextColored(new Vector4(0.8f, 0.8f, 1f, 1f), Translator.LocalizeUI("Background Music"));
+                        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 90);
+                        if (ImGui.InputText(Translator.LocalizeUI("##bgm_path"), ref dialogueBackgroundMusic, 255))
                         {
                             item.DialogueBackgroundMusic = dialogueBackgroundMusic;
                         }
-                        int index = 0;
-                        foreach (var soundEffect in item.SoundEffects)
+                        ImGui.SameLine();
+                        if (ImGui.Button(Translator.LocalizeUI("Browse##bgm")))
                         {
-                            var soundEffectItem = soundEffect;
-                            if (ImGui.InputText(Translator.LocalizeUI($"Sound Effect {index}##"), ref soundEffectItem, 255))
+                            _pendingAudioImportSlot = "bgm";
+                            _pendingAudioImportEvent = item;
+                            _fileDialogManager.Reset();
+                            ImGui.OpenPopup("AudioImportDialog##bgm");
+                        }
+                        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an audio file (.mp3, .wav, .ogg)"));
+
+                        // Drag and drop target for BGM
+                        if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
+                        {
+                            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                            ImGui.Button(Translator.LocalizeUI("  Drop BGM audio file here  ##bgmdrop"),
+                                new Vector2(ImGui.GetContentRegionAvail().X, 24));
+                            _dragDropManager.CreateImGuiSource("BgmAudioDragDrop", m => m.Extensions.Any(e => ValidAudioExtensions.Contains(e.ToLowerInvariant())), m => true);
+                            if (_dragDropManager.CreateImGuiTarget("BgmAudioDragDrop", out var bgmDropFiles, out _)
+                                && bgmDropFiles != null && bgmDropFiles.Count > 0)
+                            {
+                                string imported = ImportAudioToQuestFolder(bgmDropFiles[0]);
+                                if (imported != null)
+                                {
+                                    item.DialogueBackgroundMusic = imported;
+                                }
+                            }
+                        }
+
+                        if (ImGui.BeginPopup("AudioImportDialog##bgm"))
+                        {
+                            _fileDialogManager.OpenFileDialog(
+                                Translator.LocalizeUI("Select Background Music"),
+                                ".mp3,.wav,.ogg",
+                                (isOk, file) =>
+                                {
+                                    if (isOk && _pendingAudioImportEvent != null)
+                                    {
+                                        string imported = ImportAudioToQuestFolder(file);
+                                        if (imported != null) _pendingAudioImportEvent.DialogueBackgroundMusic = imported;
+                                        _pendingAudioImportSlot = null;
+                                        _pendingAudioImportEvent = null;
+                                    }
+                                });
+                            ImGui.EndPopup();
+                        }
+
+                        ImGui.Separator();
+
+                        // ── Sound Effects ─────────────────────────────────────────────
+                        ImGui.TextColored(new Vector4(0.8f, 0.8f, 1f, 1f), Translator.LocalizeUI("Sound Effects"));
+
+                        int indexToRemove = -1;
+                        for (int index = 0; index < item.SoundEffects.Count; index++)
+                        {
+                            var soundEffectItem = item.SoundEffects[index];
+                            string sfxId = $"sfx_{index}";
+                            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 125);
+                            if (ImGui.InputText(Translator.LocalizeUI($"##sfx_{index}"), ref soundEffectItem, 255))
                             {
                                 item.SoundEffects[index] = soundEffectItem;
                             }
-                            index++;
+                            ImGui.SameLine();
+                            if (ImGui.Button(Translator.LocalizeUI($"Browse##sfx_{index}")))
+                            {
+                                _pendingAudioImportSlot = sfxId;
+                                _pendingAudioImportEvent = item;
+                                _fileDialogManager.Reset();
+                                ImGui.OpenPopup($"AudioImportDialog##sfx_{index}");
+                            }
+                            if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an audio file (.mp3, .wav, .ogg)"));
+                            ImGui.SameLine();
+                            if (ImGui.Button(Translator.LocalizeUI($"-##sfx_remove_{index}")))
+                            {
+                                indexToRemove = index;
+                            }
+                            if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Remove this sound effect slot"));
+
+                            // OS drag-and-drop target per slot
+                            if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
+                            {
+                                ImGui.Button(Translator.LocalizeUI($"  Drop SFX {index} here  ##sfxdrop_{index}"),
+                                    new Vector2(ImGui.GetContentRegionAvail().X, 20));
+                                string sfxPayload = $"SfxAudioDragDrop_{index}";
+                                _dragDropManager.CreateImGuiSource(sfxPayload, m => m.Extensions.Any(e => ValidAudioExtensions.Contains(e.ToLowerInvariant())), m => true);
+                                if (_dragDropManager.CreateImGuiTarget(sfxPayload, out var sfxDropFiles, out _)
+                                    && sfxDropFiles != null && sfxDropFiles.Count > 0)
+                                {
+                                    string imported = ImportAudioToQuestFolder(sfxDropFiles[0]);
+                                    if (imported != null) item.SoundEffects[index] = imported;
+                                }
+                            }
+
+                            if (ImGui.BeginPopup($"AudioImportDialog##sfx_{index}"))
+                            {
+                                int capturedIndex = index;
+                                _fileDialogManager.OpenFileDialog(
+                                    Translator.LocalizeUI($"Select Sound Effect {capturedIndex}"),
+                                    ".mp3,.wav,.ogg",
+                                    (isOk, file) =>
+                                    {
+                                        if (isOk && _pendingAudioImportEvent != null
+                                            && capturedIndex < _pendingAudioImportEvent.SoundEffects.Count)
+                                        {
+                                            string imported = ImportAudioToQuestFolder(file);
+                                            if (imported != null) _pendingAudioImportEvent.SoundEffects[capturedIndex] = imported;
+                                            _pendingAudioImportSlot = null;
+                                            _pendingAudioImportEvent = null;
+                                        }
+                                    });
+                                ImGui.EndPopup();
+                            }
+
+                            ImGui.Spacing();
                         }
-                        if (ImGui.Button(Translator.LocalizeUI("Add Sound Effect Slot")))
+
+                        if (indexToRemove >= 0 && indexToRemove < item.SoundEffects.Count)
+                            item.SoundEffects.RemoveAt(indexToRemove);
+
+                        if (ImGui.Button(Translator.LocalizeUI("+ Add Sound Effect Slot")))
                         {
                             item.SoundEffects.Add("");
                         }
+
+                        // Drop zone to add a NEW sound effect slot from OS drag-and-drop
+                        if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
+                        {
+                            ImGui.SameLine();
+                            ImGui.Button(Translator.LocalizeUI("  Drop New SFX Here  ##sfxdropnew"),
+                                new Vector2(ImGui.GetContentRegionAvail().X, 0));
+                            _dragDropManager.CreateImGuiSource("NewSfxAudioDragDrop", m => m.Extensions.Any(e => ValidAudioExtensions.Contains(e.ToLowerInvariant())), m => true);
+                            if (_dragDropManager.CreateImGuiTarget("NewSfxAudioDragDrop", out var newSfxFiles, out _)
+                                && newSfxFiles != null && newSfxFiles.Count > 0)
+                            {
+                                string imported = ImportAudioToQuestFolder(newSfxFiles[0]);
+                                if (imported != null) item.SoundEffects.Add(imported);
+                            }
+                        }
+
                         ImGui.EndTabItem();
                     }
                     if (ImGui.BeginTabItem(Translator.LocalizeUI("Appearance Swap##we're unique and such")))
@@ -1855,6 +2244,93 @@ public class EditorWindow : Window, IDisposable
         catch (Exception ex)
         {
             Plugin.PluginLog.Warning(ex, "Failed to save speech transcription audio to quest dialogue audio path.");
+        }
+    }
+
+    /// <summary>
+    /// Copies an audio file into the quest's audio/ subfolder and returns the relative path
+    /// (e.g. "audio/mysound.mp3"), or null on failure.
+    /// </summary>
+    private string ImportAudioToQuestFolder(string sourceFilePath)
+    {
+        try
+        {
+            if (!File.Exists(sourceFilePath)) return null;
+            if (_roleplayingQuestCreator?.CurrentQuest == null) return null;
+
+            string questPath = Path.Combine(
+                Plugin.Configuration.QuestInstallFolder,
+                _roleplayingQuestCreator.CurrentQuest.QuestName);
+            string audioFolder = Path.Combine(questPath, "audio");
+            Directory.CreateDirectory(audioFolder);
+
+            string destFileName = Path.GetFileName(sourceFilePath);
+            string destPath = Path.Combine(audioFolder, destFileName);
+
+            // Avoid overwrite conflicts
+            if (File.Exists(destPath) && destPath != sourceFilePath)
+            {
+                string nameNoExt = Path.GetFileNameWithoutExtension(destFileName);
+                string ext = Path.GetExtension(destFileName);
+                destFileName = $"{nameNoExt}_{Guid.NewGuid().ToString()[..8]}{ext}";
+                destPath = Path.Combine(audioFolder, destFileName);
+            }
+
+            if (!string.Equals(Path.GetFullPath(sourceFilePath), Path.GetFullPath(destPath),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(sourceFilePath, destPath, overwrite: true);
+            }
+
+            return Path.Combine("audio", destFileName);
+        }
+        catch (Exception ex)
+        {
+            Plugin.PluginLog.Warning(ex, $"Failed to import audio file '{sourceFilePath}' to quest folder.");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Copies a background media file (image or video) directly into the quest folder
+    /// and returns the relative file name, or null on failure.
+    /// </summary>
+    private string ImportBackgroundFileToQuestFolder(string sourceFilePath)
+    {
+        try
+        {
+            if (!File.Exists(sourceFilePath)) return null;
+            if (_roleplayingQuestCreator?.CurrentQuest == null) return null;
+
+            string questPath = Path.Combine(
+                Plugin.Configuration.QuestInstallFolder,
+                _roleplayingQuestCreator.CurrentQuest.QuestName);
+            Directory.CreateDirectory(questPath);
+
+            string destFileName = Path.GetFileName(sourceFilePath);
+            string destPath = Path.Combine(questPath, destFileName);
+
+            // Avoid overwrite conflicts
+            if (File.Exists(destPath) && destPath != sourceFilePath)
+            {
+                string nameNoExt = Path.GetFileNameWithoutExtension(destFileName);
+                string ext = Path.GetExtension(destFileName);
+                destFileName = $"{nameNoExt}_{Guid.NewGuid().ToString()[..8]}{ext}";
+                destPath = Path.Combine(questPath, destFileName);
+            }
+
+            if (!string.Equals(Path.GetFullPath(sourceFilePath), Path.GetFullPath(destPath),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(sourceFilePath, destPath, overwrite: true);
+            }
+
+            return destFileName;
+        }
+        catch (Exception ex)
+        {
+            Plugin.PluginLog.Warning(ex, $"Failed to import background file '{sourceFilePath}' to quest folder.");
+            return null;
         }
     }
 }
