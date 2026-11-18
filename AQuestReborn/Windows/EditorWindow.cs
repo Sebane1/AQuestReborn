@@ -39,6 +39,7 @@ public class EditorWindow : Window, IDisposable
     private EditorWindow _subEditorWindow;
     private NPCEditorWindow _npcEditorWindow;
     private NPCTransformEditorWindow _npcTransformEditorWindow;
+    private DialogueRecorderWindow _dialogueRecorderWindow;
     private string[] _nodeNames = new string[] { };
     private string[] _dialogues = new string[] { };
     private int _selectedEvent;
@@ -120,6 +121,10 @@ public class EditorWindow : Window, IDisposable
         if (_npcTransformEditorWindow != null)
         {
             _npcTransformEditorWindow.Dispose();
+        }
+        if (_dialogueRecorderWindow != null)
+        {
+            _dialogueRecorderWindow.Dispose();
         }
     }
 
@@ -310,6 +315,22 @@ public class EditorWindow : Window, IDisposable
                 }
             }, "", true);
             ImGui.EndPopup();
+        }
+        ImGui.SameLine();
+        if (ImGui.Button(Translator.LocalizeUI("Dialogue Recorder##")))
+        {
+            if (_dialogueRecorderWindow == null)
+            {
+                _dialogueRecorderWindow = new DialogueRecorderWindow(Plugin);
+                Plugin.WindowSystem.AddWindow(_dialogueRecorderWindow);
+            }
+            if (_roleplayingQuestCreator.CurrentQuest != null)
+            {
+                string questFolder = System.IO.Path.Combine(
+                    Plugin.Configuration.QuestInstallFolder,
+                    _roleplayingQuestCreator.CurrentQuest.QuestName);
+                _dialogueRecorderWindow.OpenForQuest(_roleplayingQuestCreator.CurrentQuest, questFolder);
+            }
         }
         ImGui.BeginTable("##Editor Table", 2);
         ImGui.TableSetupColumn(Translator.LocalizeUI("Objective List"), ImGuiTableColumnFlags.WidthFixed, 300);

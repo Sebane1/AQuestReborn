@@ -318,6 +318,22 @@ public class MainWindow : Window, IDisposable
         List<string> strings = new List<string>();
         foreach (var item in Plugin.RoleplayingQuestManager.GetCurrentObjectives())
         {
+            if (_territorySheets == null && Plugin.DataManager?.GameData != null)
+            {
+                _territorySheets = Plugin.DataManager.GameData.GetExcelSheet<TerritoryType>();
+            }
+
+            string territoryName = "";
+            if (_territorySheets != null)
+            {
+                var row = _territorySheets.GetRow((uint)item.Item2.TerritoryId);
+                var name = row.PlaceName.ValueNullable?.Name.ToString();
+                if (!string.IsNullOrEmpty(name))
+                {
+                    territoryName = $" ({name})";
+                }
+            }
+
             if (item.Item2.SubObjectivesComplete() && !item.Item2.ObjectiveCompleted && !item.Item3.HasQuestAcceptancePopup)
             {
                 if (!strings.Contains(item.Item3.QuestName))
@@ -326,7 +342,7 @@ public class MainWindow : Window, IDisposable
                     strings.Add(item.Item3.QuestName);
                 }
                 ImGui.SetCursorPosX(50);
-                ImGui.TextWrapped(Translator.LocalizeUI(item.Item2.Objective, item.Item3.QuestLanguage) + (item.Item2.DontShowOnMap ? Translator.LocalizeUI(" (Hidden Location)") : $" ({_territorySheets.GetRow((uint)item.Item2.TerritoryId).PlaceName.Value.Name.ToString()})"));
+                ImGui.TextWrapped(Translator.LocalizeUI(item.Item2.Objective, item.Item3.QuestLanguage) + (item.Item2.DontShowOnMap ? Translator.LocalizeUI(" (Hidden Location)") : territoryName));
                 if (item.Item2.TypeOfObjectiveTrigger == QuestObjective.ObjectiveTriggerType.SayPhrase)
                 {
                     ImGui.SetCursorPosX(50);
@@ -357,13 +373,28 @@ public class MainWindow : Window, IDisposable
 
     private void DrawInstalledQuestInformation()
     {
-        if (_currentSelectedInstalledQuest < Plugin.RoleplayingQuestManager.QuestChains.Count)
+        if (Plugin.RoleplayingQuestManager?.QuestChains != null && _currentSelectedInstalledQuest < Plugin.RoleplayingQuestManager.QuestChains.Count)
         {
             var roleplayingQuest = Plugin.RoleplayingQuestManager.QuestChains.ElementAt(_currentSelectedInstalledQuest).Value;
+            if (roleplayingQuest == null) return;
+
             string startingLocation = "";
-            if (roleplayingQuest.QuestObjectives.Count > 0)
+            if (roleplayingQuest.QuestObjectives != null && roleplayingQuest.QuestObjectives.Count > 0)
             {
-                startingLocation = _territorySheets.GetRow((uint)roleplayingQuest.QuestObjectives[0].TerritoryId).PlaceName.Value.Name.ToString();
+                if (_territorySheets == null && Plugin.DataManager?.GameData != null)
+                {
+                    _territorySheets = Plugin.DataManager.GameData.GetExcelSheet<TerritoryType>();
+                }
+
+                if (_territorySheets != null)
+                {
+                    var row = _territorySheets.GetRow((uint)roleplayingQuest.QuestObjectives[0].TerritoryId);
+                    var name = row.PlaceName.ValueNullable?.Name.ToString();
+                    if (!string.IsNullOrEmpty(name))
+                    {
+                        startingLocation = name;
+                    }
+                }
             }
             ImGui.Text(Translator.LocalizeUI($"Author") + $": {roleplayingQuest.QuestAuthor}");
             ImGui.Text(Translator.LocalizeUI($"Quest Name") + ":" + Translator.LocalizeUI($"{roleplayingQuest.QuestName}", roleplayingQuest.QuestLanguage));
