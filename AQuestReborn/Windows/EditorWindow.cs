@@ -29,6 +29,7 @@ using LanguageConversionProxy;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using RoleplayingVoiceCore;
 using Dalamud.Interface.DragDrop;
+using NAudio.Wave;
 
 namespace SamplePlugin.Windows;
 
@@ -2654,6 +2655,15 @@ public class EditorWindow : Window, IDisposable
         }
     }
 
+    private bool IsDialoguePlaceholder(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return true;
+        string trimmed = text.Trim();
+        return trimmed.Equals("Text goes here.", StringComparison.OrdinalIgnoreCase)
+            || trimmed.Equals("Text goes here", StringComparison.OrdinalIgnoreCase)
+            || trimmed.Equals("New Blurb", StringComparison.OrdinalIgnoreCase);
+    }
+
     private void OnSttRecordingFinished(object sender, string recognizedText)
     {
         _isTranscribing = false;
@@ -2662,7 +2672,7 @@ public class EditorWindow : Window, IDisposable
             string clean = recognizedText.Trim();
             if (_speechToTextTargetField == SpeechToTextTargetField.Dialogue && _speechToTextTargetDialogueEvent != null)
             {
-                if (!string.IsNullOrWhiteSpace(_speechToTextTargetDialogueEvent.Dialogue))
+                if (!string.IsNullOrWhiteSpace(_speechToTextTargetDialogueEvent.Dialogue) && !IsDialoguePlaceholder(_speechToTextTargetDialogueEvent.Dialogue))
                 {
                     _speechToTextTargetDialogueEvent.Dialogue += " " + clean;
                 }
@@ -2720,17 +2730,139 @@ public class EditorWindow : Window, IDisposable
             }
             if (npcIdentifier.Length > 60) npcIdentifier = npcIdentifier.Substring(0, 60);
 
-            string fileName = $"{npcIdentifier}_obj{objIndex + 1}_evt{evtIndex + 1}.wav";
-            string fullPath = Path.Combine(audioFolder, fileName);
+            // Determine if there is already an existing audio file configured in dialogueEvent.DialogueAudio
+            string existingAudioPath = dialogueEvent.DialogueAudio;
+            string existingFullPath = null;
+            if (!string.IsNullOrWhiteSpace(existingAudioPath)
+                && !existingAudioPath.Equals("none.mp3", StringComparison.OrdinalIgnoreCase)
+                && !existingAudioPath.Equals("none.wav", StringComparison.OrdinalIgnoreCase))
+            {
+                if (File.Exists(existingAudioPath))
+                {
+                    existingFullPath = existingAudioPath;
+                }
+                else
+                {
+                    string candidate = Path.Combine(questFolder, existingAudioPath);
+                    if (File.Exists(candidate))
+                    {
+                        existingFullPath = candidate;
+                    }
+                }
+            }
 
-            File.WriteAllBytes(fullPath, audioData);
+            if (existingFullPath != null)
+            {
+                // Append new recorded audio data to existing audio file and save as MP3
+                byte[] combinedMp3 = AppendAudioToMp3(existingFullPath, audioData);
+                
+                // If the existing file was a .wav, migrate/save to .mp3
+                if (existingFullPath.EndsWith(".wav", StringComparison.OrdinalIgnoreCase))
+                {
+                    string mp3Path = Path.ChangeExtension(existingFullPath, ".mp3");
+                    File.WriteAllBytes(mp3Path, combinedMp3);
+                    try { File.Delete(existingFullPath); } catch { }
+                    dialogueEvent.DialogueAudio = Path.ChangeExtension(dialogueEvent.DialogueAudio, ".mp3");
+                }
+                else
+                {
+                    File.WriteAllBytes(existingFullPath, combinedMp3);
+                }
+            }
+            else
+            {
+                string fileName = $"{npcIdentifier}_obj{objIndex + 1}_evt{evtIndex + 1}.mp3";
+                string fullPath = Path.Combine(audioFolder, fileName);
 
-            string relativePath = Path.Combine("audio", fileName);
-            dialogueEvent.DialogueAudio = relativePath;
+                using (var wavStream = new MemoryStream(audioData))
+                using (var reader = new WaveFileReader(wavStream))
+                using (var mp3Stream = new MemoryStream())
+                {
+                    MediaFoundationEncoder.EncodeToMp3(reader, mp3Stream, 128000);
+                    File.WriteAllBytes(fullPath, mp3Stream.ToArray());
+                }
+
+                // Clean up legacy .wav if one existed
+                string legacyWav = Path.Combine(audioFolder, $"{npcIdentifier}_obj{objIndex + 1}_evt{evtIndex + 1}.wav");
+                if (File.Exists(legacyWav))
+                {
+                    try { File.Delete(legacyWav); } catch { }
+                }
+
+                string relativePath = Path.Combine("audio", fileName);
+                dialogueEvent.DialogueAudio = relativePath;
+            }
         }
         catch (Exception ex)
         {
             Plugin.PluginLog.Warning(ex, "Failed to save speech transcription audio to quest dialogue audio path.");
+        }
+    }
+
+    private byte[] AppendAudioToMp3(string existingFilePath, byte[] newAudioBytes)
+    {
+        try
+        {
+            using (var memoryStream = new MemoryStream())
+            {
+                using (var existingReader = new AudioFileReader(existingFilePath))
+                using (var newReader = new WaveFileReader(new MemoryStream(newAudioBytes)))
+                {
+                    var waveFormat = existingReader.WaveFormat;
+                    using (var writer = new WaveFileWriter(memoryStream, waveFormat))
+                    {
+                        byte[] buffer = new byte[4096];
+                        int read;
+                        while ((read = existingReader.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            writer.Write(buffer, 0, read);
+                        }
+
+                        IWaveProvider newProvider;
+                        if (newReader.WaveFormat.Equals(waveFormat))
+                        {
+                            newProvider = newReader;
+                        }
+                        else
+                        {
+                            newProvider = new MediaFoundationResampler(newReader, waveFormat) { ResamplerQuality = 60 };
+                        }
+
+                        while ((read = newProvider.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            writer.Write(buffer, 0, read);
+                        }
+
+                        writer.Flush();
+                    }
+                }
+
+                memoryStream.Position = 0;
+                using (var combinedReader = new WaveFileReader(memoryStream))
+                using (var mp3Stream = new MemoryStream())
+                {
+                    MediaFoundationEncoder.EncodeToMp3(combinedReader, mp3Stream, 128000);
+                    return mp3Stream.ToArray();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.PluginLog.Warning(ex, "Failed to append audio files together, converting new audio to MP3.");
+            try
+            {
+                using (var wavStream = new MemoryStream(newAudioBytes))
+                using (var reader = new WaveFileReader(wavStream))
+                using (var mp3Stream = new MemoryStream())
+                {
+                    MediaFoundationEncoder.EncodeToMp3(reader, mp3Stream, 128000);
+                    return mp3Stream.ToArray();
+                }
+            }
+            catch
+            {
+                return newAudioBytes;
+            }
         }
     }
 

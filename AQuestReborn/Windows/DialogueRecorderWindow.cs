@@ -520,9 +520,23 @@ public class DialogueRecorderWindow : Window, IDisposable
             string safeName = SanitizeFileName(
                 (!string.IsNullOrWhiteSpace(line.Event.NpcAlias) ? line.Event.NpcAlias : line.Event.NpcName)
                 + $"_Object{line.ObjectectiveIndex + 1}_Event{line.EventIndex + 1}");
-            string outPath = Path.Combine(folder, safeName + ".wav");
+            string outPath = Path.Combine(folder, safeName + ".mp3");
 
-            File.WriteAllBytes(outPath, wavData);
+            using (var wavStream = new MemoryStream(wavData))
+            using (var reader = new WaveFileReader(wavStream))
+            using (var mp3Stream = new MemoryStream())
+            {
+                MediaFoundationEncoder.EncodeToMp3(reader, mp3Stream, 128000);
+                File.WriteAllBytes(outPath, mp3Stream.ToArray());
+            }
+
+            // Clean up any legacy .wav if present
+            string legacyWav = Path.Combine(folder, safeName + ".wav");
+            if (File.Exists(legacyWav))
+            {
+                try { File.Delete(legacyWav); } catch { }
+            }
+
             line.Event.DialogueAudio = GetStorageAudioPath(outPath);
             _statusMessage = $"Saved: {Path.GetFileName(outPath)}";
         }
