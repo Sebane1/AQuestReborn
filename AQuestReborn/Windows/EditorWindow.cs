@@ -27,6 +27,7 @@ using System.Threading.Tasks;
 using McdfDataImporter;
 using LanguageConversionProxy;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using RoleplayingVoiceCore;
 
 namespace SamplePlugin.Windows;
 
@@ -50,6 +51,14 @@ public class EditorWindow : Window, IDisposable
     private float _globalScale;
     private bool _shiftModifierHeld;
     private bool _isCreatingAppearance;
+
+    // Speech to text recording state for Dialogue & Choice Text
+    private SpeechToTextManager _speechToTextManager;
+    private bool _isTranscribing;
+    private enum SpeechToTextTargetField { None, Dialogue, ChoiceText }
+    private SpeechToTextTargetField _speechToTextTargetField = SpeechToTextTargetField.None;
+    private QuestEvent _speechToTextTargetDialogueEvent;
+    private BranchingChoice _speechToTextTargetChoice;
 
     // Tail objective path recording state
     private bool _isRecordingTailPath;
@@ -92,6 +101,14 @@ public class EditorWindow : Window, IDisposable
     }
     public void Dispose()
     {
+        if (_speechToTextManager != null)
+        {
+            _speechToTextManager.RecordingFinished -= OnSttRecordingFinished;
+            if (_speechToTextManager.IsRecording)
+            {
+                try { _speechToTextManager.StopRecording(); } catch { }
+            }
+        }
         if (_subEditorWindow != null)
         {
             _subEditorWindow.Dispose();
@@ -786,6 +803,27 @@ public class EditorWindow : Window, IDisposable
                             item.NpcName = npcName;
                             RefreshMenus();
                         }
+                        bool isRecordingThisDialogue = _speechToTextManager != null && _speechToTextManager.IsRecording && _speechToTextTargetField == SpeechToTextTargetField.Dialogue && _speechToTextTargetDialogueEvent == item;
+                        if (isRecordingThisDialogue)
+                        {
+                            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.85f, 0.2f, 0.2f, 1f));
+                            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.95f, 0.3f, 0.3f, 1f));
+                        }
+                        ImGui.PushFont(UiBuilder.IconFont);
+                        if (ImGui.Button(FontAwesomeIcon.Microphone.ToIconString() + "##micDialogue", new Vector2(30 * _globalScale, 0)))
+                        {
+                            ToggleSttForDialogue(item);
+                        }
+                        ImGui.PopFont();
+                        if (isRecordingThisDialogue)
+                        {
+                            ImGui.PopStyleColor(2);
+                        }
+                        if (ImGui.IsItemHovered())
+                        {
+                            ImGui.SetTooltip(isRecordingThisDialogue ? "Recording... Click to stop" : (_isTranscribing && _speechToTextTargetDialogueEvent == item ? "Transcribing speech..." : "Speak to fill Dialogue"));
+                        }
+                        ImGui.SameLine();
                         if (ImGui.InputTextMultiline(Translator.LocalizeUI("Dialogue##"), ref dialogue, 500))
                         {
                             item.Dialogue = dialogue;
@@ -1220,6 +1258,27 @@ public class EditorWindow : Window, IDisposable
                     var eventToJumpToFailure = item.EventToJumpToFailure;
                     var minimumDiceRoll = item.MinimumDiceRoll;
                     var branchingChoiceTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(BranchingChoiceType)));
+                    bool isRecordingThisChoice = _speechToTextManager != null && _speechToTextManager.IsRecording && _speechToTextTargetField == SpeechToTextTargetField.ChoiceText && _speechToTextTargetChoice == item;
+                    if (isRecordingThisChoice)
+                    {
+                        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.85f, 0.2f, 0.2f, 1f));
+                        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.95f, 0.3f, 0.3f, 1f));
+                    }
+                    ImGui.PushFont(UiBuilder.IconFont);
+                    if (ImGui.Button(FontAwesomeIcon.Microphone.ToIconString() + "##micChoice" + _selectedBranchingChoice, new Vector2(30 * _globalScale, 0)))
+                    {
+                        ToggleSttForChoice(item);
+                    }
+                    ImGui.PopFont();
+                    if (isRecordingThisChoice)
+                    {
+                        ImGui.PopStyleColor(2);
+                    }
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.SetTooltip(isRecordingThisChoice ? "Recording... Click to stop" : (_isTranscribing && _speechToTextTargetChoice == item ? "Transcribing speech..." : "Speak to fill Choice Text"));
+                    }
+                    ImGui.SameLine();
                     if (ImGui.InputText(Translator.LocalizeUI("Choice Text##"), ref choiceText, 255))
                     {
                         item.ChoiceText = choiceText;
@@ -1618,5 +1677,118 @@ public class EditorWindow : Window, IDisposable
             _objectiveInFocus = null;
         }
         _subEditorWindow.RefreshMenus();
+    }
+
+    private void EnsureSpeechToTextManager()
+    {
+        if (_speechToTextManager == null)
+        {
+            string basePath = Plugin.RoleplayingMediaManagerInstance?.BasePath
+                ?? Path.GetDirectoryName(Plugin.DalamudPluginInterface.AssemblyLocation.FullName) ?? "";
+            _speechToTextManager = new SpeechToTextManager(basePath);
+            _speechToTextManager.RecordingFinished += OnSttRecordingFinished;
+        }
+
+        if (Plugin.Configuration.UseFishAudioTranscription && !string.IsNullOrWhiteSpace(Plugin.Configuration.FishAudioApiKey))
+        {
+            _speechToTextManager.Backend = SpeechToTextBackend.FishAudio;
+            _speechToTextManager.FishAudioApiKey = Plugin.Configuration.FishAudioApiKey;
+        }
+        else
+        {
+            _speechToTextManager.Backend = SpeechToTextBackend.Whisper;
+            _speechToTextManager.FishAudioApiKey = Plugin.Configuration.FishAudioApiKey ?? "";
+        }
+    }
+
+    private void ToggleSttForDialogue(QuestEvent item)
+    {
+        EnsureSpeechToTextManager();
+
+        if (_speechToTextManager.IsRecording)
+        {
+            _isTranscribing = true;
+            _speechToTextManager.StopRecording();
+        }
+        else
+        {
+            _speechToTextTargetField = SpeechToTextTargetField.Dialogue;
+            _speechToTextTargetDialogueEvent = item;
+            _speechToTextTargetChoice = null;
+            _isTranscribing = false;
+            try
+            {
+                _speechToTextManager.RecordAudio();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Warning(ex, "Failed to start dialogue audio recording.");
+                _isTranscribing = false;
+                _speechToTextTargetField = SpeechToTextTargetField.None;
+            }
+        }
+    }
+
+    private void ToggleSttForChoice(BranchingChoice item)
+    {
+        EnsureSpeechToTextManager();
+
+        if (_speechToTextManager.IsRecording)
+        {
+            _isTranscribing = true;
+            _speechToTextManager.StopRecording();
+        }
+        else
+        {
+            _speechToTextTargetField = SpeechToTextTargetField.ChoiceText;
+            _speechToTextTargetChoice = item;
+            _speechToTextTargetDialogueEvent = null;
+            _isTranscribing = false;
+            try
+            {
+                _speechToTextManager.RecordAudio();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Warning(ex, "Failed to start choice text audio recording.");
+                _isTranscribing = false;
+                _speechToTextTargetField = SpeechToTextTargetField.None;
+            }
+        }
+    }
+
+    private void OnSttRecordingFinished(object sender, string recognizedText)
+    {
+        _isTranscribing = false;
+        if (!string.IsNullOrWhiteSpace(recognizedText))
+        {
+            string clean = recognizedText.Trim();
+            if (_speechToTextTargetField == SpeechToTextTargetField.Dialogue && _speechToTextTargetDialogueEvent != null)
+            {
+                if (!string.IsNullOrWhiteSpace(_speechToTextTargetDialogueEvent.Dialogue))
+                {
+                    _speechToTextTargetDialogueEvent.Dialogue += " " + clean;
+                }
+                else
+                {
+                    _speechToTextTargetDialogueEvent.Dialogue = clean;
+                }
+                RefreshMenus();
+            }
+            else if (_speechToTextTargetField == SpeechToTextTargetField.ChoiceText && _speechToTextTargetChoice != null)
+            {
+                if (!string.IsNullOrWhiteSpace(_speechToTextTargetChoice.ChoiceText))
+                {
+                    _speechToTextTargetChoice.ChoiceText += " " + clean;
+                }
+                else
+                {
+                    _speechToTextTargetChoice.ChoiceText = clean;
+                }
+            }
+        }
+        _speechToTextTargetField = SpeechToTextTargetField.None;
+        _speechToTextTargetDialogueEvent = null;
+        _speechToTextTargetChoice = null;
     }
 }
