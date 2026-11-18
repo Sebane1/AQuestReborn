@@ -28,6 +28,7 @@ using McdfDataImporter;
 using LanguageConversionProxy;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using RoleplayingVoiceCore;
+using Dalamud.Interface.DragDrop;
 
 namespace SamplePlugin.Windows;
 
@@ -36,7 +37,7 @@ public class EditorWindow : Window, IDisposable
     private Plugin Plugin;
     private RoleplayingQuestCreator _roleplayingQuestCreator = new RoleplayingQuestCreator();
     private FileDialogManager _fileDialogManager;
-    private Dalamud.Interface.DragDrop.IDragDropManager _dragDropManager;
+    private IDragDropManager _dragDropManager;
     private EditorWindow _subEditorWindow;
     private NPCEditorWindow _npcEditorWindow;
     private NPCTransformEditorWindow _npcTransformEditorWindow;
@@ -197,282 +198,367 @@ public class EditorWindow : Window, IDisposable
                 ProcessInfo.UseShellExecute = true;
                 Process = Process.Start(ProcessInfo);
             }
-            if (_roleplayingQuestCreator != null && _roleplayingQuestCreator.CurrentQuest != null)
+            ImGui.SameLine();
+            if (ImGui.Button(Translator.LocalizeUI("Export for re-use")))
             {
-                var questAuthor = _roleplayingQuestCreator.CurrentQuest.QuestAuthor;
-                var questName = _roleplayingQuestCreator.CurrentQuest.QuestName;
-                var questDescription = _roleplayingQuestCreator.CurrentQuest.QuestDescription;
-                var contentRating = (int)_roleplayingQuestCreator.CurrentQuest.ContentRating;
-                var questReward = _roleplayingQuestCreator.CurrentQuest.QuestReward;
-                var questRewardType = (int)_roleplayingQuestCreator.CurrentQuest.TypeOfReward;
-                var questThumbnail = _roleplayingQuestCreator.CurrentQuest.QuestThumbnailPath;
-                var contentRatingTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestContentRating)));
-                var questRewardTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestRewardType)));
-                var questLanguage = (int)_roleplayingQuestCreator.CurrentQuest.QuestLanguage;
+                _fileDialogManager.Reset();
+                ImGui.OpenPopup(Translator.LocalizeUI("OpenPathDialog##editorwindow"));
+            }
+            if (ImGui.BeginPopup(Translator.LocalizeUI("OpenPathDialog##editorwindow")))
+            {
+                _fileDialogManager.SaveFileDialog(Translator.LocalizeUI("Export quest line data"), ".quest", "", ".quest", (isOk, file) =>
+                {
+                    if (isOk)
+                    {
+                        _roleplayingQuestCreator.SaveQuestline(_roleplayingQuestCreator.CurrentQuest, file);
+                    }
+                }, "", true);
+                ImGui.EndPopup();
+            }
+            ImGui.SameLine();
+            if (ImGui.Button(Translator.LocalizeUI("Dialogue Recorder##")))
+            {
+                if (_dialogueRecorderWindow == null)
+                {
+                    _dialogueRecorderWindow = new DialogueRecorderWindow(Plugin);
+                    Plugin.WindowSystem.AddWindow(_dialogueRecorderWindow);
+                }
+                if (_roleplayingQuestCreator.CurrentQuest != null)
+                {
+                    string questFolder = System.IO.Path.Combine(
+                        Plugin.Configuration.QuestInstallFolder,
+                        _roleplayingQuestCreator.CurrentQuest.QuestName);
+                    _dialogueRecorderWindow.OpenForQuest(_roleplayingQuestCreator.CurrentQuest, questFolder);
+                }
+            }
+            ImGui.SameLine();
+            if (ImGui.Button(Translator.LocalizeUI("Edit NPC Appearance Data##")))
+            {
+                if (_npcEditorWindow == null)
+                {
+                    _npcEditorWindow = new NPCEditorWindow(Plugin);
+                    Plugin.WindowSystem.AddWindow(_npcEditorWindow);
+                }
+                if (_npcEditorWindow != null)
+                {
+                    _npcEditorWindow.SetEditingQuest(_roleplayingQuestCreator.CurrentQuest);
+                    _npcEditorWindow.IsOpen = true;
+                }
+            }
+            ImGui.Separator();
+        }
 
-                var questStartTitleCard = _roleplayingQuestCreator.CurrentQuest.QuestStartTitleCard;
-                var questEndTitleCard = _roleplayingQuestCreator.CurrentQuest.QuestEndTitleCard;
-                var questStartTitleSound = _roleplayingQuestCreator.CurrentQuest.QuestStartTitleSound;
-                var questEndTitleSound = _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound;
-                var hasQuestAcceptancePopup = _roleplayingQuestCreator.CurrentQuest.HasQuestAcceptancePopup;
+        if (ImGui.BeginTabBar("##MainEditorTabs"))
+        {
+            if (!_roleplayingQuestCreator.CurrentQuest.IsSubQuest && ImGui.BeginTabItem(Translator.LocalizeUI("Quest Info")))
+            {
+                if (_roleplayingQuestCreator != null && _roleplayingQuestCreator.CurrentQuest != null)
+                {
+                    var questAuthor = _roleplayingQuestCreator.CurrentQuest.QuestAuthor;
+                    var questName = _roleplayingQuestCreator.CurrentQuest.QuestName;
+                    var questDescription = _roleplayingQuestCreator.CurrentQuest.QuestDescription;
+                    var contentRating = (int)_roleplayingQuestCreator.CurrentQuest.ContentRating;
+                    var questReward = _roleplayingQuestCreator.CurrentQuest.QuestReward;
+                    var questRewardType = (int)_roleplayingQuestCreator.CurrentQuest.TypeOfReward;
+                    var questThumbnail = _roleplayingQuestCreator.CurrentQuest.QuestThumbnailPath;
+                    var contentRatingTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestContentRating)));
+                    var questRewardTypes = Translator.LocalizeTextArray(Enum.GetNames(typeof(QuestRewardType)));
+                    var questLanguage = (int)_roleplayingQuestCreator.CurrentQuest.QuestLanguage;
 
+                    var questStartTitleCard = _roleplayingQuestCreator.CurrentQuest.QuestStartTitleCard;
+                    var questEndTitleCard = _roleplayingQuestCreator.CurrentQuest.QuestEndTitleCard;
+                    var questStartTitleSound = _roleplayingQuestCreator.CurrentQuest.QuestStartTitleSound;
+                    var questEndTitleSound = _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound;
+                    var hasQuestAcceptancePopup = _roleplayingQuestCreator.CurrentQuest.HasQuestAcceptancePopup;
 
-                ImGui.BeginTable("##Info Table", 2);
-                ImGui.TableSetupColumn(Translator.LocalizeUI("Info 1"), ImGuiTableColumnFlags.WidthFixed, 400);
-                ImGui.TableSetupColumn(Translator.LocalizeUI("Info 2"), ImGuiTableColumnFlags.WidthStretch, 600);
+                    float fieldWidth = 360 * _globalScale;
+
+                    ImGui.BeginTable("##Info Table", 2, ImGuiTableFlags.SizingStretchSame);
+                    ImGui.TableSetupColumn(Translator.LocalizeUI("Left Column"), ImGuiTableColumnFlags.WidthStretch);
+                    ImGui.TableSetupColumn(Translator.LocalizeUI("Right Column"), ImGuiTableColumnFlags.WidthStretch);
+                    ImGui.TableNextRow();
+
+                    ImGui.TableSetColumnIndex(0);
+
+                    ImGui.PushFont(UiBuilder.IconFont);
+                    ImGui.TextColored(new Vector4(0.4f, 0.8f, 1f, 1f), FontAwesomeIcon.InfoCircle.ToIconString());
+                    ImGui.PopFont();
+                    ImGui.SameLine();
+                    ImGui.TextColored(new Vector4(0.4f, 0.8f, 1f, 1f), Translator.LocalizeUI("General Information"));
+                    ImGui.Separator();
+                    ImGui.Spacing();
+
+                    ImGui.Text(Translator.LocalizeUI("Language"));
+                    ImGui.SetNextItemWidth(fieldWidth);
+                    if (ImGui.Combo("##questLanguageCombo", ref questLanguage, Translator.LanguageStrings, Translator.LanguageStrings.Length))
+                    {
+                        _roleplayingQuestCreator.CurrentQuest.QuestLanguage = (LanguageEnum)questLanguage;
+                    }
+
+                    ImGui.Spacing();
+                    ImGui.Text(Translator.LocalizeUI("Quest Name"));
+                    ImGui.SetNextItemWidth(fieldWidth);
+                    if (ImGui.InputText("##questNameInput", ref questName, 255))
+                    {
+                        _roleplayingQuestCreator.CurrentQuest.QuestName = questName;
+                    }
+
+                    ImGui.Spacing();
+                    ImGui.Text(Translator.LocalizeUI("Author"));
+                    ImGui.SetNextItemWidth(fieldWidth);
+                    if (ImGui.InputText("##questAuthorInput", ref questAuthor, 255))
+                    {
+                        _roleplayingQuestCreator.CurrentQuest.QuestAuthor = questAuthor;
+                    }
+
+                    ImGui.Spacing();
+                    ImGui.Text(Translator.LocalizeUI("Quest Description"));
+                    ImGui.SetNextItemWidth(fieldWidth);
+                    if (ImGui.InputTextMultiline("##questDescriptionInput", ref questDescription, 200, new Vector2(fieldWidth, 68 * _globalScale)))
+                    {
+                        _roleplayingQuestCreator.CurrentQuest.QuestDescription = questDescription;
+                    }
+
+                    ImGui.Spacing();
+                    ImGui.Text(Translator.LocalizeUI("Content Rating"));
+                    ImGui.SetNextItemWidth(fieldWidth);
+                    if (ImGui.Combo("##contentRatingCombo", ref contentRating, contentRatingTypes, contentRatingTypes.Length))
+                    {
+                        _roleplayingQuestCreator.CurrentQuest.ContentRating = (QuestContentRating)contentRating;
+                    }
+
+                    ImGui.Spacing();
+                    ImGui.Text(Translator.LocalizeUI("Quest Thumbnail:"));
+                    ImGui.SetNextItemWidth(fieldWidth - 80 * _globalScale);
+                    if (ImGui.InputText("##questThumbnailPath", ref questThumbnail, 255))
+                    {
+                        _roleplayingQuestCreator.CurrentQuest.QuestThumbnailPath = questThumbnail;
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button(Translator.LocalizeUI("Browse##questThumb"), new Vector2(75 * _globalScale, 0)))
+                    {
+                        _fileDialogManager.Reset();
+                        ImGui.OpenPopup("MediaImportDialog##questThumb");
+                    }
+                    if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an image file (.png, .jpg, .jpeg, .bmp)"));
+                    if (ImGui.BeginPopup("MediaImportDialog##questThumb"))
+                    {
+                        _fileDialogManager.OpenFileDialog(
+                            Translator.LocalizeUI("Select Quest Thumbnail"),
+                            ".png,.jpg,.jpeg,.bmp",
+                            (isOk, file) =>
+                            {
+                                if (isOk && _roleplayingQuestCreator?.CurrentQuest != null)
+                                {
+                                    string imported = ImportBackgroundFileToQuestFolder(file);
+                                    if (imported != null) _roleplayingQuestCreator.CurrentQuest.QuestThumbnailPath = imported;
+                                }
+                            });
+                        ImGui.EndPopup();
+                    }
+                    if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
+                    {
+                        ImGui.Button($"" + Translator.LocalizeUI("Drop Thumbnail Image Here  ##thumbDrop"),
+                            new Vector2(fieldWidth, 24 * _globalScale));
+                        _dragDropManager.CreateImGuiSource("QuestThumbnailDragDrop", m => m.Extensions.Any(e => ValidImageExtensions.Contains(e.ToLowerInvariant())), m => true);
+                        if (_dragDropManager.CreateImGuiTarget("QuestThumbnailDragDrop", out var thumbFiles, out _)
+                            && thumbFiles != null && thumbFiles.Count > 0)
+                        {
+                            string imported = ImportBackgroundFileToQuestFolder(thumbFiles[0]);
+                            if (imported != null)
+                            {
+                                _roleplayingQuestCreator.CurrentQuest.QuestThumbnailPath = imported;
+                            }
+                        }
+                    }
+
+                    ImGui.Spacing();
+                    if (ImGui.Checkbox(Translator.LocalizeUI("Show Quest Acceptance Popup"), ref hasQuestAcceptancePopup))
+                    {
+                        _roleplayingQuestCreator.CurrentQuest.HasQuestAcceptancePopup = hasQuestAcceptancePopup;
+                    }
+
+                    ImGui.TableSetColumnIndex(1);
+
+                    ImGui.PushFont(UiBuilder.IconFont);
+                    ImGui.TextColored(new Vector4(1f, 0.75f, 0.4f, 1f), FontAwesomeIcon.Film.ToIconString());
+                    ImGui.PopFont();
+                    ImGui.SameLine();
+                    ImGui.TextColored(new Vector4(1f, 0.75f, 0.4f, 1f), Translator.LocalizeUI("Title Cards & Audio"));
+                    ImGui.Separator();
+                    ImGui.Spacing();
+
+                    ImGui.Text(Translator.LocalizeUI("Quest Start Title Card"));
+                    ImGui.SetNextItemWidth(fieldWidth);
+                    if (ImGui.InputText("##questStartTitleCardInput", ref questStartTitleCard, 255))
+                    {
+                        _roleplayingQuestCreator.CurrentQuest.QuestStartTitleCard = questStartTitleCard;
+                    }
+
+                    ImGui.Spacing();
+                    ImGui.Text(Translator.LocalizeUI("Quest Start Title Sound:"));
+                    ImGui.SetNextItemWidth(fieldWidth - 80 * _globalScale);
+                    if (ImGui.InputText("##questStartTitleSoundPath", ref questStartTitleSound, 255))
+                    {
+                        _roleplayingQuestCreator.CurrentQuest.QuestStartTitleSound = questStartTitleSound;
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button(Translator.LocalizeUI("Browse##startSound"), new Vector2(75 * _globalScale, 0)))
+                    {
+                        _fileDialogManager.Reset();
+                        ImGui.OpenPopup("AudioImportDialog##startSound");
+                    }
+                    if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an audio file (.mp3, .wav, .ogg)"));
+                    if (ImGui.BeginPopup("AudioImportDialog##startSound"))
+                    {
+                        _fileDialogManager.OpenFileDialog(
+                            Translator.LocalizeUI("Select Start Title Sound"),
+                            ".mp3,.wav,.ogg",
+                            (isOk, file) =>
+                            {
+                                if (isOk && _roleplayingQuestCreator?.CurrentQuest != null)
+                                {
+                                    string imported = ImportAudioToQuestFolder(file);
+                                    if (imported != null) _roleplayingQuestCreator.CurrentQuest.QuestStartTitleSound = imported;
+                                }
+                            });
+                        ImGui.EndPopup();
+                    }
+                    if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
+                    {
+                        ImGui.Button($"" + Translator.LocalizeUI("Drop Start Sound Here  ##startSoundDrop"),
+                            new Vector2(fieldWidth, 24 * _globalScale));
+                        _dragDropManager.CreateImGuiSource("QuestStartTitleSoundDragDrop", m => m.Extensions.Any(e => ValidAudioExtensions.Contains(e.ToLowerInvariant())), m => true);
+                        if (_dragDropManager.CreateImGuiTarget("QuestStartTitleSoundDragDrop", out var startSoundFiles, out _)
+                            && startSoundFiles != null && startSoundFiles.Count > 0)
+                        {
+                            string imported = ImportAudioToQuestFolder(startSoundFiles[0]);
+                            if (imported != null)
+                            {
+                                _roleplayingQuestCreator.CurrentQuest.QuestStartTitleSound = imported;
+                            }
+                        }
+                    }
+
+                    ImGui.Spacing();
+                    ImGui.Text(Translator.LocalizeUI("Quest End Title Card"));
+                    ImGui.SetNextItemWidth(fieldWidth);
+                    if (ImGui.InputText("##questEndTitleCardInput", ref questEndTitleCard, 255))
+                    {
+                        _roleplayingQuestCreator.CurrentQuest.QuestEndTitleCard = questEndTitleCard;
+                    }
+
+                    ImGui.Spacing();
+                    ImGui.Text(Translator.LocalizeUI("Quest End Title Sound:"));
+                    ImGui.SetNextItemWidth(fieldWidth - 80 * _globalScale);
+                    if (ImGui.InputText("##questEndTitleSoundPath", ref questEndTitleSound, 255))
+                    {
+                        _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound = questEndTitleSound;
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button(Translator.LocalizeUI("Browse##endSound"), new Vector2(75 * _globalScale, 0)))
+                    {
+                        _fileDialogManager.Reset();
+                        ImGui.OpenPopup("AudioImportDialog##endSound");
+                    }
+                    if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an audio file (.mp3, .wav, .ogg)"));
+                    if (ImGui.BeginPopup("AudioImportDialog##endSound"))
+                    {
+                        _fileDialogManager.OpenFileDialog(
+                            Translator.LocalizeUI("Select End Title Sound"),
+                            ".mp3,.wav,.ogg",
+                            (isOk, file) =>
+                            {
+                                if (isOk && _roleplayingQuestCreator?.CurrentQuest != null)
+                                {
+                                    string imported = ImportAudioToQuestFolder(file);
+                                    if (imported != null) _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound = imported;
+                                }
+                            });
+                        ImGui.EndPopup();
+                    }
+                    if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
+                    {
+                        ImGui.Button($"" + Translator.LocalizeUI("Drop End Sound Here##endSoundDrop"),
+                            new Vector2(fieldWidth, 24 * _globalScale));
+                        _dragDropManager.CreateImGuiSource("QuestEndTitleSoundDragDrop", m => m.Extensions.Any(e => ValidAudioExtensions.Contains(e.ToLowerInvariant())), m => true);
+                        if (_dragDropManager.CreateImGuiTarget("QuestEndTitleSoundDragDrop", out var endSoundFiles, out _)
+                            && endSoundFiles != null && endSoundFiles.Count > 0)
+                        {
+                            string imported = ImportAudioToQuestFolder(endSoundFiles[0]);
+                            if (imported != null)
+                            {
+                                _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound = imported;
+                            }
+                        }
+                    }
+
+                    ImGui.Spacing();
+                    ImGui.PushFont(UiBuilder.IconFont);
+                    ImGui.TextColored(new Vector4(0.5f, 1f, 0.5f, 1f), FontAwesomeIcon.Gift.ToIconString());
+                    ImGui.PopFont();
+                    ImGui.SameLine();
+                    ImGui.TextColored(new Vector4(0.5f, 1f, 0.5f, 1f), Translator.LocalizeUI("Quest Completion Reward"));
+                    ImGui.Separator();
+                    ImGui.Spacing();
+
+                    ImGui.Text(Translator.LocalizeUI("Reward Type"));
+                    ImGui.SetNextItemWidth(fieldWidth);
+                    if (ImGui.Combo("##questRewardTypeCombo", ref questRewardType, questRewardTypes, questRewardTypes.Length))
+                    {
+                        _roleplayingQuestCreator.CurrentQuest.TypeOfReward = (QuestRewardType)questRewardType;
+                    }
+                    ImGui.Spacing();
+                    switch (_roleplayingQuestCreator.CurrentQuest.TypeOfReward)
+                    {
+                        case QuestRewardType.SecretMessage:
+                            ImGui.Text(Translator.LocalizeUI("Secret Message"));
+                            ImGui.SetNextItemWidth(fieldWidth);
+                            if (ImGui.InputText("##questRewardSecretInput", ref questReward, 255))
+                            {
+                                _roleplayingQuestCreator.CurrentQuest.QuestReward = questReward;
+                            }
+                            break;
+                        case QuestRewardType.OnlineLink:
+                            ImGui.Text(Translator.LocalizeUI("Download / Web Link"));
+                            ImGui.SetNextItemWidth(fieldWidth);
+                            if (ImGui.InputText("##questRewardLinkInput", ref questReward, 255))
+                            {
+                                _roleplayingQuestCreator.CurrentQuest.QuestReward = questReward;
+                            }
+                            break;
+                        case QuestRewardType.MediaFile:
+                            ImGui.Text(Translator.LocalizeUI("Media File Path"));
+                            ImGui.SetNextItemWidth(fieldWidth);
+                            if (ImGui.InputText("##questRewardMediaInput", ref questReward, 255))
+                            {
+                                _roleplayingQuestCreator.CurrentQuest.QuestReward = questReward;
+                            }
+                            break;
+                    }
+
+                    ImGui.EndTable();
+                }
+                ImGui.EndTabItem();
+            }
+
+            if (ImGui.BeginTabItem(Translator.LocalizeUI("Quest Editor")))
+            {
+                ImGui.BeginTable("##Editor Table", 2);
+                ImGui.TableSetupColumn(Translator.LocalizeUI("Objective List"), ImGuiTableColumnFlags.WidthFixed, 300);
+                ImGui.TableSetupColumn(Translator.LocalizeUI("Objective Editor"), ImGuiTableColumnFlags.WidthStretch, 600);
                 ImGui.TableHeadersRow();
                 ImGui.TableNextRow();
                 ImGui.TableSetColumnIndex(0);
-                if (ImGui.Combo(Translator.LocalizeUI("Language"), ref questLanguage, Translator.LanguageStrings, Translator.LanguageStrings.Length))
-                {
-                    _roleplayingQuestCreator.CurrentQuest.QuestLanguage = (LanguageEnum)questLanguage;
-                }
-                if (ImGui.InputText(Translator.LocalizeUI("Author##"), ref questAuthor, 255))
-                {
-                    _roleplayingQuestCreator.CurrentQuest.QuestAuthor = questAuthor;
-                }
-                if (ImGui.InputText(Translator.LocalizeUI("Quest Name##"), ref questName, 255))
-                {
-                    _roleplayingQuestCreator.CurrentQuest.QuestName = questName;
-                }
-                if (ImGui.InputText(Translator.LocalizeUI("Quest Description##"), ref questDescription, 56))
-                {
-                    _roleplayingQuestCreator.CurrentQuest.QuestDescription = questDescription;
-                }
-                ImGui.Text(Translator.LocalizeUI("Quest Thumbnail:"));
-                ImGui.SetNextItemWidth(300);
-                if (ImGui.InputText("##questThumbnailPath", ref questThumbnail, 255))
-                {
-                    _roleplayingQuestCreator.CurrentQuest.QuestThumbnailPath = questThumbnail;
-                }
-                ImGui.SameLine();
-                if (ImGui.Button(Translator.LocalizeUI("Browse##questThumb")))
-                {
-                    _fileDialogManager.Reset();
-                    ImGui.OpenPopup("MediaImportDialog##questThumb");
-                }
-                if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an image file (.png, .jpg, .jpeg, .bmp)"));
-                if (ImGui.BeginPopup("MediaImportDialog##questThumb"))
-                {
-                    _fileDialogManager.OpenFileDialog(
-                        Translator.LocalizeUI("Select Quest Thumbnail"),
-                        ".png,.jpg,.jpeg,.bmp",
-                        (isOk, file) =>
-                        {
-                            if (isOk && _roleplayingQuestCreator?.CurrentQuest != null)
-                            {
-                                string imported = ImportBackgroundFileToQuestFolder(file);
-                                if (imported != null) _roleplayingQuestCreator.CurrentQuest.QuestThumbnailPath = imported;
-                            }
-                        });
-                    ImGui.EndPopup();
-                }
-                if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
-                {
-                    ImGui.SetNextItemWidth(380);
-                    ImGui.Button(Translator.LocalizeUI("  Drop Quest Thumbnail Here  ##thumbDrop"),
-                        new Vector2(380, 24));
-                    _dragDropManager.CreateImGuiSource("QuestThumbnailDragDrop", m => m.Extensions.Any(e => ValidImageExtensions.Contains(e.ToLowerInvariant())), m => true);
-                    if (_dragDropManager.CreateImGuiTarget("QuestThumbnailDragDrop", out var thumbFiles, out _)
-                        && thumbFiles != null && thumbFiles.Count > 0)
-                    {
-                        string imported = ImportBackgroundFileToQuestFolder(thumbFiles[0]);
-                        if (imported != null)
-                        {
-                            _roleplayingQuestCreator.CurrentQuest.QuestThumbnailPath = imported;
-                        }
-                    }
-                }
-                if (ImGui.Combo(Translator.LocalizeUI("Content Rating##"), ref contentRating, contentRatingTypes, contentRatingTypes.Length))
-                {
-                    _roleplayingQuestCreator.CurrentQuest.ContentRating = (QuestContentRating)contentRating;
-                }
-                if (ImGui.Checkbox(Translator.LocalizeUI("Has Quest Acceptance Popup"), ref hasQuestAcceptancePopup))
-                {
-                    _roleplayingQuestCreator.CurrentQuest.HasQuestAcceptancePopup = hasQuestAcceptancePopup;
-                }
+                DrawQuestObjectives();
                 ImGui.TableSetColumnIndex(1);
-                if (ImGui.InputText(Translator.LocalizeUI("Quest Start Title Card##"), ref questStartTitleCard, 255))
-                {
-                    _roleplayingQuestCreator.CurrentQuest.QuestStartTitleCard = questStartTitleCard;
-                }
-                if (ImGui.InputText(Translator.LocalizeUI("Quest End Title Card##"), ref questEndTitleCard, 255))
-                {
-                    _roleplayingQuestCreator.CurrentQuest.QuestEndTitleCard = questEndTitleCard;
-                }
-                ImGui.Text(Translator.LocalizeUI("Quest Start Title Sound:"));
-                ImGui.SetNextItemWidth(300);
-                if (ImGui.InputText("##questStartTitleSoundPath", ref questStartTitleSound, 255))
-                {
-                    _roleplayingQuestCreator.CurrentQuest.QuestStartTitleSound = questStartTitleSound;
-                }
-                ImGui.SameLine();
-                if (ImGui.Button(Translator.LocalizeUI("Browse##startSound")))
-                {
-                    _fileDialogManager.Reset();
-                    ImGui.OpenPopup("AudioImportDialog##startSound");
-                }
-                if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an audio file (.mp3, .wav, .ogg)"));
-                if (ImGui.BeginPopup("AudioImportDialog##startSound"))
-                {
-                    _fileDialogManager.OpenFileDialog(
-                        Translator.LocalizeUI("Select Start Title Sound"),
-                        ".mp3,.wav,.ogg",
-                        (isOk, file) =>
-                        {
-                            if (isOk && _roleplayingQuestCreator?.CurrentQuest != null)
-                            {
-                                string imported = ImportAudioToQuestFolder(file);
-                                if (imported != null) _roleplayingQuestCreator.CurrentQuest.QuestStartTitleSound = imported;
-                            }
-                        });
-                    ImGui.EndPopup();
-                }
-                if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
-                {
-                    ImGui.SetNextItemWidth(380);
-                    ImGui.Button(Translator.LocalizeUI("  Drop Start Title Sound Here  ##startSoundDrop"),
-                        new Vector2(380, 24));
-                    _dragDropManager.CreateImGuiSource("QuestStartTitleSoundDragDrop", m => m.Extensions.Any(e => ValidAudioExtensions.Contains(e.ToLowerInvariant())), m => true);
-                    if (_dragDropManager.CreateImGuiTarget("QuestStartTitleSoundDragDrop", out var startSoundFiles, out _)
-                        && startSoundFiles != null && startSoundFiles.Count > 0)
-                    {
-                        string imported = ImportAudioToQuestFolder(startSoundFiles[0]);
-                        if (imported != null)
-                        {
-                            _roleplayingQuestCreator.CurrentQuest.QuestStartTitleSound = imported;
-                        }
-                    }
-                }
-
-                ImGui.Text(Translator.LocalizeUI("Quest End Title Sound:"));
-                ImGui.SetNextItemWidth(300);
-                if (ImGui.InputText("##questEndTitleSoundPath", ref questEndTitleSound, 255))
-                {
-                    _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound = questEndTitleSound;
-                }
-                ImGui.SameLine();
-                if (ImGui.Button(Translator.LocalizeUI("Browse##endSound")))
-                {
-                    _fileDialogManager.Reset();
-                    ImGui.OpenPopup("AudioImportDialog##endSound");
-                }
-                if (ImGui.IsItemHovered()) ImGui.SetTooltip(Translator.LocalizeUI("Browse for an audio file (.mp3, .wav, .ogg)"));
-                if (ImGui.BeginPopup("AudioImportDialog##endSound"))
-                {
-                    _fileDialogManager.OpenFileDialog(
-                        Translator.LocalizeUI("Select End Title Sound"),
-                        ".mp3,.wav,.ogg",
-                        (isOk, file) =>
-                        {
-                            if (isOk && _roleplayingQuestCreator?.CurrentQuest != null)
-                            {
-                                string imported = ImportAudioToQuestFolder(file);
-                                if (imported != null) _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound = imported;
-                            }
-                        });
-                    ImGui.EndPopup();
-                }
-                if (_dragDropManager != null && _dragDropManager.ServiceAvailable)
-                {
-                    ImGui.SetNextItemWidth(380);
-                    ImGui.Button(Translator.LocalizeUI("  Drop End Title Sound Here  ##endSoundDrop"),
-                        new Vector2(380, 24));
-                    _dragDropManager.CreateImGuiSource("QuestEndTitleSoundDragDrop", m => m.Extensions.Any(e => ValidAudioExtensions.Contains(e.ToLowerInvariant())), m => true);
-                    if (_dragDropManager.CreateImGuiTarget("QuestEndTitleSoundDragDrop", out var endSoundFiles, out _)
-                        && endSoundFiles != null && endSoundFiles.Count > 0)
-                    {
-                        string imported = ImportAudioToQuestFolder(endSoundFiles[0]);
-                        if (imported != null)
-                        {
-                            _roleplayingQuestCreator.CurrentQuest.QuestEndTitleSound = imported;
-                        }
-                    }
-                }
-                if (ImGui.Combo(Translator.LocalizeUI("Quest Reward Type##"), ref questRewardType, questRewardTypes, questRewardTypes.Length))
-                {
-                    _roleplayingQuestCreator.CurrentQuest.TypeOfReward = (QuestRewardType)questRewardType;
-                }
-                switch (_roleplayingQuestCreator.CurrentQuest.TypeOfReward)
-                {
-                    case QuestRewardType.SecretMessage:
-                        if (ImGui.InputText(Translator.LocalizeUI("Quest Reward (Secret Message)"), ref questReward, 255))
-                        {
-                            _roleplayingQuestCreator.CurrentQuest.QuestReward = questReward;
-                        }
-                        break;
-                    case QuestRewardType.OnlineLink:
-                        if (ImGui.InputText(Translator.LocalizeUI("Quest Reward (Download Link)"), ref questReward, 255))
-                        {
-                            _roleplayingQuestCreator.CurrentQuest.QuestReward = questReward;
-                        }
-                        break;
-                    case QuestRewardType.MediaFile:
-                        if (ImGui.InputText(Translator.LocalizeUI("Quest Reward (Media File Path)"), ref questReward, 255))
-                        {
-                            _roleplayingQuestCreator.CurrentQuest.QuestReward = questReward;
-                        }
-                        break;
-                }
+                DrawQuestNodeEditor();
                 ImGui.EndTable();
-                if (ImGui.Button(Translator.LocalizeUI("Edit NPC Appearance Data##")))
-                {
-                    if (_npcEditorWindow == null)
-                    {
-                        _npcEditorWindow = new NPCEditorWindow(Plugin);
-                        Plugin.WindowSystem.AddWindow(_npcEditorWindow);
-                    }
-                    if (_npcEditorWindow != null)
-                    {
-                        _npcEditorWindow.SetEditingQuest(_roleplayingQuestCreator.CurrentQuest);
-                        _npcEditorWindow.IsOpen = true;
-                    }
-                }
+                ImGui.EndTabItem();
             }
+
+            ImGui.EndTabBar();
         }
-        ImGui.SameLine();
-        if (ImGui.Button(Translator.LocalizeUI("Export for re-use")))
-        {
-            _fileDialogManager.Reset();
-            ImGui.OpenPopup(Translator.LocalizeUI("OpenPathDialog##editorwindow"));
-        }
-        if (ImGui.BeginPopup(Translator.LocalizeUI("OpenPathDialog##editorwindow")))
-        {
-            _fileDialogManager.SaveFileDialog(Translator.LocalizeUI("Export quest line data"), ".quest", "", ".quest", (isOk, file) =>
-            {
-                if (isOk)
-                {
-                    _roleplayingQuestCreator.SaveQuestline(_roleplayingQuestCreator.CurrentQuest, file);
-                }
-            }, "", true);
-            ImGui.EndPopup();
-        }
-        ImGui.SameLine();
-        if (ImGui.Button(Translator.LocalizeUI("Dialogue Recorder##")))
-        {
-            if (_dialogueRecorderWindow == null)
-            {
-                _dialogueRecorderWindow = new DialogueRecorderWindow(Plugin);
-                Plugin.WindowSystem.AddWindow(_dialogueRecorderWindow);
-            }
-            if (_roleplayingQuestCreator.CurrentQuest != null)
-            {
-                string questFolder = System.IO.Path.Combine(
-                    Plugin.Configuration.QuestInstallFolder,
-                    _roleplayingQuestCreator.CurrentQuest.QuestName);
-                _dialogueRecorderWindow.OpenForQuest(_roleplayingQuestCreator.CurrentQuest, questFolder);
-            }
-        }
-        ImGui.BeginTable("##Editor Table", 2);
-        ImGui.TableSetupColumn(Translator.LocalizeUI("Objective List"), ImGuiTableColumnFlags.WidthFixed, 300);
-        ImGui.TableSetupColumn(Translator.LocalizeUI("Objective Editor"), ImGuiTableColumnFlags.WidthStretch, 600);
-        ImGui.TableHeadersRow();
-        ImGui.TableNextRow();
-        ImGui.TableSetColumnIndex(0);
-        DrawQuestObjectives();
-        ImGui.TableSetColumnIndex(1);
-        DrawQuestNodeEditor();
-        ImGui.EndTable();
     }
 
     private void PersistQuest()
@@ -1712,10 +1798,11 @@ public class EditorWindow : Window, IDisposable
                                     }
 
                                 }
-                                ImGui.EndTabItem();
                             }
+                            ImGui.EndTabItem();
                         }
                     }
+                    ImGui.EndTabBar();
                 }
             }
         }
