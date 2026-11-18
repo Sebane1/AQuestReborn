@@ -429,11 +429,9 @@ namespace AQuestReborn.CustomNpc
                                 {
                                     var interactiveNpc = _plugin.AQuestReborn.InteractiveNpcDictionary[_fullName];
                                     canEmote = interactiveNpc.IsStationary;
-                                    // Suppress emotes during paired animations — would break the coordinated pose
                                     if (interactiveNpc.AnimationLocked)
                                         canEmote = false;
                                 }
-                                // Suppress emotes while swimming/diving — land emotes look broken in water
                                 unsafe
                                 {
                                     if (FFXIVClientStructs.FFXIV.Client.Game.Conditions.Instance()->Swimming || FFXIVClientStructs.FFXIV.Client.Game.Conditions.Instance()->Diving)

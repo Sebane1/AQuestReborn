@@ -148,15 +148,12 @@ public class ObjectiveWindow : Window, IDisposable
                     switch (item.Item2.TypeOfQuestPoint)
                     {
                         case RoleplayingQuestCore.QuestObjective.QuestPointType.NPC:
-                            // TailNpc objectives: always use raw coordinates so the indicator
-                            // stays at the player's interaction point, not the NPC's head
                             if (item.Item2.TypeOfObjectiveTrigger == RoleplayingQuestCore.QuestObjective.ObjectiveTriggerType.TailNpc)
                             {
                                 Plugin.GameGui.WorldToScreen(item.Item2.Coordinates + new Vector3(0, 1.6f, 0), out screenPosition, out inView);
                             }
                             else
                             {
-                                // Use actual head bone position — marker goes slightly above
                                 var headWorldPos = GetNpcHeadPosition(item.Item2.Coordinates);
                                 Plugin.GameGui.WorldToScreen(headWorldPos + new Vector3(0, 0.3f, 0), out screenPosition, out inView);
                             }
@@ -269,8 +266,8 @@ public class ObjectiveWindow : Window, IDisposable
                         {
                             var drawList = ImGui.GetWindowDrawList();
                             uint color = (ellipseDist <= 1f && inRange) 
-                                ? ImGui.ColorConvertFloat4ToU32(new Vector4(0f, 1f, 0f, 0.4f)) // Green if hovered and in range
-                                : ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 0f, 0f, 0.4f)); // Red otherwise
+                                ? ImGui.ColorConvertFloat4ToU32(new Vector4(0f, 1f, 0f, 0.4f))
+                                : ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 0f, 0f, 0.4f));
                             var min = new Vector2(npcScreenPos.X - horizontalExtent, npcScreenPos.Y - verticalExtent);
                             var max = new Vector2(npcScreenPos.X + horizontalExtent, npcScreenPos.Y + verticalExtent);
                             drawList.AddRectFilled(min, max, color, 8f);
@@ -294,6 +291,8 @@ public class ObjectiveWindow : Window, IDisposable
                                 }
                                 if (npcData != null && Plugin.AQuestReborn.CustomNpcConversationManagers.ContainsKey(npcName))
                                 {
+                                    if (!Plugin.Configuration.EnableClickToChat) return;
+                                    if (!Plugin.Configuration.EnableConversationalProviders) return;
                                     Plugin.NpcChatWindow.OpenConversation(npcName,
                                         Plugin.AQuestReborn.CustomNpcConversationManagers[npcName],
                                         ThreadSafeGameObjectManager.GetThreadSafeGameObject(kvp.Value, false) as ICharacter, npcData);
@@ -415,7 +414,6 @@ public class ObjectiveWindow : Window, IDisposable
     private unsafe void DrawSpeechBubbles()
     {
         if (Plugin.SpeechBubbleManager == null) return;
-        // Don't draw during logout/loading — character pointers may be freed but non-null
         if (!Plugin.ClientState.IsLoggedIn) return;
         var bubbles = Plugin.SpeechBubbleManager.ActiveBubbles;
         if (bubbles.Count == 0) return;
@@ -438,8 +436,6 @@ public class ObjectiveWindow : Window, IDisposable
                 }
             }
             if (!found) continue;
-
-            // Get head bone position — must validate native pointers to avoid AV during logout
             Vector3 headPos;
             var gameObj = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)bubble.Character.Address;
             if (gameObj != null && gameObj->DrawObject != null)

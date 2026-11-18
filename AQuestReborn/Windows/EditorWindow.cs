@@ -187,7 +187,7 @@ public class EditorWindow : Window, IDisposable
     {
         if (_speechToTextManager != null)
         {
-            _speechToTextManager.RecordingFinished -= OnSttRecordingFinished;
+            _speechToTextManager.RecordingFinished -= OnSpeechToTextRecordingFinished;
             if (_speechToTextManager.IsRecording)
             {
                 try { _speechToTextManager.StopRecording(); } catch { }
@@ -2584,7 +2584,7 @@ public class EditorWindow : Window, IDisposable
             string basePath = Plugin.RoleplayingMediaManagerInstance?.BasePath
                 ?? Path.GetDirectoryName(Plugin.DalamudPluginInterface.AssemblyLocation.FullName) ?? "";
             _speechToTextManager = new SpeechToTextManager(basePath);
-            _speechToTextManager.RecordingFinished += OnSttRecordingFinished;
+            _speechToTextManager.RecordingFinished += OnSpeechToTextRecordingFinished;
         }
 
         if (Plugin.Configuration.UseFishAudioTranscription && !string.IsNullOrWhiteSpace(Plugin.Configuration.FishAudioApiKey))
@@ -2664,7 +2664,7 @@ public class EditorWindow : Window, IDisposable
             || trimmed.Equals("New Blurb", StringComparison.OrdinalIgnoreCase);
     }
 
-    private void OnSttRecordingFinished(object sender, string recognizedText)
+    private void OnSpeechToTextRecordingFinished(object sender, string recognizedText)
     {
         _isTranscribing = false;
         if (!string.IsNullOrWhiteSpace(recognizedText))

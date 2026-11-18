@@ -269,7 +269,7 @@ namespace AQuestReborn.CustomNpc
             }
             else
             {
-                context += $" They have never met {cleanName} before — this is their first encounter. They should introduce themselves.";
+                context += $" They have never met {cleanName} before, this is their first encounter. They should introduce themselves.";
             }
             return context;
         }
@@ -348,7 +348,7 @@ namespace AQuestReborn.CustomNpc
             else if (score >= 40)
             {
                 label = "Friendly";
-                description = "A comfortable familiarity — they know each other well enough to chat freely.";
+                description = "A comfortable familiarity, they know each other well enough to chat freely.";
             }
             else if (score >= 20)
             {
@@ -358,7 +358,7 @@ namespace AQuestReborn.CustomNpc
             else if (score > 0)
             {
                 label = "Stranger";
-                description = "They've barely met — still forming first impressions.";
+                description = "They've barely met, still forming first impressions.";
             }
             else
             {
@@ -525,7 +525,7 @@ namespace AQuestReborn.CustomNpc
             else if (rel.Score >= 60)
                 return moodOverride + $" {NpcName} considers {cleanName.Split(" ")[0]} a close friend. They are open, cheerful, and supportive.";
             else
-                return moodOverride; // Neutral — only mood override if any
+                return moodOverride;
         }
     }
 }

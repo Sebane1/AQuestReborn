@@ -176,7 +176,7 @@ namespace AQuestReborn.CustomNpc.GPTApi.Providers
 
                 if (statusCode == 400 || statusCode == 401 || statusCode == 403 || statusCode == 429)
                 {
-                    // Auth, bad request, or rate limit errors — don't retry (retrying 429 makes it worse)
+                    // Auth, bad request, or rate limit errors, don't retry (retrying 429 makes it worse)
                     return "";
                 }
 

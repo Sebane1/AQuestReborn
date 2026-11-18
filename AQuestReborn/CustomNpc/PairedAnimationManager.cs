@@ -353,16 +353,12 @@ namespace AQuestReborn
                             // Swap Penumbra mods, glamour, and emotes on the framework thread
                             _plugin.Framework.RunOnFrameworkThread(() =>
                             {
-                                // 1. Stop old emotes first — characters return to idle pose
                                 _plugin.AnamcoreManager.ForceStopEmote(npcCharacter.Address);
                                 if (player.Address != nint.Zero)
                                     _plugin.AnamcoreManager.ForceStopEmote(player.Address);
                             });
-
-                            // 2. Pause so the idle pose settles before mod swap
                             await Task.Delay(100);
 
-                            // 3. Swap mods and glamour
                             _plugin.Framework.RunOnFrameworkThread(() =>
                             {
                                 // Enable new Penumbra mods (old ones restored in final cleanup)
@@ -372,11 +368,7 @@ namespace AQuestReborn
                                 ApplyGlamourerDesign(switchConfig.NpcGlamourerDesign, npcCharacter);
                                 ApplyGlamourerDesign(switchConfig.PartnerGlamourerDesign, player);
                             });
-
-                            // 4. Let mods and glamour settle before starting new emotes
                             await Task.Delay(500);
-
-                            // 5. Start new emotes
                             _plugin.Framework.RunOnFrameworkThread(() =>
                             {
                                 ushort newNpcTimeline = ResolveEmoteToTimeline(switchConfig.NpcEmoteId);

@@ -16,7 +16,7 @@ namespace AQuestReborn.CustomNpc
         private readonly Random _random = new Random();
         private Stopwatch _ambientTimer = new Stopwatch();
         private int _nextAmbientIntervalMs;
-        private bool _ambientEnabled => _plugin.Configuration.EnableAmbientChatter;
+        private bool _ambientEnabled => _plugin.Configuration.EnableAmbientChatter && _plugin.Configuration.EnableConversationalProviders;
         private ConcurrentDictionary<string, string> _lastAmbientMessages = new ConcurrentDictionary<string, string>();
         private ConcurrentDictionary<string, DateTime> _lastNpcGreetings = new ConcurrentDictionary<string, DateTime>();
         private bool _isProcessingAmbient = false;
@@ -448,7 +448,7 @@ namespace AQuestReborn.CustomNpc
                         }
                         if (npcData == null) continue;
 
-                        string deathPrompt = "*has just collapsed and is unconscious/dying! React with shock, grief, or urgency. This is a dramatic moment — cry out their name, rush to help, or beg them to hold on. Keep it brief and emotional (1-2 sentences).*";
+                        string deathPrompt = "*has just collapsed and is unconscious/dying! React with shock, grief, or urgency. This is a dramatic moment, cry out their name, rush to help, or beg them to hold on. Keep it brief and emotional (1-2 sentences).*";
 
                         string response = await convManager.SendMessage(
                             sender, npcChar,

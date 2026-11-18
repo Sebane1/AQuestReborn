@@ -51,6 +51,7 @@ public class Configuration : IPluginConfiguration
     private bool _showCustomNameplates = true;
     private bool _enableAmbientChatter = true;
     private bool _enableClickToChat = true;
+    private bool _enableConversationalProviders = false;
 
     private string _aiProvider = "default";
     private string _openAiCompatibleUrl = "";
@@ -82,6 +83,7 @@ public class Configuration : IPluginConfiguration
     public bool ShowCustomNameplates { get => _showCustomNameplates; set => _showCustomNameplates = value; }
     public bool EnableAmbientChatter { get => _enableAmbientChatter; set => _enableAmbientChatter = value; }
     public bool EnableClickToChat { get => _enableClickToChat; set => _enableClickToChat = value; }
+    public bool EnableConversationalProviders { get => _enableConversationalProviders; set => _enableConversationalProviders = value; }
 
 
     public string AiProvider { get => _aiProvider; set => _aiProvider = value; }

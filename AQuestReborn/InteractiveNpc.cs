@@ -375,7 +375,7 @@ namespace AQuestReborn
             {
                 var chara = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)SafeCharacterAddress;
                 
-                // Always force the weapon — Glamourer may have already set a different model
+                // Always force the weapon, Glamourer may have already set a different model
                 _plugin.AnamcoreManager.SetWeapon(_character, mainHandModel, offHandModel);
                 
                 // Force the NPC's class job to match so combat stances and animations are natively correct!
@@ -662,7 +662,7 @@ namespace AQuestReborn
                                 }
                                 else if (!playerDead && _reactingToPlayerDeath)
                                 {
-                                    // Player revived — clear state
+                                    // Player revived
                                     _reactingToPlayerDeath = false;
                                     _deathEmotePlayed = false;
                                     _plugin.AnamcoreManager.ForceStopEmote(SafeCharacterAddress);
@@ -718,7 +718,7 @@ namespace AQuestReborn
                                     }
                                     else if (!_deathEmotePlayed)
                                     {
-                                        // Arrived at spread position — stop run, play grief emote
+                                        // Arrived at spread position, stop run, play grief emote
                                         _deathEmotePlayed = true;
                                         _plugin.AnamcoreManager.ForceStopEmote(SafeCharacterAddress);
                                         // Face the player body
@@ -1282,7 +1282,7 @@ namespace AQuestReborn
                         var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)SafeCharacterAddress;
                         if (_wasSwimming)
                         {
-                            // When swimming, only update XZ natively — the game engine fights our Y
+                            // When swimming, only update XZ natively, the game engine fights our Y
                             // due to the swim BaseOverride. Brio handles the actual rendered Y.
                             native->GameObject.SetPosition(position.X, native->GameObject.Position.Y, position.Z);
                         }
@@ -1408,7 +1408,7 @@ namespace AQuestReborn
             {
                 _followPlayer = true;
                 _speed = speed;
-                // NPC walks from current position — no snap
+                // NPC walks from current position
             }
         }
         public void StopFollowingPlayer()
@@ -1535,12 +1535,12 @@ namespace AQuestReborn
                 if (entered)
                 {
                     string target = !string.IsNullOrEmpty(LastCombatTarget) ? LastCombatTarget : "an enemy";
-                    contextLine = $"[Combat begins — {partyList} draw their weapons to fight {target}]";
+                    contextLine = $"[Combat begins, {partyList} draw their weapons to fight {target}]";
                 }
                 else
                 {
                     string enemies = CombatTargets.Count > 0 ? string.Join(", ", CombatTargets) : "the enemies";
-                    contextLine = $"[Combat ends — {partyList} sheathe their weapons after defeating {enemies}]";
+                    contextLine = $"[Combat ends, {partyList} sheathe their weapons after defeating {enemies}]";
 
                     if (CombatTargets.Count > 0)
                     {
@@ -1804,7 +1804,7 @@ namespace AQuestReborn
                 float lookElapsed = (float)_tailLookBackTimer.Elapsed.TotalSeconds;
                 if (lookElapsed >= _tailData.LookBackDuration)
                 {
-                    // Finished looking back — resume path
+                    // Finished looking back, resume path
                     _tailIsLookingBack = false;
                     _tailLookBackTimer.Reset();
                     _tailPlaybackTimer.Start(); // Resume path timer
@@ -1817,7 +1817,7 @@ namespace AQuestReborn
                 }
                 else
                 {
-                    // Currently looking back — check if player is detected in cone
+                    // Currently looking back, check if player is detected in cone
                     if (_plugin.ObjectTable.LocalPlayer != null)
                     {
                         var playerPos = _plugin.ObjectTable.LocalPlayer.Position;
@@ -1917,11 +1917,11 @@ namespace AQuestReborn
 
             if (waypointSpeed > 0.1f)
             {
-                // Moving — play walk or run animation
+                // Moving, play walk or run animation
                 if (waypointSpeed > 3.5f)
-                    _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, 22); // Run
+                    _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, 22);
                 else
-                    _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, 13); // Walk
+                    _plugin.AnamcoreManager.TriggerEmote(SafeCharacterAddress, 13);
             }
             else
             {
@@ -1954,7 +1954,7 @@ namespace AQuestReborn
             float distance = Vector3.Distance(npcPosition, playerPosition);
             if (distance > detectionRadius) return false;
 
-            // Cone check — angle between look direction and direction to player
+            // Cone check, angle between look direction and direction to player
             var toPlayer = Vector3.Normalize(playerPosition - npcPosition);
             var lookDir = Vector3.Normalize(lookDirection);
 

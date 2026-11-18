@@ -359,9 +359,19 @@ namespace AQuestReborn.CustomNpc
                 }
                 RefreshNPCItemNames();
 
-                if (ImGui.CollapsingHeader("Conversational Provider Settings"))
+                bool enableConversationalProviders = Plugin.Configuration.EnableConversationalProviders;
+                if (ImGui.Checkbox(Translator.LocalizeUI("Enable Conversational Provider Features"), ref enableConversationalProviders))
                 {
-                    DrawConversationalProviderSettings();
+                    Plugin.Configuration.EnableConversationalProviders = enableConversationalProviders;
+                    Plugin.Configuration.Save();
+                }
+
+                if (Plugin.Configuration.EnableConversationalProviders)
+                {
+                    if (ImGui.CollapsingHeader("Conversational Provider Settings"))
+                    {
+                        DrawConversationalProviderSettings();
+                    }
                 }
                 ImGui.Spacing();
 
@@ -1449,7 +1459,7 @@ namespace AQuestReborn.CustomNpc
                             ImGui.EndTabItem();
                         }
 
-                        if (ImGui.BeginTabItem(Translator.LocalizeUI("Memory")))
+                        if (Plugin.Configuration.EnableConversationalProviders && ImGui.BeginTabItem(Translator.LocalizeUI("Memory")))
                         {
                             var npc = _customNpcCharacters[_currentSelection];
 
@@ -1723,7 +1733,7 @@ namespace AQuestReborn.CustomNpc
                             ImGui.EndTabItem();
                         }
 
-                        if (ImGui.BeginTabItem(Translator.LocalizeUI("Debug Context")))
+                        if (Plugin.Configuration.EnableConversationalProviders && ImGui.BeginTabItem(Translator.LocalizeUI("Debug Context")))
                         {
                             var debugNpc = _customNpcCharacters[_currentSelection];
                             string playerName = _plugin?.ObjectTable?.LocalPlayer?.Name?.TextValue ?? "Adventurer";

@@ -508,7 +508,7 @@ public class DialogueRecorderWindow : Window, IDisposable
             byte[] wavData = _recordingStream?.ToArray() ?? Array.Empty<byte>();
             if (wavData.Length < 100)
             {
-                _statusMessage = "Recording was empty — not saved.";
+                _statusMessage = "Recording was empty, not saved.";
                 CleanupRecorder();
                 _state = RecorderState.Idle;
                 return;

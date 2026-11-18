@@ -228,14 +228,9 @@ namespace AQuestReborn
 
         private void ClientState_Logout(int type, int code)
         {
-            // Stop any pending appearance loads — the character objects they reference
-            // are about to be freed, and the async MCDF loader continuation will AV
-            // if it tries to access .Name on a destroyed GameObject.
             _waitingForAppearanceLoad = false;
             _appearanceApplicationQueue.Clear();
             _npcActorSpawnQueue.Clear();
-
-            // Invalidate all native character references — they point at freed memory now
             _customNpcCharacters.Clear();
             _customNpcDictionary.Clear();
             _hiddenNpcPool.Clear();
@@ -243,7 +238,6 @@ namespace AQuestReborn
             _spawnedNpcsDictionary.Clear();
             _interactiveNpcDictionary.Clear();
             _customNpcConversationManagers.Clear();
-            // Reset initialization flags so CheckInitialization re-runs on next login
             _isInitialized = false;
             _initializationStarted = false;
             CleanupCache();
@@ -294,7 +288,7 @@ namespace AQuestReborn
                 Plugin.PluginLog.Debug((int)chatMessage.LogKind + " " + chatMessage.Message);
                 var messageAsString = chatMessage.Message.ToString();
                 var chatType = (Dalamud.Game.Text.XivChatType)chatMessage.LogKind;
-                if (chatType == Dalamud.Game.Text.XivChatType.NPCDialogue || 
+                if (chatType == Dalamud.Game.Text.XivChatType.NPCDialogue ||
                     chatType == Dalamud.Game.Text.XivChatType.NPCDialogueAnnouncements)
                 {
                     lock (CustomNpc.NPCConversationManager.RecentGameDialogue)
@@ -413,7 +407,7 @@ namespace AQuestReborn
                     Plugin.ChatGui.Print("Body Animation Id: " + emote.ActionTimeline[0].Value.RowId);
                 }
 
-                // Emote mirroring for custom NPCs - only react to the local player
+                // Emote mirroring for custom NPCs, only react to the local player
                 if (character != null && Plugin.ObjectTable.LocalPlayer != null
                     && character.Address == Plugin.ObjectTable.LocalPlayer.Address)
                 {
@@ -421,7 +415,7 @@ namespace AQuestReborn
                     const ushort BECKON_EMOTE_ID = 8;
                     const ushort GOODBYE_EMOTE_ID = 15;
 
-                    // Only iterate custom NPCs - never quest NPCs
+                    // Only iterate custom NPCs, never quest NPCs
                     foreach (var kvp in _customNpcDictionary.ToList())
                     {
                         var npc = kvp.Value;
@@ -445,12 +439,13 @@ namespace AQuestReborn
                         }
                         else if (emoteId == GOODBYE_EMOTE_ID)
                         {
-                            // Goodbye: following NPCs stop and stay
+                            // Goodbye, following NPCs stop and stay
                             var pos = npc.CurrentPosition;
                             var rot = npc.CurrentRotation;
                             npc.StopFollowingPlayer();
                             npc.SetDefaults(pos, rot);
                             npc.SetDefaultRotation(rot);
+
                             // Save stay state
                             var npcConfig = Plugin.Configuration.CustomNpcCharacters?.Find(n => n.NpcName == kvp.Key);
                             if (npcConfig != null)
@@ -469,7 +464,7 @@ namespace AQuestReborn
                         }
                         else if (npc.IsStationary)
                         {
-                            // Sit emotes: NPCs settle into their idle sooner
+                            // Sit emotes, NPCs settle into their idle sooner
                             if (emoteId == 50 || emoteId == 52)
                             {
                                 npc.TriggerIdleSoon();
@@ -525,8 +520,6 @@ namespace AQuestReborn
                 _hasCheckedForPlayerAppearance = false;
                 GroundMap.SetTerritory(territory);
                 BreadcrumbMap.SetTerritory(territory);
-
-                // Stamp last-seen for all custom NPCs before cleanup (zone departure)
                 try
                 {
                     string playerName = Plugin.ObjectTable.LocalPlayer?.Name?.TextValue ?? "Adventurer";
@@ -536,14 +529,12 @@ namespace AQuestReborn
                         if (activeNpcNames.Contains(npcData.NpcName))
                         {
                             npcData.UpdateLastSeen(playerName);
-                            // Also stamp NPC-to-NPC last-seen for all co-present NPCs
                             foreach (var otherName in activeNpcNames)
                             {
                                 if (otherName != npcData.NpcName)
                                     npcData.UpdateLastSeen(otherName);
                             }
 
-                            // Staying NPCs are being left behind; following NPCs are travelling with you
                             if (npcData.IsStaying && !npcData.IsFollowingPlayer)
                                 npcData.WasLeftBehind = true;
                             else
@@ -576,8 +567,6 @@ namespace AQuestReborn
                 _customNpcDictionary.Clear();
                 _customNpcCharacters.Clear();
                 _customNpcConversationManagers.Clear();
-
-                // Also clear the hidden pool — Brio actors don't survive zone changes
                 foreach (var kvp in _hiddenNpcPool)
                 {
                     try { kvp.Value.Npc.Dispose(); } catch { }
@@ -593,16 +582,15 @@ namespace AQuestReborn
                         {
                             if (!Plugin.ClientState.IsLoggedIn)
                             {
-                                // Logged out while waiting — abort respawn
                                 return;
                             }
-                            unsafe 
-                            { 
-                                stillLoading = _actorSpawnService == null || 
-                                               Conditions.Instance()->BetweenAreas || 
+                            unsafe
+                            {
+                                stillLoading = _actorSpawnService == null ||
+                                               Conditions.Instance()->BetweenAreas ||
                                                Plugin.ClientState.IsGPosing ||
-                                               Plugin.ObjectTable.LocalPlayer == null || 
-                                               !Plugin.ObjectTable.LocalPlayer.IsValid(); 
+                                               Plugin.ObjectTable.LocalPlayer == null ||
+                                               !Plugin.ObjectTable.LocalPlayer.IsValid();
                             }
                             if (stillLoading) Thread.Sleep(1000);
                         }
@@ -644,7 +632,7 @@ namespace AQuestReborn
                     int memberCount = groupManager != null ? groupManager->MainGroup.MemberCount : 0;
                     if (memberCount > 1)
                     {
-                        Plugin.PluginLog.Information("[Custom NPC] Skipping respawn — in a duty with other players.");
+                        Plugin.PluginLog.Information("[Custom NPC] Skipping respawn, in a duty with other players.");
                         return;
                     }
                 }
@@ -869,178 +857,121 @@ namespace AQuestReborn
         private bool _needsPostGPoseRespawn = false;
         private unsafe void _framework_Update(IFramework framework)
         {
-            // Don't touch game objects during logout/loading/dispose — memory may be freed
             if (_disposed || !Plugin.ClientState.IsLoggedIn) return;
 
             if (Conditions.Instance()->BetweenAreas) return;
 
-            // Skip NPC visibility/redraw processing during GPose — game hides actors intentionally.
-            // The GPose cleanup block later in this method must still run.
             bool skipVisibilityChecks = Plugin.ClientState.IsGPosing;
 
             bool requestedRedraw = false;
             if (!skipVisibilityChecks)
-            foreach (var kvp in _customNpcCharacters)
-            {
-                if (kvp.Value != null && kvp.Value.Address != 0)
+                foreach (var kvp in _customNpcCharacters)
                 {
-                    var characterStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)kvp.Value.Address;
-                    characterStruct->NamePlateIconId = 71201; // Force Friendly NPC icon
-
-                    // --- Visibility protection ---
-                    // First: determine if camera is currently clipped into this NPC.
-                    // If so, the engine INTENTIONALLY hides the DrawObject — do NOT fight it.
-                    bool cameraIsClipped = false;
-                    bool cameraJustExited = false;
-                    try
+                    if (kvp.Value != null && kvp.Value.Address != 0)
                     {
-                        var camera = FFXIVClientStructs.FFXIV.Client.Game.Control.CameraManager.Instance()->GetActiveCamera();
-                        if (camera != null)
+                        var characterStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)kvp.Value.Address;
+                        characterStruct->NamePlateIconId = 71201;
+
+                        bool cameraIsClipped = false;
+                        bool cameraJustExited = false;
+                        try
                         {
-                            var cameraPos = camera->CameraBase.SceneCamera.Position;
-                            var npcPos = characterStruct->GameObject.Position;
-                            float camDist = Vector3.Distance(
-                                new Vector3(cameraPos.X, cameraPos.Y, cameraPos.Z),
-                                new Vector3(npcPos.X, npcPos.Y, npcPos.Z));
+                            var camera = FFXIVClientStructs.FFXIV.Client.Game.Control.CameraManager.Instance()->GetActiveCamera();
+                            if (camera != null)
+                            {
+                                var cameraPos = camera->CameraBase.SceneCamera.Position;
+                                var npcPos = characterStruct->GameObject.Position;
+                                float camDist = Vector3.Distance(
+                                    new Vector3(cameraPos.X, cameraPos.Y, cameraPos.Z),
+                                    new Vector3(npcPos.X, npcPos.Y, npcPos.Z));
 
-                            _npcCameraClipped.TryGetValue(kvp.Key, out bool wasClipped);
-                            cameraIsClipped = camDist < 3.5f;
-                            cameraJustExited = wasClipped && !cameraIsClipped;
-                            _npcCameraClipped[kvp.Key] = cameraIsClipped;
+                                _npcCameraClipped.TryGetValue(kvp.Key, out bool wasClipped);
+                                cameraIsClipped = camDist < 3.5f;
+                                cameraJustExited = wasClipped && !cameraIsClipped;
+                                _npcCameraClipped[kvp.Key] = cameraIsClipped;
+                            }
                         }
-                    }
-                    catch { }
+                        catch { }
 
-                    // Check if DrawObject is broken (regardless of camera distance)
-                    bool drawObjectMissing = characterStruct->GameObject.DrawObject == null;
-                    bool drawObjectHidden = !drawObjectMissing && (characterStruct->GameObject.DrawObject->Flags & 0x10) != 0;
-                    bool renderFlagsSet = !drawObjectMissing && characterStruct->GameObject.RenderFlags != 0;
-                    // Check if model mesh is gone — DrawObject exists but skeleton is null
-                    bool modelBroken = false;
-                    if (!drawObjectMissing)
-                    {
-                        var charBase = (FFXIVClientStructs.FFXIV.Client.Graphics.Scene.CharacterBase*)characterStruct->GameObject.DrawObject;
-                        modelBroken = charBase->Skeleton == null;
-                    }
+                        // Check if DrawObject is broken (regardless of camera distance)
+                        bool drawObjectMissing = characterStruct->GameObject.DrawObject == null;
+                        bool drawObjectHidden = !drawObjectMissing && (characterStruct->GameObject.DrawObject->Flags & 0x10) != 0;
+                        bool renderFlagsSet = !drawObjectMissing && characterStruct->GameObject.RenderFlags != 0;
 
-                    // Track DrawObject pointer changes
-                    if (!drawObjectMissing)
-                    {
-                        nint currentDrawPtr = (nint)characterStruct->GameObject.DrawObject;
-                        _npcLastDrawObjectPtr[kvp.Key] = currentDrawPtr;
-                    }
+                        // Check if model mesh is gone, DrawObject exists but skeleton is null
+                        bool modelBroken = false;
+                        if (!drawObjectMissing)
+                        {
+                            var charBase = (FFXIVClientStructs.FFXIV.Client.Graphics.Scene.CharacterBase*)characterStruct->GameObject.DrawObject;
+                            modelBroken = charBase->Skeleton == null;
+                        }
 
-                    if (drawObjectMissing || drawObjectHidden || renderFlagsSet || modelBroken)
-                    {
-                        /* 
-                        // Track when the DrawObject first became broken
-                        if (!_npcBrokenTimestamp.ContainsKey(kvp.Key))
-                            _npcBrokenTimestamp[kvp.Key] = Environment.TickCount64;
+                        // Track DrawObject pointer changes
+                        if (!drawObjectMissing)
+                        {
+                            nint currentDrawPtr = (nint)characterStruct->GameObject.DrawObject;
+                            _npcLastDrawObjectPtr[kvp.Key] = currentDrawPtr;
+                        }
 
-                        long brokenDuration = Environment.TickCount64 - _npcBrokenTimestamp[kvp.Key];
+                        if (drawObjectMissing || drawObjectHidden || renderFlagsSet || modelBroken)
+                        {
 
-                        // Respawn fallback — fires regardless of camera distance
-                        if (brokenDuration > 10000)
+                        }
+                        else
                         {
                             _npcBrokenTimestamp.Remove(kvp.Key);
-                            _npcRedrawCooldowns.Remove(kvp.Key);
-                            _npcLastDrawObjectPtr.Remove(kvp.Key);
-                            _npcCameraClipped.Remove(kvp.Key);
-                            var npcConfig = Plugin.Configuration.CustomNpcCharacters.FirstOrDefault(n => n.NpcName == kvp.Key);
-                            if (npcConfig != null)
-                            {
-                                Plugin.PluginLog.Warning($"[NPC Visibility] '{kvp.Key}' DrawObject broken for {brokenDuration}ms — destroying and respawning.");
-                                try { _actorSpawnService?.DestroyObject(kvp.Value); } catch { }
-                                _customNpcCharacters.Remove(kvp.Key);
-                                _customNpcDictionary.Remove(kvp.Key);
-                                _interactiveNpcDictionary.Remove(kvp.Key);
-                                FreshSpawnCustomNpc(npcConfig);
-                            }
-                            break; // Dictionary modified — exit foreach
                         }
 
-                        // Penumbra recovery — only when camera is NOT clipped (proven to work better)
-                        if (!cameraIsClipped)
+                        if (Plugin.ObjectTable.LocalPlayer != null)
                         {
-                            long now = Environment.TickCount64;
-                            _npcRedrawCooldowns.TryGetValue(kvp.Key, out long lastRedraw);
-                            if (now - lastRedraw > 3000)
+                            var npcPos = characterStruct->GameObject.Position;
+                            var playerPos = Plugin.ObjectTable.LocalPlayer.Position;
+                            float distToPlayer = Vector3.Distance(
+                                new Vector3(npcPos.X, npcPos.Y, npcPos.Z),
+                                playerPos);
+
+                            bool isFollowing = false;
+                            if (_interactiveNpcDictionary.TryGetValue(kvp.Key, out var checkNpc))
                             {
-                                _npcRedrawCooldowns[kvp.Key] = now;
+                                isFollowing = checkNpc.IsFollowingPlayer;
+                            }
 
-                                if (drawObjectHidden)
-                                    characterStruct->GameObject.DrawObject->Flags &= unchecked((byte)~0x10);
-                                if (renderFlagsSet)
-                                    characterStruct->GameObject.RenderFlags = 0;
-                                characterStruct->GameObject.EnableDraw();
+                            if (distToPlayer > 1000f && isFollowing)
+                            {
+                                // If player teleports within the same zone while in an event, forcefully break out of it
+                                if (Plugin.EventWindow.IsOpen || Plugin.ChoiceWindow.IsOpen)
+                                {
+                                    Plugin.PluginLog.Warning($"[NPC Visibility] Player teleported while in dialogue (Dist: {distToPlayer:F0}y). Forcibly closing dialogue without progression.");
+                                    Plugin.EventWindow.ForceCloseDialogue();
+                                    continue; // Skip teleporting the NPC
+                                }
 
+                                // NPC is way too far and should be following, position got corrupted, snap back to player
+                                Plugin.PluginLog.Warning($"[NPC Visibility] '{kvp.Key}' is {distToPlayer:F0}y from player, position corrupted, snapping back.");
+                                characterStruct->GameObject.SetPosition(playerPos.X, playerPos.Y, playerPos.Z);
+
+                                // Also update the InteractiveNpc's tracked position if it exists
+                                if (_interactiveNpcDictionary.TryGetValue(kvp.Key, out var interactiveNpc))
+                                {
+                                    interactiveNpc.TeleportTo(playerPos);
+                                }
+
+                                // Redraw after repositioning
                                 try
                                 {
                                     PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(kvp.Value.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
-                                    Plugin.PluginLog.Information($"[NPC Visibility] '{kvp.Key}' broken for {brokenDuration}ms — Penumbra redraw attempt.");
                                 }
                                 catch { }
                             }
                         }
-                        */
-                    }
-                    else
-                    {
-                        // Visible and healthy — reset broken timestamp
-                        _npcBrokenTimestamp.Remove(kvp.Key);
-                    }
 
-                    // Case 6: Position corruption — NPC yeeted far from player
-                    if (Plugin.ObjectTable.LocalPlayer != null)
-                    {
-                        var npcPos = characterStruct->GameObject.Position;
-                        var playerPos = Plugin.ObjectTable.LocalPlayer.Position;
-                        float distToPlayer = Vector3.Distance(
-                            new Vector3(npcPos.X, npcPos.Y, npcPos.Z),
-                            playerPos);
-
-                        bool isFollowing = false;
-                        if (_interactiveNpcDictionary.TryGetValue(kvp.Key, out var checkNpc))
+                        if (!_nameplateForcedActors.Contains(kvp.Value.Address))
                         {
-                            isFollowing = checkNpc.IsFollowingPlayer;
+                            _nameplateForcedActors.Add(kvp.Value.Address);
+                            requestedRedraw = true;
                         }
-
-                        if (distToPlayer > 1000f && isFollowing)
-                        {
-                            // If player teleports within the same zone while in an event, forcefully break out of it
-                            if (Plugin.EventWindow.IsOpen || Plugin.ChoiceWindow.IsOpen)
-                            {
-                                Plugin.PluginLog.Warning($"[NPC Visibility] Player teleported while in dialogue (Dist: {distToPlayer:F0}y). Forcibly closing dialogue without progression.");
-                                Plugin.EventWindow.ForceCloseDialogue();
-                                continue; // Skip teleporting the NPC
-                            }
-
-                            // NPC is way too far and should be following — position got corrupted, snap back to player
-                            Plugin.PluginLog.Warning($"[NPC Visibility] '{kvp.Key}' is {distToPlayer:F0}y from player — position corrupted, snapping back.");
-                            characterStruct->GameObject.SetPosition(playerPos.X, playerPos.Y, playerPos.Z);
-
-                            // Also update the InteractiveNpc's tracked position if it exists
-                            if (_interactiveNpcDictionary.TryGetValue(kvp.Key, out var interactiveNpc))
-                            {
-                                interactiveNpc.TeleportTo(playerPos);
-                            }
-
-                            // Redraw after repositioning
-                            try
-                            {
-                                PenumbraAndGlamourerIpcWrapper.Instance.RedrawObject.Invoke(kvp.Value.ObjectIndex, Penumbra.Api.Enums.RedrawType.Redraw);
-                            }
-                            catch { }
-                        }
-                    }
-                    
-                    if (!_nameplateForcedActors.Contains(kvp.Value.Address))
-                    {
-                        _nameplateForcedActors.Add(kvp.Value.Address);
-                        requestedRedraw = true;
                     }
                 }
-            }
             foreach (var questKvp in _spawnedNpcsDictionary)
             {
                 foreach (var npcKvp in questKvp.Value)
@@ -1049,8 +980,6 @@ namespace AQuestReborn
                     {
                         var characterStruct = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)npcKvp.Value.Address;
                         characterStruct->NamePlateIconId = 71201;
-                        // RenderFlags left to engine — clearing every frame causes DrawObject corruption
-                        
                         if (!_nameplateForcedActors.Contains(npcKvp.Value.Address))
                         {
                             _nameplateForcedActors.Add(npcKvp.Value.Address);
@@ -1070,10 +999,6 @@ namespace AQuestReborn
             {
                 _penumbraCollectionVerifyTimer.Restart();
 
-                // Dead actor detection has been removed. Brio handles actor lifecycles natively now, and culling/DrawObject 
-                // delays during zone load no longer trigger false-positive destruction and endless respawn cycles.
-
-                // --- Penumbra collection verification ---
                 try
                 {
                     if (Brio.Brio.TryGetService<Brio.IPC.PenumbraService>(out var penumbraService))
@@ -1100,7 +1025,7 @@ namespace AQuestReborn
                                 if (currentGuid != expectedGuid)
                                 {
                                     int retries = _penumbraRetryCounts.TryGetValue(kvp.Key, out int current) ? current : 0;
-                                    
+
                                     if (retries < 5)
                                     {
                                         _penumbraRetryCounts[kvp.Key] = retries + 1;
@@ -1178,7 +1103,7 @@ namespace AQuestReborn
                                 {
                                     ScheduleCutsceneNpcSpawn();
                                 }
-                                // Always process custom NPC spawn queues — they don't depend on the cutscene player
+
                                 CheckForCustomNpcCreationLoad();
 
                                 // Respawn custom NPCs after GPose exit
@@ -1240,7 +1165,6 @@ namespace AQuestReborn
                                 }
                                 _interactiveNpcDictionary?.Clear();
 
-                                // Clean up custom NPC references (don't use ClearNPCs — it spawns respawn threads)
                                 foreach (var kvp in _customNpcDictionary)
                                 {
                                     try { kvp.Value.Dispose(); } catch { }
@@ -1336,7 +1260,6 @@ namespace AQuestReborn
 
         private void TailObjective_OnPlayerDetected(object sender, InteractiveNpc.TailFailureEventArgs e)
         {
-            // Prevent spam — only trigger once per 3 seconds
             if (_tailDetectionCooldown.IsRunning && _tailDetectionCooldown.ElapsedMilliseconds < 3000) return;
             _tailDetectionCooldown.Restart();
 
@@ -1373,7 +1296,7 @@ namespace AQuestReborn
                     Plugin.Framework.RunOnFrameworkThread(() =>
                     {
                         npc.ResetTailToStart();
-                        
+
                         // Clear the active state so the player has to click the bubble again
                         if (_tailObjectiveRef != null)
                         {
@@ -1407,7 +1330,6 @@ namespace AQuestReborn
             }
             catch { }
 
-            // Stop tail playback — NPC idles at destination
             if (_interactiveNpcDictionary.ContainsKey(_tailObjectiveNpcName))
             {
                 var npc = _interactiveNpcDictionary[_tailObjectiveNpcName];
@@ -1417,9 +1339,6 @@ namespace AQuestReborn
             }
 
             _tailObjectiveActive = false;
-
-            // The objective now waits for the player to walk up and interact via NormalInteraction.
-            // The TailNpc trigger type in the quest manager already handles this via SubObjectivesComplete.
         }
 
         private void CleanupTailObjective()
@@ -1663,7 +1582,7 @@ namespace AQuestReborn
                 var npcData = spawnReq.Item1;
                 var position = spawnReq.Item2;
                 var rotation = spawnReq.Item3;
-                
+
                 try
                 {
                     ICharacter character = null;
@@ -2109,10 +2028,10 @@ namespace AQuestReborn
                                     {
                                         // If the objective was already completed, spawn the NPC at the end of the path.
                                         // Otherwise, spawn them at the start of the path.
-                                        var targetWp = item.Item2.ObjectiveCompleted 
-                                            ? item.Item2.TailData.Waypoints[item.Item2.TailData.Waypoints.Count - 1] 
+                                        var targetWp = item.Item2.ObjectiveCompleted
+                                            ? item.Item2.TailData.Waypoints[item.Item2.TailData.Waypoints.Count - 1]
                                             : item.Item2.TailData.Waypoints[0];
-                                            
+
                                         item.Item2.NpcStartingPositions[npcAppearance.Value.NpcName] = new Transform
                                         {
                                             Position = targetWp.Position,
@@ -2332,8 +2251,6 @@ namespace AQuestReborn
         public void Dispose()
         {
             _disposed = true;
-            // Stop all pending work FIRST — before any async operations or actor destruction.
-            // The MCDF loader's async continuations will AV if they run after actors are freed.
             _waitingForAppearanceLoad = false;
             _appearanceApplicationQueue.Clear();
             _npcActorSpawnQueue.Clear();
@@ -2381,7 +2298,6 @@ namespace AQuestReborn
             }
             catch { }
 
-            // MUST DESTROY ACTORS TO PREVENT CRASHES ON GAME CLOSE/RELOAD!
             try
             {
                 if (_actorSpawnService != null)
@@ -2474,8 +2390,8 @@ namespace AQuestReborn
 
         /// <summary>
         /// Records encounters for a newly spawned/returned NPC:
-        /// - The NPC meets the player
-        /// - The NPC meets all other currently summoned NPCs (bidirectional)
+        /// The NPC meets the player
+        /// The NPC meets all other currently summoned NPCs (bidirectional)
         /// </summary>
         public void RecordNpcEncounters(CustomNpcCharacter npcData)
         {
@@ -2484,11 +2400,8 @@ namespace AQuestReborn
                 // Record NPC meeting the player
                 string playerName = Plugin.ObjectTable.LocalPlayer?.Name?.TextValue ?? "Adventurer";
                 npcData.RecordEncounter(playerName);
-
-                // They're no longer left behind — the player has returned
                 npcData.WasLeftBehind = false;
 
-                // Start the "chatty first minute" phase for this NPC
                 Plugin.SpeechBubbleManager?.NotifyNpcSummoned(npcData.NpcName);
 
                 // Record this zone as a visited location
@@ -2567,7 +2480,7 @@ namespace AQuestReborn
                 }
             }
 
-            // Check hidden pool first — instant re-summon without Brio create/destroy
+            // Check hidden pool first, instant re-summon without Brio create/destroy
             if (_hiddenNpcPool.ContainsKey(npcData.NpcName))
             {
                 Plugin.Framework.RunOnFrameworkThread(() =>
@@ -2632,7 +2545,7 @@ namespace AQuestReborn
                         Plugin.PluginLog.Warning(ex, "Failed to re-summon pooled NPC, falling back to fresh spawn.");
                     }
 
-                    // Pooled actor was invalid — fall through to fresh create
+                    // Pooled actor was invalid, fall through to fresh create
                     FreshSpawnCustomNpc(npcData);
                 });
                 return true;
@@ -2686,7 +2599,7 @@ namespace AQuestReborn
                     try { existingNpc.Dispose(); } catch { }
                 }
             }
-            
+
             _customNpcPositionSpawnQueue.Enqueue(new Tuple<CustomNpcCharacter, Vector3, Vector3>(npcData, position, rotation));
         }
 
@@ -2775,11 +2688,11 @@ namespace AQuestReborn
                 return;
             }
 
-            // Check for paired animation commands BEFORE sending to AI chat
+            // Check for paired animation commands before sending to conversational providers chat
             if (_pairedAnimationManager != null &&
                 _pairedAnimationManager.TryTriggerPairedAnimation(message, sender))
             {
-                // Show the player's message bubble, then return — the animation handles the response
+                // Show the player's message bubble, then return. The animation handles the response
                 Plugin.SpeechBubbleManager.ShowBubble(sender, sender.Name.TextValue, message);
                 return;
             }
@@ -2829,7 +2742,7 @@ namespace AQuestReborn
                 // If relationship is completely broken, NPC refuses to engage
                 if (npcData.ShouldRefuseConversation(sender.Name.TextValue))
                 {
-                    var refusalNpc = npcCharacter; // Capture for lambda
+                    var refusalNpc = npcCharacter;
                     var refusalName = npcData.NpcName;
                     Plugin.Framework.RunOnFrameworkThread(() =>
                     {
@@ -2860,11 +2773,11 @@ namespace AQuestReborn
                         if (!string.IsNullOrEmpty(response))
                         {
                             string cleanResponse = response.Trim();
-                            
-                            // Fix LLM hallucinating chat logs
+
+                            // Fix conversational provider hallucinating chat logs
                             string aiNamePrefix = npcData.NpcName.Split(" ")[0] + ":";
                             string senderNamePrefix = sender.Name.TextValue.Split(" ")[0] + ":";
-                            
+
                             if (cleanResponse.StartsWith(senderNamePrefix))
                             {
                                 int aiIndex = cleanResponse.IndexOf(aiNamePrefix);
@@ -2895,7 +2808,7 @@ namespace AQuestReborn
                                 if (glamourMatch.Success && _interactiveNpcDictionary.ContainsKey(npcData.NpcName))
                                 {
                                     string requestedOutfit = glamourMatch.Groups[1].Value.Trim().ToLower();
-                                    
+
                                     // Remove the command from the final output
                                     cleanResponse = System.Text.RegularExpressions.Regex.Replace(cleanResponse, @"\[glamour:.*?\]", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
 
@@ -2912,7 +2825,7 @@ namespace AQuestReborn
                                 }
                                 else if (_interactiveNpcDictionary.ContainsKey(npcData.NpcName))
                                 {
-                                    // Fallback: If AI didn't use the explicit command, parse conversational agreement
+                                    // If conversational provider didn't use the explicit command, parse conversational agreement
                                     string userMessageLower = message.ToLower();
                                     if (userMessageLower.Contains("change") || userMessageLower.Contains("wear") || userMessageLower.Contains("put on") || userMessageLower.Contains("outfit") || userMessageLower.Contains("clothes"))
                                     {
@@ -2924,7 +2837,7 @@ namespace AQuestReborn
                                                 string aiResponseLower = cleanResponse.ToLower();
                                                 bool agreed = aiResponseLower.Contains("sure") || aiResponseLower.Contains("okay") || aiResponseLower.Contains("of course") || aiResponseLower.Contains("right away") || aiResponseLower.Contains("*nods*") || aiResponseLower.Contains("*smiles*") || aiResponseLower.Contains("i will") || aiResponseLower.Contains("alright") || aiResponseLower.Contains("certainly") || aiResponseLower.Contains("give me a moment") || aiResponseLower.Contains("changing");
                                                 bool disagreed = aiResponseLower.Contains("no ") || aiResponseLower.Contains("don't") || aiResponseLower.Contains("won't") || aiResponseLower.Contains("*shakes head*") || aiResponseLower.Contains("cannot") || aiResponseLower.Contains("can't") || aiResponseLower.Contains("not right now");
-                                                
+
                                                 if (agreed && !disagreed)
                                                 {
                                                     var customNpc = _interactiveNpcDictionary[npcData.NpcName];
@@ -2941,7 +2854,7 @@ namespace AQuestReborn
                                 Plugin.PluginLog.Warning("Failed to apply glamour command: " + ex.Message);
                             }
 
-                            // Trigger emotes if the LLM generated an action
+                            // Trigger emotes if the conversational provider generated an action
                             try
                             {
                                 var emoteMatches = System.Text.RegularExpressions.Regex.Matches(cleanResponse, @"\*(.*?)\*");
@@ -2951,7 +2864,7 @@ namespace AQuestReborn
                                     string actionText = emoteMatches[0].Groups[1].Value.ToLower();
                                     var emoteSheet = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>();
                                     var emote = emoteSheet.FirstOrDefault(e => !string.IsNullOrEmpty(e.Name.ToString()) && actionText.Contains(e.Name.ToString().ToLower()));
-                                    
+
                                     if (emote.RowId == 0)
                                     {
                                         if (actionText.Contains("smiles") || actionText.Contains("grins")) emote = emoteSheet.GetRow(50);
@@ -3015,7 +2928,7 @@ namespace AQuestReborn
                                 cleanResponse = cleanResponse.TrimEnd('"').Trim();
                             }
 
-                            // Anti-parroting filter: If the AI just echoed the user's message, reject it.
+                            // If the AI just echoed the user's message, reject it.
                             string cleanUserMsg = message.Trim().ToLower();
                             string finalCleanResp = cleanResponse.Trim().ToLower();
                             if (finalCleanResp == cleanUserMsg || (cleanUserMsg.Length > 15 && finalCleanResp.Contains(cleanUserMsg)))
@@ -3194,11 +3107,11 @@ namespace AQuestReborn
         {
             if (Conditions.Instance()->InCombat) return;
             if (!Plugin.Configuration.EnableClickToChat) return;
-            if (Plugin.ObjectTable.LocalPlayer != null && Plugin.ObjectTable.LocalPlayer.CurrentHp == 0) return; // Can't talk while dead
+            if (!Plugin.Configuration.EnableConversationalProviders) return;
+            if (Plugin.ObjectTable.LocalPlayer != null && Plugin.ObjectTable.LocalPlayer.CurrentHp == 0) return;
             if (Plugin.NpcChatWindow.IsConversationActive) return;
             if (Plugin.EventWindow.IsOpen || Plugin.ChoiceWindow.IsOpen) return;
 
-            // Don't consume screen clicks when quest NPCs are active — let QuestInputCheck handle those
             bool useScreenClick = _screenButtonClicked && !_cutsceneNpcSpawned;
 
             // Check for confirm input (gamepad south or screen click)
@@ -3208,11 +3121,11 @@ namespace AQuestReborn
             if (confirmPressed && !_npcChatConfirmHeld)
             {
                 _npcChatConfirmHeld = true;
-                if (useScreenClick) _screenButtonClicked = false; // Consume the click so it doesn't persist
-                
+                if (useScreenClick) _screenButtonClicked = false;
+
                 // Get the player's current target
                 var target = Plugin.ObjectTable.LocalPlayer?.TargetObject;
-                
+
                 // Custom NPCs cannot be targeted. If the player has a target, let FFXIV handle it natively.
                 if (target != null) return;
 
@@ -3225,28 +3138,28 @@ namespace AQuestReborn
                 {
                     foreach (var kvp in _customNpcCharacters)
                     {
-                            if (kvp.Value == null || kvp.Value.Address == 0) continue;
-                            var pos = kvp.Value.Position;
-                            var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)kvp.Value.Address;
-                            if (native != null) pos = native->GameObject.Position;
+                        if (kvp.Value == null || kvp.Value.Address == 0) continue;
+                        var pos = kvp.Value.Position;
+                        var native = (FFXIVClientStructs.FFXIV.Client.Game.Character.Character*)kvp.Value.Address;
+                        if (native != null) pos = native->GameObject.Position;
 
-                            var dist = System.Numerics.Vector3.Distance(player.Position, pos);
-                            if (dist < 3.5f)
+                        var dist = System.Numerics.Vector3.Distance(player.Position, pos);
+                        if (dist < 3.5f)
+                        {
+                            var toNpc = new System.Numerics.Vector2(pos.X - player.Position.X, pos.Z - player.Position.Z);
+                            toNpc = System.Numerics.Vector2.Normalize(toNpc);
+                            var playerForward = new System.Numerics.Vector2((float)Math.Sin(player.Rotation), (float)Math.Cos(player.Rotation));
+                            float dot = System.Numerics.Vector2.Dot(toNpc, playerForward);
+
+                            if (dot > 0.5f)
                             {
-                                var toNpc = new System.Numerics.Vector2(pos.X - player.Position.X, pos.Z - player.Position.Z);
-                                toNpc = System.Numerics.Vector2.Normalize(toNpc);
-                                var playerForward = new System.Numerics.Vector2((float)Math.Sin(player.Rotation), (float)Math.Cos(player.Rotation));
-                                float dot = System.Numerics.Vector2.Dot(toNpc, playerForward);
-                                
-                                if (dot > 0.5f)
-                                {
-                                    interactionName = kvp.Key;
-                                    interactionCharacter = kvp.Value;
-                                    break;
-                                }
+                                interactionName = kvp.Key;
+                                interactionCharacter = kvp.Value;
+                                break;
                             }
                         }
                     }
+                }
 
                 if (interactionName == null) return;
 
