@@ -315,33 +315,18 @@ namespace AQuestReborn
                         }
                     }
                 }
-
-                switch ((int)chatMessage.LogKind)
+                int chatLogKind = (int)chatMessage.LogKind;
+                int baseChatType = chatLogKind & 0x7F;
+                if (chatLogKind == 58 || baseChatType == 58 || chatLogKind == 2874 || chatLogKind == 4922)
                 {
-                    case 2874:
-                        Task.Run(() =>
+                    Task.Run(() =>
+                    {
+                        while (Conditions.Instance()->InCombat)
                         {
-                            while (Conditions.Instance()->InCombat)
-                            {
-                                Thread.Sleep(1000);
-                            }
-                            Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.KillEnemy, messageAsString, true, GetMonsterIndex(messageAsString));
-                        });
-                        break;
-                    case 4922:
-                        if (Conditions.Instance()->BoundByDuty)
-                        {
-                            Task.Run(() =>
-                            {
-                                while (Conditions.Instance()->InCombat)
-                                {
-                                    Thread.Sleep(1000);
-                                }
-                                Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.KillEnemy, messageAsString, true, GetMonsterIndex(messageAsString));
-                            });
+                            Thread.Sleep(1000);
                         }
-                        break;
-
+                        Plugin.RoleplayingQuestManager.AttemptProgressingQuestObjective(QuestObjective.ObjectiveTriggerType.KillEnemy, messageAsString, true, GetMonsterIndex(messageAsString));
+                    });
                 }
             }
             catch (Exception e)

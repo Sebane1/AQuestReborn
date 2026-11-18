@@ -53,6 +53,7 @@ public class NpcChatWindow : Window, IDisposable
     // Farewell auto-close
     private bool _farewellDetected;
     private Stopwatch _farewellTimer = new Stopwatch();
+    private bool _hasUserInteracted = false;
 
     // Dialogue box visuals
     private List<byte[]> _dialogueBoxStyles = new List<byte[]>();
@@ -87,6 +88,7 @@ public class NpcChatWindow : Window, IDisposable
         _typewriterActive = false;
         _farewellDetected = false;
         _farewellTimer.Reset();
+        _hasUserInteracted = false;
         _displayText = "";
         _focusInput = true;
         _plugin.Movement.EnableMovementLock();
@@ -178,13 +180,18 @@ public class NpcChatWindow : Window, IDisposable
                 _typewriterActive = false;
                 _focusInput = true;
 
-                // Check for farewell keywords
-                string lower = _typewriterTarget.ToLower();
-                if (lower.Contains("goodbye") || lower.Contains("farewell") || lower.Contains("see you")
-                    || lower.Contains("take care") || lower.Contains("bye") || lower.Contains("until next time"))
+                // Check for farewell keywords (only after user has interacted)
+                if (_hasUserInteracted)
                 {
-                    _farewellDetected = true;
-                    _farewellTimer.Restart();
+                    string lower = _typewriterTarget.ToLower();
+                    if (lower.Contains("goodbye") || lower.Contains("farewell")
+                        || lower.Contains("see you later") || lower.Contains("see you soon")
+                        || lower.Contains("until next time")
+                        || System.Text.RegularExpressions.Regex.IsMatch(lower, @"\bbye\b"))
+                    {
+                        _farewellDetected = true;
+                        _farewellTimer.Restart();
+                    }
                 }
             }
         }
@@ -330,6 +337,7 @@ public class NpcChatWindow : Window, IDisposable
             if ((submitted || sendClicked) && !string.IsNullOrWhiteSpace(_inputText))
             {
                 string trimmedText = _inputText.Trim();
+                _hasUserInteracted = true;
                 SendMessage(trimmedText);
                 _inputText = "";
             }

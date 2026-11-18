@@ -676,26 +676,34 @@ public class EventWindow : Window, IDisposable
                         {
                             if ((ushort)item.BodyExpression > 0)
                             {
-                                if (!item.LoopAnimation)
+                                ushort bodyTimelineId = ResolveEmoteToTimeline((ushort)item.BodyExpression);
+                                if (bodyTimelineId > 0)
                                 {
-                                    Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.AQuestReborn.SpawnedNPCs[_questDisplayObject.RoleplayingQuest.QuestId][item.NpcName], (ushort)item.BodyExpression);
-                                }
-                                else
-                                {
-                                    Plugin.AnamcoreManager.TriggerEmote(Plugin.AQuestReborn.SpawnedNPCs[_questDisplayObject.RoleplayingQuest.QuestId][item.NpcName].Address, (ushort)item.BodyExpression);
+                                    if (!item.LoopAnimation)
+                                    {
+                                        Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.AQuestReborn.SpawnedNPCs[_questDisplayObject.RoleplayingQuest.QuestId][item.NpcName], bodyTimelineId);
+                                    }
+                                    else
+                                    {
+                                        Plugin.AnamcoreManager.TriggerEmote(Plugin.AQuestReborn.SpawnedNPCs[_questDisplayObject.RoleplayingQuest.QuestId][item.NpcName].Address, bodyTimelineId);
+                                    }
                                 }
                             }
                         }
                     }
                     if ((ushort)item.BodyExpressionPlayer > 0)
                     {
-                        if (!item.LoopAnimationPlayer)
+                        ushort playerTimelineId = ResolveEmoteToTimeline((ushort)item.BodyExpressionPlayer);
+                        if (playerTimelineId > 0)
                         {
-                            Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.ObjectTable.LocalPlayer, (ushort)item.BodyExpressionPlayer);
-                        }
-                        else
-                        {
-                            Plugin.AnamcoreManager.TriggerEmote(Plugin.ObjectTable.LocalPlayer.Address, (ushort)item.BodyExpressionPlayer);
+                            if (!item.LoopAnimationPlayer)
+                            {
+                                Plugin.AnamcoreManager.TriggerEmoteTimed(Plugin.ObjectTable.LocalPlayer, playerTimelineId);
+                            }
+                            else
+                            {
+                                Plugin.AnamcoreManager.TriggerEmote(Plugin.ObjectTable.LocalPlayer.Address, playerTimelineId);
+                            }
                         }
                     }
                 }
@@ -1121,5 +1129,25 @@ public class EventWindow : Window, IDisposable
             
             // Do not invoke QuestEvents to prevent forward progression.
         }
+    }
+
+    /// <summary>
+    /// Resolves an Emote sheet RowId to its corresponding ActionTimeline RowId.
+    /// TriggerEmote / TriggerEmoteTimed require the ActionTimeline ID, not the Emote RowId.
+    /// Returns 0 if the emote cannot be resolved.
+    /// </summary>
+    private ushort ResolveEmoteToTimeline(ushort emoteRowId)
+    {
+        if (emoteRowId == 0) return 0;
+        try
+        {
+            var emoteSheet = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>();
+            if (emoteSheet == null) return 0;
+            var emote = emoteSheet.GetRow(emoteRowId);
+            if (emote.RowId > 0 && emote.ActionTimeline[0].Value.RowId > 0)
+                return (ushort)emote.ActionTimeline[0].Value.RowId;
+        }
+        catch { }
+        return 0;
     }
 }

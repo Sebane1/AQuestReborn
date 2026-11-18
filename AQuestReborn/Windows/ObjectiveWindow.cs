@@ -213,7 +213,6 @@ public class ObjectiveWindow : Window, IDisposable
                 }
             }
 
-            // Custom NPC click-to-chat detection
             bool playerDead = Plugin.ObjectTable.LocalPlayer != null && Plugin.ObjectTable.LocalPlayer.CurrentHp == 0;
             if (!Plugin.NpcChatWindow.IsConversationActive && Plugin.AQuestReborn != null && !inCombat && !playerDead)
             {
@@ -228,7 +227,6 @@ public class ObjectiveWindow : Window, IDisposable
                         if (native != null) pos = native->GameObject.Position;
                     }
 
-                    // Project feet and top of character to get full vertical coverage
                     Vector2 feetScreenPos, topScreenPos;
                     bool feetInView, topInView;
                     Plugin.GameGui.WorldToScreen(pos, out feetScreenPos, out feetInView);
@@ -244,7 +242,7 @@ public class ObjectiveWindow : Window, IDisposable
                         float horizontalExtent = MathF.Max(verticalExtent * 0.4f, 30f); // Narrower than tall
 
                         var mousePos = ImGui.GetIO().MousePos;
-                        // Elliptical hit test: check if mouse is inside the character-shaped zone
+                        // Elliptical hit test, check if mouse is inside the character-shaped zone
                         float dx = (mousePos.X - npcScreenPos.X) / horizontalExtent;
                         float dy = (mousePos.Y - npcScreenPos.Y) / verticalExtent;
                         float ellipseDist = dx * dx + dy * dy;
