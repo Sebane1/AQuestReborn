@@ -2,8 +2,10 @@ using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
 using PenumbraAndGlamourerHelpers;
 using RoleplayingQuestCore;
+using RoleplayingVoiceCore;
 using SamplePlugin;
 using System;
 using System.Collections.Generic;
@@ -68,6 +70,12 @@ namespace AQuestReborn.CustomNpc
         private string _clearMemoryConfirmText = "";
         private bool _showDeleteNpcConfirm = false;
         private string _deleteNpcConfirmText = "";
+
+        // Speech to text
+        private SpeechToTextManager _speechToTextManager;
+        private bool _speechToTextTranscribing = false;
+        private enum SpeechToTextTarget { None, Greeting, Personality, Hobbies }
+        private SpeechToTextTarget _speechToTextTarget = SpeechToTextTarget.None;
 
         public Plugin Plugin { get => _plugin; set => _plugin = value; }
         public List<CustomNpcCharacter> CustomNpcCharacters { get => _customNpcCharacters; set => _customNpcCharacters = value; }
@@ -457,7 +465,7 @@ namespace AQuestReborn.CustomNpc
             {
                 ImGui.Dummy(new Vector2(0, 5));
                 ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.3f, 0.3f, 1f));
-                ImGui.TextWrapped("\u26a0  WARNING: This will permanently delete \"" + deleteNpcName + "\" and ALL their data.");
+                ImGui.TextWrapped("WARNING: This will permanently delete \"" + deleteNpcName + "\" and ALL their data.");
                 ImGui.PopStyleColor();
                 ImGui.Dummy(new Vector2(0, 3));
                 ImGui.TextWrapped("This includes:\n\u2022 All configuration and appearance settings\n\u2022 Relationships, memories, and conversation history\n\u2022 Travel history, sentiment, and mood data");
@@ -842,8 +850,23 @@ namespace AQuestReborn.CustomNpc
                             {
                                 if (ImGui.BeginTabItem(Translator.LocalizeUI("Personality")))
                                 {
+
                                     ImGui.LabelText("##greetingLabel", Translator.LocalizeUI("NPC Greeting"));
-                                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+
+                                    {
+                                        bool recThis = _speechToTextManager != null && _speechToTextManager.IsRecording && _speechToTextTarget == SpeechToTextTarget.Greeting;
+                                        if (recThis) { ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.85f, 0.2f, 0.2f, 1f)); ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.95f, 0.3f, 0.3f, 1f)); }
+                                        ImGui.PushFont(UiBuilder.IconFont);
+                                        if (ImGui.Button(FontAwesomeIcon.Microphone.ToIconString() + "##sttGreeting", new Vector2(30, 0)))
+                                            ToggleSpeechToText(SpeechToTextTarget.Greeting);
+                                        ImGui.PopFont();
+                                        if (recThis) ImGui.PopStyleColor(2);
+                                        if (ImGui.IsItemHovered()) ImGui.SetTooltip(recThis ? "Recording... Click to stop" : (_speechToTextTranscribing && _speechToTextTarget == SpeechToTextTarget.Greeting ? "Transcribing..." : "Speak to fill Greeting"));
+                                    }
+                                    ImGui.SameLine();
+
+                                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth() - 38);
+
                                     ImGui.InputText("##Greeting", ref _customNpcCharacters[_currentSelection].NPCGreeting, 500);
                                     if (ImGui.IsItemDeactivatedAfterEdit())
                                     {
@@ -851,6 +874,17 @@ namespace AQuestReborn.CustomNpc
                                     }
 
                                     ImGui.LabelText("##personalityFieldLabel", Translator.LocalizeUI("NPC Personality"));
+                                    {
+                                        bool recThis = _speechToTextManager != null && _speechToTextManager.IsRecording && _speechToTextTarget == SpeechToTextTarget.Personality;
+                                        if (recThis) { ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.85f, 0.2f, 0.2f, 1f)); ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.95f, 0.3f, 0.3f, 1f)); }
+                                        ImGui.PushFont(UiBuilder.IconFont);
+                                        if (ImGui.Button(FontAwesomeIcon.Microphone.ToIconString() + "##sttPersonality", new Vector2(30, 0)))
+                                            ToggleSpeechToText(SpeechToTextTarget.Personality);
+                                        ImGui.PopFont();
+                                        if (recThis) ImGui.PopStyleColor(2);
+                                        if (ImGui.IsItemHovered()) ImGui.SetTooltip(recThis ? "Recording... Click to stop" : (_speechToTextTranscribing && _speechToTextTarget == SpeechToTextTarget.Personality ? "Transcribing..." : "Speak to fill Personality"));
+                                    }
+
                                     ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
                                     ImGui.InputTextMultiline("##NpcPersonality", ref _customNpcCharacters[_currentSelection].NpcPersonality, 2000, new Vector2(ImGui.GetColumnWidth(), 100));
                                     if (ImGui.IsItemDeactivatedAfterEdit())
@@ -858,17 +892,33 @@ namespace AQuestReborn.CustomNpc
                                         SaveNPCCharacters();
                                     }
 
+
                                     ImGui.LabelText("##npcHobbiesLabel", Translator.LocalizeUI("Hobbies"));
-                                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
+
+                                    {
+                                        bool recThis = _speechToTextManager != null && _speechToTextManager.IsRecording && _speechToTextTarget == SpeechToTextTarget.Hobbies;
+                                        if (recThis) { ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.85f, 0.2f, 0.2f, 1f)); ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.95f, 0.3f, 0.3f, 1f)); }
+                                        ImGui.PushFont(UiBuilder.IconFont);
+                                        if (ImGui.Button(FontAwesomeIcon.Microphone.ToIconString() + "##sttHobbies", new Vector2(30, 0)))
+                                            ToggleSpeechToText(SpeechToTextTarget.Hobbies);
+                                        ImGui.PopFont();
+                                        if (recThis) ImGui.PopStyleColor(2);
+                                        if (ImGui.IsItemHovered()) ImGui.SetTooltip(recThis ? "Recording... Click to stop" : (_speechToTextTranscribing && _speechToTextTarget == SpeechToTextTarget.Hobbies ? "Transcribing..." : "Speak to fill Hobbies"));
+                                    }
+
+                                    ImGui.SameLine();
+
+                                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth() - 38);
                                     ImGui.InputText("##NpcHobbies", ref _customNpcCharacters[_currentSelection].NpcHobbies, 500);
                                     if (ImGui.IsItemDeactivatedAfterEdit())
                                     {
                                         SaveNPCCharacters();
                                     }
 
+
                                     ImGui.Dummy(new Vector2(0, 15));
 
-                                    // Only show re-roll button when using the default built-in AI
+                                    // Only show re-roll button when using the default built-in conversational provider
                                     string currentProvider = _plugin?.Configuration?.AiProvider ?? "default";
                                     if (currentProvider == "default" || string.IsNullOrEmpty(currentProvider))
                                     {
@@ -2266,6 +2316,78 @@ namespace AQuestReborn.CustomNpc
             {
                 _plugin?.PluginLog?.Warning(e, "Failed to load NPC memory files for display.");
             }
+        }
+
+        private void EnsureSpeechToTextManager()
+        {
+            if (_speechToTextManager == null)
+            {
+                string basePath = _plugin?.RoleplayingMediaManagerInstance?.BasePath
+                    ?? Path.GetDirectoryName(_plugin?.DalamudPluginInterface?.AssemblyLocation?.FullName) ?? "";
+                _speechToTextManager = new SpeechToTextManager(basePath);
+                _speechToTextManager.RecordingFinished += OnSpeechToTextFinished;
+            }
+
+            if (_plugin?.Configuration?.UseFishAudioTranscription == true && !string.IsNullOrWhiteSpace(_plugin?.Configuration?.FishAudioApiKey))
+            {
+                _speechToTextManager.Backend = SpeechToTextBackend.FishAudio;
+                _speechToTextManager.FishAudioApiKey = _plugin.Configuration.FishAudioApiKey;
+            }
+            else
+            {
+                _speechToTextManager.Backend = SpeechToTextBackend.Whisper;
+                _speechToTextManager.FishAudioApiKey = _plugin?.Configuration?.FishAudioApiKey ?? "";
+            }
+        }
+
+        private void ToggleSpeechToText(SpeechToTextTarget target)
+        {
+            EnsureSpeechToTextManager();
+
+            if (_speechToTextManager.IsRecording)
+            {
+                _speechToTextTranscribing = true;
+                _speechToTextManager.StopRecording();
+            }
+            else
+            {
+                _speechToTextTarget = target;
+                _speechToTextTranscribing = false;
+                try
+                {
+                    _speechToTextManager.RecordAudio();
+                }
+                catch (Exception ex)
+                {
+                    _plugin?.PluginLog?.Warning(ex, "Failed to start Speech To Text recording in CustomNpcWindow.");
+                    _speechToTextTranscribing = false;
+                    _speechToTextTarget = SpeechToTextTarget.None;
+                }
+            }
+        }
+
+        private void OnSpeechToTextFinished(object sender, string recognizedText)
+        {
+            _speechToTextTranscribing = false;
+            if (!string.IsNullOrWhiteSpace(recognizedText) && _currentSelection >= 0 && _currentSelection < _customNpcCharacters.Count)
+            {
+                string clean = recognizedText.Trim();
+                var npc = _customNpcCharacters[_currentSelection];
+                switch (_speechToTextTarget)
+                {
+                    case SpeechToTextTarget.Greeting:
+                        npc.NPCGreeting = string.IsNullOrWhiteSpace(npc.NPCGreeting) ? clean : npc.NPCGreeting + " " + clean;
+                        break;
+                    case SpeechToTextTarget.Personality:
+                        npc.NpcPersonality = string.IsNullOrWhiteSpace(npc.NpcPersonality) ? clean : npc.NpcPersonality + " " + clean;
+                        break;
+                    case SpeechToTextTarget.Hobbies:
+                        npc.NpcHobbies = string.IsNullOrWhiteSpace(npc.NpcHobbies) ? clean : npc.NpcHobbies + " " + clean;
+                        break;
+                }
+                SaveNPCCharacters();
+            }
+            _speechToTextTarget = SpeechToTextTarget.None;
         }
     }
 }

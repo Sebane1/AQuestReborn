@@ -1,4 +1,7 @@
 using Dalamud.Game.ClientState.Objects.Types;
+using GameObjectHelper.ThreadSafeDalamudObjectTable;
+using RoleplayingVoiceCore;
+using RoleplayingVoiceDalamudWrapper;
 using SamplePlugin;
 using System;
 using System.Collections.Concurrent;
@@ -256,6 +259,8 @@ namespace AQuestReborn.CustomNpc
                     _plugin.PluginLog.Information($"[SpeechBubble] Showing bubble: '{clean}'");
                     ShowBubble(npcChar, npcName, clean);
                 });
+
+                _ = PlayNpcTtsAsync(npcChar, npcData, clean);
             }
         }
 
@@ -322,6 +327,8 @@ namespace AQuestReborn.CustomNpc
                     ShowBubble(charA, npcA, cleanA);
                 });
 
+                _ = PlayNpcTtsAsync(charA, dataA, cleanA);
+
                 // Wait for bubble to be read, then NPC B responds
                 DateTime delayStart = DateTime.Now;
                 await Task.Delay(4000);
@@ -352,6 +359,8 @@ namespace AQuestReborn.CustomNpc
                     {
                         ShowBubble(charB, npcB, cleanB);
                     });
+
+                    _ = PlayNpcTtsAsync(charB, dataB, cleanB);
                 }
             }
         }
@@ -547,6 +556,8 @@ namespace AQuestReborn.CustomNpc
                         {
                             ShowBubble(npcChar, npcName, clean);
                         });
+
+                        _ = PlayNpcTtsAsync(npcChar, npcData, clean);
                     }
                 }
                 catch (Exception e)
@@ -565,6 +576,54 @@ namespace AQuestReborn.CustomNpc
             _ambientTimer.Stop();
             _lastAmbientMessages.Clear();
             _npcSummonTimers.Clear();
+        }
+
+        private async Task PlayNpcTtsAsync(ICharacter npcChar, CustomNpcCharacter npcData, string text)
+        {
+            if (npcChar == null || npcData == null || string.IsNullOrWhiteSpace(text)) return;
+            if (_plugin?.Configuration == null || !_plugin.Configuration.AccessibilityReaderActive) return;
+            if (_plugin.RoleplayingMediaManagerInstance == null || _plugin.MediaManager == null) return;
+
+            try
+            {
+                string voice = npcData.NpcVoice;
+                if (string.IsNullOrWhiteSpace(voice)) return;
+
+                string audioPath = "";
+                switch (_plugin.Configuration.AccessibilityTextProvider)
+                {
+                    case 0:
+                        audioPath = await _plugin.RoleplayingMediaManagerInstance.DoVoiceFishAudioWithSpecificVoice(voice, text, false, 1, npcChar.Position, false);
+                        break;
+                    case 1:
+                        audioPath = await _plugin.RoleplayingMediaManagerInstance.DoVoiceMicrosoftNarratorWithSpecificVoice(voice, text, false, 1, npcChar.Position, false);
+                        break;
+                    case 2:
+                        audioPath = await _plugin.RoleplayingMediaManagerInstance.DoCTTSWithSpecificVoice(voice, text, false, 1, npcChar.Position, false);
+                        break;
+                }
+
+                if (!string.IsNullOrEmpty(audioPath) && System.IO.File.Exists(audioPath))
+                {
+                    _plugin.MediaManager.PlayMedia(new MediaGameObject(npcChar as ThreadSafeGameObject), audioPath, RoleplayingMediaCore.SoundType.NPC, true);
+
+                    // Trigger lip sync while speaking
+                    try
+                    {
+                        _plugin.AnamcoreManager?.TriggerLipSync(npcChar, 0);
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(Math.Max(text.Length * 50, 3000));
+                            try { _plugin.AnamcoreManager?.StopLipSync(npcChar); } catch { }
+                        });
+                    }
+                    catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                _plugin.PluginLog.Warning(ex, $"Failed to play ambient TTS for NPC '{npcData.NpcName}'.");
+            }
         }
     }
 }
