@@ -39,6 +39,7 @@ Support Discord: https://discord.gg/rtGXwMn7pX
 If you wish to donate you can do so here: https://ko-fi.com/sebastina
 
 [Fish Audio](https://fish.audio/) Text To Speech and Speech To Text Integration Has Been Sponsored
+
 -----------------------------------------------------------------------------------
 
 
