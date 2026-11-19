@@ -1,18 +1,21 @@
+using AQuestReborn;
+using AQuestReborn.Windows;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
+using Dalamud.Interface.Utility;
+using Dalamud.Interface.Windowing;
+using ECommons;
+using Lumina.Excel.Sheets;
+using NAudio.Wave;
+using RoleplayingMediaCore;
+using RoleplayingQuestCore;
+using RoleplayingVoiceCore;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
-using AQuestReborn;
-using Dalamud.Interface;
-using Dalamud.Interface.Utility;
-using Dalamud.Interface.Windowing;
-using Dalamud.Bindings.ImGui;
-using NAudio.Wave;
-using RoleplayingMediaCore;
-using RoleplayingQuestCore;
-using RoleplayingVoiceCore;
 
 namespace SamplePlugin.Windows;
 
@@ -24,7 +27,7 @@ public class DialogueRecorderWindow : Window, IDisposable
     {
         public int ObjectectiveIndex;
         public int EventIndex;
-        public QuestObjective Objectective;
+        public QuestObjective Objective;
         public QuestEvent Event;
     }
 
@@ -37,8 +40,8 @@ public class DialogueRecorderWindow : Window, IDisposable
     private string _questFolder;
     /// <summary>All lines grouped by NPC name (alias takes priority over name).</summary>
     private Dictionary<string, List<DialogueLine>> _linesByNpc = new();
-    private List<string> _npcOrder = new();    
-    private bool _dirty = true;       
+    private List<string> _npcOrder = new();
+    private bool _dirty = true;
     private DialogueLine _recordingLine;
     private WaveInEvent _waveIn;
     private MemoryStream _recordingStream;
@@ -57,7 +60,7 @@ public class DialogueRecorderWindow : Window, IDisposable
     private bool _collapseAll = false;
     private Dictionary<string, bool> _groupCollapsed = new();
     private bool _bringToFrontOnNextDraw = false;
-
+    private List<VoiceSelector> voiceSelector = new List<VoiceSelector>();
     public DialogueRecorderWindow(Plugin plugin)
         : base("Dialogue Recorder##" + Guid.NewGuid().ToString(), ImGuiWindowFlags.NoScrollbar)
     {
@@ -173,6 +176,7 @@ public class DialogueRecorderWindow : Window, IDisposable
     }
     private void DrawLineTable()
     {
+        int voiceSelectorIndex = 0;
         foreach (var npcName in _npcOrder)
         {
             var lines = _linesByNpc[npcName];
@@ -197,6 +201,34 @@ public class DialogueRecorderWindow : Window, IDisposable
                     _ = BulkGenerateTtsAsync(npcName);
                 if (busy) ImGui.EndDisabled();
                 ImGui.Spacing();
+
+                NpcInformation npcInformation = null;
+
+                foreach (var item in _quest.NpcCustomizations.Values)
+                {
+                    if (item.NpcName == npcName)
+                    {
+                        npcInformation = item;
+                    }
+                }
+
+                if (npcInformation == null)
+                {
+                    npcInformation = new NpcInformation()
+                    {
+                        NpcName = npcName,
+                    };
+                    _quest.NpcCustomizations.Add(_quest.NpcCustomizations.Count, npcInformation);
+                }
+                string npcVoice = npcInformation.Voice;
+                if(voiceSelectorIndex > voiceSelector.Count - 1)
+                {
+                    voiceSelector.Add(new VoiceSelector());
+                }
+                if (voiceSelector[voiceSelectorIndex].Draw(ref npcVoice))
+                {
+                    npcInformation.Voice = npcVoice;
+                }
             }
             if (!ImGui.BeginTable($"##table_{npcName}", 8,
                 ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg |
@@ -221,6 +253,7 @@ public class DialogueRecorderWindow : Window, IDisposable
 
             ImGui.EndTable();
             ImGui.Spacing();
+            voiceSelectorIndex++;
         }
     }
 
@@ -382,7 +415,7 @@ public class DialogueRecorderWindow : Window, IDisposable
             {
                 ObjectectiveIndex = myIdx,
                 EventIndex = EventIdx,
-                Objectective = Object,
+                Objective = Object,
                 Event = Event
             });
         }

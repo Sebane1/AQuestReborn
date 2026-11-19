@@ -14,6 +14,7 @@ using Dalamud.Bindings.ImGui;
 using McdfDataImporter;
 using RoleplayingQuestCore;
 using static RoleplayingQuestCore.BranchingChoice;
+using AQuestReborn.Windows;
 
 namespace SamplePlugin.Windows;
 
@@ -28,7 +29,7 @@ public class NPCEditorWindow : Window, IDisposable
     private int _selectedNpcCustomization;
     private string[] _npcCustomizations;
     private bool _isCreatingAppearance;
-
+    private VoiceSelector voiceSelector = new VoiceSelector();
     public NPCEditorWindow(Plugin plugin)
         : base("NPC Editor Window##" + Guid.NewGuid().ToString(), ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {
@@ -85,7 +86,15 @@ public class NPCEditorWindow : Window, IDisposable
                         item.NpcName = npcName;
                     }
 
-                    if (ImGui.InputText(Translator.LocalizeUI("Npc Voice##"), ref npcVoice, 40))
+                    if (Plugin.Configuration.AccessibilityReaderActive)
+                    {
+                        if (ImGui.InputText(Translator.LocalizeUI("Npc Voice##"), ref npcVoice, 40))
+                        {
+                            item.Voice = npcVoice;
+                        }
+                    }
+
+                    if (voiceSelector.Draw(ref npcVoice))
                     {
                         item.Voice = npcVoice;
                     }

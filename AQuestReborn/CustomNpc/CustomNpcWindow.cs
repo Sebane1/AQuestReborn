@@ -15,6 +15,7 @@ using System.Numerics;
 using System.IO;
 using System.Threading.Tasks;
 using McdfDataImporter;
+using AQuestReborn.Windows;
 
 namespace AQuestReborn.CustomNpc
 {
@@ -29,6 +30,7 @@ namespace AQuestReborn.CustomNpc
         private int _designListSelectedIndex = 0;
         Plugin _plugin;
         private FileDialogManager _fileDialogManager;
+        private VoiceSelector voiceSelector = new VoiceSelector();
         private static readonly HashSet<string> ValidMcdfExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".mcdf" };
         private bool _isCreatingMcdf;
 
@@ -77,14 +79,6 @@ namespace AQuestReborn.CustomNpc
         private bool _speechToTextTranscribing = false;
         private enum SpeechToTextTarget { None, Greeting, Personality, Hobbies }
         private SpeechToTextTarget _speechToTextTarget = SpeechToTextTarget.None;
-
-        // Fish Audio voice search & model ID
-        private string _fishVoiceSearchText = "";
-        private List<string> _fishSearchResults = new List<string>();
-        private bool _isSearchingFishVoices = false;
-        private string _fishCustomModelId = "";
-        private bool _isPlayingVoicePreview = false;
-
         public Plugin Plugin { get => _plugin; set => _plugin = value; }
         public List<CustomNpcCharacter> CustomNpcCharacters { get => _customNpcCharacters; set => _customNpcCharacters = value; }
 
@@ -563,121 +557,14 @@ namespace AQuestReborn.CustomNpc
                                     : _customNpcCharacters[_currentSelection].NpcVoice;
                                 ImGui.TextColored(new Vector4(0.4f, 0.8f, 1f, 1f), $"{Translator.LocalizeUI("Current Voice")}: {activeVoice}");
 
-                                ImGui.SetNextItemWidth(ImGui.GetColumnWidth() - 38);
-                                int currentVoice = Plugin.VoiceList.IndexOf<string>(_customNpcCharacters[_currentSelection].NpcVoice);
-                                if (ImGui.Combo("##npcVoiceCombo", ref currentVoice, Plugin.VoiceList, 10))
+                                string voice = _customNpcCharacters[_currentSelection].NpcVoice;
+                                if (voiceSelector.Draw(ref voice))
                                 {
-                                    _customNpcCharacters[_currentSelection].NpcVoice = Plugin.VoiceList[currentVoice];
+                                    _customNpcCharacters[_currentSelection].NpcVoice = voice;
                                     SaveNPCCharacters();
                                 }
-                                ImGui.SameLine();
-                                {
-                                    bool isPlayingPreview = _isPlayingVoicePreview;
-                                    if (isPlayingPreview)
-                                    {
-                                        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.85f, 0.2f, 0.2f, 1f));
-                                        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.95f, 0.3f, 0.3f, 1f));
-                                    }
-                                    ImGui.PushFont(UiBuilder.IconFont);
-                                    string icon = isPlayingPreview
-                                        ? FontAwesomeIcon.Stop.ToIconString()
-                                        : FontAwesomeIcon.VolumeUp.ToIconString();
-                                    if (ImGui.Button(icon + "##previewCurrentVoice", new Vector2(30, 0)))
-                                    {
-                                        if (!_isPlayingVoicePreview)
-                                            PreviewVoice(_customNpcCharacters[_currentSelection].NpcVoice);
-                                    }
-                                    ImGui.PopFont();
-                                    if (isPlayingPreview)
-                                    {
-                                        ImGui.PopStyleColor(2);
-                                    }
-                                    if (ImGui.IsItemHovered())
-                                    {
-                                        ImGui.SetTooltip(isPlayingPreview ? "Previewing audio..." : "Listen to sample of current voice");
-                                    }
-                                }
 
-                                // Additional voice tools for Fish Audio
-                                if (Plugin.Configuration.AccessibilityTextProvider == 0)
-                                {
-                                    // Search Fish Audio Community Voices
-                                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth() - 75);
-                                    bool enterPressed = ImGui.InputTextWithHint("##fishVoiceSearch", Translator.LocalizeUI("Search Fish Audio online..."), ref _fishVoiceSearchText, 100, ImGuiInputTextFlags.EnterReturnsTrue);
-                                    ImGui.SameLine();
-                                    if (ImGui.Button(Translator.LocalizeUI("Search##fishSearchBtn"), new Vector2(70, 0)) || enterPressed)
-                                    {
-                                        SearchFishAudioVoices(_fishVoiceSearchText);
-                                    }
-
-                                    if (_isSearchingFishVoices)
-                                    {
-                                        ImGui.TextColored(new Vector4(1f, 0.8f, 0.3f, 1f), "Searching online voices...");
-                                    }
-                                    else if (_fishSearchResults.Count > 0)
-                                    {
-                                        if (ImGui.BeginChild("##fishSearchResults", new Vector2(ImGui.GetColumnWidth(), 120), true))
-                                        {
-                                            for (int i = 0; i < _fishSearchResults.Count; i++)
-                                            {
-                                                string vName = _fishSearchResults[i];
-                                                bool isSelected = vName == _customNpcCharacters[_currentSelection].NpcVoice;
-
-                                                // Small preview button next to each search result
-                                                ImGui.PushFont(UiBuilder.IconFont);
-                                                if (ImGui.SmallButton(FontAwesomeIcon.VolumeUp.ToIconString() + "##prevRes_" + i))
-                                                {
-                                                    PreviewVoice(vName);
-                                                }
-                                                ImGui.PopFont();
-                                                if (ImGui.IsItemHovered()) ImGui.SetTooltip("Preview this voice");
-
-                                                ImGui.SameLine();
-                                                if (ImGui.Selectable(vName + "##fishResult_" + i, isSelected))
-                                                {
-                                                    _customNpcCharacters[_currentSelection].NpcVoice = vName;
-                                                    // Ensure the selected voice appears in Plugin.VoiceList so the combo box also reflects it
-                                                    if (!Plugin.VoiceList.Contains(vName))
-                                                    {
-                                                        var list = Plugin.VoiceList.ToList();
-                                                        list.Add(vName);
-                                                        Plugin.VoiceList = list.ToArray();
-                                                    }
-                                                    SaveNPCCharacters();
-                                                }
-                                            }
-                                        }
-                                        ImGui.EndChild();
-                                    }
-
-                                    // Custom Fish Audio Model ID direct entry
-                                    string customIdPlaceholder = "Custom Fish Model ID (from website)";
-                                    ImGui.SetNextItemWidth(ImGui.GetColumnWidth() - 65);
-                                    ImGui.InputTextWithHint("##fishCustomModelId", customIdPlaceholder, ref _fishCustomModelId, 64);
-                                    ImGui.SameLine();
-                                    if (ImGui.Button(Translator.LocalizeUI("Set##setCustomModelId"), new Vector2(60, 0)))
-                                    {
-                                        if (!string.IsNullOrWhiteSpace(_fishCustomModelId))
-                                        {
-                                            string trimmedId = _fishCustomModelId.Trim();
-                                            _customNpcCharacters[_currentSelection].NpcVoice = trimmedId;
-                                            if (!Plugin.VoiceList.Contains(trimmedId))
-                                            {
-                                                var list = Plugin.VoiceList.ToList();
-                                                list.Add(trimmedId);
-                                                Plugin.VoiceList = list.ToArray();
-                                            }
-                                            SaveNPCCharacters();
-                                            _fishCustomModelId = "";
-                                        }
-                                    }
-                                    if (ImGui.IsItemHovered())
-                                    {
-                                        ImGui.SetTooltip("Paste a Model ID from fish.audio to use any voice on their site directly.");
-                                    }
-                                }
                             }
-
                             ImGui.Dummy(new Vector2(0, 5));
 
                             // Appearance mode combo
@@ -2122,6 +2009,7 @@ namespace AQuestReborn.CustomNpc
             }
         }
 
+
         public void RefreshNPCItemNames()
         {
             List<string> names = new List<string>();
@@ -2509,106 +2397,6 @@ namespace AQuestReborn.CustomNpc
                 SaveNPCCharacters();
             }
             _speechToTextTarget = SpeechToTextTarget.None;
-        }
-        private void SearchFishAudioVoices(string query)
-        {
-            if (string.IsNullOrWhiteSpace(query)) return;
-            string apiKey = _plugin?.Configuration?.FishAudioApiKey;
-            if (string.IsNullOrWhiteSpace(apiKey)) return;
-
-            _isSearchingFishVoices = true;
-            _fishSearchResults.Clear();
-
-            Task.Run(async () =>
-            {
-                try
-                {
-                    using (var client = new System.Net.Http.HttpClient())
-                    {
-                        client.Timeout = TimeSpan.FromSeconds(15);
-                        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
-                        string url = $"https://api.fish.audio/model?title={Uri.EscapeDataString(query.Trim())}&page_size=50";
-                        var response = await client.GetAsync(url);
-                        if (response.IsSuccessStatusCode)
-                        {
-                            string jsonStr = await response.Content.ReadAsStringAsync();
-                            dynamic json = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonStr);
-                            if (json != null && json.items != null)
-                            {
-                                var results = new List<string>();
-                                foreach (var item in json.items)
-                                {
-                                    string title = (string)item.title;
-                                    string id = (string)item._id;
-                                    if (!string.IsNullOrWhiteSpace(title) && !string.IsNullOrWhiteSpace(id))
-                                    {
-                                        results.Add(title);
-                                        // Also register to the media manager voice map so it can generate audio
-                                        if (_plugin?.RoleplayingMediaManagerInstance?.FishAudioVoiceMap != null)
-                                        {
-                                            _plugin.RoleplayingMediaManagerInstance.FishAudioVoiceMap[title] = id;
-                                        }
-                                    }
-                                }
-                                _fishSearchResults = results;
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _plugin?.PluginLog?.Warning(ex, "Failed searching Fish Audio models.");
-                }
-                finally
-                {
-                    _isSearchingFishVoices = false;
-                }
-            });
-        }
-        private void PreviewVoice(string voiceNameOrId)
-        {
-            if (string.IsNullOrWhiteSpace(voiceNameOrId) || voiceNameOrId == "None") return;
-            if (_plugin?.RoleplayingMediaManagerInstance == null || _plugin.MediaManager == null) return;
-
-            _isPlayingVoicePreview = true;
-
-            Task.Run(async () =>
-            {
-                try
-                {
-                    string sampleText = "Greetings, adventurer. It is a pleasure to make your acquaintance.";
-                    string audioPath = "";
-
-                    switch (_plugin.Configuration.AccessibilityTextProvider)
-                    {
-                        case 0:
-                            audioPath = await _plugin.RoleplayingMediaManagerInstance.DoVoiceFishAudioWithSpecificVoice(
-                                voiceNameOrId, sampleText, false, 1f, System.Numerics.Vector3.Zero, false);
-                            break;
-                        case 1:
-                            audioPath = await _plugin.RoleplayingMediaManagerInstance.DoVoiceMicrosoftNarratorWithSpecificVoice(
-                                voiceNameOrId, sampleText, false, 1f, System.Numerics.Vector3.Zero, false);
-                            break;
-                        case 2:
-                            audioPath = await _plugin.RoleplayingMediaManagerInstance.DoCTTSWithSpecificVoice(
-                                voiceNameOrId, sampleText, false, 1f, System.Numerics.Vector3.Zero, false);
-                            break;
-                    }
-
-                    if (!string.IsNullOrEmpty(audioPath) && System.IO.File.Exists(audioPath))
-                    {
-                        _plugin.MediaManager.PlayMedia(new DummyObject(), audioPath, RoleplayingMediaCore.SoundType.NPC, false);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _plugin?.PluginLog?.Warning(ex, "Failed to preview voice.");
-                }
-                finally
-                {
-                    _isPlayingVoicePreview = false;
-                }
-            });
         }
     }
 }

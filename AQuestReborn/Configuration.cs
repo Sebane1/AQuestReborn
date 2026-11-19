@@ -115,7 +115,7 @@ public class Configuration : IPluginConfiguration
         {
             string roamingAppDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "XivLauncher", "pluginConfigs", "AQuestReborn.json");
             string json = JsonConvert.SerializeObject(this);
-            z`File.WriteAllText(roamingAppDataPath, json);
+            File.WriteAllText(roamingAppDataPath, json);
         }
     }
 }
