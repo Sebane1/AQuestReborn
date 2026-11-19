@@ -230,6 +230,20 @@ public class MainWindow : Window, IDisposable
 
                             }
                         }
+                        if (ImGui.Button("How To Find Your API Key", new Vector2(ImGui.GetWindowSize().X - 10, 25)))
+                        {
+                            Process process = new Process();
+                            try
+                            {
+                                process.StartInfo.UseShellExecute = true;
+                                process.StartInfo.FileName = "https://youtu.be/3tLStZhfMjw";
+                                process.Start();
+                            }
+                            catch (Exception e)
+                            {
+
+                            }
+                        }
                     }
                     break;
                 case 1:
