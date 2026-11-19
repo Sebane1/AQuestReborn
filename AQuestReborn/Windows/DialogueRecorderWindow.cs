@@ -57,8 +57,7 @@ public class DialogueRecorderWindow : Window, IDisposable
     private DialogueLine _playingLine;
 
     private float _globalScale;
-    private bool _collapseAll = false;
-    private Dictionary<string, bool> _groupCollapsed = new();
+    private string _selectedNpc;
     private bool _bringToFrontOnNextDraw = false;
     private List<VoiceSelector> voiceSelector = new List<VoiceSelector>();
     public DialogueRecorderWindow(Plugin plugin)
@@ -115,8 +114,18 @@ public class DialogueRecorderWindow : Window, IDisposable
 
         DrawToolbar();
         ImGui.Separator();
-        ImGui.BeginChild("##dialogueRecorder_scroll", new Vector2(0, 0), false, ImGuiWindowFlags.HorizontalScrollbar);
-        DrawLineTable();
+        // Keep the NPC list and the selected dialogue table in separate panels.
+        float sidebarWidth = 220f * _globalScale;
+
+        ImGui.BeginChild("##dialogueRecorder_sidebar", new Vector2(sidebarWidth, 0), true);
+        DrawNpcSidebar();
+        ImGui.EndChild();
+
+        ImGui.SameLine();
+
+        ImGui.BeginChild("##dialogueRecorder_content", new Vector2(0, 0), false,
+            ImGuiWindowFlags.HorizontalScrollbar);
+        DrawSelectedNpc();
         ImGui.EndChild();
     }
     private void DrawToolbar()
@@ -147,6 +156,10 @@ public class DialogueRecorderWindow : Window, IDisposable
             {
                 _ = BulkGenerateTtsAsync(null);
             }
+            if (ImGui.Button("Regenerate All TTS##dialogueRecorder_alltts"))
+            {
+                _ = BulkGenerateTtsAsync(null, true);
+            }
             if (busy)
             {
                 ImGui.EndDisabled();
@@ -165,96 +178,109 @@ public class DialogueRecorderWindow : Window, IDisposable
             ImGui.TextColored(new Vector4(0.4f, 1f, 0.5f, 1f), _statusMessage);
         }
 
-        // Collapse all toggle
-        ImGui.SameLine(ImGui.GetContentRegionMax().X - 120 * _globalScale);
-        if (ImGui.Button(_collapseAll ? "Expand All" : "Collapse All"))
-        {
-            _collapseAll = !_collapseAll;
-            foreach (var k in _npcOrder)
-                _groupCollapsed[k] = _collapseAll;
-        }
     }
-    private void DrawLineTable()
+
+    private void DrawNpcSidebar()
     {
-        int voiceSelectorIndex = 0;
+        ImGui.Text("NPCs");
+        ImGui.Separator();
+
         foreach (var npcName in _npcOrder)
         {
             var lines = _linesByNpc[npcName];
-            if (!_groupCollapsed.ContainsKey(npcName))
-                _groupCollapsed[npcName] = false;
-            bool collapsed = _groupCollapsed[npcName];
             int filled = lines.Count(l => CheckAudioExists(l.Event.DialogueAudio));
-            string headerLabel = $"{npcName}  ({filled}/{lines.Count})##grp_{npcName}";
+            bool selected = _selectedNpc == npcName;
+            string label = $"{npcName}  ({filled}/{lines.Count})";
 
-            ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.2f, 0.3f, 0.5f, 0.8f));
-            bool open = ImGui.CollapsingHeader(headerLabel,
-                collapsed ? ImGuiTreeNodeFlags.None : ImGuiTreeNodeFlags.DefaultOpen);
-            ImGui.PopStyleColor();
-            _groupCollapsed[npcName] = !open;
-
-            if (!open) continue;
-            if (Plugin.Instance.Configuration.AccessibilityReaderActive)
+            if (ImGui.Selectable(label, selected, ImGuiSelectableFlags.None,
+                new Vector2(0, 30f * _globalScale)))
             {
-                bool busy = _state != RecorderState.Idle || _bulkRunning;
-                if (busy) ImGui.BeginDisabled();
-                if (ImGui.Button($"Generate All TTS for {npcName}##npcgen_{npcName}"))
-                    _ = BulkGenerateTtsAsync(npcName);
-                if (busy) ImGui.EndDisabled();
-                ImGui.Spacing();
-
-                NpcInformation npcInformation = null;
-
-                foreach (var item in _quest.NpcCustomizations.Values)
-                {
-                    if (item.NpcName == npcName)
-                    {
-                        npcInformation = item;
-                    }
-                }
-
-                if (npcInformation == null)
-                {
-                    npcInformation = new NpcInformation()
-                    {
-                        NpcName = npcName,
-                    };
-                    _quest.NpcCustomizations.Add(_quest.NpcCustomizations.Count, npcInformation);
-                }
-                string npcVoice = npcInformation.Voice;
-                if(voiceSelectorIndex > voiceSelector.Count - 1)
-                {
-                    voiceSelector.Add(new VoiceSelector());
-                }
-                if (voiceSelector[voiceSelectorIndex].Draw(ref npcVoice))
-                {
-                    npcInformation.Voice = npcVoice;
-                }
+                _selectedNpc = npcName;
             }
-            if (!ImGui.BeginTable($"##table_{npcName}", 8,
-                ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg |
-                ImGuiTableFlags.ScrollX | ImGuiTableFlags.SizingFixedFit))
-                continue;
-
-            ImGui.TableSetupColumn("Object#", ImGuiTableColumnFlags.WidthFixed, 40 * _globalScale);
-            ImGui.TableSetupColumn("Event#", ImGuiTableColumnFlags.WidthFixed, 40 * _globalScale);
-            ImGui.TableSetupColumn("Dialogue", ImGuiTableColumnFlags.WidthFixed, 480 * _globalScale);
-            ImGui.TableSetupColumn("Audio Path", ImGuiTableColumnFlags.WidthFixed, 240 * _globalScale);
-            ImGui.TableSetupColumn("Has Audio", ImGuiTableColumnFlags.WidthFixed, 70 * _globalScale);
-            ImGui.TableSetupColumn("Record", ImGuiTableColumnFlags.WidthFixed, 65 * _globalScale);
-            ImGui.TableSetupColumn("TTS", ImGuiTableColumnFlags.WidthFixed, 55 * _globalScale);
-            ImGui.TableSetupColumn("Play", ImGuiTableColumnFlags.WidthFixed, 55 * _globalScale);
-            ImGui.TableHeadersRow();
-
-            for (int i = 0; i < lines.Count; i++)
-            {
-                var line = lines[i];
-                DrawLineRow(line, i);
-            }
-
-            ImGui.EndTable();
-            ImGui.Spacing();
-            voiceSelectorIndex++;
         }
+    }
+
+    private void DrawSelectedNpc()
+    {
+        if (string.IsNullOrEmpty(_selectedNpc) ||
+            !_linesByNpc.TryGetValue(_selectedNpc, out var lines))
+        {
+            ImGui.TextDisabled("Select an NPC from the sidebar.");
+            return;
+        }
+
+        string npcName = _selectedNpc;
+        int filled = lines.Count(l => CheckAudioExists(l.Event.DialogueAudio));
+
+        ImGui.Text($"{npcName}  ({filled}/{lines.Count} lines have audio)");
+        ImGui.Separator();
+
+        if (Plugin.Instance.Configuration.AccessibilityReaderActive)
+        {
+            bool busy = _state != RecorderState.Idle || _bulkRunning;
+            if (busy) ImGui.BeginDisabled();
+
+            if (ImGui.Button($"Generate All Missing TTS for {npcName}##npcgen_{npcName}"))
+                _ = BulkGenerateTtsAsync(npcName);
+
+            if (ImGui.Button($"Regenerate All TTS for {npcName}##npcgen_{npcName}"))
+                _ = BulkGenerateTtsAsync(npcName, true);
+
+            if (busy) ImGui.EndDisabled();
+
+            ImGui.Spacing();
+
+            NpcInformation npcInformation = null;
+
+            foreach (var item in _quest.NpcCustomizations.Values)
+            {
+                if (item.NpcName == npcName)
+                {
+                    npcInformation = item;
+                    break;
+                }
+            }
+
+            if (npcInformation == null)
+            {
+                npcInformation = new NpcInformation()
+                {
+                    NpcName = npcName,
+                };
+                _quest.NpcCustomizations.Add(_quest.NpcCustomizations.Count, npcInformation);
+            }
+
+            string npcVoice = npcInformation.Voice;
+            int voiceSelectorIndex = _npcOrder.IndexOf(npcName);
+
+            while (voiceSelector.Count <= voiceSelectorIndex)
+                voiceSelector.Add(new VoiceSelector());
+
+            if (voiceSelector[voiceSelectorIndex].Draw(ref npcVoice))
+                npcInformation.Voice = npcVoice;
+
+            ImGui.Separator();
+        }
+
+        if (!ImGui.BeginTable($"##table_{npcName}", 8,
+            ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg |
+            ImGuiTableFlags.ScrollX | ImGuiTableFlags.SizingFixedFit))
+            return;
+
+        ImGui.TableSetupColumn("Object#", ImGuiTableColumnFlags.WidthFixed, 40 * _globalScale);
+        ImGui.TableSetupColumn("Event#", ImGuiTableColumnFlags.WidthFixed, 40 * _globalScale);
+        ImGui.TableSetupColumn("Dialogue", ImGuiTableColumnFlags.WidthFixed, 480 * _globalScale);
+        ImGui.TableSetupColumn("Audio Path", ImGuiTableColumnFlags.WidthFixed, 240 * _globalScale);
+        ImGui.TableSetupColumn("Has Audio", ImGuiTableColumnFlags.WidthFixed, 70 * _globalScale);
+        ImGui.TableSetupColumn("Record", ImGuiTableColumnFlags.WidthFixed, 65 * _globalScale);
+        ImGui.TableSetupColumn("TTS", ImGuiTableColumnFlags.WidthFixed, 55 * _globalScale);
+        ImGui.TableSetupColumn("Play", ImGuiTableColumnFlags.WidthFixed, 55 * _globalScale);
+        ImGui.TableHeadersRow();
+
+        for (int i = 0; i < lines.Count; i++)
+            DrawLineRow(lines[i], i);
+
+        ImGui.EndTable();
     }
 
     private void DrawLineRow(DialogueLine line, int rowIdx)
@@ -383,16 +409,28 @@ public class DialogueRecorderWindow : Window, IDisposable
 
     private void RebuildLines()
     {
+        string previousSelection = _selectedNpc;
+
         _linesByNpc.Clear();
         _npcOrder.Clear();
 
-        if (_quest == null) return;
+        if (_quest == null)
+        {
+            _selectedNpc = null;
+            return;
+        }
 
         int ObjectectIndex = 0;
         foreach (var Object in _quest.QuestObjectives)
         {
             CollectFromObjectective(Object, ref ObjectectIndex);
         }
+
+        // Preserve the current selection across refreshes when possible.
+        if (!string.IsNullOrEmpty(previousSelection) && _linesByNpc.ContainsKey(previousSelection))
+            _selectedNpc = previousSelection;
+        else
+            _selectedNpc = _npcOrder.FirstOrDefault();
     }
 
     private void CollectFromObjectective(QuestObjective Object, ref int ObjectectIdx)
@@ -675,7 +713,7 @@ public class DialogueRecorderWindow : Window, IDisposable
         }
     }
 
-    private async Task BulkGenerateTtsAsync(string npcFilter)
+    private async Task BulkGenerateTtsAsync(string npcFilter, bool overwrite = false)
     {
         if (_plugin.RoleplayingMediaManagerInstance == null)
         {
@@ -692,7 +730,7 @@ public class DialogueRecorderWindow : Window, IDisposable
 
             var linesToProcess = groups
                 .SelectMany(kv => kv.Value)
-                .Where(l => !CheckAudioExists(l.Event.DialogueAudio))
+                .Where(l => !CheckAudioExists(l.Event.DialogueAudio) || overwrite)
                 .ToList();
 
             int done = 0;
