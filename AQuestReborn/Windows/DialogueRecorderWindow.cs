@@ -156,6 +156,7 @@ public class DialogueRecorderWindow : Window, IDisposable
             {
                 _ = BulkGenerateTtsAsync(null);
             }
+            ImGui.SameLine();
             if (ImGui.Button("Regenerate All TTS##dialogueRecorder_alltts"))
             {
                 _ = BulkGenerateTtsAsync(null, true);
@@ -221,10 +222,16 @@ public class DialogueRecorderWindow : Window, IDisposable
             if (busy) ImGui.BeginDisabled();
 
             if (ImGui.Button($"Generate All Missing TTS for {npcName}##npcgen_{npcName}"))
+            {
                 _ = BulkGenerateTtsAsync(npcName);
+            }
+
+            ImGui.SameLine();
 
             if (ImGui.Button($"Regenerate All TTS for {npcName}##npcgen_{npcName}"))
+            {
                 _ = BulkGenerateTtsAsync(npcName, true);
+            }
 
             if (busy) ImGui.EndDisabled();
 
@@ -273,7 +280,10 @@ public class DialogueRecorderWindow : Window, IDisposable
         ImGui.TableSetupColumn("Audio Path", ImGuiTableColumnFlags.WidthFixed, 240 * _globalScale);
         ImGui.TableSetupColumn("Has Audio", ImGuiTableColumnFlags.WidthFixed, 70 * _globalScale);
         ImGui.TableSetupColumn("Record", ImGuiTableColumnFlags.WidthFixed, 65 * _globalScale);
-        ImGui.TableSetupColumn("TTS", ImGuiTableColumnFlags.WidthFixed, 55 * _globalScale);
+        if (Plugin.Instance.Configuration.AccessibilityReaderActive)
+        {
+            ImGui.TableSetupColumn("TTS", ImGuiTableColumnFlags.WidthFixed, 55 * _globalScale);
+        }
         ImGui.TableSetupColumn("Play", ImGuiTableColumnFlags.WidthFixed, 55 * _globalScale);
         ImGui.TableHeadersRow();
 
@@ -350,25 +360,33 @@ public class DialogueRecorderWindow : Window, IDisposable
             else if (isTranscribingThis) ImGui.SetTooltip("Saving audio…");
             else ImGui.SetTooltip("Record audio from your microphone.");
         }
-
-        ImGui.TableSetColumnIndex(6);
-        bool ttsInProgress = _pendingTts.Contains(line);
-        bool ttsBusy = busy || ttsInProgress;
-        if (ttsBusy) ImGui.BeginDisabled();
-
-        ImGui.PushFont(UiBuilder.IconFont);
-        if (ImGui.Button(FontAwesomeIcon.VolumeUp.ToIconString() + $"##tts_{uid}", new Vector2(28 * _globalScale, 0)))
-            _ = GenerateTtsForLineAsync(line);
-        ImGui.PopFont();
-
-        if (ttsBusy) ImGui.EndDisabled();
-        if (ImGui.IsItemHovered())
+        if (Plugin.Instance.Configuration.AccessibilityReaderActive)
         {
-            if (ttsInProgress) ImGui.SetTooltip("Generating TTS…");
-            else ImGui.SetTooltip("Generate TTS audio using the configured provider.");
+            ImGui.TableSetColumnIndex(6);
+            bool ttsInProgress = _pendingTts.Contains(line);
+            bool ttsBusy = busy || ttsInProgress;
+            if (ttsBusy) ImGui.BeginDisabled();
+
+            ImGui.PushFont(UiBuilder.IconFont);
+            if (ImGui.Button(FontAwesomeIcon.VolumeUp.ToIconString() + $"##tts_{uid}", new Vector2(28 * _globalScale, 0)))
+                _ = GenerateTtsForLineAsync(line);
+            ImGui.PopFont();
+
+
+            if (ttsBusy) ImGui.EndDisabled();
+            if (ImGui.IsItemHovered())
+            {
+                if (ttsInProgress) ImGui.SetTooltip("Generating TTS…");
+                else ImGui.SetTooltip("Generate TTS audio using the configured provider.");
+            }
+            ImGui.TableSetColumnIndex(7);
+        }
+        else
+        {
+            ImGui.TableSetColumnIndex(6);
         }
 
-        ImGui.TableSetColumnIndex(7);
+
         bool hasAudioForPlay = CheckAudioExists(line.Event.DialogueAudio);
         bool isPlayingThis = _playingLine == line && _playbackOut != null
                              && _playbackOut.PlaybackState == PlaybackState.Playing;

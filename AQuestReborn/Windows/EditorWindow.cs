@@ -277,7 +277,7 @@ public class EditorWindow : Window, IDisposable
             {
                 ProcessStartInfo ProcessInfo = new ProcessStartInfo();
                 Process Process = new Process();
-                ProcessInfo = new ProcessStartInfo(Translator.LocalizeUI("https://www.youtube.com/watch?v=JJM9aHRHkDw"));
+                ProcessInfo = new ProcessStartInfo("https://youtu.be/QRWhZo93n3k");
                 ProcessInfo.UseShellExecute = true;
                 Process = Process.Start(ProcessInfo);
             }
@@ -999,7 +999,7 @@ public class EditorWindow : Window, IDisposable
 
                     ImGui.Separator();
                     ImGui.TextColored(new Vector4(0.5f, 0.8f, 1, 1), "Dialogue & Reactions");
-                    
+
                     if (tailData.LookAroundBlurbs == null) tailData.LookAroundBlurbs = new List<string>();
                     if (ImGui.TreeNode("Look Around Blurbs"))
                     {
@@ -2471,8 +2471,9 @@ public class EditorWindow : Window, IDisposable
     {
         int i = 0;
         List<QuestObjective> invalidatedObjectives = new List<QuestObjective>();
-        foreach (var objective in questObjectives)
+        for (int id = 0; id < questObjectives.Count; id++)
         {
+            var objective = questObjectives[id];
             if (objective != null && !objective.Invalidate)
             {
                 if (level > 0)
@@ -2504,6 +2505,45 @@ public class EditorWindow : Window, IDisposable
                             });
                         });
                     }
+
+
+                    if (ImGui.Button(Translator.LocalizeUI("Up##objective" + i)))
+                    {
+                        try
+                        {
+                            if (id - 1 > -1)
+                            {
+                                var object1 = questObjectives[id - 1];
+                                var object2 = questObjectives[id];
+                                questObjectives[id - 1] = object2;
+                                questObjectives[id] = object1;
+                            }
+                        }
+                        catch
+                        {
+
+                        }
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button(Translator.LocalizeUI("Down##objective" + i)))
+                    {
+                        try
+                        {
+
+                            if (id + 1 < questObjectives.Count)
+                            {
+                                var object1 = questObjectives[id + 1];
+                                var object2 = questObjectives[id];
+                                questObjectives[id + 1] = object2;
+                                questObjectives[id] = object1;
+                            }
+                        }
+                        catch
+                        {
+
+                        }
+                    }
+
                     if (!_shiftModifierHeld)
                     {
                         ImGui.BeginDisabled();
@@ -2755,7 +2795,7 @@ public class EditorWindow : Window, IDisposable
             {
                 // Append new recorded audio data to existing audio file and save as MP3
                 byte[] combinedMp3 = AppendAudioToMp3(existingFullPath, audioData);
-                
+
                 // If the existing file was a .wav, migrate/save to .mp3
                 if (existingFullPath.EndsWith(".wav", StringComparison.OrdinalIgnoreCase))
                 {

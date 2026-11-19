@@ -1,8 +1,10 @@
+using AQuestReborn.Windows;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
-using Dalamud.Bindings.ImGui;
-using Dalamud.Interface;
+using McdfDataImporter;
 using PenumbraAndGlamourerHelpers;
 using RoleplayingQuestCore;
 using RoleplayingVoiceCore;
@@ -10,12 +12,11 @@ using RoleplayingVoiceDalamudWrapper;
 using SamplePlugin;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.IO;
 using System.Threading.Tasks;
-using McdfDataImporter;
-using AQuestReborn.Windows;
 
 namespace AQuestReborn.CustomNpc
 {
@@ -346,6 +347,14 @@ namespace AQuestReborn.CustomNpc
         {
             try
             {
+                if (ImGui.Button(Translator.LocalizeUI("Custom NPC Tutorial")))
+                {
+                    ProcessStartInfo ProcessInfo = new ProcessStartInfo();
+                    Process Process = new Process();
+                    ProcessInfo = new ProcessStartInfo("https://youtu.be/Y4f0Cfmj9ko");
+                    ProcessInfo.UseShellExecute = true;
+                    Process = Process.Start(ProcessInfo);
+                }
                 _fileDialogManager.Draw();
                 if (_currentGlamourerDesigns.Count is 0)
                 {

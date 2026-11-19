@@ -92,11 +92,11 @@ public class NPCEditorWindow : Window, IDisposable
                         {
                             item.Voice = npcVoice;
                         }
-                    }
 
-                    if (voiceSelector.Draw(ref npcVoice))
-                    {
-                        item.Voice = npcVoice;
+                        if (voiceSelector.Draw(ref npcVoice))
+                        {
+                            item.Voice = npcVoice;
+                        }
                     }
 
                     ImGui.Text(Translator.LocalizeUI("Npc Appearance Data:"));
