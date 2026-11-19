@@ -548,10 +548,10 @@ namespace AQuestReborn.CustomNpc
                             ImGui.LabelText("##personalityLabel", Translator.LocalizeUI("NPC Name"));
                             ImGui.SetNextItemWidth(ImGui.GetColumnWidth());
                             ImGui.InputText("##NPCName", ref _customNpcCharacters[_currentSelection].NpcName, 255);
-                    if (ImGui.IsItemDeactivatedAfterEdit())
-                    {
-                        SaveNPCCharacters();
-                    }
+                            if (ImGui.IsItemDeactivatedAfterEdit())
+                            {
+                                SaveNPCCharacters();
+                            }
 
                             if (Plugin.Configuration.AccessibilityReaderActive)
                             {

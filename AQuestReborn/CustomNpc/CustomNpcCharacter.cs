@@ -491,7 +491,7 @@ namespace AQuestReborn.CustomNpc
         public bool ShouldRefuseConversation(string personName)
         {
             var rel = GetRelationshipWith(personName);
-            return rel.Score <= 0;
+            return rel.Score < 0;
         }
 
         /// <summary>

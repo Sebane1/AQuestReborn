@@ -283,6 +283,15 @@ namespace AQuestReborn.CustomNpc
                 }
             }
 
+            if (value.Length > 0 && value.StartsWith(_aiName))
+            {
+                int i = value.IndexOf(" ");
+                if (i != -1)
+                {
+                    value = value.Substring(i + 1);
+                }
+            }
+
             // Failsafe to strip any leaked bracketed meta-instructions, even if unclosed, but ignore glamour commands
             value = System.Text.RegularExpressions.Regex.Replace(value, @"\[(?!glamour:).*?(?:\]|$)", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
 

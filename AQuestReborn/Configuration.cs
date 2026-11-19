@@ -109,19 +109,13 @@ public class Configuration : IPluginConfiguration
     {
         try
         {
-            lock (QuestChains)
-            {
-                {
-                    lock (QuestProgression)
-                    {
-                        Plugin.PluginInterface.SavePluginConfig(this);
-                    }
-                }
-            }
+            Plugin.PluginInterface.SavePluginConfig(this);
         }
         catch
         {
-
+            string roamingAppDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "XivLauncher", "pluginConfigs", "AQuestReborn.json");
+            string json = JsonConvert.SerializeObject(this);
+            z`File.WriteAllText(roamingAppDataPath, json);
         }
     }
 }
