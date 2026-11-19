@@ -676,7 +676,7 @@ public class EventWindow : Window, IDisposable
                         {
                             if ((ushort)item.BodyExpression > 0)
                             {
-                                ushort bodyTimelineId = ResolveEmoteToTimeline((ushort)item.BodyExpression);
+                                ushort bodyTimelineId = (ushort)item.BodyExpression;
                                 if (bodyTimelineId > 0)
                                 {
                                     if (!item.LoopAnimation)
@@ -693,7 +693,7 @@ public class EventWindow : Window, IDisposable
                     }
                     if ((ushort)item.BodyExpressionPlayer > 0)
                     {
-                        ushort playerTimelineId = ResolveEmoteToTimeline((ushort)item.BodyExpressionPlayer);
+                        ushort playerTimelineId = (ushort)item.BodyExpressionPlayer;
                         if (playerTimelineId > 0)
                         {
                             if (!item.LoopAnimationPlayer)
@@ -1126,28 +1126,6 @@ public class EventWindow : Window, IDisposable
             _questFollowing = false;
             _questStopFollowing = false;
             _choicesAreNext = false;
-            
-            // Do not invoke QuestEvents to prevent forward progression.
         }
-    }
-
-    /// <summary>
-    /// Resolves an Emote sheet RowId to its corresponding ActionTimeline RowId.
-    /// TriggerEmote / TriggerEmoteTimed require the ActionTimeline ID, not the Emote RowId.
-    /// Returns 0 if the emote cannot be resolved.
-    /// </summary>
-    private ushort ResolveEmoteToTimeline(ushort emoteRowId)
-    {
-        if (emoteRowId == 0) return 0;
-        try
-        {
-            var emoteSheet = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>();
-            if (emoteSheet == null) return 0;
-            var emote = emoteSheet.GetRow(emoteRowId);
-            if (emote.RowId > 0 && emote.ActionTimeline[0].Value.RowId > 0)
-                return (ushort)emote.ActionTimeline[0].Value.RowId;
-        }
-        catch { }
-        return 0;
     }
 }

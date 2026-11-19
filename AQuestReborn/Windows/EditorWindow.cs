@@ -1091,10 +1091,19 @@ public class EditorWindow : Window, IDisposable
                 var item = questEvent[_selectedEvent];
                 var dialogueCondition = (int)item.ConditionForDialogueToOccur;
                 var objectiveIdToComplete = item.ObjectiveIdToComplete;
+
+                var faceEmoteId = item.FaceEmoteIndex;
                 var faceExpression = item.FaceExpression;
+
+                var bodyEmoteId = item.BodyEmoteIndex;
                 var bodyExpression = item.BodyExpression;
+
+                var faceEmoteIdPlayer = item.FaceEmoteIndexPlayer;
                 var faceExpressionPlayer = item.FaceExpressionPlayer;
+
+                var bodyEmoteIdPlayer = item.BodyEmoteIndexPlayer;
                 var bodyExpressionPlayer = item.BodyExpressionPlayer;
+
                 var npcAlias = item.NpcAlias;
                 var npcName = item.NpcName;
                 var dialogue = item.Dialogue;
@@ -1381,89 +1390,6 @@ public class EditorWindow : Window, IDisposable
                         {
                             item.DialogueBoxStyle = boxStyle;
                         }
-                        // NPC Emote / Animation selectors
-                        if (_emoteNames.Length > 0)
-                        {
-                            int npcFaceIdx = Array.FindIndex(_emoteList, e => e.Id == (uint)faceExpression);
-                            if (npcFaceIdx < 0) npcFaceIdx = 0;
-                            ImGui.SetNextItemWidth(220);
-                            if (ImGui.Combo(Translator.LocalizeUI("NPC Face Expression##npcFaceCombo"), ref npcFaceIdx, _emoteNames, _emoteNames.Length))
-                            {
-                                item.FaceExpression = (int)_emoteList[npcFaceIdx].Id;
-                                faceExpression = item.FaceExpression;
-                            }
-
-                            ImGui.SameLine();
-                            int npcBodyIdx = Array.FindIndex(_emoteList, e => e.Id == (uint)bodyExpression);
-                            if (npcBodyIdx < 0) npcBodyIdx = 0;
-                            ImGui.SetNextItemWidth(220);
-                            if (ImGui.Combo(Translator.LocalizeUI("NPC Body Expression##npcBodyCombo"), ref npcBodyIdx, _emoteNames, _emoteNames.Length))
-                            {
-                                item.BodyExpression = (int)_emoteList[npcBodyIdx].Id;
-                                bodyExpression = item.BodyExpression;
-                            }
-                        }
-                        else
-                        {
-                            ImGui.SetNextItemWidth(100);
-                            if (ImGui.InputInt(Translator.LocalizeUI("NPC Face Expression Id##"), ref faceExpression))
-                            {
-                                item.FaceExpression = faceExpression;
-                            }
-                            ImGui.SameLine();
-                            ImGui.SetNextItemWidth(100);
-                            if (ImGui.InputInt(Translator.LocalizeUI("NPC Body Expression Id##"), ref bodyExpression))
-                            {
-                                item.BodyExpression = bodyExpression;
-                            }
-                        }
-                        ImGui.SameLine();
-                        if (ImGui.Checkbox(Translator.LocalizeUI("Loop Animation##"), ref loopAnimation))
-                        {
-                            item.LoopAnimation = loopAnimation;
-                        }
-
-                        // Player Emote / Animation selectors
-                        if (_emoteNames.Length > 0)
-                        {
-                            int playerFaceIdx = Array.FindIndex(_emoteList, e => e.Id == (uint)faceExpressionPlayer);
-                            if (playerFaceIdx < 0) playerFaceIdx = 0;
-                            ImGui.SetNextItemWidth(220);
-                            if (ImGui.Combo(Translator.LocalizeUI("Player Face Expression##plyFaceCombo"), ref playerFaceIdx, _emoteNames, _emoteNames.Length))
-                            {
-                                item.FaceExpressionPlayer = (int)_emoteList[playerFaceIdx].Id;
-                                faceExpressionPlayer = item.FaceExpressionPlayer;
-                            }
-
-                            ImGui.SameLine();
-                            int playerBodyIdx = Array.FindIndex(_emoteList, e => e.Id == (uint)bodyExpressionPlayer);
-                            if (playerBodyIdx < 0) playerBodyIdx = 0;
-                            ImGui.SetNextItemWidth(220);
-                            if (ImGui.Combo(Translator.LocalizeUI("Player Body Expression##plyBodyCombo"), ref playerBodyIdx, _emoteNames, _emoteNames.Length))
-                            {
-                                item.BodyExpressionPlayer = (int)_emoteList[playerBodyIdx].Id;
-                                bodyExpressionPlayer = item.BodyExpressionPlayer;
-                            }
-                        }
-                        else
-                        {
-                            ImGui.SetNextItemWidth(100);
-                            if (ImGui.InputInt(Translator.LocalizeUI("Player Face Expression Id##"), ref faceExpressionPlayer))
-                            {
-                                item.FaceExpressionPlayer = faceExpressionPlayer;
-                            }
-                            ImGui.SameLine();
-                            ImGui.SetNextItemWidth(100);
-                            if (ImGui.InputInt(Translator.LocalizeUI("Player Body Expression Id##"), ref bodyExpressionPlayer))
-                            {
-                                item.BodyExpressionPlayer = bodyExpressionPlayer;
-                            }
-                        }
-                        ImGui.SameLine();
-                        if (ImGui.Checkbox(Translator.LocalizeUI("Loop Player Animation##"), ref loopAnimationPlayer))
-                        {
-                            item.LoopAnimationPlayer = loopAnimationPlayer;
-                        }
 
                         if (ImGui.Combo(Translator.LocalizeUI("Event Background Type##"), ref eventBackgroundType, eventBackgroundTypes, eventBackgroundTypes.Length))
                         {
@@ -1611,6 +1537,114 @@ public class EditorWindow : Window, IDisposable
                         if (ImGui.InputInt(Translator.LocalizeUI("Event Time Delay##"), ref eventWaitTime))
                         {
                             item.EventWaitTime = eventWaitTime;
+                        }
+                        ImGui.EndTabItem();
+                    }
+                    if (ImGui.BeginTabItem(Translator.LocalizeUI("Emotes## we're unique")))
+                    {
+                        // NPC Emote / Animation selectors
+                        if (_emoteNames.Length > 0)
+                        {
+                            int npcFaceIdx = Array.FindIndex(_emoteList, e => e.Id == (uint)faceEmoteId);
+                            if (npcFaceIdx < 0) npcFaceIdx = 0;
+                            ImGui.SetNextItemWidth(220);
+                            if (ImGui.Combo(Translator.LocalizeUI("NPC Face Expression##npcFaceCombo"), ref npcFaceIdx, _emoteNames, _emoteNames.Length))
+                            {
+                                item.FaceEmoteIndex = _emoteList[npcFaceIdx].Id;
+                                var animationId = ResolveEmoteToTimeline((ushort)item.FaceEmoteIndex);
+                                item.FaceExpression = animationId;
+                                faceExpression = item.FaceExpression;
+                            }
+                            ImGui.SetNextItemWidth(220);
+                            if (ImGui.InputInt("NPC Face Expression Id", ref faceExpression))
+                            {
+                                item.FaceExpression = faceExpression;
+                            }
+                            int npcBodyIdx = Array.FindIndex(_emoteList, e => e.Id == (uint)bodyEmoteId);
+                            if (npcBodyIdx < 0) npcBodyIdx = 0;
+                            ImGui.SetNextItemWidth(220);
+                            if (ImGui.Combo(Translator.LocalizeUI("NPC Body Expression##npcBodyCombo"), ref npcBodyIdx, _emoteNames, _emoteNames.Length))
+                            {
+                                item.BodyEmoteIndex = _emoteList[npcBodyIdx].Id;
+                                var animationId = ResolveEmoteToTimeline((ushort)item.BodyEmoteIndex);
+                                item.BodyExpression = animationId;
+                                bodyExpression = item.BodyExpression;
+                            }
+                            ImGui.SetNextItemWidth(220);
+                            if (ImGui.InputInt("NPC Body Expression Id", ref bodyExpression))
+                            {
+                                item.BodyExpression = bodyExpression;
+                            }
+                        }
+                        else
+                        {
+                            ImGui.SetNextItemWidth(100);
+                            if (ImGui.InputInt(Translator.LocalizeUI("NPC Face Expression Id##"), ref faceExpression))
+                            {
+                                item.FaceExpression = faceExpression;
+                            }
+                            ImGui.SetNextItemWidth(100);
+                            if (ImGui.InputInt(Translator.LocalizeUI("NPC Body Expression Id##"), ref bodyExpression))
+                            {
+                                item.BodyExpression = bodyExpression;
+                            }
+                        }
+                        if (ImGui.Checkbox(Translator.LocalizeUI("Loop Animation##"), ref loopAnimation))
+                        {
+                            item.LoopAnimation = loopAnimation;
+                        }
+                        ImGui.Dummy(new Vector2(20, 20));
+                        // Player Emote / Animation selectors
+                        if (_emoteNames.Length > 0)
+                        {
+                            int playerFaceIdx = Array.FindIndex(_emoteList, e => e.Id == (uint)faceEmoteIdPlayer);
+                            if (playerFaceIdx < 0) playerFaceIdx = 0;
+                            ImGui.SetNextItemWidth(220);
+                            if (ImGui.Combo(Translator.LocalizeUI("Player Face Expression##plyFaceCombo"), ref playerFaceIdx, _emoteNames, _emoteNames.Length))
+                            {
+                                item.FaceEmoteIndexPlayer = _emoteList[playerFaceIdx].Id;
+                                var animationId = ResolveEmoteToTimeline((ushort)item.FaceEmoteIndexPlayer);
+                                item.FaceExpressionPlayer = animationId;
+                                faceExpressionPlayer = item.FaceExpressionPlayer;
+                            }
+                            ImGui.SetNextItemWidth(220);
+                            if (ImGui.InputInt(Translator.LocalizeUI("Player Face Expression Id##"), ref faceExpressionPlayer))
+                            {
+                                item.FaceExpressionPlayer = faceExpressionPlayer;
+                            }
+                            int playerBodyIdx = Array.FindIndex(_emoteList, e => e.Id == (uint)bodyEmoteIdPlayer);
+                            if (playerBodyIdx < 0) playerBodyIdx = 0;
+                            ImGui.SetNextItemWidth(220);
+                            if (ImGui.Combo(Translator.LocalizeUI("Player Body Expression##plyBodyCombo"), ref playerBodyIdx, _emoteNames, _emoteNames.Length))
+                            {
+                                item.BodyEmoteIndexPlayer = _emoteList[playerBodyIdx].Id;
+                                var animationId = ResolveEmoteToTimeline((ushort)item.BodyEmoteIndexPlayer);
+                                item.BodyExpressionPlayer = animationId;
+                                bodyExpressionPlayer = item.BodyExpressionPlayer;
+                            }
+                            ImGui.SetNextItemWidth(220);
+                            if (ImGui.InputInt(Translator.LocalizeUI("Player Body Expression Id##"), ref bodyExpressionPlayer))
+                            {
+                                item.BodyExpressionPlayer = bodyExpressionPlayer;
+                            }
+                        }
+                        else
+                        {
+                            ImGui.SetNextItemWidth(100);
+                            if (ImGui.InputInt(Translator.LocalizeUI("Player Face Expression Id##"), ref faceExpressionPlayer))
+                            {
+                                item.FaceExpressionPlayer = faceExpressionPlayer;
+                            }
+                            ImGui.SameLine();
+                            ImGui.SetNextItemWidth(100);
+                            if (ImGui.InputInt(Translator.LocalizeUI("Player Body Expression Id##"), ref bodyExpressionPlayer))
+                            {
+                                item.BodyExpressionPlayer = bodyExpressionPlayer;
+                            }
+                        }
+                        if (ImGui.Checkbox(Translator.LocalizeUI("Loop Player Animation##"), ref loopAnimationPlayer))
+                        {
+                            item.LoopAnimationPlayer = loopAnimationPlayer;
                         }
                         ImGui.EndTabItem();
                     }
@@ -2951,7 +2985,25 @@ public class EditorWindow : Window, IDisposable
             return null;
         }
     }
-
+    /// <summary>
+    /// Resolves an Emote sheet RowId to its corresponding ActionTimeline RowId.
+    /// TriggerEmote / TriggerEmoteTimed require the ActionTimeline ID, not the Emote RowId.
+    /// Returns 0 if the emote cannot be resolved.
+    /// </summary>
+    private ushort ResolveEmoteToTimeline(ushort emoteRowId)
+    {
+        if (emoteRowId == 0) return 0;
+        try
+        {
+            var emoteSheet = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Emote>();
+            if (emoteSheet == null) return 0;
+            var emote = emoteSheet.GetRow(emoteRowId);
+            if (emote.RowId > 0 && emote.ActionTimeline[0].Value.RowId > 0)
+                return (ushort)emote.ActionTimeline[0].Value.RowId;
+        }
+        catch { }
+        return 0;
+    }
     /// <summary>
     /// Copies a background media file (image or video) directly into the quest folder
     /// and returns the relative file name, or null on failure.
