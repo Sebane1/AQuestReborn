@@ -2506,44 +2506,46 @@ public class EditorWindow : Window, IDisposable
                         });
                     }
 
-
-                    if (ImGui.Button(Translator.LocalizeUI("Up##objective" + i)))
+                    if (objective.IsAPrimaryObjective)
                     {
-                        try
+                        if (ImGui.Button(Translator.LocalizeUI("Up##objective" + i)))
                         {
-                            if (id - 1 > -1)
+                            try
                             {
-                                var object1 = questObjectives[id - 1];
-                                var object2 = questObjectives[id];
-                                questObjectives[id - 1] = object2;
-                                questObjectives[id] = object1;
+                                if (id - 1 > -1)
+                                {
+                                    var object1 = questObjectives[id - 1];
+                                    var object2 = questObjectives[id];
+                                    questObjectives[id - 1] = object2;
+                                    questObjectives[id] = object1;
+                                }
+                            }
+                            catch
+                            {
+
                             }
                         }
-                        catch
+                        ImGui.SameLine();
+                        if (ImGui.Button(Translator.LocalizeUI("Down##objective" + i)))
                         {
-
-                        }
-                    }
-                    ImGui.SameLine();
-                    if (ImGui.Button(Translator.LocalizeUI("Down##objective" + i)))
-                    {
-                        try
-                        {
-
-                            if (id + 1 < questObjectives.Count)
+                            try
                             {
-                                var object1 = questObjectives[id + 1];
-                                var object2 = questObjectives[id];
-                                questObjectives[id + 1] = object2;
-                                questObjectives[id] = object1;
+
+                                if (id + 1 < questObjectives.Count)
+                                {
+                                    var object1 = questObjectives[id + 1];
+                                    var object2 = questObjectives[id];
+                                    questObjectives[id + 1] = object2;
+                                    questObjectives[id] = object1;
+                                }
+                            }
+                            catch
+                            {
+
                             }
                         }
-                        catch
-                        {
 
-                        }
                     }
-
                     if (!_shiftModifierHeld)
                     {
                         ImGui.BeginDisabled();
