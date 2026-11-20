@@ -169,7 +169,10 @@ public sealed class Plugin : IDalamudPlugin
         {
             Configuration.CharacterVoices = new RoleplayingMediaCore.AudioRecycler.CharacterVoices();
         }
-        Configuration.VoiceCache = Path.Combine(Path.GetPathRoot(Configuration.QuestInstallFolder), "QuestVoiceCache");
+        if (!string.IsNullOrEmpty(Configuration.QuestInstallFolder))
+        {
+            Configuration.VoiceCache = Path.Combine(Path.GetPathRoot(Configuration.QuestInstallFolder), "QuestVoiceCache");
+        }
         RoleplayingMediaManagerInstance = new RoleplayingMediaManager(Configuration.VoiceCache, new NetworkedClient(""), Configuration.CharacterVoices);
         RoleplayingMediaManagerInstance.BasePath = Path.GetDirectoryName(dalamudPluginInterface.AssemblyLocation.FullName);
         _customNpcWindow.Plugin = this;

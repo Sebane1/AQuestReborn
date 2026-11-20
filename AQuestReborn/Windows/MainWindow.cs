@@ -117,6 +117,10 @@ public class MainWindow : Window, IDisposable
                     {
                         Directory.CreateDirectory(folder);
                         Plugin.Configuration.QuestInstallFolder = folder;
+                        if (!string.IsNullOrEmpty(Plugin.Configuration.QuestInstallFolder))
+                        {
+                            Plugin.Configuration.VoiceCache = Path.Combine(Path.GetPathRoot(Plugin.Configuration.QuestInstallFolder), "QuestVoiceCache");
+                        }
                         Plugin.Configuration.Save();
                         if (Plugin.ClientState.IsLoggedIn && Plugin.RoleplayingQuestManager == null)
                         {
