@@ -1,9 +1,11 @@
 using AQuestReborn.Windows;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Interface;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
+using GameObjectHelper.ThreadSafeDalamudObjectTable;
 using McdfDataImporter;
 using PenumbraAndGlamourerHelpers;
 using RoleplayingQuestCore;
@@ -2001,7 +2003,7 @@ namespace AQuestReborn.CustomNpc
                         {
                             if (_plugin.AQuestReborn.InteractiveNpcDictionary.TryGetValue(_customNpcCharacters[_currentSelection].NpcName, out var liveNpc))
                             {
-                                string context = _plugin.GetEnvironmentContext(liveNpc.Character);
+                                string context = _plugin.GetEnvironmentContext(ThreadSafeGameObjectManager.GetThreadSafeGameObject(liveNpc.Character, false));
                                 ImGui.TextWrapped(context);
                             }
                             else

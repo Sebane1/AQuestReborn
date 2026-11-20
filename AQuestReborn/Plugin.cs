@@ -28,6 +28,8 @@ using FFXIVLooseTextureCompiler.Networking;
 using System.Threading.Tasks;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.DragDrop;
+using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Game.ClientState.Objects.SubKinds;
 
 namespace SamplePlugin;
 
@@ -163,7 +165,7 @@ public sealed class Plugin : IDalamudPlugin
         _customNpcWindow = new CustomNpcWindow(dalamudPluginInterface);
         NpcChatWindow = new NpcChatWindow(this);
         SpeechBubbleManager = new SpeechBubbleManager(this);
-        if(Configuration.CharacterVoices == null)
+        if (Configuration.CharacterVoices == null)
         {
             Configuration.CharacterVoices = new RoleplayingMediaCore.AudioRecycler.CharacterVoices();
         }
@@ -255,8 +257,9 @@ public sealed class Plugin : IDalamudPlugin
             }
         }
     }
-    public string GetEnvironmentContext(Dalamud.Game.ClientState.Objects.Types.IGameObject observer = null)
+    public string GetEnvironmentContext(IGameObject observer = null)
     {
+        observer = ThreadSafeGameObjectManager.GetThreadSafeGameObject(observer, false);
         if (_clientState == null || !_clientState.IsLoggedIn) return string.Empty;
         string context = "";
         try
@@ -450,9 +453,9 @@ public sealed class Plugin : IDalamudPlugin
                 }
             }
 
-            if (observer is Dalamud.Game.ClientState.Objects.Types.ICharacter characterObserver)
+            if (observer is ICharacter characterObserver)
             {
-                var observerCustomize = global::AQuestReborn.AppearanceHelper.GetCustomization(characterObserver);
+                var observerCustomize = AppearanceHelper.GetCustomization(observer as ICharacter);
                 if (observerCustomize != null)
                 {
                     string obsRace = EventWindow != null ? EventWindow.Race((int)observerCustomize.Customize.Race.Value) : "";
@@ -461,10 +464,6 @@ public sealed class Plugin : IDalamudPlugin
                     if (!string.IsNullOrEmpty(obsRace) && !string.IsNullOrEmpty(obsTribe))
                     {
                         string objName = string.IsNullOrEmpty(characterObserver.Name.TextValue) ? "The NPC" : characterObserver.Name.TextValue;
-
-                        // Custom NPCs have their appearances dictated by their bio in the GPTContextBuilder.
-                        // Since Brio spawns them as base models before applying Glamourer, reading the 
-                        // underlying memory will result in conflicting race/tribe data (e.g. Xaela Au Ra vs Miqo'te).
                         if (!objName.Contains("Cnpc", StringComparison.OrdinalIgnoreCase))
                         {
                             context += $". {objName} Appearance: {obsGender} {obsTribe} {obsRace}";

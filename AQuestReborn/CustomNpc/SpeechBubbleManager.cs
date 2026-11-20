@@ -583,7 +583,7 @@ namespace AQuestReborn.CustomNpc
             if (npcChar == null || npcData == null || string.IsNullOrWhiteSpace(text)) return;
             if (_plugin?.Configuration == null || !_plugin.Configuration.AccessibilityReaderActive) return;
             if (_plugin.RoleplayingMediaManagerInstance == null || _plugin.MediaManager == null) return;
-
+            npcChar = ThreadSafeGameObjectManager.GetThreadSafeGameObject(npcChar, false) as ICharacter;
             try
             {
                 string voice = npcData.NpcVoice;

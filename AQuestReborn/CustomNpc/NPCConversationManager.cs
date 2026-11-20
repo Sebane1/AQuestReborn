@@ -1,5 +1,6 @@
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Plugin.Services;
+using GameObjectHelper.ThreadSafeDalamudObjectTable;
 using Lumina.Excel.Sheets;
 using PenumbraAndGlamourerHelpers;
 using SamplePlugin;
@@ -46,6 +47,8 @@ namespace AQuestReborn.CustomNpc
         public async Task<string> SendMessage(ICharacter sendingCharacter, ICharacter receivingCharacter, string aiName,
             string aiGreeting, string message, string setting, string aiDescription, string modelChoice = "", string senderNameOverride = "")
         {
+            sendingCharacter = ThreadSafeGameObjectManager.GetThreadSafeGameObject(sendingCharacter, false) as ICharacter;
+            receivingCharacter = ThreadSafeGameObjectManager.GetThreadSafeGameObject(receivingCharacter, false) as ICharacter;
             // Use the override name if provided (for NPC-to-NPC chat where Brio actors are named "Reborn")
             string senderFullName = !string.IsNullOrEmpty(senderNameOverride) ? senderNameOverride : sendingCharacter.Name.TextValue;
             if (senderFullName.Contains("::")) senderFullName = senderFullName.Split(new[] { "::" }, StringSplitOptions.None).Last();
@@ -203,6 +206,7 @@ namespace AQuestReborn.CustomNpc
 
         public string GetPlayerDescription(ICharacter player, bool skipSummary = false, string alias = "", string nameOverride = "")
         {
+            player = ThreadSafeGameObjectManager.GetThreadSafeGameObject(player, false) as ICharacter;
             int gender = PenumbraAndGlamourerHelperFunctions.GetGender(player);
             int race = PenumbraAndGlamourerHelperFunctions.GetRace(player);
             int tribe = PenumbraAndGlamourerHelperFunctions.GetTribe(player);
