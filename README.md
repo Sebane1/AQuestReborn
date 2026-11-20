@@ -12,6 +12,11 @@ Quests are automatically localized into all supported FFXIV languages:
 - Chinese
 - Korean
 
+Full Text To Speech and Speech To Text support featuring
+- Fish Audio
+- Microsoft Narrator
+- Locally Ran Services
+
 Custom quest NPC's made possible via the progress made with Brio, and MCDF.
 
 Credit to Xoza for the repository logo.
