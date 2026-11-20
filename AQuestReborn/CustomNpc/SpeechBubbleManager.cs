@@ -63,14 +63,6 @@ namespace AQuestReborn.CustomNpc
         }
 
         /// <summary>
-        /// Returns true if any NPC was recently summoned.
-        /// </summary>
-        private bool IsAnyNpcInEarlyPhase()
-        {
-            return false; // Not used anymore, replaced by INITIAL_DELAY_MS logic
-        }
-
-        /// <summary>
         /// Active speech bubbles to render via ImGui overlay.
         /// </summary>
         public class ActiveBubble
@@ -130,7 +122,6 @@ namespace AQuestReborn.CustomNpc
         private Stopwatch _debugLogTimer = new Stopwatch();
         public void Update()
         {
-            // Periodic diagnostic (every 5s) to see what's blocking
             if (!_debugLogTimer.IsRunning) _debugLogTimer.Start();
             if (_debugLogTimer.ElapsedMilliseconds > 5000)
             {
@@ -419,7 +410,7 @@ namespace AQuestReborn.CustomNpc
         private bool _deathSpeechTriggered;
 
         /// <summary>
-        /// Triggers an AI-generated grief speech bubble from a random active NPC when the player dies.
+        /// Triggers an grief speech bubble from a random active NPC when the player dies.
         /// </summary>
         public void NotifyPlayerDeath()
         {
@@ -502,7 +493,7 @@ namespace AQuestReborn.CustomNpc
         }
 
         /// <summary>
-        /// Triggers an AI-generated speech bubble from a random active NPC when combat ends.
+        /// Triggers a generated speech bubble from a random active NPC when combat ends.
         /// </summary>
         public void NotifyCombatEnded(string enemies)
         {
