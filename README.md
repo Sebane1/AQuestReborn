@@ -12,6 +12,11 @@ Quests are automatically localized into all supported FFXIV languages:
 - Chinese
 - Korean
 
+Full Text To Speech and Speech To Text support featuring
+- Fish Audio
+- Microsoft Narrator
+- Locally Ran Services
+
 Custom quest NPC's made possible via the progress made with Brio, and MCDF.
 
 Credit to Xoza for the repository logo.
@@ -38,7 +43,7 @@ Support Discord: https://discord.gg/rtGXwMn7pX
 
 If you wish to donate you can do so here: https://ko-fi.com/sebastina
 
-[Fish Audio]([https://fish.audio/](https://fish.audio/?fpr=thelaweners)) Text To Speech and Speech To Text Integration Has Been Sponsored
+[Fish Audio](https://fish.audio/?fpr=thelaweners) Text To Speech and Speech To Text Integration Has Been Sponsored
 
 -----------------------------------------------------------------------------------
 
