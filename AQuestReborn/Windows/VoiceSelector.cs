@@ -16,7 +16,7 @@ namespace AQuestReborn.Windows
     {
         // Fish Audio voice search & model ID
         private string _fishVoiceSearchText = "";
-        private List<string> _fishSearchResults = new List<string>();
+        private List<KeyValuePair<string,string>> _fishSearchResults = new List<KeyValuePair<string, string>>();
         private bool _isSearchingFishVoices = false;
         private string _fishCustomModelId = "";
         private bool _isPlayingVoicePreview = false;
@@ -89,7 +89,8 @@ namespace AQuestReborn.Windows
                     {
                         for (int i = 0; i < _fishSearchResults.Count; i++)
                         {
-                            string vName = _fishSearchResults[i];
+                            string vId = _fishSearchResults[i].Key;
+                            string vName = _fishSearchResults[i].Value;
                             bool isSelected = vName == value;
 
                             // Small preview button next to each search result
@@ -104,7 +105,7 @@ namespace AQuestReborn.Windows
                             ImGui.SameLine();
                             if (ImGui.Selectable(vName + "##fishResult_" + _id + i, isSelected))
                             {
-                                value = vName;
+                                value = vId;
                                 // Ensure the selected voice appears in Plugin.VoiceList so the combo box also reflects it
                                 if (!Plugin.Instance.VoiceList.Contains(vName))
                                 {
@@ -172,14 +173,14 @@ namespace AQuestReborn.Windows
                             dynamic json = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonStr);
                             if (json != null && json.items != null)
                             {
-                                var results = new List<string>();
+                                var results = new List<KeyValuePair<string,string>>();
                                 foreach (var item in json.items)
                                 {
                                     string title = (string)item.title;
                                     string id = (string)item._id;
                                     if (!string.IsNullOrWhiteSpace(title) && !string.IsNullOrWhiteSpace(id))
                                     {
-                                        results.Add(title);
+                                        results.Add(new KeyValuePair<string,string>(id, title));
                                         // Also register to the media manager voice map so it can generate audio
                                         if (Plugin.Instance.RoleplayingMediaManagerInstance?.FishAudioVoiceMap != null)
                                         {
